@@ -2,6 +2,8 @@ import { useParams, Link } from 'react-router-dom';
 import { ArrowLeft, ExternalLink, FileText, CheckSquare, Square, MessageSquare } from 'lucide-react';
 import AppLayout from '@/components/AppLayout';
 import StatusBadge from '@/components/StatusBadge';
+import CostingTable, { CostingDay } from '@/components/trip/CostingTable';
+import OperationsTable, { OperationsDay } from '@/components/trip/OperationsTable';
 import { mockTrips } from '@/data/mockData';
 import { statusConfig, urgencyConfig, budgetLabels } from '@/lib/config';
 
@@ -24,6 +26,56 @@ const itineraryDays = [
   { day: 1, title: 'Arrival & City Exploration', description: 'Airport pickup, hotel check-in, walking tour of historic center, welcome dinner.' },
   { day: 2, title: 'Cultural Immersion', description: 'Morning museum visit, traditional cooking class, afternoon free time, fado evening.' },
   { day: 3, title: 'Day Trip', description: 'Full-day excursion with private guide, lunch at local restaurant, return by evening.' },
+];
+
+const mockCostingDays: CostingDay[] = [
+  {
+    day: 1, date: '27/Dec/2026', title: 'Arrival & Transfer',
+    activities: [
+      { id: 'c1', name: 'Transfer-in Aeroporto - Hotel', supplier: '2Feel Portugal', perPersonOrTotal: 'TOTAL', numAdults: 0, numYouth: 0, priceAdults: 0, priceYouth: 0, netTotal: 79, marginPercent: 30, pvpTotal: 102.7, profit: 23.7 },
+    ],
+  },
+  {
+    day: 2, date: '28/Dec/2026', title: 'Lisbon Full Day Private Tour',
+    activities: [
+      { id: 'c2', name: 'Lisbon FD Privado', supplier: '2Feel Portugal', perPersonOrTotal: 'TOTAL', numAdults: 0, numYouth: 0, priceAdults: 0, priceYouth: 0, netTotal: 296, marginPercent: 30, pvpTotal: 384.8, profit: 88.8 },
+      { id: 'c3', name: 'Passeio de tuk tuk (2h) centro histórico', supplier: 'Tuk On Me', perPersonOrTotal: 'TOTAL', numAdults: 0, numYouth: 0, priceAdults: 0, priceYouth: 0, netTotal: 220, marginPercent: 30, pvpTotal: 286, profit: 66 },
+      { id: 'c4', name: 'Almoço', supplier: null, perPersonOrTotal: 'POR PESSOA', numAdults: 4, numYouth: 1, priceAdults: 40, priceYouth: 40, netTotal: 200, marginPercent: 30, pvpTotal: 260, profit: 60 },
+      { id: 'c5', name: 'Prova de Pastéis de Belém', supplier: null, perPersonOrTotal: 'POR PESSOA', numAdults: 4, numYouth: 1, priceAdults: 5, priceYouth: 5, netTotal: 25, marginPercent: 30, pvpTotal: 32.5, profit: 7.5 },
+    ],
+  },
+  {
+    day: 3, date: '29/Dec/2026', title: 'Sintra & Cascais Full Day Private Tour',
+    activities: [
+      { id: 'c6', name: 'Sintra & Cascais FD Privado', supplier: '2Feel Portugal', perPersonOrTotal: 'TOTAL', numAdults: 0, numYouth: 0, priceAdults: 0, priceYouth: 0, netTotal: 320, marginPercent: 30, pvpTotal: 416, profit: 96 },
+      { id: 'c7', name: 'Almoço Sintra', supplier: null, perPersonOrTotal: 'POR PESSOA', numAdults: 4, numYouth: 1, priceAdults: 35, priceYouth: 35, netTotal: 175, marginPercent: 30, pvpTotal: 227.5, profit: 52.5 },
+    ],
+  },
+];
+
+const mockOperationsDays: OperationsDay[] = [
+  {
+    day: 1, date: '27/Dec/2026', title: 'Arrival & Transfer',
+    activities: [
+      { id: 'o1', name: 'Transfer-in Aeroporto - Hotel', supplier: '2Feel Portugal', numPeople: 0, netTotal: 79, paidAmount: 0, startTime: '14:30', endTime: '15:30', reservationStatus: 'confirmed', paymentStatus: 'conta_mensal', invoiceStatus: 'pending' },
+    ],
+  },
+  {
+    day: 2, date: '28/Dec/2026', title: 'Lisbon Full Day Private Tour',
+    activities: [
+      { id: 'o2', name: 'Lisbon FD Privado', supplier: '2Feel Portugal', numPeople: 0, netTotal: 296, paidAmount: 0, startTime: '', endTime: '', reservationStatus: 'pending', paymentStatus: 'conta_mensal', invoiceStatus: 'pending' },
+      { id: 'o3', name: 'Passeio de tuk tuk (2h)', supplier: 'Tuk On Me', numPeople: 0, netTotal: 220, paidAmount: 0, startTime: '', endTime: '', reservationStatus: 'pending', paymentStatus: 'a_pagar_backoffice', invoiceStatus: 'pending' },
+      { id: 'o4', name: 'Almoço', supplier: null, numPeople: 5, netTotal: 200, paidAmount: 0, startTime: '', endTime: '', reservationStatus: 'not_started', paymentStatus: 'nao_pago', invoiceStatus: 'not_applicable' },
+      { id: 'o5', name: 'Prova de Pastéis de Belém', supplier: null, numPeople: 5, netTotal: 25, paidAmount: 0, startTime: '', endTime: '', reservationStatus: 'not_started', paymentStatus: 'nao_pago', invoiceStatus: 'not_applicable' },
+    ],
+  },
+  {
+    day: 3, date: '29/Dec/2026', title: 'Sintra & Cascais Full Day Private Tour',
+    activities: [
+      { id: 'o6', name: 'Sintra & Cascais FD Privado', supplier: '2Feel Portugal', numPeople: 0, netTotal: 320, paidAmount: 0, startTime: '', endTime: '', reservationStatus: 'pending', paymentStatus: 'conta_mensal', invoiceStatus: 'pending' },
+      { id: 'o7', name: 'Almoço Sintra', supplier: null, numPeople: 5, netTotal: 175, paidAmount: 0, startTime: '', endTime: '', reservationStatus: 'not_started', paymentStatus: 'nao_pago', invoiceStatus: 'not_applicable' },
+    ],
+  },
 ];
 
 const TripDetailPage = () => {
@@ -114,6 +166,12 @@ const TripDetailPage = () => {
                 ))}
               </div>
             </div>
+
+            {/* Costing */}
+            <CostingTable days={mockCostingDays} />
+
+            {/* Operations */}
+            <OperationsTable days={mockOperationsDays} />
 
             {/* Notes */}
             <div className="bg-card rounded-lg border p-4">
