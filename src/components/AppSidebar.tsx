@@ -1,11 +1,12 @@
 import { NavLink, useLocation } from 'react-router-dom';
-import { LayoutDashboard, Map, CheckCircle, Sun, PanelLeftClose, PanelLeft } from 'lucide-react';
+import { LayoutDashboard, Map, CheckCircle, Sun, PanelLeftClose, PanelLeft, Users } from 'lucide-react';
 import { useState } from 'react';
 import { cn } from '@/lib/utils';
 
 const navItems = [
   { to: '/', icon: LayoutDashboard, label: 'Dashboard' },
   { to: '/trips', icon: Map, label: 'Trips' },
+  { to: '/leads', icon: Users, label: 'Leads & Files' },
   { to: '/approvals', icon: CheckCircle, label: 'Approvals' },
 ];
 

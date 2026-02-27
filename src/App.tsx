@@ -7,6 +7,7 @@ import Dashboard from "./pages/Dashboard";
 import TripsPage from "./pages/TripsPage";
 import TripDetailPage from "./pages/TripDetailPage";
 import ApprovalsPage from "./pages/ApprovalsPage";
+import LeadsFilesPage from "./pages/LeadsFilesPage";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -21,6 +22,7 @@ const App = () => (
           <Route path="/" element={<Dashboard />} />
           <Route path="/trips" element={<TripsPage />} />
           <Route path="/trips/:id" element={<TripDetailPage />} />
+          <Route path="/leads" element={<LeadsFilesPage />} />
           <Route path="/approvals" element={<ApprovalsPage />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
