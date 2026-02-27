@@ -1,11 +1,13 @@
+import { useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { ArrowLeft, ExternalLink, FileText, CheckSquare, Square, MessageSquare } from 'lucide-react';
+import { ArrowLeft, ExternalLink, FileText, CheckSquare, Square, MessageSquare, PanelRightClose, PanelRight } from 'lucide-react';
 import AppLayout from '@/components/AppLayout';
 import StatusBadge from '@/components/StatusBadge';
 import CostingTable, { CostingDay } from '@/components/trip/CostingTable';
 import OperationsTable, { OperationsDay } from '@/components/trip/OperationsTable';
 import { mockTrips } from '@/data/mockData';
 import { statusConfig, urgencyConfig, budgetLabels } from '@/lib/config';
+import { cn } from '@/lib/utils';
 
 const checklist = [
   { id: 1, label: 'Hotel reservations confirmed', done: true },
@@ -81,6 +83,7 @@ const mockOperationsDays: OperationsDay[] = [
 const TripDetailPage = () => {
   const { id } = useParams<{ id: string }>();
   const trip = mockTrips.find((t) => t.id === id);
+  const [rightPanelOpen, setRightPanelOpen] = useState(true);
 
   if (!trip) {
     return (
@@ -110,6 +113,13 @@ const TripDetailPage = () => {
           <div className="flex items-center gap-2">
             <StatusBadge {...urgencyConfig[trip.urgency]} />
             <StatusBadge {...statusConfig[trip.status]} />
+            <button
+              onClick={() => setRightPanelOpen(!rightPanelOpen)}
+              className="p-2 hover:bg-muted rounded-md transition-colors ml-2"
+              title={rightPanelOpen ? 'Hide side panels' : 'Show side panels'}
+            >
+              {rightPanelOpen ? <PanelRightClose className="h-4 w-4 text-muted-foreground" /> : <PanelRight className="h-4 w-4 text-muted-foreground" />}
+            </button>
           </div>
         </div>
 
@@ -123,9 +133,9 @@ const TripDetailPage = () => {
           </div>
         )}
 
-        <div className="grid grid-cols-3 gap-6">
-          {/* Main content */}
-          <div className="col-span-2 space-y-6">
+        <div className={cn("flex gap-6 transition-all duration-200")}>
+          {/* Main content — expands to full width when panel is closed */}
+          <div className={cn("space-y-6 min-w-0 transition-all duration-200", rightPanelOpen ? "flex-1" : "w-full")}>
             {/* Trip Info */}
             <div className="bg-card rounded-lg border p-4">
               <h2 className="text-sm font-semibold mb-3">Trip Details</h2>
@@ -182,51 +192,53 @@ const TripDetailPage = () => {
             </div>
           </div>
 
-          {/* Sidebar */}
-          <div className="space-y-6">
-            {/* Checklist */}
-            <div className="bg-card rounded-lg border p-4">
-              <h2 className="text-sm font-semibold mb-3">Operational Checklist</h2>
-              <div className="space-y-2">
-                {checklist.map((item) => (
-                  <div key={item.id} className="flex items-center gap-2 text-sm">
-                    {item.done ? (
-                      <CheckSquare className="h-4 w-4 text-success shrink-0" />
-                    ) : (
-                      <Square className="h-4 w-4 text-muted-foreground shrink-0" />
-                    )}
-                    <span className={item.done ? 'text-muted-foreground line-through' : ''}>
-                      {item.label}
-                    </span>
-                  </div>
-                ))}
-              </div>
-              <p className="text-xs text-muted-foreground mt-3">
-                {checklist.filter((c) => c.done).length}/{checklist.length} completed
-              </p>
-            </div>
-
-            {/* Linked Files */}
-            <div className="bg-card rounded-lg border p-4">
-              <h2 className="text-sm font-semibold mb-3 flex items-center gap-2">
-                <FileText className="h-4 w-4" /> Linked Files
-              </h2>
-              <div className="space-y-2">
-                {mockFiles.map((file) => (
-                  <div
-                    key={file.name}
-                    className="flex items-center justify-between p-2 rounded-md border text-sm hover:bg-muted/30 transition-colors cursor-pointer"
-                  >
-                    <div className="flex items-center gap-2">
-                      <FileText className="h-3.5 w-3.5 text-muted-foreground" />
-                      <span className="text-xs">{file.name}</span>
+          {/* Right sidebar — collapsible */}
+          {rightPanelOpen && (
+            <div className="w-[280px] shrink-0 space-y-6">
+              {/* Checklist */}
+              <div className="bg-card rounded-lg border p-4">
+                <h2 className="text-sm font-semibold mb-3">Operational Checklist</h2>
+                <div className="space-y-2">
+                  {checklist.map((item) => (
+                    <div key={item.id} className="flex items-center gap-2 text-sm">
+                      {item.done ? (
+                        <CheckSquare className="h-4 w-4 text-success shrink-0" />
+                      ) : (
+                        <Square className="h-4 w-4 text-muted-foreground shrink-0" />
+                      )}
+                      <span className={item.done ? 'text-muted-foreground line-through' : ''}>
+                        {item.label}
+                      </span>
                     </div>
-                    <ExternalLink className="h-3 w-3 text-muted-foreground" />
-                  </div>
-                ))}
+                  ))}
+                </div>
+                <p className="text-xs text-muted-foreground mt-3">
+                  {checklist.filter((c) => c.done).length}/{checklist.length} completed
+                </p>
+              </div>
+
+              {/* Linked Files */}
+              <div className="bg-card rounded-lg border p-4">
+                <h2 className="text-sm font-semibold mb-3 flex items-center gap-2">
+                  <FileText className="h-4 w-4" /> Linked Files
+                </h2>
+                <div className="space-y-2">
+                  {mockFiles.map((file) => (
+                    <div
+                      key={file.name}
+                      className="flex items-center justify-between p-2 rounded-md border text-sm hover:bg-muted/30 transition-colors cursor-pointer"
+                    >
+                      <div className="flex items-center gap-2">
+                        <FileText className="h-3.5 w-3.5 text-muted-foreground" />
+                        <span className="text-xs">{file.name}</span>
+                      </div>
+                      <ExternalLink className="h-3 w-3 text-muted-foreground" />
+                    </div>
+                  ))}
+                </div>
               </div>
             </div>
-          </div>
+          )}
         </div>
       </div>
     </AppLayout>
