@@ -9,6 +9,8 @@ import TripDetailPage from "./pages/TripDetailPage";
 import ApprovalsPage from "./pages/ApprovalsPage";
 import LeadsFilesPage from "./pages/LeadsFilesPage";
 import LeadDetailPage from "./pages/LeadDetailPage";
+import CRMPage from "./pages/CRMPage";
+import PaymentsPage from "./pages/PaymentsPage";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -26,6 +28,8 @@ const App = () => (
           <Route path="/leads" element={<LeadsFilesPage />} />
           <Route path="/leads/:id" element={<LeadDetailPage />} />
           <Route path="/approvals" element={<ApprovalsPage />} />
+          <Route path="/crm" element={<CRMPage />} />
+          <Route path="/payments" element={<PaymentsPage />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>
