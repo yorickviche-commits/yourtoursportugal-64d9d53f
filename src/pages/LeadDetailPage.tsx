@@ -1,11 +1,12 @@
 import { useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { ArrowLeft, Save, Trash2 } from 'lucide-react';
+import { ArrowLeft, Save, Trash2, FileText, ClipboardList } from 'lucide-react';
 import AppLayout from '@/components/AppLayout';
 import { mockLeads } from '@/data/mockLeads';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
+import TagSelect from '@/components/TagSelect';
 import { cn } from '@/lib/utils';
 
 type DetailTab = 'dados_gerais' | 'travel_planner' | 'custos' | 'itinerario' | 'operacoes';
@@ -20,10 +21,23 @@ const DETAIL_TABS: { key: DetailTab; label: string }[] = [
 
 const RIGHT_TABS = ['Email', 'Tasks', 'Notas', 'Comentários', 'Follow up', 'Chatbot'];
 
+const CATEGORIAS = ['Premium & Boutique', 'Standard', 'Luxury', 'Budget', 'Adventure'];
+const DESTINOS = ['Porto & Douro Valley', 'Lisbon & Sintra', 'Algarve', 'Azores', 'Madeira', 'Minho', 'Alentejo', 'Silver Coast'];
+const IDIOMAS = ['EN', 'PT', 'FR', 'ES', 'DE', 'IT', 'NL'];
+const ORIGENS = ['website', 'AI Simulation', 'referral', 'partner', 'social_media', 'direct'];
+
 const LeadDetailPage = () => {
   const { id } = useParams<{ id: string }>();
   const lead = mockLeads.find(l => l.id === id);
   const [activeTab, setActiveTab] = useState<DetailTab>('dados_gerais');
+
+  // Tag select states
+  const [categoria, setCategoria] = useState<string[]>(lead?.comfortLevel ? [lead.comfortLevel] : []);
+  const [destino, setDestino] = useState<string[]>(lead?.destination ? [lead.destination] : []);
+  const [idioma, setIdioma] = useState<string[]>(['EN']);
+  const [origem, setOrigem] = useState<string[]>(lead?.source === 'ai_simulation' ? ['AI Simulation'] : lead?.source ? [lead.source] : []);
+  const [travelStyles, setTravelStyles] = useState<string[]>(lead?.travelStyle || []);
+  const [activeVersion, setActiveVersion] = useState(1);
 
   if (!lead) {
     return (
@@ -49,7 +63,7 @@ const LeadDetailPage = () => {
           <div className="flex items-start justify-between">
             <div>
               <h1 className="text-lg font-bold text-foreground">
-                Nº{lead.id.replace('L-', '')} - {lead.email} - - {lead.destination} - adt:{lead.pax} - chl:0 - inf:0
+                Nº{lead.id.replace('L-', '')} - {lead.email} - {lead.destination} - adt:{lead.pax} - chl:0 - inf:0
               </h1>
               <p className="text-sm font-semibold text-[hsl(var(--warning))]">[ {statusLabel} ]</p>
             </div>
@@ -91,7 +105,17 @@ const LeadDetailPage = () => {
           <div className="space-y-6">
             {/* Version selector */}
             <div className="flex items-center gap-3">
-              <span className="text-xs text-muted-foreground">🔒 Versão · 0 🔗</span>
+              <div className="flex items-center gap-1">
+                {[1, 2, 3].map(v => (
+                  <button key={v} onClick={() => setActiveVersion(v)}
+                    className={cn("px-2.5 py-1 text-xs rounded border transition-colors",
+                      activeVersion === v ? "bg-[hsl(var(--info))] text-white border-[hsl(var(--info))]" : "border-border text-muted-foreground hover:text-foreground"
+                    )}>
+                    V{v}
+                  </button>
+                ))}
+              </div>
+              <span className="text-xs text-muted-foreground">🔒 Versão · {activeVersion}</span>
               <Button variant="outline" size="sm" className="text-xs">Duplicar</Button>
               <Button variant="outline" size="sm" className="text-xs">Nova Versão</Button>
             </div>
@@ -134,21 +158,15 @@ const LeadDetailPage = () => {
               </div>
             </div>
 
-            {/* Dados da viagem */}
+            {/* Dados da viagem - with tag selects */}
             <div>
               <h3 className="text-xs font-semibold text-muted-foreground mb-3">Dados da viagem</h3>
               <div className="grid grid-cols-3 gap-4">
-                <div>
-                  <label className="text-[10px] text-muted-foreground uppercase">Categoria</label>
-                  <Input className="h-8 text-xs mt-1" defaultValue={lead.comfortLevel || ''} />
-                </div>
-                <div>
-                  <label className="text-[10px] text-muted-foreground uppercase">Destino</label>
-                  <Input className="h-8 text-xs mt-1" defaultValue={lead.destination} />
-                </div>
+                <TagSelect label="Categoria" value={categoria} options={CATEGORIAS} onChange={setCategoria} />
+                <TagSelect label="Destino" value={destino} options={DESTINOS} onChange={setDestino} multiple />
                 <div>
                   <label className="text-[10px] text-muted-foreground uppercase">Data inicial</label>
-                  <Input className="h-8 text-xs mt-1" defaultValue={lead.travelDates} />
+                  <Input className="h-8 text-xs mt-1" type="date" defaultValue={lead.travelDates} />
                 </div>
               </div>
               <div className="grid grid-cols-3 gap-4 mt-3">
@@ -174,16 +192,10 @@ const LeadDetailPage = () => {
                   <label className="text-[10px] text-muted-foreground uppercase">Total da Viagem (€)</label>
                   <Input className="h-8 text-xs mt-1" defaultValue="" />
                 </div>
-                <div>
-                  <label className="text-[10px] text-muted-foreground uppercase">Idioma</label>
-                  <Input className="h-8 text-xs mt-1" defaultValue="EN" />
-                </div>
+                <TagSelect label="Idioma" value={idioma} options={IDIOMAS} onChange={setIdioma} />
               </div>
               <div className="grid grid-cols-3 gap-4 mt-3">
-                <div>
-                  <label className="text-[10px] text-muted-foreground uppercase">Origem do Itinerário</label>
-                  <Input className="h-8 text-xs mt-1" defaultValue={lead.source === 'ai_simulation' ? 'AI Simulation' : lead.source} />
-                </div>
+                <TagSelect label="Origem do Itinerário" value={origem} options={ORIGENS} onChange={setOrigem} />
                 <div>
                   <label className="text-[10px] text-muted-foreground uppercase">Valor a Receber Pelo Guia</label>
                   <Input className="h-8 text-xs mt-1" defaultValue="" />
@@ -195,17 +207,14 @@ const LeadDetailPage = () => {
               </div>
             </div>
 
-            {/* Travel styles */}
-            {lead.travelStyle && lead.travelStyle.length > 0 && (
-              <div>
-                <h3 className="text-xs font-semibold text-muted-foreground mb-2">Estilos de viagem</h3>
-                <div className="flex gap-2 flex-wrap">
-                  {lead.travelStyle.map(style => (
-                    <span key={style} className="text-xs bg-[hsl(var(--info-muted))] text-[hsl(var(--info))] px-2 py-1 rounded">{style}</span>
-                  ))}
-                </div>
-              </div>
-            )}
+            {/* Travel styles as tag select */}
+            <TagSelect
+              label="Estilos de viagem"
+              value={travelStyles}
+              options={['Food & Wine', 'Culture & History', 'Nature & Adventure', 'Beach & Relax', 'City Break', 'Road Trip', 'Wellness', 'Photography']}
+              onChange={setTravelStyles}
+              multiple
+            />
 
             {/* Magic question */}
             {lead.magicQuestion && (
@@ -254,16 +263,91 @@ const LeadDetailPage = () => {
           </div>
         )}
 
-        {/* Other tabs placeholder */}
-        {activeTab !== 'dados_gerais' && (
-          <div className="bg-card rounded-lg border p-8 text-center">
-            <p className="text-sm text-muted-foreground">
-              {activeTab === 'travel_planner' && 'Travel Planner — Organização de Experiências, Cronograma, Mapa, Resumo'}
-              {activeTab === 'custos' && 'Orçamentação por dia — atividades, fornecedor, NET, margem, PVP, lucro'}
-              {activeTab === 'itinerario' && 'Itinerário comercial — vista cliente'}
-              {activeTab === 'operacoes' && 'Operações — reservas, pagamentos, faturas por dia'}
+        {/* Travel Planner */}
+        {activeTab === 'travel_planner' && (
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <h3 className="text-sm font-bold text-foreground">Travel Planner</h3>
+              <Button size="sm" className="text-xs gap-1 bg-gradient-to-r from-[hsl(var(--info))] to-[hsl(var(--info)/0.7)] text-white">
+                🤖 Gerar com Claude AI
+              </Button>
+            </div>
+            <div className="bg-card rounded-lg border p-6 text-center space-y-2">
+              <p className="text-sm text-muted-foreground">O Travel Planner será gerado automaticamente pelo Claude AI</p>
+              <p className="text-xs text-muted-foreground">Com base nos dados do lead, discovery form e base de dados YT, o Claude cria a estrutura base do programa e itinerário.</p>
+              <p className="text-xs text-muted-foreground mt-4">Integração via Make.com → Claude API → Google Sheets</p>
+            </div>
+          </div>
+        )}
+
+        {/* Custos */}
+        {activeTab === 'custos' && (
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <h3 className="text-sm font-bold text-foreground">Orçamentação & Margens</h3>
+              <Button size="sm" className="text-xs gap-1 bg-gradient-to-r from-[hsl(var(--info))] to-[hsl(var(--info)/0.7)] text-white">
+                🤖 Calcular Budget com AI
+              </Button>
+            </div>
+            <div className="bg-card rounded-lg border p-6 text-center space-y-2">
+              <p className="text-sm text-muted-foreground">Orçamentação detalhada por dia com atividades, fornecedor, preço NET, margem %, PVP, lucro</p>
+              <p className="text-xs text-muted-foreground">Claude AI consulta a base de dados de custos e calcula margens automaticamente.</p>
+            </div>
+          </div>
+        )}
+
+        {/* Itinerário */}
+        {activeTab === 'itinerario' && (
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <h3 className="text-sm font-bold text-foreground">Itinerário Digital (Customer-Facing)</h3>
+              <Button size="sm" className="text-xs gap-1 bg-gradient-to-r from-[hsl(var(--info))] to-[hsl(var(--info)/0.7)] text-white">
+                🤖 Gerar Itinerário com AI
+              </Button>
+            </div>
+            <div className="bg-card rounded-lg border p-6 text-center space-y-2">
+              <p className="text-sm text-muted-foreground">Itinerário digital customer-facing com imagens, gerado pelo Claude AI</p>
+              <p className="text-xs text-muted-foreground">Versão comercial, inspiracional e visual para envio ao cliente.</p>
+            </div>
+          </div>
+        )}
+
+        {/* Operações */}
+        {activeTab === 'operacoes' && (
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <h3 className="text-sm font-bold text-foreground">Operações</h3>
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-muted-foreground">Baseado na versão aceite (V{activeVersion})</span>
+              </div>
+            </div>
+
+            <p className="text-xs text-muted-foreground">
+              Quando a simulação é confirmada e o depósito pago, o costing da última versão aceite popula as rubricas operacionais.
             </p>
-            <p className="text-xs text-muted-foreground mt-2">Disponível quando conectado ao Google Sheets via Make.com</p>
+
+            {/* Briefing buttons */}
+            <div className="grid grid-cols-2 gap-3">
+              <Button variant="outline" size="sm" className="text-xs gap-2 h-12 justify-start">
+                <ClipboardList className="h-4 w-4 text-[hsl(var(--info))]" />
+                <div className="text-left">
+                  <p className="font-medium">Briefing Geral FSEs</p>
+                  <p className="text-muted-foreground text-[10px]">Para cada fornecedor relevante, guia e transporte</p>
+                </div>
+              </Button>
+              <Button variant="outline" size="sm" className="text-xs gap-2 h-12 justify-start">
+                <FileText className="h-4 w-4 text-[hsl(var(--success))]" />
+                <div className="text-left">
+                  <p className="font-medium">Briefing Final Cliente</p>
+                  <p className="text-muted-foreground text-[10px]">Versão compilada para envio ao cliente</p>
+                </div>
+              </Button>
+            </div>
+
+            <div className="bg-card rounded-lg border p-6 text-center space-y-2">
+              <p className="text-sm text-muted-foreground">Reservas, pagamentos, faturas por dia — operações completas</p>
+              <p className="text-xs text-muted-foreground">Disponível após confirmação da simulação.</p>
+            </div>
           </div>
         )}
       </div>
