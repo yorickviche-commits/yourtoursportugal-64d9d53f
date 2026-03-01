@@ -31,9 +31,11 @@ const FIELD_LABELS: Record<string, string> = {
   contact_phone: 'Telefone', contract_type: 'Tipo Contrato', currency: 'Moeda',
   cancellation_policy: 'Pol. Cancelamento', notes: 'Notas', commission_percent: 'Comissão %',
   payment_terms: 'Cond. Pagamento', territory: 'Território', description: 'Descrição',
-  duration: 'Duração', price: 'Preço', price_unit: 'Unidade Preço',
+  duration: 'Duração', price: 'Preço Adulto NET', price_child: 'Preço Criança NET',
+  price_unit: 'Unidade Preço', booking_conditions: 'Modo Reserva',
   payment_conditions: 'Cond. Pagamento', refund_policy: 'Pol. Reembolso',
   validity_start: 'Validade Início', validity_end: 'Validade Fim',
+  address: 'Morada', fiscal_number: 'NIF', bank_iban: 'IBAN',
 };
 
 type Step = 'input' | 'review';
@@ -114,7 +116,7 @@ const SmartImportDialog = ({ open, onOpenChange, entityType, onImportComplete }:
         extractedText = textDecoder.decode(uint8Array).replace(/[^\x20-\x7E\xA0-\xFF\n\r\t]/g, ' ').replace(/\s{3,}/g, ' ').trim();
       }
       if (extractedText.length < 20) {
-        toast({ title: 'PDF não legível', description: 'Tente copiar e colar o conteúdo manualmente.', variant: 'destructive' });
+        toast({ title: 'PDF não legível', description: 'Tente copiar e colar o conteúdo manualmente no separador "Copy-Paste".', variant: 'destructive' });
         setExtracting(false);
         return;
       }
@@ -137,7 +139,6 @@ const SmartImportDialog = ({ open, onOpenChange, entityType, onImportComplete }:
 
   const updateEntity = (key: string, value: any) => {
     setEntityData((prev: any) => ({ ...prev, [key]: value }));
-    // Remove from missing if filled
     if (value) setMissingFields(prev => prev.filter(f => f !== key));
   };
 
@@ -156,11 +157,16 @@ const SmartImportDialog = ({ open, onOpenChange, entityType, onImportComplete }:
         { key: 'contact_name', type: 'text' },
         { key: 'contact_email', type: 'text' },
         { key: 'contact_phone', type: 'text' },
+        { key: 'address', type: 'text' },
+        { key: 'fiscal_number', type: 'text' },
+        { key: 'bank_iban', type: 'text' },
         { key: 'commission_percent', type: 'number' },
         { key: 'contract_type', type: 'text' },
         { key: 'currency', type: 'text' },
         { key: 'payment_terms', type: 'textarea' },
         { key: 'territory', type: 'text' },
+        { key: 'validity_start', type: 'date' },
+        { key: 'validity_end', type: 'date' },
         { key: 'cancellation_policy', type: 'textarea' },
         { key: 'notes', type: 'textarea' },
       ]
@@ -170,8 +176,13 @@ const SmartImportDialog = ({ open, onOpenChange, entityType, onImportComplete }:
         { key: 'contact_name', type: 'text' },
         { key: 'contact_email', type: 'text' },
         { key: 'contact_phone', type: 'text' },
+        { key: 'address', type: 'text' },
+        { key: 'fiscal_number', type: 'text' },
+        { key: 'bank_iban', type: 'text' },
         { key: 'contract_type', type: 'text' },
         { key: 'currency', type: 'text' },
+        { key: 'validity_start', type: 'date' },
+        { key: 'validity_end', type: 'date' },
         { key: 'cancellation_policy', type: 'textarea' },
         { key: 'notes', type: 'textarea' },
       ];
@@ -195,7 +206,7 @@ const SmartImportDialog = ({ open, onOpenChange, entityType, onImportComplete }:
           <Tabs value={tab} onValueChange={setTab}>
             <TabsList className="w-full">
               <TabsTrigger value="paste" className="flex-1 gap-1.5">
-                <ClipboardPaste className="h-3.5 w-3.5" />Copy-Paste Email/Protocolo
+                <ClipboardPaste className="h-3.5 w-3.5" />Copy-Paste Protocolo
               </TabsTrigger>
               <TabsTrigger value="pdf" className="flex-1 gap-1.5">
                 <FileText className="h-3.5 w-3.5" />Import PDF
@@ -204,24 +215,24 @@ const SmartImportDialog = ({ open, onOpenChange, entityType, onImportComplete }:
 
             <TabsContent value="paste" className="space-y-3 mt-3">
               <p className="text-xs text-muted-foreground">
-                Cole o conteúdo completo do email, protocolo ou contrato. A IA vai extrair <strong>todos os dados</strong> do {label},
-                criar os serviços protocolados, e indicar os campos que faltam para revisão.
+                Cole o conteúdo completo do protocolo comercial, email ou contrato. A IA vai extrair <strong>todos os dados do {label}</strong>,
+                incluindo serviços com <strong>preço NET adulto/criança</strong>, condições de <strong>reserva, pagamento e cancelamento</strong>.
               </p>
               <Textarea
                 value={text}
                 onChange={e => setText(e.target.value)}
                 rows={14}
-                placeholder={`Cole aqui o texto completo do email, protocolo, contrato ou tabela de preços do ${label}...\n\nExemplo:\n- Nome do fornecedor\n- Contactos\n- Lista de serviços com preços\n- Condições de pagamento\n- Política de cancelamento\n- Validade dos preços`}
+                placeholder={`Cole aqui o texto completo do protocolo comercial...\n\nO sistema vai extrair automaticamente:\n• Dados do ${label} (nome, contacto, NIF, IBAN)\n• Serviços contratados com preço NET adulto e criança\n• Preço guia e política bebés\n• Modo de reserva (ex: apenas por email)\n• Modo de faturação/pagamento\n• Condições de cancelamento\n• Validade do protocolo`}
                 className="text-sm font-mono"
               />
               <Button onClick={handleExtractFromText} disabled={extracting || text.trim().length < 10} className="w-full">
-                {extracting ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" />A analisar texto...</> : <><Sparkles className="h-4 w-4 mr-2" />Extrair Todos os Dados</>}
+                {extracting ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" />A analisar protocolo...</> : <><Sparkles className="h-4 w-4 mr-2" />Extrair Todos os Dados</>}
               </Button>
             </TabsContent>
 
             <TabsContent value="pdf" className="space-y-3 mt-3">
               <p className="text-xs text-muted-foreground">
-                Faça upload de um PDF de protocolo, contrato ou tabela de preços. A IA processa o documento e extrai automaticamente toda a informação.
+                Faça upload do PDF do protocolo comercial. A IA processa o documento e extrai automaticamente toda a informação incluindo preços NET, condições e serviços.
               </p>
               <div className="border-2 border-dashed border-border rounded-lg p-8 text-center space-y-3">
                 <FileText className="h-10 w-10 text-muted-foreground mx-auto" />
@@ -243,7 +254,7 @@ const SmartImportDialog = ({ open, onOpenChange, entityType, onImportComplete }:
                 <AlertTriangle className="h-4 w-4 text-warning shrink-0 mt-0.5" />
                 <div>
                   <p className="text-xs font-medium text-foreground">
-                    {missingFields.length} campo(s) não encontrado(s) no texto — preencha manualmente:
+                    {missingFields.length} campo(s) não encontrado(s) — preencha manualmente:
                   </p>
                   <div className="flex flex-wrap gap-1 mt-1">
                     {missingFields.map(f => (
@@ -292,6 +303,13 @@ const SmartImportDialog = ({ open, onOpenChange, entityType, onImportComplete }:
                               rows={2}
                               className={`text-xs ${missing ? 'border-warning/50' : ''}`}
                             />
+                          ) : field.type === 'date' ? (
+                            <Input
+                              type="date"
+                              value={entityData[field.key] ?? ''}
+                              onChange={e => updateEntity(field.key, e.target.value)}
+                              className={`h-8 text-xs ${missing ? 'border-warning/50' : ''}`}
+                            />
                           ) : (
                             <Input
                               type={field.type === 'number' ? 'number' : 'text'}
@@ -332,42 +350,50 @@ const SmartImportDialog = ({ open, onOpenChange, entityType, onImportComplete }:
                                 <Label className="text-[10px] text-muted-foreground">Categoria</Label>
                                 <Select value={svc.category || ''} onValueChange={v => updateService(idx, 'category', v)}>
                                   <SelectTrigger className="h-7 text-xs"><SelectValue /></SelectTrigger>
-                                  <SelectContent>{(entityType === 'partner' ? ['private_tour','tailor_made','group_tour','transfer','experience','other'] : SUPPLIER_CATEGORIES).map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent>
+                                  <SelectContent>{(entityType === 'partner' ? ['private_tour','tailor_made','group_tour','transfer','experience','restaurant','hotel','other'] : SUPPLIER_CATEGORIES).map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent>
                                 </Select>
                               </div>
                             </div>
                             <div className="space-y-1">
-                              <Label className="text-[10px] text-muted-foreground">Descrição</Label>
-                              <Textarea value={svc.description || ''} onChange={e => updateService(idx, 'description', e.target.value)} rows={2} className="text-xs" />
+                              <Label className="text-[10px] text-muted-foreground">Descrição (o que inclui)</Label>
+                              <Textarea value={svc.description || ''} onChange={e => updateService(idx, 'description', e.target.value)} rows={3} className="text-xs" />
                             </div>
-                            <div className="grid grid-cols-3 gap-2">
+                            <div className="grid grid-cols-4 gap-2">
                               <div className="space-y-1">
-                                <Label className="text-[10px] text-muted-foreground">Preço</Label>
+                                <Label className="text-[10px] text-muted-foreground">💰 Preço Adulto NET</Label>
                                 <Input type="number" value={svc.price || 0} onChange={e => updateService(idx, 'price', parseFloat(e.target.value) || 0)} className="h-7 text-xs" />
+                              </div>
+                              <div className="space-y-1">
+                                <Label className="text-[10px] text-muted-foreground">👶 Preço Criança NET</Label>
+                                <Input type="number" value={svc.price_child || 0} onChange={e => updateService(idx, 'price_child', parseFloat(e.target.value) || 0)} className="h-7 text-xs" />
                               </div>
                               <div className="space-y-1">
                                 <Label className="text-[10px] text-muted-foreground">Unidade</Label>
                                 <Select value={svc.price_unit || 'per_person'} onValueChange={v => updateService(idx, 'price_unit', v)}>
                                   <SelectTrigger className="h-7 text-xs"><SelectValue /></SelectTrigger>
-                                  <SelectContent>{PRICE_UNITS.map(u => <SelectItem key={u} value={u}>{u.replace('_',' ')}</SelectItem>)}</SelectContent>
+                                  <SelectContent>{PRICE_UNITS.map(u => <SelectItem key={u} value={u}>{u.replace('_', ' ')}</SelectItem>)}</SelectContent>
                                 </Select>
                               </div>
                               <div className="space-y-1">
-                                <Label className="text-[10px] text-muted-foreground">Duração</Label>
+                                <Label className="text-[10px] text-muted-foreground">⏱ Duração</Label>
                                 <Input value={svc.duration || ''} onChange={e => updateService(idx, 'duration', e.target.value)} className="h-7 text-xs" />
                               </div>
                             </div>
                             <div className="space-y-1">
-                              <Label className="text-[10px] text-muted-foreground">Cond. Pagamento</Label>
-                              <Input value={svc.payment_conditions || ''} onChange={e => updateService(idx, 'payment_conditions', e.target.value)} className="h-7 text-xs" />
+                              <Label className="text-[10px] text-muted-foreground">📋 Modo de Reserva</Label>
+                              <Input value={svc.booking_conditions || ''} onChange={e => updateService(idx, 'booking_conditions', e.target.value)} className="h-7 text-xs" placeholder="Ex: Apenas por email" />
+                            </div>
+                            <div className="space-y-1">
+                              <Label className="text-[10px] text-muted-foreground">💰 Modo de Pagamento/Faturação</Label>
+                              <Textarea value={svc.payment_conditions || ''} onChange={e => updateService(idx, 'payment_conditions', e.target.value)} rows={2} className="text-xs" placeholder="Ex: Guia recolhe fatura, pagamento até dia 8 do mês seguinte" />
                             </div>
                             <div className="grid grid-cols-2 gap-2">
                               <div className="space-y-1">
-                                <Label className="text-[10px] text-muted-foreground">Cancelamento</Label>
+                                <Label className="text-[10px] text-muted-foreground">❌ Cancelamento</Label>
                                 <Textarea value={svc.cancellation_policy || ''} onChange={e => updateService(idx, 'cancellation_policy', e.target.value)} rows={1} className="text-xs" />
                               </div>
                               <div className="space-y-1">
-                                <Label className="text-[10px] text-muted-foreground">Reembolso</Label>
+                                <Label className="text-[10px] text-muted-foreground">↩ Reembolso</Label>
                                 <Textarea value={svc.refund_policy || ''} onChange={e => updateService(idx, 'refund_policy', e.target.value)} rows={1} className="text-xs" />
                               </div>
                             </div>
@@ -382,8 +408,8 @@ const SmartImportDialog = ({ open, onOpenChange, entityType, onImportComplete }:
                               </div>
                             </div>
                             <div className="space-y-1">
-                              <Label className="text-[10px] text-muted-foreground">Notas</Label>
-                              <Textarea value={svc.notes || ''} onChange={e => updateService(idx, 'notes', e.target.value)} rows={1} className="text-xs" />
+                              <Label className="text-[10px] text-muted-foreground">📝 Notas (bebé, guia, IVA, extras)</Label>
+                              <Textarea value={svc.notes || ''} onChange={e => updateService(idx, 'notes', e.target.value)} rows={2} className="text-xs" placeholder="Ex: Bebé 0-3 grátis, Guia 17€, IVA incluído" />
                             </div>
                             <Button size="sm" variant="outline" onClick={() => setEditingServiceIdx(null)} className="w-full text-xs h-7">
                               <CheckCircle2 className="h-3 w-3 mr-1" />Concluir Edição
@@ -399,19 +425,37 @@ const SmartImportDialog = ({ open, onOpenChange, entityType, onImportComplete }:
                                 {svc.duration && <span className="text-[10px] text-muted-foreground">⏱ {svc.duration}</span>}
                               </div>
                               {svc.description && <p className="text-[10px] text-muted-foreground mt-0.5 line-clamp-2">{svc.description}</p>}
-                              <div className="flex flex-wrap gap-2 mt-1 text-[10px]">
-                                <span className="font-medium text-foreground">
-                                  {svc.price > 0 ? `${svc.price}${svc.currency || '€'} / ${(svc.price_unit || '').replace('_', ' ')}` : '⚠ Preço em falta'}
+                              
+                              {/* Pricing row */}
+                              <div className="flex flex-wrap gap-3 mt-1.5 text-[10px]">
+                                <span className={`font-semibold ${svc.price > 0 ? 'text-foreground' : 'text-warning'}`}>
+                                  👤 Adulto: {svc.price > 0 ? `${svc.price}€` : '⚠ em falta'}
                                 </span>
+                                <span className={`font-semibold ${svc.price_child > 0 ? 'text-foreground' : 'text-muted-foreground'}`}>
+                                  👶 Criança: {svc.price_child > 0 ? `${svc.price_child}€` : '—'}
+                                </span>
+                                <span className="text-muted-foreground">/ {(svc.price_unit || '').replace('_', ' ')}</span>
+                              </div>
+                              
+                              {/* Conditions row */}
+                              <div className="flex flex-wrap gap-2 mt-1 text-[10px]">
+                                {svc.booking_conditions && <span className="text-muted-foreground">📋 {svc.booking_conditions}</span>}
                                 {svc.payment_conditions && <span className="text-muted-foreground">💰 {svc.payment_conditions}</span>}
                                 {svc.cancellation_policy && <span className="text-muted-foreground">❌ {svc.cancellation_policy}</span>}
                                 {svc.refund_policy && <span className="text-muted-foreground">↩ {svc.refund_policy}</span>}
                               </div>
+
+                              {/* Notes with guide/baby/VAT info */}
+                              {svc.notes && (
+                                <p className="text-[9px] text-muted-foreground mt-1 italic">{svc.notes}</p>
+                              )}
+
                               {/* Highlight missing service fields */}
                               {(() => {
                                 const svcMissing = [];
-                                if (!svc.price || svc.price === 0) svcMissing.push('Preço');
-                                if (!svc.payment_conditions) svcMissing.push('Cond. Pagamento');
+                                if (!svc.price || svc.price === 0) svcMissing.push('Preço Adulto');
+                                if (!svc.booking_conditions) svcMissing.push('Modo Reserva');
+                                if (!svc.payment_conditions) svcMissing.push('Pagamento');
                                 if (!svc.cancellation_policy) svcMissing.push('Cancelamento');
                                 if (!svc.validity_start && !svc.validity_end) svcMissing.push('Validade');
                                 return svcMissing.length > 0 ? (
