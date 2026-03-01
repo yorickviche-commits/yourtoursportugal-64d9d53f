@@ -1,5 +1,5 @@
 import { NavLink, useLocation } from 'react-router-dom';
-import { LayoutDashboard, Map, CheckCircle, Sun, PanelLeftClose, PanelLeft, Users, Globe, CreditCard, ClipboardList } from 'lucide-react';
+import { LayoutDashboard, Map, CheckCircle, Sun, PanelLeftClose, PanelLeft, Users, Globe, CreditCard, ClipboardList, Bot } from 'lucide-react';
 import { useState } from 'react';
 import { cn } from '@/lib/utils';
 
@@ -11,6 +11,7 @@ const navItems = [
   { to: '/approvals', icon: CheckCircle, label: 'Processos / Aprovações' },
   { to: '/crm', icon: Globe, label: 'CRM (NetHunt)' },
   { to: '/payments', icon: CreditCard, label: 'Pagamentos (WeTravel)' },
+  { to: '/agents', icon: Bot, label: 'AI Agents' },
 ];
 
 const AppSidebar = () => {
