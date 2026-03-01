@@ -19,6 +19,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import EmailComposerDialog from '@/components/leads/EmailComposerDialog';
 
 type DetailTab = 'dados_gerais' | 'travel_planner' | 'custos' | 'itinerario' | 'operacoes';
 
@@ -343,7 +344,26 @@ const LeadDetailPage = () => {
             ))}
           </div>
           <div className="flex items-center gap-3">
-            {RIGHT_TABS.map(tab => (
+            <EmailComposerDialog lead={{
+              clientName: lead.clientName,
+              email: lead.email,
+              phone: lead.phone,
+              destination: lead.destination,
+              travelDates: lead.travelDates,
+              pax: lead.pax,
+              status: leadStatus,
+              budgetLevel: lead.budgetLevel,
+              travelStyle: lead.travelStyle,
+              comfortLevel: lead.comfortLevel,
+              magicQuestion: lead.magicQuestion,
+              notes: lead.notes,
+              leadId: lead.id,
+            }}>
+              <button className="text-xs text-[hsl(var(--info))] hover:text-foreground transition-colors font-medium flex items-center gap-1">
+                <Mail className="h-3 w-3" /> Email
+              </button>
+            </EmailComposerDialog>
+            {['Tasks', 'Notas'].map(tab => (
               <button key={tab} className="text-xs text-muted-foreground hover:text-foreground transition-colors">
                 {tab}
               </button>
