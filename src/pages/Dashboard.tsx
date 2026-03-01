@@ -1,33 +1,17 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { AlertTriangle, Clock, CheckCircle, Users, Send, TrendingUp, Calendar as CalendarIcon, ArrowRight } from 'lucide-react';
-import { format, isSameDay, parseISO, addDays } from 'date-fns';
+import { format } from 'date-fns';
 import { pt } from 'date-fns/locale';
 import AppLayout from '@/components/AppLayout';
 import StatusBadge from '@/components/StatusBadge';
 import { mockTrips, mockApprovals, mockStats } from '@/data/mockData';
 import { urgencyConfig, statusConfig, approvalTypeConfig } from '@/lib/config';
-import { Calendar } from '@/components/ui/calendar';
 import { cn } from '@/lib/utils';
+import MonthlyCalendar, { CalendarEvent, EVENT_COLORS } from '@/components/dashboard/MonthlyCalendar';
+import TasksBoard from '@/components/dashboard/TasksBoard';
 
 type DashboardSubPage = 'overview' | 'calendar_reservas' | 'calendar_tasks';
-
-// Mock tasks/urgencies data
-const mockTasks = [
-  { id: 't1', date: '2026-02-28', title: 'Confirmar hotel upgrade T-002', priority: 'urgent' as const, tripId: 'T-002' },
-  { id: 't2', date: '2026-02-28', title: 'Enviar proposta Sarah Mitchell', priority: 'warning' as const, tripId: 'T-003' },
-  { id: 't3', date: '2026-03-01', title: 'Confirmar guia Sintra T-005', priority: 'urgent' as const, tripId: 'T-005' },
-  { id: 't4', date: '2026-03-02', title: 'Reservar wine tour Henderson', priority: 'warning' as const, tripId: 'T-001' },
-  { id: 't5', date: '2026-03-03', title: 'Check-in Henderson Family', priority: 'info' as const, tripId: 'T-001' },
-  { id: 't6', date: '2026-03-05', title: 'Preparar briefing Novak Family', priority: 'warning' as const, tripId: 'T-005' },
-  { id: 't7', date: '2026-03-01', title: 'Follow-up Robert Chen proposta', priority: 'info' as const, tripId: 'T-004' },
-];
-
-const priorityStyles = {
-  urgent: 'border-destructive/40 bg-destructive/5 text-destructive',
-  warning: 'border-[hsl(var(--warning))]/40 bg-[hsl(var(--warning))]/5 text-[hsl(var(--warning))]',
-  info: 'border-[hsl(var(--info))]/40 bg-[hsl(var(--info))]/5 text-[hsl(var(--info))]',
-};
 
 const StatCard = ({
   icon: Icon,
@@ -70,38 +54,25 @@ const StatCard = ({
 
 const Dashboard = () => {
   const [subPage, setSubPage] = useState<DashboardSubPage>('overview');
-  const [selectedDate, setSelectedDate] = useState<Date>(new Date());
 
   const urgentTrips = mockTrips.filter((t) => t.urgency === 'D-1' || t.urgency === 'D-3');
   const blockedTrips = mockTrips.filter((t) => t.hasBlocker);
 
-  // Dates that have confirmed reservations
-  const reservationDates = mockTrips
-    .filter(t => t.status === 'confirmed' || t.status === 'approved')
-    .flatMap(t => {
-      const start = parseISO(t.startDate);
-      const end = parseISO(t.endDate);
-      const dates: Date[] = [];
-      let current = start;
-      while (current <= end) {
-        dates.push(current);
-        current = addDays(current, 1);
-      }
-      return dates;
-    });
-
-  // Dates that have tasks
-  const taskDates = mockTasks.map(t => parseISO(t.date));
-
-  // Get trips for selected date
-  const tripsOnDate = mockTrips.filter(t => {
-    const start = parseISO(t.startDate);
-    const end = parseISO(t.endDate);
-    return selectedDate >= start && selectedDate <= end;
-  });
-
-  // Get tasks for selected date
-  const tasksOnDate = mockTasks.filter(t => isSameDay(parseISO(t.date), selectedDate));
+  // Build calendar events from trips
+  const calendarEvents: CalendarEvent[] = mockTrips.map((t, idx) => ({
+    id: t.id,
+    title: `${t.clientName} - ${t.destination}`,
+    startDate: t.startDate,
+    endDate: t.endDate,
+    color: EVENT_COLORS[idx % EVENT_COLORS.length],
+    tripId: t.id,
+    clientName: t.clientName,
+    destination: t.destination,
+    pax: t.pax,
+    status: t.status,
+    salesOwner: t.salesOwner,
+    totalValue: t.totalValue,
+  }));
 
   const subPageTabs: { key: DashboardSubPage; label: string }[] = [
     { key: 'overview', label: 'Visão Geral' },
@@ -258,104 +229,12 @@ const Dashboard = () => {
 
         {/* Calendar Reservas */}
         {subPage === 'calendar_reservas' && (
-          <div className="grid grid-cols-[auto_1fr] gap-6">
-            <div className="bg-card rounded-lg border p-4">
-              <h3 className="text-sm font-semibold mb-3">Reservas Confirmadas</h3>
-              <Calendar
-                mode="single"
-                selected={selectedDate}
-                onSelect={(d) => d && setSelectedDate(d)}
-                className="p-3 pointer-events-auto"
-                modifiers={{ booked: reservationDates }}
-                modifiersClassNames={{ booked: 'bg-[hsl(var(--info))]/20 text-[hsl(var(--info))] font-bold rounded-md' }}
-              />
-              <p className="text-[10px] text-muted-foreground mt-2 text-center">
-                Dias com reservas assinalados a azul
-              </p>
-            </div>
-            <div className="space-y-3">
-              <h3 className="text-sm font-semibold">
-                {format(selectedDate, "EEEE, d 'de' MMMM", { locale: pt })}
-              </h3>
-              {tripsOnDate.length === 0 ? (
-                <p className="text-sm text-muted-foreground py-8 text-center">Sem reservas neste dia</p>
-              ) : (
-                tripsOnDate.map(trip => (
-                  <Link
-                    key={trip.id}
-                    to={`/trips/${trip.id}`}
-                    className="flex items-center justify-between p-4 rounded-lg border bg-card hover:bg-muted/50 transition-colors"
-                  >
-                    <div className="flex items-center gap-3">
-                      <StatusBadge {...urgencyConfig[trip.urgency]} />
-                      <div>
-                        <p className="text-sm font-medium">{trip.clientName}</p>
-                        <p className="text-xs text-muted-foreground">{trip.destination} · {trip.pax} pax</p>
-                        <p className="text-[10px] text-muted-foreground">{trip.startDate} → {trip.endDate}</p>
-                      </div>
-                    </div>
-                    <div className="text-right space-y-1">
-                      <StatusBadge {...statusConfig[trip.status]} />
-                      <p className="text-xs font-medium">{trip.totalValue.toLocaleString()}€</p>
-                      <p className="text-[10px] text-muted-foreground">{trip.salesOwner}</p>
-                    </div>
-                  </Link>
-                ))
-              )}
-            </div>
-          </div>
+          <MonthlyCalendar events={calendarEvents} />
         )}
 
         {/* Calendar Tasks */}
         {subPage === 'calendar_tasks' && (
-          <div className="grid grid-cols-[auto_1fr] gap-6">
-            <div className="bg-card rounded-lg border p-4">
-              <h3 className="text-sm font-semibold mb-3">Tasks & Urgências</h3>
-              <Calendar
-                mode="single"
-                selected={selectedDate}
-                onSelect={(d) => d && setSelectedDate(d)}
-                className="p-3 pointer-events-auto"
-                modifiers={{ hasTask: taskDates }}
-                modifiersClassNames={{ hasTask: 'bg-[hsl(var(--warning))]/20 text-[hsl(var(--warning))] font-bold rounded-md' }}
-              />
-              <p className="text-[10px] text-muted-foreground mt-2 text-center">
-                Dias com tasks assinalados a laranja
-              </p>
-            </div>
-            <div className="space-y-3">
-              <h3 className="text-sm font-semibold">
-                {format(selectedDate, "EEEE, d 'de' MMMM", { locale: pt })}
-              </h3>
-              {tasksOnDate.length === 0 ? (
-                <p className="text-sm text-muted-foreground py-8 text-center">Sem tasks neste dia</p>
-              ) : (
-                tasksOnDate.map(task => (
-                  <Link
-                    key={task.id}
-                    to={`/trips/${task.tripId}`}
-                    className={cn(
-                      "flex items-center justify-between p-4 rounded-lg border transition-colors hover:opacity-80",
-                      priorityStyles[task.priority]
-                    )}
-                  >
-                    <div>
-                      <p className="text-sm font-medium">{task.title}</p>
-                      <p className="text-[10px] text-muted-foreground">Trip: {task.tripId}</p>
-                    </div>
-                    <span className={cn(
-                      "text-[10px] font-bold uppercase px-2 py-0.5 rounded",
-                      task.priority === 'urgent' && 'bg-destructive/10 text-destructive',
-                      task.priority === 'warning' && 'bg-[hsl(var(--warning))]/10 text-[hsl(var(--warning))]',
-                      task.priority === 'info' && 'bg-[hsl(var(--info))]/10 text-[hsl(var(--info))]',
-                    )}>
-                      {task.priority === 'urgent' ? 'Urgente' : task.priority === 'warning' ? 'Importante' : 'Normal'}
-                    </span>
-                  </Link>
-                ))
-              )}
-            </div>
-          </div>
+          <TasksBoard />
         )}
       </div>
     </AppLayout>
