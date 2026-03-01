@@ -8,3 +8,6 @@ verify_jwt = false
 
 [functions.wetravel-proxy]
 verify_jwt = false
+
+[functions.parse-lead-email]
+verify_jwt = false

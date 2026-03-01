@@ -2,7 +2,7 @@ import { Lead, FileItem } from '@/types/leads';
 
 export const mockLeads: Lead[] = [
   {
-    id: 'L-001',
+    id: 'YT4190',
     clientName: 'David & Anna Thompson',
     email: 'thompson@email.com',
     phone: '+44 7911 123456',
@@ -20,7 +20,7 @@ export const mockLeads: Lead[] = [
     comfortLevel: 'Premium & Boutique',
   },
   {
-    id: 'L-002',
+    id: 'YT4191',
     clientName: 'Sophie Laurent',
     email: 'sophie.l@email.com',
     destination: 'Algarve',
@@ -36,7 +36,7 @@ export const mockLeads: Lead[] = [
     comfortLevel: 'Authentic & Comfortable',
   },
   {
-    id: 'L-003',
+    id: 'YT4192',
     clientName: 'Mark & Lisa Johnson',
     email: 'mjohnson@email.com',
     phone: '+1 555 987 6543',
@@ -55,7 +55,7 @@ export const mockLeads: Lead[] = [
     magicQuestion: 'A private sunset dinner overlooking the Douro.',
   },
   {
-    id: 'L-004',
+    id: 'YT4193',
     clientName: 'Hans Müller',
     email: 'hans.m@email.de',
     destination: 'Azores',
@@ -72,7 +72,7 @@ export const mockLeads: Lead[] = [
     comfortLevel: 'Authentic & Comfortable',
   },
   {
-    id: 'L-005',
+    id: 'YT4194',
     clientName: 'Emily & James Carter',
     email: 'carter@email.com',
     destination: 'Lisbon & Sintra',
@@ -92,11 +92,11 @@ export const mockLeads: Lead[] = [
 ];
 
 export const mockFiles: FileItem[] = [
-  { id: 'F-001', name: 'Thompson_Proposal_v2.pdf', type: 'pdf', leadId: 'L-001', tags: ['proposal', 'douro'], uploadedAt: '2026-02-25T14:00:00', uploadedBy: 'Maria S.', size: '2.4 MB', driveUrl: '#' },
-  { id: 'F-002', name: 'Laurent_Family_Brief.doc', type: 'doc', leadId: 'L-002', tags: ['brief', 'algarve'], uploadedAt: '2026-02-26T09:30:00', uploadedBy: 'João P.', size: '1.1 MB', driveUrl: '#' },
-  { id: 'F-003', name: 'Johnson_Luxury_Itinerary.pdf', type: 'pdf', leadId: 'L-003', tags: ['itinerary', 'luxury'], uploadedAt: '2026-02-24T16:30:00', uploadedBy: 'Maria S.', size: '3.8 MB', driveUrl: '#' },
-  { id: 'F-004', name: 'Azores_Hiking_Routes.pdf', type: 'pdf', leadId: 'L-004', tags: ['azores', 'hiking'], uploadedAt: '2026-02-23T10:30:00', uploadedBy: 'João P.', size: '5.2 MB', driveUrl: '#' },
-  { id: 'F-005', name: 'Carter_AI_Simulation_Output.pdf', type: 'pdf', leadId: 'L-005', tags: ['ai', 'simulation'], uploadedAt: '2026-02-18T14:30:00', uploadedBy: 'System', size: '1.8 MB', driveUrl: '#' },
+  { id: 'F-001', name: 'Thompson_Proposal_v2.pdf', type: 'pdf', leadId: 'YT4190', tags: ['proposal', 'douro'], uploadedAt: '2026-02-25T14:00:00', uploadedBy: 'Maria S.', size: '2.4 MB', driveUrl: '#' },
+  { id: 'F-002', name: 'Laurent_Family_Brief.doc', type: 'doc', leadId: 'YT4191', tags: ['brief', 'algarve'], uploadedAt: '2026-02-26T09:30:00', uploadedBy: 'João P.', size: '1.1 MB', driveUrl: '#' },
+  { id: 'F-003', name: 'Johnson_Luxury_Itinerary.pdf', type: 'pdf', leadId: 'YT4192', tags: ['itinerary', 'luxury'], uploadedAt: '2026-02-24T16:30:00', uploadedBy: 'Maria S.', size: '3.8 MB', driveUrl: '#' },
+  { id: 'F-004', name: 'Azores_Hiking_Routes.pdf', type: 'pdf', leadId: 'YT4193', tags: ['azores', 'hiking'], uploadedAt: '2026-02-23T10:30:00', uploadedBy: 'João P.', size: '5.2 MB', driveUrl: '#' },
+  { id: 'F-005', name: 'Carter_AI_Simulation_Output.pdf', type: 'pdf', leadId: 'YT4194', tags: ['ai', 'simulation'], uploadedAt: '2026-02-18T14:30:00', uploadedBy: 'System', size: '1.8 MB', driveUrl: '#' },
   { id: 'F-006', name: 'Supplier_Rates_Q2_2026.xlsx', type: 'spreadsheet', tags: ['rates', 'supplier'], uploadedAt: '2026-02-20T08:00:00', uploadedBy: 'Maria S.', size: '890 KB', driveUrl: '#' },
   { id: 'F-007', name: 'Hotel_Photos_Douro.zip', type: 'other', tags: ['photos', 'douro'], uploadedAt: '2026-02-19T12:00:00', uploadedBy: 'João P.', size: '45 MB', driveUrl: '#' },
 ];
