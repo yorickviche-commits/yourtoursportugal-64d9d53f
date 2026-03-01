@@ -32,9 +32,10 @@ interface Supplier {
 
 interface SupplierService {
   id: string; supplier_id: string; name: string; description: string | null;
-  category: string; duration: string | null; price: number; price_unit: string;
-  currency: string; payment_conditions: string | null; cancellation_policy: string | null;
-  refund_policy: string | null; notes: string | null; status: string;
+  category: string; duration: string | null; price: number; price_child: number;
+  price_unit: string; currency: string; payment_conditions: string | null;
+  cancellation_policy: string | null; refund_policy: string | null;
+  booking_conditions: string | null; notes: string | null; status: string;
   validity_start: string | null; validity_end: string | null;
 }
 
@@ -51,9 +52,9 @@ interface SupplierLink {
 
 const emptyService = {
   name: '', description: '', category: 'activity', duration: '', price: 0,
-  price_unit: 'per_person', currency: 'EUR', payment_conditions: '',
-  cancellation_policy: '', refund_policy: '', notes: '', status: 'active',
-  validity_start: '', validity_end: '',
+  price_child: 0, price_unit: 'per_person', currency: 'EUR', payment_conditions: '',
+  cancellation_policy: '', refund_policy: '', booking_conditions: '', notes: '',
+  status: 'active', validity_start: '', validity_end: '',
 };
 
 const AdminSupplierDetailPage = () => {
@@ -339,7 +340,8 @@ const AdminSupplierDetailPage = () => {
                 <div className="grid gap-3">
                   {services.map(s => (
                     <Card key={s.id} className="hover:border-primary/30 transition-colors">
-                      <CardContent className="pt-4">
+                      <CardContent className="pt-4 pb-3">
+                        {/* Header row */}
                         <div className="flex items-start justify-between gap-3">
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2 flex-wrap">
@@ -347,20 +349,7 @@ const AdminSupplierDetailPage = () => {
                               <Badge className={`text-[10px] ${CAT_COLORS[s.category] || ''}`}>{s.category}</Badge>
                               {s.duration && <span className="text-xs text-muted-foreground">⏱ {s.duration}</span>}
                             </div>
-                            {s.description && <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{s.description}</p>}
-                            <div className="flex flex-wrap gap-3 mt-2 text-xs">
-                              <span className="font-medium text-foreground">
-                                {s.price > 0 ? `${s.price}€ / ${s.price_unit.replace('_', ' ')}` : 'Preço a consultar'}
-                              </span>
-                              {s.payment_conditions && <span className="text-muted-foreground">💰 {s.payment_conditions}</span>}
-                              {s.cancellation_policy && <span className="text-muted-foreground">❌ {s.cancellation_policy}</span>}
-                              {s.refund_policy && <span className="text-muted-foreground">↩ {s.refund_policy}</span>}
-                            </div>
-                            {(s.validity_start || s.validity_end) && (
-                              <p className="text-[10px] text-muted-foreground mt-1">
-                                Validade: {s.validity_start || '...'} → {s.validity_end || '...'}
-                              </p>
-                            )}
+                            {s.description && <p className="text-sm text-muted-foreground mt-1">{s.description}</p>}
                           </div>
                           <div className="flex gap-1 shrink-0">
                             <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openEditService(s)}>
@@ -370,6 +359,57 @@ const AdminSupplierDetailPage = () => {
                               <Trash2 className="h-3 w-3" />
                             </Button>
                           </div>
+                        </div>
+
+                        {/* Pricing */}
+                        <div className="mt-3 flex flex-wrap gap-4 text-xs">
+                          <div className="bg-muted/30 rounded-md px-3 py-1.5">
+                            <span className="text-muted-foreground">Adulto NET:</span>{' '}
+                            <span className="font-semibold text-foreground">{s.price > 0 ? `${s.price}€` : '—'}</span>
+                            {s.price_unit && <span className="text-muted-foreground"> / {s.price_unit.replace('_', ' ')}</span>}
+                          </div>
+                          <div className="bg-muted/30 rounded-md px-3 py-1.5">
+                            <span className="text-muted-foreground">Criança NET:</span>{' '}
+                            <span className="font-semibold text-foreground">{s.price_child > 0 ? `${s.price_child}€` : '—'}</span>
+                          </div>
+                        </div>
+
+                        {/* Conditions */}
+                        {(s.booking_conditions || s.payment_conditions || s.cancellation_policy || s.refund_policy) && (
+                          <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+                            {s.booking_conditions && (
+                              <div className="bg-info/5 border border-info/20 rounded-md px-3 py-1.5">
+                                <span className="font-medium text-info">📋 Reserva:</span>{' '}
+                                <span className="text-foreground">{s.booking_conditions}</span>
+                              </div>
+                            )}
+                            {s.payment_conditions && (
+                              <div className="bg-success/5 border border-success/20 rounded-md px-3 py-1.5">
+                                <span className="font-medium text-success">💰 Pagamento:</span>{' '}
+                                <span className="text-foreground">{s.payment_conditions}</span>
+                              </div>
+                            )}
+                            {s.cancellation_policy && (
+                              <div className="bg-warning/5 border border-warning/20 rounded-md px-3 py-1.5">
+                                <span className="font-medium text-warning">❌ Cancelamento:</span>{' '}
+                                <span className="text-foreground">{s.cancellation_policy}</span>
+                              </div>
+                            )}
+                            {s.refund_policy && (
+                              <div className="bg-muted/30 rounded-md px-3 py-1.5">
+                                <span className="font-medium text-muted-foreground">↩ Reembolso:</span>{' '}
+                                <span className="text-foreground">{s.refund_policy}</span>
+                              </div>
+                            )}
+                          </div>
+                        )}
+
+                        {/* Validity & Notes */}
+                        <div className="mt-2 flex flex-wrap gap-3 text-[10px] text-muted-foreground">
+                          {(s.validity_start || s.validity_end) && (
+                            <span>Validade: {s.validity_start || '...'} → {s.validity_end || '...'}</span>
+                          )}
+                          {s.notes && <span className="italic">📝 {s.notes}</span>}
                         </div>
                       </CardContent>
                     </Card>
@@ -492,10 +532,14 @@ const AdminSupplierDetailPage = () => {
                   <Input value={serviceForm.duration || ''} onChange={e => setServiceForm({ ...serviceForm, duration: e.target.value })} placeholder="ex: 2h, 1 dia" />
                 </div>
               </div>
-              <div className="grid grid-cols-3 gap-3">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                 <div className="space-y-1.5">
-                  <Label className="text-xs">Preço</Label>
+                  <Label className="text-xs">Preço NET Adulto</Label>
                   <Input type="number" value={serviceForm.price} onChange={e => setServiceForm({ ...serviceForm, price: parseFloat(e.target.value) || 0 })} />
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs">Preço NET Criança</Label>
+                  <Input type="number" value={serviceForm.price_child || 0} onChange={e => setServiceForm({ ...serviceForm, price_child: parseFloat(e.target.value) || 0 })} />
                 </div>
                 <div className="space-y-1.5">
                   <Label className="text-xs">Unidade</Label>
@@ -508,6 +552,10 @@ const AdminSupplierDetailPage = () => {
                   <Label className="text-xs">Moeda</Label>
                   <Input value={serviceForm.currency} onChange={e => setServiceForm({ ...serviceForm, currency: e.target.value })} />
                 </div>
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs">Condições de Reserva</Label>
+                <Textarea value={serviceForm.booking_conditions || ''} onChange={e => setServiceForm({ ...serviceForm, booking_conditions: e.target.value })} rows={2} placeholder="ex: mínimo 2 pax, reserva 48h antes" />
               </div>
               <div className="space-y-1.5">
                 <Label className="text-xs">Condições de Pagamento</Label>

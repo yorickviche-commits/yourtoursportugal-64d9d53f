@@ -33,9 +33,9 @@ const SVC_LABELS: Record<string, string> = {
 
 const emptyService = {
   name: '', description: '', category: 'private_tour', duration: '', price: 0,
-  price_unit: 'per_person', currency: 'EUR', commission_percent: 0,
-  payment_conditions: '', cancellation_policy: '', refund_policy: '', notes: '',
-  status: 'active', validity_start: '', validity_end: '',
+  price_child: 0, price_unit: 'per_person', currency: 'EUR', commission_percent: 0,
+  payment_conditions: '', cancellation_policy: '', refund_policy: '',
+  booking_conditions: '', notes: '', status: 'active', validity_start: '', validity_end: '',
 };
 
 const PartnerDetailPage = () => {
@@ -251,7 +251,7 @@ const PartnerDetailPage = () => {
                 <div className="grid gap-3">
                   {services.map((s: any) => (
                     <Card key={s.id} className="hover:border-primary/30 transition-colors">
-                      <CardContent className="pt-4">
+                      <CardContent className="pt-4 pb-3">
                         <div className="flex items-start justify-between gap-3">
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2 flex-wrap">
@@ -259,17 +259,65 @@ const PartnerDetailPage = () => {
                               <Badge className="text-[10px] bg-primary/20 text-primary">{SVC_LABELS[s.category] || s.category}</Badge>
                               {s.duration && <span className="text-xs text-muted-foreground">⏱ {s.duration}</span>}
                             </div>
-                            {s.description && <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{s.description}</p>}
-                            <div className="flex flex-wrap gap-3 mt-2 text-xs">
-                              <span className="font-medium text-foreground">{s.price > 0 ? `${s.price}€ / ${s.price_unit?.replace('_', ' ')}` : 'Preço a consultar'}</span>
-                              {s.commission_percent > 0 && <span className="text-success font-medium">{s.commission_percent}% comissão</span>}
-                              {s.cancellation_policy && <span className="text-muted-foreground">❌ {s.cancellation_policy}</span>}
-                            </div>
+                            {s.description && <p className="text-sm text-muted-foreground mt-1">{s.description}</p>}
                           </div>
                           <div className="flex gap-1 shrink-0">
                             <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openEditService(s)}><Pencil className="h-3 w-3" /></Button>
                             <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => handleDeleteService(s.id)}><Trash2 className="h-3 w-3" /></Button>
                           </div>
+                        </div>
+
+                        <div className="mt-3 flex flex-wrap gap-4 text-xs">
+                          <div className="bg-muted/30 rounded-md px-3 py-1.5">
+                            <span className="text-muted-foreground">Adulto NET:</span>{' '}
+                            <span className="font-semibold text-foreground">{s.price > 0 ? `${s.price}€` : '—'}</span>
+                            {s.price_unit && <span className="text-muted-foreground"> / {s.price_unit?.replace('_', ' ')}</span>}
+                          </div>
+                          <div className="bg-muted/30 rounded-md px-3 py-1.5">
+                            <span className="text-muted-foreground">Criança NET:</span>{' '}
+                            <span className="font-semibold text-foreground">{s.price_child > 0 ? `${s.price_child}€` : '—'}</span>
+                          </div>
+                          {s.commission_percent > 0 && (
+                            <div className="bg-success/10 rounded-md px-3 py-1.5">
+                              <span className="font-medium text-success">{s.commission_percent}% comissão</span>
+                            </div>
+                          )}
+                        </div>
+
+                        {(s.booking_conditions || s.payment_conditions || s.cancellation_policy || s.refund_policy) && (
+                          <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+                            {s.booking_conditions && (
+                              <div className="bg-info/5 border border-info/20 rounded-md px-3 py-1.5">
+                                <span className="font-medium text-info">📋 Reserva:</span>{' '}
+                                <span className="text-foreground">{s.booking_conditions}</span>
+                              </div>
+                            )}
+                            {s.payment_conditions && (
+                              <div className="bg-success/5 border border-success/20 rounded-md px-3 py-1.5">
+                                <span className="font-medium text-success">💰 Pagamento:</span>{' '}
+                                <span className="text-foreground">{s.payment_conditions}</span>
+                              </div>
+                            )}
+                            {s.cancellation_policy && (
+                              <div className="bg-warning/5 border border-warning/20 rounded-md px-3 py-1.5">
+                                <span className="font-medium text-warning">❌ Cancelamento:</span>{' '}
+                                <span className="text-foreground">{s.cancellation_policy}</span>
+                              </div>
+                            )}
+                            {s.refund_policy && (
+                              <div className="bg-muted/30 rounded-md px-3 py-1.5">
+                                <span className="font-medium text-muted-foreground">↩ Reembolso:</span>{' '}
+                                <span className="text-foreground">{s.refund_policy}</span>
+                              </div>
+                            )}
+                          </div>
+                        )}
+
+                        <div className="mt-2 flex flex-wrap gap-3 text-[10px] text-muted-foreground">
+                          {(s.validity_start || s.validity_end) && (
+                            <span>Validade: {s.validity_start || '...'} → {s.validity_end || '...'}</span>
+                          )}
+                          {s.notes && <span className="italic">📝 {s.notes}</span>}
                         </div>
                       </CardContent>
                     </Card>
@@ -358,8 +406,9 @@ const PartnerDetailPage = () => {
                 </div>
                 <div className="space-y-1.5"><Label className="text-xs">Duração</Label><Input value={serviceForm.duration || ''} onChange={e => setServiceForm({ ...serviceForm, duration: e.target.value })} placeholder="ex: 4h, full-day" /></div>
               </div>
-              <div className="grid grid-cols-3 gap-3">
-                <div className="space-y-1.5"><Label className="text-xs">Preço</Label><Input type="number" value={serviceForm.price} onChange={e => setServiceForm({ ...serviceForm, price: parseFloat(e.target.value) || 0 })} /></div>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                <div className="space-y-1.5"><Label className="text-xs">Preço NET Adulto</Label><Input type="number" value={serviceForm.price} onChange={e => setServiceForm({ ...serviceForm, price: parseFloat(e.target.value) || 0 })} /></div>
+                <div className="space-y-1.5"><Label className="text-xs">Preço NET Criança</Label><Input type="number" value={serviceForm.price_child || 0} onChange={e => setServiceForm({ ...serviceForm, price_child: parseFloat(e.target.value) || 0 })} /></div>
                 <div className="space-y-1.5"><Label className="text-xs">Unidade</Label>
                   <Select value={serviceForm.price_unit} onValueChange={v => setServiceForm({ ...serviceForm, price_unit: v })}>
                     <SelectTrigger><SelectValue /></SelectTrigger>
@@ -368,6 +417,7 @@ const PartnerDetailPage = () => {
                 </div>
                 <div className="space-y-1.5"><Label className="text-xs">Comissão %</Label><Input type="number" value={serviceForm.commission_percent} onChange={e => setServiceForm({ ...serviceForm, commission_percent: parseFloat(e.target.value) || 0 })} /></div>
               </div>
+              <div className="space-y-1.5"><Label className="text-xs">Condições de Reserva</Label><Textarea value={serviceForm.booking_conditions || ''} onChange={e => setServiceForm({ ...serviceForm, booking_conditions: e.target.value })} rows={2} placeholder="ex: mínimo 2 pax, reserva 48h antes" /></div>
               <div className="space-y-1.5"><Label className="text-xs">Condições de Pagamento</Label><Textarea value={serviceForm.payment_conditions || ''} onChange={e => setServiceForm({ ...serviceForm, payment_conditions: e.target.value })} rows={2} /></div>
               <div className="space-y-1.5"><Label className="text-xs">Cancelamento</Label><Textarea value={serviceForm.cancellation_policy || ''} onChange={e => setServiceForm({ ...serviceForm, cancellation_policy: e.target.value })} rows={2} /></div>
               <div className="space-y-1.5"><Label className="text-xs">Reembolso</Label><Textarea value={serviceForm.refund_policy || ''} onChange={e => setServiceForm({ ...serviceForm, refund_policy: e.target.value })} rows={2} /></div>
