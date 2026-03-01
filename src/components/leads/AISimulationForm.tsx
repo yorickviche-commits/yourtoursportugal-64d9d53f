@@ -1,10 +1,13 @@
 import { useState } from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { useNavigate } from 'react-router-dom';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { cn } from '@/lib/utils';
 import { Sparkles, ArrowRight, ArrowLeft, Check } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
+import { useLeads } from '@/hooks/useLeads';
 import type { SimulationFormData } from '@/types/leads';
 
 const STEPS = ['Trip Basics', 'Travel Style', 'Comfort', 'Budget', 'Magic Question'];
@@ -26,9 +29,9 @@ const COMFORT_LEVELS = [
 ];
 
 const BUDGETS = [
-  { id: 'balanced', label: '€€', desc: 'Balanced comfort' },
-  { id: 'premium', label: '€€€', desc: 'Premium experiences' },
-  { id: 'luxury', label: '€€€€', desc: 'High-end / Luxury' },
+  { id: '€€', label: '€€', desc: 'Balanced comfort' },
+  { id: '€€€', label: '€€€', desc: 'Premium experiences' },
+  { id: '€€€€', label: '€€€€', desc: 'High-end / Luxury' },
 ];
 
 interface Props {
@@ -42,6 +45,9 @@ const AISimulationForm = ({ open, onOpenChange }: Props) => {
     name: '', email: '', travelDates: '', pax: 2, destination: '',
     travelStyles: [], comfortLevel: '', budget: '', magicQuestion: '',
   });
+  const navigate = useNavigate();
+  const { toast } = useToast();
+  const { addLead, generateId } = useLeads();
 
   const update = (field: keyof SimulationFormData, value: any) =>
     setForm(prev => ({ ...prev, [field]: value }));
@@ -63,20 +69,48 @@ const AISimulationForm = ({ open, onOpenChange }: Props) => {
   };
 
   const handleSubmit = () => {
-    console.log('AI Simulation submitted:', form);
+    const newId = generateId();
+    const styleLabels = form.travelStyles.map(id => {
+      const found = TRAVEL_STYLES.find(ts => ts.id === id);
+      return found ? found.label : id;
+    });
+    const comfortLabel = COMFORT_LEVELS.find(c => c.id === form.comfortLevel)?.label || form.comfortLevel;
+
+    addLead({
+      id: newId,
+      clientName: form.name,
+      email: form.email,
+      destination: form.destination,
+      travelDates: form.travelDates || 'A definir',
+      pax: form.pax,
+      status: 'new',
+      source: 'ai_simulation',
+      budgetLevel: form.budget || '€€',
+      salesOwner: 'Yorick',
+      createdAt: new Date().toISOString(),
+      travelStyle: styleLabels,
+      comfortLevel: comfortLabel,
+      magicQuestion: form.magicQuestion || undefined,
+    });
+
+    toast({ title: `Simulação ${newId} criada!`, description: `${form.name} adicionado com sucesso.` });
     onOpenChange(false);
     setStep(0);
     setForm({ name: '', email: '', travelDates: '', pax: 2, destination: '', travelStyles: [], comfortLevel: '', budget: '', magicQuestion: '' });
+    navigate(`/leads/${newId}`);
   };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[540px] p-0 gap-0 overflow-hidden">
-        <DialogHeader className="px-6 pt-6 pb-4 bg-gradient-to-r from-hsl(var(--info)/0.08) to-hsl(var(--urgent)/0.05)">
+        <DialogHeader className="px-6 pt-6 pb-4">
           <DialogTitle className="flex items-center gap-2 text-lg">
             <Sparkles className="h-5 w-5 text-[hsl(var(--urgent))]" />
             New AI Trip Simulation
           </DialogTitle>
+          <DialogDescription className="text-xs text-muted-foreground">
+            Preencha os dados para gerar uma simulação AI.
+          </DialogDescription>
           {/* Step indicator */}
           <div className="flex gap-1 mt-3">
             {STEPS.map((s, i) => (
@@ -124,7 +158,7 @@ const AISimulationForm = ({ open, onOpenChange }: Props) => {
                       className={cn(
                         "px-3 py-1.5 rounded-full text-xs font-medium border transition-all",
                         form.destination === d
-                          ? "bg-[hsl(var(--info))] text-[hsl(var(--info-foreground))] border-[hsl(var(--info))]"
+                          ? "bg-[hsl(var(--info))] text-white border-[hsl(var(--info))]"
                           : "bg-card text-muted-foreground border-border hover:border-[hsl(var(--info)/0.5)]"
                       )}>
                       {d}
@@ -227,12 +261,12 @@ const AISimulationForm = ({ open, onOpenChange }: Props) => {
           </Button>
           {step < STEPS.length - 1 ? (
             <Button size="sm" onClick={() => setStep(s => s + 1)} disabled={!canNext()}
-              className="bg-[hsl(var(--info))] hover:bg-[hsl(var(--info)/0.9)] text-[hsl(var(--info-foreground))]">
+              className="bg-[hsl(var(--info))] hover:bg-[hsl(var(--info)/0.9)] text-white">
               Next <ArrowRight className="h-4 w-4 ml-1" />
             </Button>
           ) : (
             <Button size="sm" onClick={handleSubmit}
-              className="bg-[hsl(var(--success))] hover:bg-[hsl(var(--success)/0.9)] text-[hsl(var(--success-foreground))]">
+              className="bg-[hsl(var(--success))] hover:bg-[hsl(var(--success)/0.9)] text-white">
               <Sparkles className="h-4 w-4 mr-1" /> Generate Simulation
             </Button>
           )}

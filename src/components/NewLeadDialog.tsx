@@ -10,6 +10,7 @@ import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { cn } from '@/lib/utils';
 import TagSelect from '@/components/TagSelect';
+import { useLeads } from '@/hooks/useLeads';
 
 const IDIOMAS = ['EN', 'PT', 'FR', 'ES', 'DE', 'IT', 'NL'];
 const DESTINOS = ['Porto & Douro Valley', 'Lisbon & Sintra', 'Algarve', 'Azores', 'Madeira', 'Minho', 'Alentejo', 'Silver Coast'];
@@ -44,10 +45,6 @@ const emptyForm: FormData = {
   preferences: '',
 };
 
-function generateYTId(): string {
-  return `YT${Math.floor(1000 + Math.random() * 9000)}`;
-}
-
 const NewLeadDialog = ({ open, onOpenChange }: { open: boolean; onOpenChange: (v: boolean) => void }) => {
   const [mode, setMode] = useState<Mode>('manual');
   const [form, setForm] = useState<FormData>({ ...emptyForm });
@@ -55,6 +52,7 @@ const NewLeadDialog = ({ open, onOpenChange }: { open: boolean; onOpenChange: (v
   const [aiLoading, setAiLoading] = useState(false);
   const { toast } = useToast();
   const navigate = useNavigate();
+  const { addLead, generateId } = useLeads();
 
   const updateField = <K extends keyof FormData>(key: K, value: FormData[K]) => {
     setForm(prev => ({ ...prev, [key]: value }));
@@ -102,13 +100,28 @@ const NewLeadDialog = ({ open, onOpenChange }: { open: boolean; onOpenChange: (v
       toast({ title: 'Nome obrigatório', variant: 'destructive' });
       return;
     }
-    const newId = generateYTId();
+    const newId = generateId();
+    addLead({
+      id: newId,
+      clientName: form.clientName,
+      email: form.email,
+      phone: form.phone || undefined,
+      destination: form.destination.join(', ') || 'A definir',
+      travelDates: form.travelDates || 'A definir',
+      pax: form.pax,
+      status: 'new',
+      source: 'direct',
+      budgetLevel: form.budget || '€€',
+      salesOwner: 'Yorick',
+      createdAt: new Date().toISOString(),
+      notes: [form.request, form.preferences].filter(Boolean).join('\n') || undefined,
+    });
     toast({ title: `Lead ${newId} criada!`, description: `${form.clientName} registado com sucesso.` });
     onOpenChange(false);
     setForm({ ...emptyForm });
     setEmailText('');
     setMode('manual');
-    // In future: navigate to the new lead or save to DB
+    navigate(`/leads/${newId}`);
   };
 
   return (

@@ -1,12 +1,14 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import AppLayout from '@/components/AppLayout';
-import { mockLeads, mockFiles } from '@/data/mockLeads';
+import { mockFiles } from '@/data/mockLeads';
+import { useLeads } from '@/hooks/useLeads';
 import { cn } from '@/lib/utils';
 import { Sparkles, Search, FileText, Image, Table2, File, ExternalLink, User, MapPin, Tag, Plus, Eye } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import AISimulationForm from '@/components/leads/AISimulationForm';
+import NewLeadDialog from '@/components/NewLeadDialog';
 
 type Tab = 'leads' | 'files';
 type LeadStatusFilter = 'all' | 'new' | 'contacted' | 'qualified' | 'proposal_sent' | 'negotiation' | 'won' | 'lost';
@@ -22,6 +24,7 @@ const STATUS_TABS: { value: LeadStatusFilter; label: string }[] = [
   { value: 'lost', label: 'Canceladas' },
 ];
 
+// Lead status color
 const leadStatusColor = (status: string) => {
   switch (status) {
     case 'new': return 'bg-[hsl(var(--warning-muted))] text-[hsl(var(--warning-foreground))]';
@@ -35,6 +38,7 @@ const leadStatusColor = (status: string) => {
   }
 };
 
+// Status dot color
 const statusDot = (status: string) => {
   switch (status) {
     case 'new': return 'bg-[hsl(var(--warning))]';
@@ -46,6 +50,7 @@ const statusDot = (status: string) => {
   }
 };
 
+// File icon
 const fileIcon = (type: string) => {
   switch (type) {
     case 'pdf': return <FileText className="h-4 w-4 text-[hsl(var(--destructive))]" />;
@@ -58,12 +63,14 @@ const fileIcon = (type: string) => {
 
 const LeadsFilesPage = () => {
   const navigate = useNavigate();
+  const { leads } = useLeads();
   const [activeTab, setActiveTab] = useState<Tab>('leads');
   const [statusFilter, setStatusFilter] = useState<LeadStatusFilter>('all');
   const [search, setSearch] = useState('');
   const [simulationOpen, setSimulationOpen] = useState(false);
+  const [newLeadOpen, setNewLeadOpen] = useState(false);
 
-  const filteredLeads = mockLeads.filter(l => {
+  const filteredLeads = leads.filter(l => {
     if (statusFilter !== 'all' && l.status !== statusFilter) return false;
     if (search && !l.clientName.toLowerCase().includes(search.toLowerCase()) &&
         !l.destination.toLowerCase().includes(search.toLowerCase())) return false;
@@ -77,13 +84,13 @@ const LeadsFilesPage = () => {
   });
 
   // KPI calculations
-  const totalVolume = mockLeads.reduce((sum, l) => {
+  const totalVolume = leads.reduce((sum, l) => {
     const budgetMap: Record<string, number> = { '€€': 3000, '€€€': 6000, '€€€€': 12000 };
     return sum + (budgetMap[l.budgetLevel] || 0) * l.pax;
   }, 0);
-  const avgValue = mockLeads.length > 0 ? totalVolume / mockLeads.length : 0;
-  const avgDays = 12; // mock
-  const dailySimulations = mockLeads.filter(l => {
+  const avgValue = leads.length > 0 ? totalVolume / leads.length : 0;
+  const avgDays = 12;
+  const dailySimulations = leads.filter(l => {
     const today = new Date().toISOString().split('T')[0];
     return l.createdAt.startsWith(today);
   }).length;
@@ -99,7 +106,7 @@ const LeadsFilesPage = () => {
         {/* Main Tabs: Leads vs Files */}
         <div className="flex items-center gap-1 border-b border-border">
           {([
-            { key: 'leads' as Tab, label: 'Simulações', count: mockLeads.length },
+            { key: 'leads' as Tab, label: 'Simulações', count: leads.length },
             { key: 'files' as Tab, label: 'Ficheiros', count: mockFiles.length },
           ]).map(tab => (
             <button key={tab.key} onClick={() => setActiveTab(tab.key)}
@@ -117,7 +124,7 @@ const LeadsFilesPage = () => {
 
         {activeTab === 'leads' && (
           <>
-            {/* Status sub-tabs (like reference image) */}
+            {/* Status sub-tabs */}
             <div className="flex items-center gap-0 border-b border-border/50 overflow-x-auto">
               {STATUS_TABS.map(tab => (
                 <button key={tab.value} onClick={() => setStatusFilter(tab.value)}
@@ -165,7 +172,7 @@ const LeadsFilesPage = () => {
                 </div>
                 <div className="border-l-2 border-foreground/20 pl-4">
                   <p className="text-xs font-medium text-foreground">total de simulações</p>
-                  <p className="text-3xl font-bold text-foreground mt-1">{mockLeads.length}</p>
+                  <p className="text-3xl font-bold text-foreground mt-1">{leads.length}</p>
                 </div>
               </div>
             </div>
@@ -186,8 +193,8 @@ const LeadsFilesPage = () => {
                   <Input placeholder="Pesquisar..." value={search} onChange={e => setSearch(e.target.value)}
                     className="pl-8 h-8 text-sm w-48" />
                 </div>
-                <Button onClick={() => setSimulationOpen(true)} size="sm" variant="outline" className="gap-1">
-                  <Plus className="h-3.5 w-3.5" />
+                <Button onClick={() => setNewLeadOpen(true)} size="sm" variant="outline" className="gap-1">
+                  <Plus className="h-3.5 w-3.5" /> Nova Lead
                 </Button>
                 <Button onClick={() => setSimulationOpen(true)}
                   className="bg-gradient-to-r from-[hsl(var(--info))] to-[hsl(var(--urgent)/0.8)] hover:opacity-90 text-white gap-2 text-xs">
@@ -286,7 +293,8 @@ const LeadsFilesPage = () => {
                             <span key={tag} className="text-[10px] bg-muted text-muted-foreground px-1.5 py-0.5 rounded flex items-center gap-0.5">
                               <Tag className="h-2.5 w-2.5" />{tag}
                             </span>
-                          ))}
+                          ))
+                          }
                         </div>
                       </td>
                       <td className="px-4 py-3 text-xs text-muted-foreground">{file.uploadedBy}</td>
@@ -309,6 +317,7 @@ const LeadsFilesPage = () => {
       </div>
 
       <AISimulationForm open={simulationOpen} onOpenChange={setSimulationOpen} />
+      <NewLeadDialog open={newLeadOpen} onOpenChange={setNewLeadOpen} />
     </AppLayout>
   );
 };
