@@ -1,5 +1,5 @@
 import { NavLink, useLocation } from 'react-router-dom';
-import { LayoutDashboard, Map, CheckCircle, Sun, PanelLeftClose, PanelLeft, Users, Globe, CreditCard, ClipboardList, Bot, Shield, LogOut, Settings, FileText, ShieldCheck, Package, Plug, BarChart3 } from 'lucide-react';
+import { LayoutDashboard, Map, CheckCircle, Sun, PanelLeftClose, PanelLeft, Users, Globe, CreditCard, ClipboardList, Bot, Shield, LogOut, Settings, FileText, ShieldCheck, Package, Plug, BarChart3, Handshake, Briefcase } from 'lucide-react';
 import { useState } from 'react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/hooks/useAuth';
@@ -20,6 +20,7 @@ const adminItems = [
   { to: '/admin/permissions', icon: ShieldCheck, label: 'Permissões' },
   { to: '/admin/settings', icon: Settings, label: 'Definições' },
   { to: '/admin/suppliers', icon: Package, label: 'Fornecedores' },
+  { to: '/admin/partners', icon: Handshake, label: 'Partners' },
   { to: '/admin/integrations', icon: Plug, label: 'Integrações' },
   { to: '/admin/kpis', icon: BarChart3, label: 'KPIs' },
   { to: '/admin/logs', icon: FileText, label: 'Activity Logs' },

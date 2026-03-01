@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import AppLayout from '@/components/AppLayout';
+import SmartImportDialog from '@/components/commercial/SmartImportDialog';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -79,10 +80,8 @@ const AdminSupplierDetailPage = () => {
   const [linkDialogOpen, setLinkDialogOpen] = useState(false);
   const [linkForm, setLinkForm] = useState({ name: '', url: '', description: '' });
 
-  // AI import dialog
-  const [aiDialogOpen, setAiDialogOpen] = useState(false);
-  const [aiText, setAiText] = useState('');
-  const [aiExtracting, setAiExtracting] = useState(false);
+  // Smart import
+  const [smartImportOpen, setSmartImportOpen] = useState(false);
 
   // File upload
   const [uploading, setUploading] = useState(false);
@@ -189,63 +188,36 @@ const AdminSupplierDetailPage = () => {
     fetchAll();
   };
 
-  // AI extraction
-  const handleAiExtract = async () => {
-    setAiExtracting(true);
-    try {
-      const { data, error } = await supabase.functions.invoke('extract-supplier-data', {
-        body: { text: aiText },
-      });
-      if (error || !data?.success) {
-        toast({ title: 'Erro na extração', description: data?.error || error?.message, variant: 'destructive' });
-        setAiExtracting(false);
-        return;
-      }
-      const extracted = data.data;
-      // Update supplier fields from extracted data
-      if (extracted.supplier) {
-        const s = extracted.supplier;
-        setForm((prev: any) => ({
-          ...prev,
-          ...(s.name && { name: s.name }),
-          ...(s.category && { category: s.category }),
-          ...(s.contact_name && { contact_name: s.contact_name }),
-          ...(s.contact_email && { contact_email: s.contact_email }),
-          ...(s.contact_phone && { contact_phone: s.contact_phone }),
-          ...(s.contract_type && { contract_type: s.contract_type }),
-          ...(s.currency && { currency: s.currency }),
-          ...(s.cancellation_policy && { cancellation_policy: s.cancellation_policy }),
-          ...(s.notes && { notes: s.notes }),
-        }));
-      }
-      // Insert extracted services
-      if (extracted.services?.length > 0) {
-        const servicesPayload = extracted.services.map((s: any) => ({
-          supplier_id: id,
-          name: s.name || 'Serviço sem nome',
-          description: s.description || null,
-          category: s.category || 'activity',
-          duration: s.duration || null,
-          price: s.price || 0,
-          price_unit: s.price_unit || 'per_person',
-          currency: s.currency || 'EUR',
-          payment_conditions: s.payment_conditions || null,
-          cancellation_policy: s.cancellation_policy || null,
-          refund_policy: s.refund_policy || null,
-          notes: s.notes || null,
-          validity_start: s.validity_start || null,
-          validity_end: s.validity_end || null,
-        }));
-        await (supabase.from('supplier_services') as any).insert(servicesPayload);
-      }
-      toast({ title: 'Dados extraídos com sucesso', description: `${extracted.services?.length || 0} serviço(s) encontrado(s)` });
-      setAiDialogOpen(false);
-      setAiText('');
-      fetchAll();
-    } catch (err: any) {
-      toast({ title: 'Erro', description: err.message, variant: 'destructive' });
+  // Smart import handler
+  const handleSmartImport = async (data: any) => {
+    if (data.entity) {
+      const s = data.entity;
+      setForm((prev: any) => ({
+        ...prev,
+        ...(s.name && { name: s.name }),
+        ...(s.category && { category: s.category }),
+        ...(s.contact_name && { contact_name: s.contact_name }),
+        ...(s.contact_email && { contact_email: s.contact_email }),
+        ...(s.contact_phone && { contact_phone: s.contact_phone }),
+        ...(s.contract_type && { contract_type: s.contract_type }),
+        ...(s.currency && { currency: s.currency }),
+        ...(s.cancellation_policy && { cancellation_policy: s.cancellation_policy }),
+        ...(s.notes && { notes: s.notes }),
+      }));
     }
-    setAiExtracting(false);
+    if (data.services?.length > 0) {
+      const servicesPayload = data.services.map((s: any) => ({
+        supplier_id: id, name: s.name || 'Serviço', description: s.description || null,
+        category: s.category || 'activity', duration: s.duration || null,
+        price: s.price || 0, price_unit: s.price_unit || 'per_person', currency: s.currency || 'EUR',
+        payment_conditions: s.payment_conditions || null, cancellation_policy: s.cancellation_policy || null,
+        refund_policy: s.refund_policy || null, validity_start: s.validity_start || null,
+        validity_end: s.validity_end || null, notes: s.notes || null,
+      }));
+      await (supabase.from('supplier_services') as any).insert(servicesPayload);
+    }
+    toast({ title: 'Dados importados', description: `${data.services?.length || 0} serviço(s)` });
+    fetchAll();
   };
 
   if (!isAdmin) {
@@ -277,8 +249,8 @@ const AdminSupplierDetailPage = () => {
           <h1 className="text-xl font-bold text-foreground">{supplier.name}</h1>
           <Badge className={`text-[10px] ${CAT_COLORS[supplier.category] || ''}`}>{supplier.category}</Badge>
           <div className="ml-auto flex gap-2">
-            <Button variant="outline" size="sm" onClick={() => setAiDialogOpen(true)}>
-              <Sparkles className="h-3.5 w-3.5 mr-1" />AI Import
+            <Button variant="outline" size="sm" onClick={() => setSmartImportOpen(true)}>
+              <Sparkles className="h-3.5 w-3.5 mr-1" />Smart Import
             </Button>
           </div>
         </div>
@@ -592,29 +564,12 @@ const AdminSupplierDetailPage = () => {
           </DialogContent>
         </Dialog>
 
-        {/* AI IMPORT DIALOG */}
-        <Dialog open={aiDialogOpen} onOpenChange={setAiDialogOpen}>
-          <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
-            <DialogHeader>
-              <DialogTitle className="flex items-center gap-2">
-                <Sparkles className="h-4 w-4 text-primary" />AI Import — Extração Automática
-              </DialogTitle>
-            </DialogHeader>
-            <p className="text-xs text-muted-foreground">
-              Cole o conteúdo de um email, protocolo ou descrição de serviços. A IA vai extrair automaticamente os dados do fornecedor e os serviços protocolados.
-            </p>
-            <Textarea
-              value={aiText}
-              onChange={e => setAiText(e.target.value)}
-              rows={12}
-              placeholder="Cole aqui o texto do email, protocolo ou contrato..."
-              className="text-sm"
-            />
-            <Button onClick={handleAiExtract} disabled={aiExtracting || aiText.trim().length < 10} className="w-full">
-              {aiExtracting ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" />A extrair...</> : <><Sparkles className="h-4 w-4 mr-2" />Extrair Dados</>}
-            </Button>
-          </DialogContent>
-        </Dialog>
+        <SmartImportDialog
+          open={smartImportOpen}
+          onOpenChange={setSmartImportOpen}
+          entityType="supplier"
+          onImportComplete={handleSmartImport}
+        />
       </div>
     </AppLayout>
   );

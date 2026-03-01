@@ -83,6 +83,231 @@ export type Database = {
         }
         Relationships: []
       }
+      partner_files: {
+        Row: {
+          created_at: string
+          file_name: string
+          file_type: string | null
+          file_url: string | null
+          id: string
+          partner_id: string
+          size_bytes: number | null
+          storage_path: string | null
+          uploaded_by: string | null
+        }
+        Insert: {
+          created_at?: string
+          file_name: string
+          file_type?: string | null
+          file_url?: string | null
+          id?: string
+          partner_id: string
+          size_bytes?: number | null
+          storage_path?: string | null
+          uploaded_by?: string | null
+        }
+        Update: {
+          created_at?: string
+          file_name?: string
+          file_type?: string | null
+          file_url?: string | null
+          id?: string
+          partner_id?: string
+          size_bytes?: number | null
+          storage_path?: string | null
+          uploaded_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "partner_files_partner_id_fkey"
+            columns: ["partner_id"]
+            isOneToOne: false
+            referencedRelation: "partners"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      partner_links: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          description: string | null
+          id: string
+          name: string
+          partner_id: string
+          url: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          name: string
+          partner_id: string
+          url: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          name?: string
+          partner_id?: string
+          url?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "partner_links_partner_id_fkey"
+            columns: ["partner_id"]
+            isOneToOne: false
+            referencedRelation: "partners"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      partner_services: {
+        Row: {
+          cancellation_policy: string | null
+          category: string
+          commission_percent: number | null
+          created_at: string
+          created_by: string | null
+          currency: string | null
+          description: string | null
+          duration: string | null
+          id: string
+          name: string
+          notes: string | null
+          partner_id: string
+          payment_conditions: string | null
+          price: number | null
+          price_unit: string | null
+          refund_policy: string | null
+          status: string
+          updated_at: string
+          validity_end: string | null
+          validity_start: string | null
+        }
+        Insert: {
+          cancellation_policy?: string | null
+          category?: string
+          commission_percent?: number | null
+          created_at?: string
+          created_by?: string | null
+          currency?: string | null
+          description?: string | null
+          duration?: string | null
+          id?: string
+          name: string
+          notes?: string | null
+          partner_id: string
+          payment_conditions?: string | null
+          price?: number | null
+          price_unit?: string | null
+          refund_policy?: string | null
+          status?: string
+          updated_at?: string
+          validity_end?: string | null
+          validity_start?: string | null
+        }
+        Update: {
+          cancellation_policy?: string | null
+          category?: string
+          commission_percent?: number | null
+          created_at?: string
+          created_by?: string | null
+          currency?: string | null
+          description?: string | null
+          duration?: string | null
+          id?: string
+          name?: string
+          notes?: string | null
+          partner_id?: string
+          payment_conditions?: string | null
+          price?: number | null
+          price_unit?: string | null
+          refund_policy?: string | null
+          status?: string
+          updated_at?: string
+          validity_end?: string | null
+          validity_start?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "partner_services_partner_id_fkey"
+            columns: ["partner_id"]
+            isOneToOne: false
+            referencedRelation: "partners"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      partners: {
+        Row: {
+          cancellation_policy: string | null
+          category: string
+          commission_percent: number | null
+          contact_email: string | null
+          contact_name: string | null
+          contact_phone: string | null
+          contract_type: string | null
+          created_at: string
+          created_by: string | null
+          currency: string | null
+          id: string
+          name: string
+          notes: string | null
+          payment_terms: string | null
+          status: string
+          territory: string | null
+          updated_at: string
+          validity_end: string | null
+          validity_start: string | null
+        }
+        Insert: {
+          cancellation_policy?: string | null
+          category?: string
+          commission_percent?: number | null
+          contact_email?: string | null
+          contact_name?: string | null
+          contact_phone?: string | null
+          contract_type?: string | null
+          created_at?: string
+          created_by?: string | null
+          currency?: string | null
+          id?: string
+          name: string
+          notes?: string | null
+          payment_terms?: string | null
+          status?: string
+          territory?: string | null
+          updated_at?: string
+          validity_end?: string | null
+          validity_start?: string | null
+        }
+        Update: {
+          cancellation_policy?: string | null
+          category?: string
+          commission_percent?: number | null
+          contact_email?: string | null
+          contact_name?: string | null
+          contact_phone?: string | null
+          contract_type?: string | null
+          created_at?: string
+          created_by?: string | null
+          currency?: string | null
+          id?: string
+          name?: string
+          notes?: string | null
+          payment_terms?: string | null
+          status?: string
+          territory?: string | null
+          updated_at?: string
+          validity_end?: string | null
+          validity_start?: string | null
+        }
+        Relationships: []
+      }
       permissions: {
         Row: {
           created_at: string
