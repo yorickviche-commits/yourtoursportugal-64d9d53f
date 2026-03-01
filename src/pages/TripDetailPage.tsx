@@ -143,7 +143,7 @@ const mockOperationsDays: OperationsDay[] = [
 ];
 
 // ─── Image Add Dialog Component ───
-const ImageAddDialog = ({ onAdd }: { onAdd: (img: ItineraryImage) => void }) => {
+const ImageAddDialog = ({ onAdd, replace }: { onAdd: (img: ItineraryImage) => void; replace?: boolean }) => {
   const [imageSource, setImageSource] = useState<'unsplash' | 'url' | 'upload'>('url');
   const [urlInput, setUrlInput] = useState('');
   const [caption, setCaption] = useState('');
@@ -170,10 +170,16 @@ const ImageAddDialog = ({ onAdd }: { onAdd: (img: ItineraryImage) => void }) => 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <button className="flex items-center justify-center w-full h-24 rounded-lg border-2 border-dashed border-border hover:border-[hsl(var(--info))] hover:bg-muted/30 transition-colors text-muted-foreground hover:text-[hsl(var(--info))]">
-          <Plus className="h-5 w-5 mr-1" />
-          <span className="text-xs">Adicionar imagem</span>
-        </button>
+        {replace ? (
+          <button className="p-1.5 bg-white/80 rounded-full hover:bg-white">
+            <Pencil className="h-3 w-3 text-foreground" />
+          </button>
+        ) : (
+          <button className="flex items-center justify-center w-full h-full min-h-[6rem] rounded-lg border-2 border-dashed border-border hover:border-[hsl(var(--info))] hover:bg-muted/30 transition-colors text-muted-foreground hover:text-[hsl(var(--info))]">
+            <Plus className="h-5 w-5 mr-1" />
+            <span className="text-xs">Adicionar imagem</span>
+          </button>
+        )}
       </DialogTrigger>
       <DialogContent className="max-w-lg">
         <DialogHeader>
@@ -328,17 +334,32 @@ const TripDetailPage = () => {
     setItinerary(prev => prev.map(d => d.day === day ? { ...d, title } : d));
   };
 
-  const addImageToDay = (day: number, img: ItineraryImage) => {
-    setItinerary(prev => prev.map(d => d.day === day ? { ...d, images: [...d.images, img] } : d));
+  const replaceImageInDay = (day: number, slotIndex: number, img: ItineraryImage) => {
+    setItinerary(prev => prev.map(d => {
+      if (d.day !== day) return d;
+      const newImages = [...d.images];
+      newImages[slotIndex] = img;
+      return { ...d, images: newImages };
+    }));
   };
 
-  const removeImageFromDay = (day: number, imgId: string) => {
-    setItinerary(prev => prev.map(d => d.day === day ? { ...d, images: d.images.filter(i => i.id !== imgId) } : d));
+  const removeImageFromDay = (day: number, slotIndex: number) => {
+    setItinerary(prev => prev.map(d => {
+      if (d.day !== day) return d;
+      const newImages = [...d.images];
+      newImages[slotIndex] = { id: `empty-${slotIndex}`, url: '', source: 'url' };
+      return { ...d, images: newImages };
+    }));
   };
 
   const addItineraryDay = () => {
     const newDay = itinerary.length + 1;
-    setItinerary(prev => [...prev, { day: newDay, title: `Day ${newDay}`, description: '', images: [], expanded: true }]);
+    const emptyImages: ItineraryImage[] = [
+      { id: `empty-0-${newDay}`, url: '', source: 'url' },
+      { id: `empty-1-${newDay}`, url: '', source: 'url' },
+      { id: `empty-2-${newDay}`, url: '', source: 'url' },
+    ];
+    setItinerary(prev => [...prev, { day: newDay, title: `Day ${newDay}`, description: '', images: emptyImages, expanded: true }]);
   };
 
   const toggleCheckItem = (id: number) => {
@@ -533,7 +554,7 @@ const TripDetailPage = () => {
                         )}
                       </div>
                       <div className="flex items-center gap-2 shrink-0">
-                        <span className="text-[10px] text-muted-foreground">{day.images.length} imgs</span>
+                        <span className="text-[10px] text-muted-foreground">{day.images.filter(i => i.url).length}/3 imgs</span>
                         {day.expanded ? <ChevronDown className="h-4 w-4 text-muted-foreground" /> : <ChevronRight className="h-4 w-4 text-muted-foreground" />}
                       </div>
                     </button>
@@ -554,33 +575,41 @@ const TripDetailPage = () => {
                           onChange={v => updateDayDescription(day.day, v)}
                         />
 
-                        {/* Images grid — 3 per row */}
+                        {/* 3 image slots per day */}
                         <div>
-                          <p className="text-[10px] text-muted-foreground uppercase font-medium mb-2">Imagens do Dia</p>
+                          <p className="text-[10px] text-muted-foreground uppercase font-medium mb-2">3 Imagens do Dia</p>
                           <div className="grid grid-cols-3 gap-3">
-                            {day.images.map(img => (
-                              <div key={img.id} className="relative group rounded-lg overflow-hidden border">
-                                <img src={img.url} alt={img.caption || ''} className="w-full h-28 object-cover" />
-                                <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
-                                  <button onClick={() => removeImageFromDay(day.day, img.id)}
-                                    className="p-1.5 bg-destructive rounded-full text-white hover:bg-destructive/80">
-                                    <Trash2 className="h-3 w-3" />
-                                  </button>
+                            {[0, 1, 2].map(slotIndex => {
+                              const img = day.images[slotIndex];
+                              const hasImage = img && img.url;
+
+                              return hasImage ? (
+                                <div key={slotIndex} className="relative group rounded-lg overflow-hidden border h-32">
+                                  <img src={img.url} alt={img.caption || ''} className="w-full h-full object-cover" />
+                                  <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+                                    <ImageAddDialog onAdd={(newImg) => replaceImageInDay(day.day, slotIndex, newImg)} replace />
+                                    <button onClick={() => removeImageFromDay(day.day, slotIndex)}
+                                      className="p-1.5 bg-destructive rounded-full text-white hover:bg-destructive/80">
+                                      <Trash2 className="h-3 w-3" />
+                                    </button>
+                                  </div>
+                                  {img.caption && (
+                                    <p className="absolute bottom-0 left-0 right-0 bg-black/60 text-white text-[9px] px-2 py-1 truncate">
+                                      {img.caption}
+                                    </p>
+                                  )}
+                                  <div className="absolute top-1 right-1">
+                                    {img.source === 'unsplash' && <ImageIcon className="h-3 w-3 text-white/70" />}
+                                    {img.source === 'url' && <LinkIcon className="h-3 w-3 text-white/70" />}
+                                    {img.source === 'upload' && <Upload className="h-3 w-3 text-white/70" />}
+                                  </div>
                                 </div>
-                                {img.caption && (
-                                  <p className="absolute bottom-0 left-0 right-0 bg-black/60 text-white text-[9px] px-2 py-1 truncate">
-                                    {img.caption}
-                                  </p>
-                                )}
-                                <div className="absolute top-1 right-1">
-                                  {img.source === 'unsplash' && <ImageIcon className="h-3 w-3 text-white/70" />}
-                                  {img.source === 'url' && <LinkIcon className="h-3 w-3 text-white/70" />}
-                                  {img.source === 'upload' && <Upload className="h-3 w-3 text-white/70" />}
+                              ) : (
+                                <div key={slotIndex} className="h-32">
+                                  <ImageAddDialog onAdd={(newImg) => replaceImageInDay(day.day, slotIndex, newImg)} />
                                 </div>
-                              </div>
-                            ))}
-                            {/* Add image button */}
-                            <ImageAddDialog onAdd={(img) => addImageToDay(day.day, img)} />
+                              );
+                            })}
                           </div>
                         </div>
                       </div>
