@@ -13,6 +13,7 @@ import CRMPage from "./pages/CRMPage";
 import CRMRecordDetailPage from "./pages/CRMRecordDetailPage";
 import PaymentsPage from "./pages/PaymentsPage";
 import TasksPage from "./pages/TasksPage";
+import AgentDashboardPage from "./pages/AgentDashboardPage";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -34,6 +35,7 @@ const App = () => (
           <Route path="/crm" element={<CRMPage />} />
           <Route path="/crm/:folderId/:recordId" element={<CRMRecordDetailPage />} />
           <Route path="/payments" element={<PaymentsPage />} />
+          <Route path="/agents" element={<AgentDashboardPage />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>
