@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { ArrowLeft, Save, Trash2, FileText, ClipboardList, Eye, FileIcon, Mail, Clock } from 'lucide-react';
+import { ArrowLeft, Save, Trash2, FileText, ClipboardList, Eye, FileIcon, Mail, Clock, Loader2, ChevronDown } from 'lucide-react';
 import AppLayout from '@/components/AppLayout';
 import { mockLeads } from '@/data/mockLeads';
 import { Input } from '@/components/ui/input';
@@ -8,6 +8,15 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import TagSelect from '@/components/TagSelect';
 import { cn } from '@/lib/utils';
+import { useToast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
+import { LeadStatus } from '@/types/leads';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 
 type DetailTab = 'dados_gerais' | 'travel_planner' | 'custos' | 'itinerario' | 'operacoes';
 
@@ -167,10 +176,24 @@ const OperacoesTab = ({ activeVersion }: { activeVersion: number }) => {
   );
 };
 
+const LEAD_STATUSES: { value: LeadStatus; label: string; color: string }[] = [
+  { value: 'new', label: 'Novo', color: 'bg-muted text-muted-foreground' },
+  { value: 'contacted', label: 'Contactado', color: 'bg-[hsl(var(--info)/0.15)] text-[hsl(var(--info))]' },
+  { value: 'qualified', label: 'Qualificado', color: 'bg-[hsl(var(--warning)/0.15)] text-[hsl(var(--warning))]' },
+  { value: 'proposal_sent', label: 'Proposta Enviada', color: 'bg-[hsl(var(--info)/0.15)] text-[hsl(var(--info))]' },
+  { value: 'negotiation', label: 'Negociação', color: 'bg-[hsl(var(--warning)/0.15)] text-[hsl(var(--warning))]' },
+  { value: 'won', label: 'Ganho ✓', color: 'bg-[hsl(var(--stable)/0.15)] text-[hsl(var(--stable))]' },
+  { value: 'lost', label: 'Perdido', color: 'bg-destructive/15 text-destructive' },
+];
+
 const LeadDetailPage = () => {
   const { id } = useParams<{ id: string }>();
   const lead = mockLeads.find(l => l.id === id);
   const [activeTab, setActiveTab] = useState<DetailTab>('dados_gerais');
+  const [leadStatus, setLeadStatus] = useState<LeadStatus>(lead?.status || 'new');
+  const [aiLoading, setAiLoading] = useState<string | null>(null);
+  const [aiResults, setAiResults] = useState<Record<string, any>>({});
+  const { toast } = useToast();
 
   // Tag select states
   const [categoria, setCategoria] = useState<string[]>(lead?.comfortLevel ? [lead.comfortLevel] : []);
@@ -179,6 +202,37 @@ const LeadDetailPage = () => {
   const [origem, setOrigem] = useState<string[]>(lead?.source === 'ai_simulation' ? ['AI Simulation'] : lead?.source ? [lead.source] : []);
   const [travelStyles, setTravelStyles] = useState<string[]>(lead?.travelStyle || []);
   const [activeVersion, setActiveVersion] = useState(1);
+
+  const generateAI = async (type: 'travel_planner' | 'budget' | 'digital_itinerary') => {
+    if (!lead) return;
+    setAiLoading(type);
+    try {
+      const { data, error } = await supabase.functions.invoke('generate-itinerary', {
+        body: {
+          leadData: {
+            clientName: lead.clientName,
+            destination: lead.destination,
+            travelDates: lead.travelDates,
+            pax: lead.pax,
+            travelStyles: lead.travelStyle || [],
+            comfortLevel: lead.comfortLevel || '',
+            budgetLevel: lead.budgetLevel,
+            magicQuestion: lead.magicQuestion,
+            notes: lead.notes,
+          },
+          type,
+        },
+      });
+      if (error) throw error;
+      setAiResults(prev => ({ ...prev, [type]: data.result }));
+      toast({ title: 'AI gerou com sucesso', description: `Modelo usado: ${data.modelUsed}` });
+    } catch (e: any) {
+      console.error('AI generation error:', e);
+      toast({ title: 'Erro na geração AI', description: e.message, variant: 'destructive' });
+    } finally {
+      setAiLoading(null);
+    }
+  };
 
   if (!lead) {
     return (
@@ -191,7 +245,7 @@ const LeadDetailPage = () => {
     );
   }
 
-  const statusLabel = lead.status === 'new' ? 'em construção' : lead.status;
+  const currentStatusConfig = LEAD_STATUSES.find(s => s.value === leadStatus) || LEAD_STATUSES[0];
 
   return (
     <AppLayout>
@@ -206,7 +260,21 @@ const LeadDetailPage = () => {
               <h1 className="text-lg font-bold text-foreground">
                 Nº{lead.id.replace('L-', '')} - {lead.email} - {lead.destination} - adt:{lead.pax} - chl:0 - inf:0
               </h1>
-              <p className="text-sm font-semibold text-[hsl(var(--warning))]">[ {statusLabel} ]</p>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <button className={cn("text-sm font-semibold px-2 py-0.5 rounded inline-flex items-center gap-1 cursor-pointer hover:opacity-80 transition-opacity", currentStatusConfig.color)}>
+                    [ {currentStatusConfig.label} ]
+                    <ChevronDown className="h-3 w-3" />
+                  </button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="start">
+                  {LEAD_STATUSES.map(s => (
+                    <DropdownMenuItem key={s.value} onClick={() => setLeadStatus(s.value)} className={cn("text-xs cursor-pointer", leadStatus === s.value && "font-bold")}>
+                      {s.label}
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
             <div className="flex items-center gap-2">
               <Button variant="outline" size="sm" className="text-xs">Pagamento</Button>
@@ -409,15 +477,38 @@ const LeadDetailPage = () => {
           <div className="space-y-4">
             <div className="flex items-center justify-between">
               <h3 className="text-sm font-bold text-foreground">Travel Planner</h3>
-              <Button size="sm" className="text-xs gap-1 bg-gradient-to-r from-[hsl(var(--info))] to-[hsl(var(--info)/0.7)] text-white">
-                🤖 Gerar com Claude AI
+              <Button size="sm" className="text-xs gap-1 bg-gradient-to-r from-[hsl(var(--info))] to-[hsl(var(--info)/0.7)] text-white"
+                onClick={() => generateAI('travel_planner')} disabled={aiLoading === 'travel_planner'}>
+                {aiLoading === 'travel_planner' ? <><Loader2 className="h-3 w-3 animate-spin" /> A gerar...</> : '🤖 Gerar com Claude AI'}
               </Button>
             </div>
-            <div className="bg-card rounded-lg border p-6 text-center space-y-2">
-              <p className="text-sm text-muted-foreground">O Travel Planner será gerado automaticamente pelo Claude AI</p>
-              <p className="text-xs text-muted-foreground">Com base nos dados do lead, discovery form e base de dados YT, o Claude cria a estrutura base do programa e itinerário.</p>
-              <p className="text-xs text-muted-foreground mt-4">Integração via Make.com → Claude API → Google Sheets</p>
-            </div>
+            {aiResults.travel_planner ? (
+              <div className="space-y-3">
+                {(aiResults.travel_planner.days || []).map((day: any, i: number) => (
+                  <div key={i} className="bg-card rounded-lg border p-4">
+                    <p className="text-xs font-bold text-[hsl(var(--info))]">Dia {day.day}</p>
+                    <p className="text-sm font-semibold text-foreground">{day.title}</p>
+                    <p className="text-xs text-muted-foreground mt-1">{day.description}</p>
+                    {day.activities?.map((act: any, j: number) => (
+                      <div key={j} className="mt-2 pl-3 border-l-2 border-border">
+                        <p className="text-xs"><span className="font-medium">{act.time}</span> — {act.activity}</p>
+                        <p className="text-[11px] text-muted-foreground">{act.details}</p>
+                      </div>
+                    ))}
+                  </div>
+                ))}
+                {aiResults.travel_planner.raw && (
+                  <div className="bg-card rounded-lg border p-4">
+                    <pre className="text-xs text-foreground whitespace-pre-wrap">{aiResults.travel_planner.raw}</pre>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div className="bg-card rounded-lg border p-6 text-center space-y-2">
+                <p className="text-sm text-muted-foreground">O Travel Planner será gerado automaticamente pelo Claude AI</p>
+                <p className="text-xs text-muted-foreground">Com base nos dados do lead, discovery form e base de dados YT.</p>
+              </div>
+            )}
           </div>
         )}
 
@@ -426,14 +517,72 @@ const LeadDetailPage = () => {
           <div className="space-y-4">
             <div className="flex items-center justify-between">
               <h3 className="text-sm font-bold text-foreground">Orçamentação & Margens</h3>
-              <Button size="sm" className="text-xs gap-1 bg-gradient-to-r from-[hsl(var(--info))] to-[hsl(var(--info)/0.7)] text-white">
-                🤖 Calcular Budget com AI
+              <Button size="sm" className="text-xs gap-1 bg-gradient-to-r from-[hsl(var(--info))] to-[hsl(var(--info)/0.7)] text-white"
+                onClick={() => generateAI('budget')} disabled={aiLoading === 'budget'}>
+                {aiLoading === 'budget' ? <><Loader2 className="h-3 w-3 animate-spin" /> A calcular...</> : '🤖 Calcular Budget com AI'}
               </Button>
             </div>
-            <div className="bg-card rounded-lg border p-6 text-center space-y-2">
-              <p className="text-sm text-muted-foreground">Orçamentação detalhada por dia com atividades, fornecedor, preço NET, margem %, PVP, lucro</p>
-              <p className="text-xs text-muted-foreground">Claude AI consulta a base de dados de custos e calcula margens automaticamente.</p>
-            </div>
+            {aiResults.budget ? (
+              <div className="space-y-4">
+                {aiResults.budget.summary && (
+                  <div className="grid grid-cols-4 gap-3">
+                    <div className="bg-card rounded-lg border p-3 text-center">
+                      <p className="text-[10px] text-muted-foreground uppercase">Total NET</p>
+                      <p className="text-lg font-bold text-foreground">€{aiResults.budget.summary.totalNet?.toLocaleString()}</p>
+                    </div>
+                    <div className="bg-card rounded-lg border p-3 text-center">
+                      <p className="text-[10px] text-muted-foreground uppercase">Margem</p>
+                      <p className="text-lg font-bold text-[hsl(var(--stable))]">{aiResults.budget.summary.margin}%</p>
+                    </div>
+                    <div className="bg-card rounded-lg border p-3 text-center">
+                      <p className="text-[10px] text-muted-foreground uppercase">PVP Total</p>
+                      <p className="text-lg font-bold text-[hsl(var(--info))]">€{aiResults.budget.summary.totalPVP?.toLocaleString()}</p>
+                    </div>
+                    <div className="bg-card rounded-lg border p-3 text-center">
+                      <p className="text-[10px] text-muted-foreground uppercase">Lucro</p>
+                      <p className="text-lg font-bold text-[hsl(var(--stable))]">€{aiResults.budget.summary.profit?.toLocaleString()}</p>
+                    </div>
+                  </div>
+                )}
+                {(aiResults.budget.days || []).map((day: any, i: number) => (
+                  <div key={i} className="bg-card rounded-lg border overflow-hidden">
+                    <div className="px-4 py-2 border-b bg-muted/50">
+                      <p className="text-xs font-bold">Dia {day.day}</p>
+                    </div>
+                    <table className="w-full text-xs">
+                      <thead><tr className="border-b text-muted-foreground">
+                        <th className="text-left px-3 py-2">Atividade</th>
+                        <th className="text-left px-3 py-2">Fornecedor</th>
+                        <th className="text-right px-3 py-2">NET</th>
+                        <th className="text-right px-3 py-2">Margem</th>
+                        <th className="text-right px-3 py-2">PVP</th>
+                      </tr></thead>
+                      <tbody>
+                        {(day.items || []).map((item: any, j: number) => (
+                          <tr key={j} className="border-t">
+                            <td className="px-3 py-2">{item.activity}</td>
+                            <td className="px-3 py-2 text-muted-foreground">{item.supplier}</td>
+                            <td className="px-3 py-2 text-right">€{item.netCost}</td>
+                            <td className="px-3 py-2 text-right">{item.marginPercent}%</td>
+                            <td className="px-3 py-2 text-right font-medium">€{item.pvp}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                ))}
+                {aiResults.budget.raw && (
+                  <div className="bg-card rounded-lg border p-4">
+                    <pre className="text-xs text-foreground whitespace-pre-wrap">{aiResults.budget.raw}</pre>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div className="bg-card rounded-lg border p-6 text-center space-y-2">
+                <p className="text-sm text-muted-foreground">Orçamentação detalhada por dia com atividades, fornecedor, preço NET, margem %, PVP, lucro</p>
+                <p className="text-xs text-muted-foreground">Claude AI consulta a base de dados de custos e calcula margens automaticamente.</p>
+              </div>
+            )}
           </div>
         )}
 
@@ -442,14 +591,45 @@ const LeadDetailPage = () => {
           <div className="space-y-4">
             <div className="flex items-center justify-between">
               <h3 className="text-sm font-bold text-foreground">Itinerário Digital (Customer-Facing)</h3>
-              <Button size="sm" className="text-xs gap-1 bg-gradient-to-r from-[hsl(var(--info))] to-[hsl(var(--info)/0.7)] text-white">
-                🤖 Gerar Itinerário com AI
+              <Button size="sm" className="text-xs gap-1 bg-gradient-to-r from-[hsl(var(--info))] to-[hsl(var(--info)/0.7)] text-white"
+                onClick={() => generateAI('digital_itinerary')} disabled={aiLoading === 'digital_itinerary'}>
+                {aiLoading === 'digital_itinerary' ? <><Loader2 className="h-3 w-3 animate-spin" /> A gerar...</> : '🤖 Gerar Itinerário com AI'}
               </Button>
             </div>
-            <div className="bg-card rounded-lg border p-6 text-center space-y-2">
-              <p className="text-sm text-muted-foreground">Itinerário digital customer-facing com imagens, gerado pelo Claude AI</p>
-              <p className="text-xs text-muted-foreground">Versão comercial, inspiracional e visual para envio ao cliente.</p>
-            </div>
+            {aiResults.digital_itinerary ? (
+              <div className="space-y-4">
+                {aiResults.digital_itinerary.title && (
+                  <div className="text-center py-4">
+                    <h2 className="text-lg font-bold text-foreground">{aiResults.digital_itinerary.title}</h2>
+                    {aiResults.digital_itinerary.subtitle && <p className="text-sm text-muted-foreground">{aiResults.digital_itinerary.subtitle}</p>}
+                  </div>
+                )}
+                {(aiResults.digital_itinerary.days || []).map((day: any, i: number) => (
+                  <div key={i} className="bg-card rounded-lg border p-5">
+                    <p className="text-xs font-bold text-[hsl(var(--info))] uppercase">Dia {day.day}</p>
+                    <p className="text-base font-semibold text-foreground mt-1">{day.title}</p>
+                    <p className="text-sm text-muted-foreground mt-2 leading-relaxed">{day.narrative}</p>
+                    {day.highlights?.length > 0 && (
+                      <div className="mt-3 flex flex-wrap gap-1.5">
+                        {day.highlights.map((h: string, j: number) => (
+                          <span key={j} className="text-[10px] bg-[hsl(var(--info)/0.1)] text-[hsl(var(--info))] px-2 py-0.5 rounded-full">✨ {h}</span>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                ))}
+                {aiResults.digital_itinerary.raw && (
+                  <div className="bg-card rounded-lg border p-4">
+                    <pre className="text-xs text-foreground whitespace-pre-wrap">{aiResults.digital_itinerary.raw}</pre>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div className="bg-card rounded-lg border p-6 text-center space-y-2">
+                <p className="text-sm text-muted-foreground">Itinerário digital customer-facing com imagens, gerado pelo Claude AI</p>
+                <p className="text-xs text-muted-foreground">Versão comercial, inspiracional e visual para envio ao cliente.</p>
+              </div>
+            )}
           </div>
         )}
 
