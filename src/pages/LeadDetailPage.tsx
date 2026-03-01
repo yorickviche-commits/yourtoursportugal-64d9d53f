@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { ArrowLeft, Save, Trash2, FileText, ClipboardList, Eye, FileIcon, Mail, Clock, Loader2, ChevronDown } from 'lucide-react';
+import { ArrowLeft, Save, Trash2, FileText, ClipboardList, Eye, FileIcon, Mail, Clock, Loader2, ChevronDown, Plus } from 'lucide-react';
 import AppLayout from '@/components/AppLayout';
 import { mockLeads } from '@/data/mockLeads';
 import { Input } from '@/components/ui/input';
@@ -11,6 +11,8 @@ import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { LeadStatus } from '@/types/leads';
+import EditableItinerary, { ItineraryDay } from '@/components/trip/EditableItinerary';
+import EditableCostingTable, { CostingDayData, CostingItem } from '@/components/trip/EditableCostingTable';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -193,6 +195,9 @@ const LeadDetailPage = () => {
   const [leadStatus, setLeadStatus] = useState<LeadStatus>(lead?.status || 'new');
   const [aiLoading, setAiLoading] = useState<string | null>(null);
   const [aiResults, setAiResults] = useState<Record<string, any>>({});
+  const [itineraryDays, setItineraryDays] = useState<ItineraryDay[]>([]);
+  const [costingDays, setCostingDays] = useState<CostingDayData[]>([]);
+  const [finalPrice, setFinalPrice] = useState(0);
   const { toast } = useToast();
 
   // Tag select states
@@ -225,6 +230,43 @@ const LeadDetailPage = () => {
       });
       if (error) throw error;
       setAiResults(prev => ({ ...prev, [type]: data.result }));
+      
+      // Populate editable state from AI results
+      if (type === 'travel_planner' && data.result.days) {
+        setItineraryDays(data.result.days.map((d: any, i: number) => ({
+          day: d.day || i + 1,
+          title: d.title || '',
+          description: d.description || '',
+          images: [],
+          activities: d.activities || [],
+        })));
+      }
+      if (type === 'budget' && data.result.days) {
+        setCostingDays(data.result.days.map((d: any, i: number) => ({
+          day: d.day || i + 1,
+          title: `Dia ${d.day || i + 1}`,
+          items: (d.items || []).map((item: any, j: number) => {
+            const netCost = item.netCost || 0;
+            const marginPercent = item.marginPercent || 30;
+            const pvp = netCost * (1 + marginPercent / 100);
+            return {
+              id: `cost-${i}-${j}`,
+              activity: item.activity || '',
+              supplier: item.supplier || '',
+              nrPeople: lead?.pax || 1,
+              netCost,
+              marginPercent,
+              pvp: Math.round(pvp * 100) / 100,
+              totalPrice: Math.round(pvp * (lead?.pax || 1) * 100) / 100,
+              pricePerPerson: Math.round(pvp * 100) / 100,
+            };
+          }),
+        })));
+        if (data.result.summary?.totalPVP) {
+          setFinalPrice(data.result.summary.totalPVP);
+        }
+      }
+      
       toast({ title: 'AI gerou com sucesso', description: `Modelo usado: ${data.modelUsed}` });
     } catch (e: any) {
       console.error('AI generation error:', e);
@@ -478,35 +520,22 @@ const LeadDetailPage = () => {
             <div className="flex items-center justify-between">
               <h3 className="text-sm font-bold text-foreground">Travel Planner</h3>
               <Button size="sm" className="text-xs gap-1 bg-gradient-to-r from-[hsl(var(--info))] to-[hsl(var(--info)/0.7)] text-white"
-                onClick={() => generateAI('travel_planner')} disabled={aiLoading === 'travel_planner'}>
+                onClick={async () => {
+                  await generateAI('travel_planner');
+                }} disabled={aiLoading === 'travel_planner'}>
                 {aiLoading === 'travel_planner' ? <><Loader2 className="h-3 w-3 animate-spin" /> A gerar...</> : '🤖 Gerar com Claude AI'}
               </Button>
             </div>
-            {aiResults.travel_planner ? (
-              <div className="space-y-3">
-                {(aiResults.travel_planner.days || []).map((day: any, i: number) => (
-                  <div key={i} className="bg-card rounded-lg border p-4">
-                    <p className="text-xs font-bold text-[hsl(var(--info))]">Dia {day.day}</p>
-                    <p className="text-sm font-semibold text-foreground">{day.title}</p>
-                    <p className="text-xs text-muted-foreground mt-1">{day.description}</p>
-                    {day.activities?.map((act: any, j: number) => (
-                      <div key={j} className="mt-2 pl-3 border-l-2 border-border">
-                        <p className="text-xs"><span className="font-medium">{act.time}</span> — {act.activity}</p>
-                        <p className="text-[11px] text-muted-foreground">{act.details}</p>
-                      </div>
-                    ))}
-                  </div>
-                ))}
-                {aiResults.travel_planner.raw && (
-                  <div className="bg-card rounded-lg border p-4">
-                    <pre className="text-xs text-foreground whitespace-pre-wrap">{aiResults.travel_planner.raw}</pre>
-                  </div>
-                )}
-              </div>
+            {itineraryDays.length > 0 ? (
+              <EditableItinerary days={itineraryDays} onChange={setItineraryDays} />
             ) : (
               <div className="bg-card rounded-lg border p-6 text-center space-y-2">
                 <p className="text-sm text-muted-foreground">O Travel Planner será gerado automaticamente pelo Claude AI</p>
                 <p className="text-xs text-muted-foreground">Com base nos dados do lead, discovery form e base de dados YT.</p>
+                <p className="text-xs text-muted-foreground mt-2">Ou adicione dias manualmente:</p>
+                <Button variant="outline" size="sm" className="text-xs gap-1 mt-2" onClick={() => setItineraryDays([{ day: 1, title: '', description: '', images: [] }])}>
+                  <Plus className="h-3 w-3" /> Começar Itinerário
+                </Button>
               </div>
             )}
           </div>
@@ -518,69 +547,21 @@ const LeadDetailPage = () => {
             <div className="flex items-center justify-between">
               <h3 className="text-sm font-bold text-foreground">Orçamentação & Margens</h3>
               <Button size="sm" className="text-xs gap-1 bg-gradient-to-r from-[hsl(var(--info))] to-[hsl(var(--info)/0.7)] text-white"
-                onClick={() => generateAI('budget')} disabled={aiLoading === 'budget'}>
+                onClick={async () => {
+                  await generateAI('budget');
+                }} disabled={aiLoading === 'budget'}>
                 {aiLoading === 'budget' ? <><Loader2 className="h-3 w-3 animate-spin" /> A calcular...</> : '🤖 Calcular Budget com AI'}
               </Button>
             </div>
-            {aiResults.budget ? (
-              <div className="space-y-4">
-                {aiResults.budget.summary && (
-                  <div className="grid grid-cols-4 gap-3">
-                    <div className="bg-card rounded-lg border p-3 text-center">
-                      <p className="text-[10px] text-muted-foreground uppercase">Total NET</p>
-                      <p className="text-lg font-bold text-foreground">€{aiResults.budget.summary.totalNet?.toLocaleString()}</p>
-                    </div>
-                    <div className="bg-card rounded-lg border p-3 text-center">
-                      <p className="text-[10px] text-muted-foreground uppercase">Margem</p>
-                      <p className="text-lg font-bold text-[hsl(var(--stable))]">{aiResults.budget.summary.margin}%</p>
-                    </div>
-                    <div className="bg-card rounded-lg border p-3 text-center">
-                      <p className="text-[10px] text-muted-foreground uppercase">PVP Total</p>
-                      <p className="text-lg font-bold text-[hsl(var(--info))]">€{aiResults.budget.summary.totalPVP?.toLocaleString()}</p>
-                    </div>
-                    <div className="bg-card rounded-lg border p-3 text-center">
-                      <p className="text-[10px] text-muted-foreground uppercase">Lucro</p>
-                      <p className="text-lg font-bold text-[hsl(var(--stable))]">€{aiResults.budget.summary.profit?.toLocaleString()}</p>
-                    </div>
-                  </div>
-                )}
-                {(aiResults.budget.days || []).map((day: any, i: number) => (
-                  <div key={i} className="bg-card rounded-lg border overflow-hidden">
-                    <div className="px-4 py-2 border-b bg-muted/50">
-                      <p className="text-xs font-bold">Dia {day.day}</p>
-                    </div>
-                    <table className="w-full text-xs">
-                      <thead><tr className="border-b text-muted-foreground">
-                        <th className="text-left px-3 py-2">Atividade</th>
-                        <th className="text-left px-3 py-2">Fornecedor</th>
-                        <th className="text-right px-3 py-2">NET</th>
-                        <th className="text-right px-3 py-2">Margem</th>
-                        <th className="text-right px-3 py-2">PVP</th>
-                      </tr></thead>
-                      <tbody>
-                        {(day.items || []).map((item: any, j: number) => (
-                          <tr key={j} className="border-t">
-                            <td className="px-3 py-2">{item.activity}</td>
-                            <td className="px-3 py-2 text-muted-foreground">{item.supplier}</td>
-                            <td className="px-3 py-2 text-right">€{item.netCost}</td>
-                            <td className="px-3 py-2 text-right">{item.marginPercent}%</td>
-                            <td className="px-3 py-2 text-right font-medium">€{item.pvp}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                ))}
-                {aiResults.budget.raw && (
-                  <div className="bg-card rounded-lg border p-4">
-                    <pre className="text-xs text-foreground whitespace-pre-wrap">{aiResults.budget.raw}</pre>
-                  </div>
-                )}
-              </div>
+            {costingDays.length > 0 ? (
+              <EditableCostingTable days={costingDays} onChange={setCostingDays} finalPrice={finalPrice} onFinalPriceChange={setFinalPrice} />
             ) : (
               <div className="bg-card rounded-lg border p-6 text-center space-y-2">
-                <p className="text-sm text-muted-foreground">Orçamentação detalhada por dia com atividades, fornecedor, preço NET, margem %, PVP, lucro</p>
+                <p className="text-sm text-muted-foreground">Orçamentação detalhada por dia</p>
                 <p className="text-xs text-muted-foreground">Claude AI consulta a base de dados de custos e calcula margens automaticamente.</p>
+                <Button variant="outline" size="sm" className="text-xs gap-1 mt-2" onClick={() => setCostingDays([{ day: 1, title: 'Dia 1', items: [] }])}>
+                  <Plus className="h-3 w-3" /> Começar Costing Manual
+                </Button>
               </div>
             )}
           </div>
