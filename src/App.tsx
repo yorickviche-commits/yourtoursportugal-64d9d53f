@@ -28,6 +28,8 @@ import AdminSuppliersPage from "./pages/AdminSuppliersPage";
 import AdminIntegrationsPage from "./pages/AdminIntegrationsPage";
 import AdminKPIPage from "./pages/AdminKPIPage";
 import AdminSupplierDetailPage from "./pages/AdminSupplierDetailPage";
+import PartnersPage from "./pages/PartnersPage";
+import PartnerDetailPage from "./pages/PartnerDetailPage";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -66,6 +68,8 @@ const App = () => (
             <Route path="/admin/permissions" element={<ProtectedRoute adminOnly><AdminPermissionsPage /></ProtectedRoute>} />
             <Route path="/admin/suppliers" element={<ProtectedRoute adminOnly><AdminSuppliersPage /></ProtectedRoute>} />
             <Route path="/admin/suppliers/:id" element={<ProtectedRoute adminOnly><AdminSupplierDetailPage /></ProtectedRoute>} />
+            <Route path="/admin/partners" element={<ProtectedRoute adminOnly><PartnersPage /></ProtectedRoute>} />
+            <Route path="/admin/partners/:id" element={<ProtectedRoute adminOnly><PartnerDetailPage /></ProtectedRoute>} />
             <Route path="/admin/integrations" element={<ProtectedRoute adminOnly><AdminIntegrationsPage /></ProtectedRoute>} />
             <Route path="/admin/kpis" element={<ProtectedRoute adminOnly><AdminKPIPage /></ProtectedRoute>} />
 
