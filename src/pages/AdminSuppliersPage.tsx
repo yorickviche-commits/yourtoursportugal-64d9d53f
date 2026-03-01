@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import AppLayout from '@/components/AppLayout';
@@ -36,6 +37,7 @@ const emptySupplier = {
 
 const AdminSuppliersPage = () => {
   const { isAdmin } = useAuth();
+  const navigate = useNavigate();
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -117,7 +119,7 @@ const AdminSuppliersPage = () => {
         ) : (
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {filtered.map(s => (
-              <Card key={s.id} className="cursor-pointer hover:border-primary/40 transition-colors" onClick={() => openEdit(s)}>
+              <Card key={s.id} className="cursor-pointer hover:border-primary/40 transition-colors" onClick={() => navigate(`/admin/suppliers/${s.id}`)}>
                 <CardContent className="pt-4">
                   <div className="flex items-start justify-between">
                     <div>
