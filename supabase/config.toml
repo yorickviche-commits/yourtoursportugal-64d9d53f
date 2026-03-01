@@ -2,3 +2,9 @@ project_id = "jufqscczzmioauzkqztj"
 
 [functions.generate-itinerary]
 verify_jwt = false
+
+[functions.nethunt-proxy]
+verify_jwt = false
+
+[functions.wetravel-proxy]
+verify_jwt = false
