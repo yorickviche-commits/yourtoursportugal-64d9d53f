@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { ArrowLeft, Save, Trash2, FileText, ClipboardList, Eye, FileIcon, Mail, Clock, Loader2, ChevronDown, Plus } from 'lucide-react';
 import AppLayout from '@/components/AppLayout';
-import { mockLeads } from '@/data/mockLeads';
+import { useLeads } from '@/hooks/useLeads';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -191,7 +191,8 @@ const LEAD_STATUSES: { value: LeadStatus; label: string; color: string }[] = [
 
 const LeadDetailPage = () => {
   const { id } = useParams<{ id: string }>();
-  const lead = mockLeads.find(l => l.id === id);
+  const { leads } = useLeads();
+  const lead = leads.find(l => l.id === id);
   const [activeTab, setActiveTab] = useState<DetailTab>('dados_gerais');
   const [leadStatus, setLeadStatus] = useState<LeadStatus>(lead?.status || 'new');
   const [aiLoading, setAiLoading] = useState<string | null>(null);
