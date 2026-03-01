@@ -21,6 +21,12 @@ import SignupPage from "./pages/SignupPage";
 import ForgotPasswordPage from "./pages/ForgotPasswordPage";
 import ResetPasswordPage from "./pages/ResetPasswordPage";
 import AdminUsersPage from "./pages/AdminUsersPage";
+import AdminSettingsPage from "./pages/AdminSettingsPage";
+import AdminActivityLogsPage from "./pages/AdminActivityLogsPage";
+import AdminPermissionsPage from "./pages/AdminPermissionsPage";
+import AdminSuppliersPage from "./pages/AdminSuppliersPage";
+import AdminIntegrationsPage from "./pages/AdminIntegrationsPage";
+import AdminKPIPage from "./pages/AdminKPIPage";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -54,6 +60,12 @@ const App = () => (
 
             {/* Admin routes */}
             <Route path="/admin/users" element={<ProtectedRoute adminOnly><AdminUsersPage /></ProtectedRoute>} />
+            <Route path="/admin/settings" element={<ProtectedRoute adminOnly><AdminSettingsPage /></ProtectedRoute>} />
+            <Route path="/admin/logs" element={<ProtectedRoute adminOnly><AdminActivityLogsPage /></ProtectedRoute>} />
+            <Route path="/admin/permissions" element={<ProtectedRoute adminOnly><AdminPermissionsPage /></ProtectedRoute>} />
+            <Route path="/admin/suppliers" element={<ProtectedRoute adminOnly><AdminSuppliersPage /></ProtectedRoute>} />
+            <Route path="/admin/integrations" element={<ProtectedRoute adminOnly><AdminIntegrationsPage /></ProtectedRoute>} />
+            <Route path="/admin/kpis" element={<ProtectedRoute adminOnly><AdminKPIPage /></ProtectedRoute>} />
 
             <Route path="*" element={<NotFound />} />
           </Routes>

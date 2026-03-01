@@ -47,6 +47,137 @@ export type Database = {
         }
         Relationships: []
       }
+      integration_settings: {
+        Row: {
+          api_key_ref: string | null
+          config: Json | null
+          created_at: string
+          error_count: number | null
+          id: string
+          last_sync_at: string | null
+          name: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          api_key_ref?: string | null
+          config?: Json | null
+          created_at?: string
+          error_count?: number | null
+          id?: string
+          last_sync_at?: string | null
+          name: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          api_key_ref?: string | null
+          config?: Json | null
+          created_at?: string
+          error_count?: number | null
+          id?: string
+          last_sync_at?: string | null
+          name?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      permissions: {
+        Row: {
+          created_at: string
+          granted: boolean
+          id: string
+          permission: string
+          role: Database["public"]["Enums"]["app_role"]
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          granted?: boolean
+          id?: string
+          permission: string
+          role: Database["public"]["Enums"]["app_role"]
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          granted?: boolean
+          id?: string
+          permission?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      products: {
+        Row: {
+          category: string
+          created_at: string
+          created_by: string | null
+          currency: string | null
+          fixed_cost: number | null
+          guide_allocation: Json | null
+          id: string
+          margin_calculation: Json | null
+          market_pricing: Json | null
+          markup_rules: Json | null
+          name: string
+          per_day_cost: number | null
+          status: string
+          supplier_id: string | null
+          updated_at: string
+          variable_cost_per_pax: number | null
+          vehicle_allocation: Json | null
+        }
+        Insert: {
+          category?: string
+          created_at?: string
+          created_by?: string | null
+          currency?: string | null
+          fixed_cost?: number | null
+          guide_allocation?: Json | null
+          id?: string
+          margin_calculation?: Json | null
+          market_pricing?: Json | null
+          markup_rules?: Json | null
+          name: string
+          per_day_cost?: number | null
+          status?: string
+          supplier_id?: string | null
+          updated_at?: string
+          variable_cost_per_pax?: number | null
+          vehicle_allocation?: Json | null
+        }
+        Update: {
+          category?: string
+          created_at?: string
+          created_by?: string | null
+          currency?: string | null
+          fixed_cost?: number | null
+          guide_allocation?: Json | null
+          id?: string
+          margin_calculation?: Json | null
+          market_pricing?: Json | null
+          markup_rules?: Json | null
+          name?: string
+          per_day_cost?: number | null
+          status?: string
+          supplier_id?: string | null
+          updated_at?: string
+          variable_cost_per_pax?: number | null
+          vehicle_allocation?: Json | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "products_supplier_id_fkey"
+            columns: ["supplier_id"]
+            isOneToOne: false
+            referencedRelation: "suppliers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           avatar_url: string | null
@@ -77,6 +208,105 @@ export type Database = {
           last_login_at?: string | null
           status?: string
           updated_at?: string
+        }
+        Relationships: []
+      }
+      suppliers: {
+        Row: {
+          cancellation_policy: string | null
+          category: string
+          commission_structure: Json | null
+          contact_email: string | null
+          contact_name: string | null
+          contact_phone: string | null
+          contract_type: string | null
+          created_at: string
+          created_by: string | null
+          currency: string | null
+          id: string
+          market_pricing: Json | null
+          name: string
+          net_rates: Json | null
+          notes: string | null
+          status: string
+          updated_at: string
+          validity_end: string | null
+          validity_start: string | null
+        }
+        Insert: {
+          cancellation_policy?: string | null
+          category?: string
+          commission_structure?: Json | null
+          contact_email?: string | null
+          contact_name?: string | null
+          contact_phone?: string | null
+          contract_type?: string | null
+          created_at?: string
+          created_by?: string | null
+          currency?: string | null
+          id?: string
+          market_pricing?: Json | null
+          name: string
+          net_rates?: Json | null
+          notes?: string | null
+          status?: string
+          updated_at?: string
+          validity_end?: string | null
+          validity_start?: string | null
+        }
+        Update: {
+          cancellation_policy?: string | null
+          category?: string
+          commission_structure?: Json | null
+          contact_email?: string | null
+          contact_name?: string | null
+          contact_phone?: string | null
+          contract_type?: string | null
+          created_at?: string
+          created_by?: string | null
+          currency?: string | null
+          id?: string
+          market_pricing?: Json | null
+          name?: string
+          net_rates?: Json | null
+          notes?: string | null
+          status?: string
+          updated_at?: string
+          validity_end?: string | null
+          validity_start?: string | null
+        }
+        Relationships: []
+      }
+      system_settings: {
+        Row: {
+          category: string
+          created_at: string
+          description: string | null
+          id: string
+          key: string
+          updated_at: string
+          updated_by: string | null
+          value: Json
+        }
+        Insert: {
+          category?: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          key: string
+          updated_at?: string
+          updated_by?: string | null
+          value?: Json
+        }
+        Update: {
+          category?: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          key?: string
+          updated_at?: string
+          updated_by?: string | null
+          value?: Json
         }
         Relationships: []
       }
