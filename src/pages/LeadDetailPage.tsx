@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { ArrowLeft, Save, Trash2, FileText, ClipboardList } from 'lucide-react';
+import { ArrowLeft, Save, Trash2, FileText, ClipboardList, Eye, FileIcon, Mail, Clock } from 'lucide-react';
 import AppLayout from '@/components/AppLayout';
 import { mockLeads } from '@/data/mockLeads';
 import { Input } from '@/components/ui/input';
@@ -19,12 +19,153 @@ const DETAIL_TABS: { key: DetailTab; label: string }[] = [
   { key: 'operacoes', label: 'Operações' },
 ];
 
-const RIGHT_TABS = ['Email', 'Tasks', 'Notas', 'Comentários', 'Follow up', 'Chatbot'];
+const RIGHT_TABS = ['Email', 'Tasks', 'Notas'];
 
 const CATEGORIAS = ['Premium & Boutique', 'Standard', 'Luxury', 'Budget', 'Adventure'];
 const DESTINOS = ['Porto & Douro Valley', 'Lisbon & Sintra', 'Algarve', 'Azores', 'Madeira', 'Minho', 'Alentejo', 'Silver Coast'];
 const IDIOMAS = ['EN', 'PT', 'FR', 'ES', 'DE', 'IT', 'NL'];
 const ORIGENS = ['website', 'AI Simulation', 'referral', 'partner', 'social_media', 'direct'];
+
+// Mock operations data per day
+const MOCK_OPS_DAYS = [
+  {
+    day: 1,
+    date: '15 de maio',
+    title: 'chegada em Lisboa e transfer do grupo para o hotel (só ida)',
+    weekday: 'Friday, 15/May/2026',
+    items: [
+      { id: 'op1', activity: 'Transporte para todo o programa', startTime: '', endTime: '', supplier: 'Cola Limousine', pax: 0, netTotal: 3590, paid: 0, reservation: '-', payment: '-', invoice: '-' },
+    ],
+  },
+  {
+    day: 2,
+    date: '16 de maio',
+    title: 'city tour de dia inteiro com guia pela cidade de Lisboa',
+    weekday: 'Saturday, 16/May/2026',
+    items: [
+      { id: 'op2', activity: 'Guia local FD', startTime: '', endTime: '', supplier: '', pax: 0, netTotal: 200, paid: 0, reservation: '-', payment: '-', invoice: '-' },
+      { id: 'op3', activity: 'Almoço Guia', startTime: '', endTime: '', supplier: '', pax: 0, netTotal: 20, paid: 0, reservation: '-', payment: '-', invoice: '-' },
+    ],
+  },
+  {
+    day: 3,
+    date: '17 de maio',
+    title: 'tour visitando Sintra, Cascais e Estoril',
+    weekday: 'Sunday, 17/May/2026',
+    items: [
+      { id: 'op4', activity: 'Entrada Palácio Nacional de Pena', startTime: '', endTime: '', supplier: 'Parques de Sintra', pax: 10, netTotal: 200, paid: 0, reservation: '-', payment: '-', invoice: '-' },
+      { id: 'op5', activity: 'Transfer Palácio Nacional de Pena', startTime: '', endTime: '', supplier: 'Parques de Sintra', pax: 10, netTotal: 45, paid: 0, reservation: '-', payment: '-', invoice: '-' },
+      { id: 'op6', activity: 'Almoço Guia', startTime: '', endTime: '', supplier: '', pax: 0, netTotal: 15, paid: 0, reservation: '-', payment: '-', invoice: '-' },
+      { id: 'op7', activity: 'Guia local FD', startTime: '', endTime: '', supplier: 'Your Tours', pax: 0, netTotal: 200, paid: 0, reservation: '-', payment: '-', invoice: '-' },
+    ],
+  },
+];
+
+const PAYMENT_STATUSES = [
+  { label: 'CONTA MENSAL', color: 'text-[hsl(var(--info))]' },
+  { label: 'PAGO PELO BACKOFFICE', color: 'text-[hsl(var(--info))]' },
+  { label: 'PAGO PELO GUIA', color: 'text-[hsl(var(--info))]' },
+  { label: 'PAGO PARCIALMENTE', color: 'text-[hsl(var(--warning))]' },
+  { label: 'A MARCAR PELO GUIA', color: 'text-[hsl(var(--warning))]' },
+  { label: 'A PAGAR PELO BACKOFFICE', color: 'text-[hsl(var(--warning))]' },
+  { label: 'NÃO PAGO', color: 'text-[hsl(var(--urgent))]' },
+];
+
+const OperacoesTab = ({ activeVersion }: { activeVersion: number }) => {
+  const [checkedItems, setCheckedItems] = useState<Record<string, boolean>>({});
+
+  const toggleCheck = (id: string) => {
+    setCheckedItems(prev => ({ ...prev, [id]: !prev[id] }));
+  };
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <h3 className="text-sm font-bold text-foreground">Operações</h3>
+        <div className="flex items-center gap-2">
+          <span className="text-xs text-muted-foreground">Baseado na versão aceite (V{activeVersion})</span>
+          <Button variant="outline" size="sm" className="text-xs gap-1">
+            <ClipboardList className="h-3 w-3" /> Briefing FSEs
+          </Button>
+          <Button variant="outline" size="sm" className="text-xs gap-1">
+            <FileText className="h-3 w-3" /> Briefing Cliente
+          </Button>
+        </div>
+      </div>
+
+      {MOCK_OPS_DAYS.map(day => (
+        <div key={day.day} className="bg-card rounded-lg border overflow-hidden">
+          {/* Day header */}
+          <div className="px-4 py-3 border-b border-border">
+            <p className="text-xs font-bold text-[hsl(var(--info))]">Dia {day.day}.</p>
+            <p className="text-sm font-bold text-[hsl(var(--info))]">{day.date} – {day.title}</p>
+            <p className="text-[10px] text-muted-foreground">{day.weekday}</p>
+          </div>
+
+          {/* Table header */}
+          <div className="overflow-x-auto">
+            <table className="w-full text-xs">
+              <thead>
+                <tr className="bg-muted/50 text-muted-foreground">
+                  <th className="w-8 px-2 py-2"></th>
+                  <th className="text-left px-3 py-2 font-medium">Atividade</th>
+                  <th className="text-left px-3 py-2 font-medium">Início/Fim</th>
+                  <th className="text-left px-3 py-2 font-medium">Fornecedor</th>
+                  <th className="text-center px-3 py-2 font-medium">Nº de Pessoas</th>
+                  <th className="text-right px-3 py-2 font-medium">Valor NET Total</th>
+                  <th className="text-center px-3 py-2 font-medium">Pago</th>
+                  <th className="text-center px-3 py-2 font-medium">Reserva</th>
+                  <th className="text-center px-3 py-2 font-medium">Pagamento</th>
+                  <th className="text-center px-3 py-2 font-medium">Fatura</th>
+                  <th className="text-center px-3 py-2 font-medium">FSE</th>
+                </tr>
+              </thead>
+              <tbody>
+                {day.items.map(item => (
+                  <tr key={item.id} className="border-t border-border hover:bg-muted/20">
+                    <td className="px-2 py-3 text-center">
+                      <input
+                        type="checkbox"
+                        checked={!!checkedItems[item.id]}
+                        onChange={() => toggleCheck(item.id)}
+                        className="h-3.5 w-3.5 rounded border-border"
+                      />
+                    </td>
+                    <td className="px-3 py-3 text-foreground">{item.activity}</td>
+                    <td className="px-3 py-3">
+                      <div className="space-y-1">
+                        <Input className="h-6 text-[10px] w-24" placeholder="--:--" defaultValue={item.startTime} />
+                        <Input className="h-6 text-[10px] w-24" placeholder="--:--" defaultValue={item.endTime} />
+                      </div>
+                    </td>
+                    <td className="px-3 py-3 text-[hsl(var(--info))]">{item.supplier || <span className="text-muted-foreground">null</span>}</td>
+                    <td className="px-3 py-3 text-center font-medium text-[hsl(var(--urgent))]">{item.pax}</td>
+                    <td className="px-3 py-3 text-right font-medium">{item.netTotal} €</td>
+                    <td className="px-3 py-3 text-center">
+                      <Input className="h-6 text-[10px] w-16 mx-auto" defaultValue={item.paid} />
+                    </td>
+                    <td className="px-3 py-3 text-center text-muted-foreground">{item.reservation}</td>
+                    <td className="px-3 py-3 text-center text-muted-foreground">{item.payment}</td>
+                    <td className="px-3 py-3 text-center">
+                      <Eye className="h-3.5 w-3.5 text-[hsl(var(--info))] mx-auto cursor-pointer" />
+                    </td>
+                    <td className="px-3 py-3 text-center">
+                      <div className="flex items-center justify-center gap-1">
+                        <FileIcon className="h-3.5 w-3.5 text-muted-foreground cursor-pointer hover:text-foreground" />
+                        <FileIcon className="h-3.5 w-3.5 text-muted-foreground cursor-pointer hover:text-foreground" />
+                        <Mail className="h-3.5 w-3.5 text-muted-foreground cursor-pointer hover:text-foreground" />
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+};
 
 const LeadDetailPage = () => {
   const { id } = useParams<{ id: string }>();
@@ -314,41 +455,7 @@ const LeadDetailPage = () => {
 
         {/* Operações */}
         {activeTab === 'operacoes' && (
-          <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <h3 className="text-sm font-bold text-foreground">Operações</h3>
-              <div className="flex items-center gap-2">
-                <span className="text-xs text-muted-foreground">Baseado na versão aceite (V{activeVersion})</span>
-              </div>
-            </div>
-
-            <p className="text-xs text-muted-foreground">
-              Quando a simulação é confirmada e o depósito pago, o costing da última versão aceite popula as rubricas operacionais.
-            </p>
-
-            {/* Briefing buttons */}
-            <div className="grid grid-cols-2 gap-3">
-              <Button variant="outline" size="sm" className="text-xs gap-2 h-12 justify-start">
-                <ClipboardList className="h-4 w-4 text-[hsl(var(--info))]" />
-                <div className="text-left">
-                  <p className="font-medium">Briefing Geral FSEs</p>
-                  <p className="text-muted-foreground text-[10px]">Para cada fornecedor relevante, guia e transporte</p>
-                </div>
-              </Button>
-              <Button variant="outline" size="sm" className="text-xs gap-2 h-12 justify-start">
-                <FileText className="h-4 w-4 text-[hsl(var(--success))]" />
-                <div className="text-left">
-                  <p className="font-medium">Briefing Final Cliente</p>
-                  <p className="text-muted-foreground text-[10px]">Versão compilada para envio ao cliente</p>
-                </div>
-              </Button>
-            </div>
-
-            <div className="bg-card rounded-lg border p-6 text-center space-y-2">
-              <p className="text-sm text-muted-foreground">Reservas, pagamentos, faturas por dia — operações completas</p>
-              <p className="text-xs text-muted-foreground">Disponível após confirmação da simulação.</p>
-            </div>
-          </div>
+          <OperacoesTab activeVersion={activeVersion} />
         )}
       </div>
     </AppLayout>
