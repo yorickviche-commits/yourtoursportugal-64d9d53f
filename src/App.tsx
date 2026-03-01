@@ -10,6 +10,7 @@ import ApprovalsPage from "./pages/ApprovalsPage";
 import LeadsFilesPage from "./pages/LeadsFilesPage";
 import LeadDetailPage from "./pages/LeadDetailPage";
 import CRMPage from "./pages/CRMPage";
+import CRMRecordDetailPage from "./pages/CRMRecordDetailPage";
 import PaymentsPage from "./pages/PaymentsPage";
 import TasksPage from "./pages/TasksPage";
 import NotFound from "./pages/NotFound";
@@ -31,6 +32,7 @@ const App = () => (
           <Route path="/approvals" element={<ApprovalsPage />} />
           <Route path="/tasks" element={<TasksPage />} />
           <Route path="/crm" element={<CRMPage />} />
+          <Route path="/crm/:folderId/:recordId" element={<CRMRecordDetailPage />} />
           <Route path="/payments" element={<PaymentsPage />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
