@@ -211,6 +211,162 @@ export type Database = {
         }
         Relationships: []
       }
+      supplier_files: {
+        Row: {
+          created_at: string
+          file_name: string
+          file_type: string | null
+          file_url: string | null
+          id: string
+          size_bytes: number | null
+          storage_path: string | null
+          supplier_id: string
+          uploaded_by: string | null
+        }
+        Insert: {
+          created_at?: string
+          file_name: string
+          file_type?: string | null
+          file_url?: string | null
+          id?: string
+          size_bytes?: number | null
+          storage_path?: string | null
+          supplier_id: string
+          uploaded_by?: string | null
+        }
+        Update: {
+          created_at?: string
+          file_name?: string
+          file_type?: string | null
+          file_url?: string | null
+          id?: string
+          size_bytes?: number | null
+          storage_path?: string | null
+          supplier_id?: string
+          uploaded_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "supplier_files_supplier_id_fkey"
+            columns: ["supplier_id"]
+            isOneToOne: false
+            referencedRelation: "suppliers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      supplier_links: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          description: string | null
+          id: string
+          name: string
+          supplier_id: string
+          url: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          name: string
+          supplier_id: string
+          url: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          name?: string
+          supplier_id?: string
+          url?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "supplier_links_supplier_id_fkey"
+            columns: ["supplier_id"]
+            isOneToOne: false
+            referencedRelation: "suppliers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      supplier_services: {
+        Row: {
+          cancellation_policy: string | null
+          category: string
+          created_at: string
+          created_by: string | null
+          currency: string | null
+          description: string | null
+          duration: string | null
+          id: string
+          name: string
+          notes: string | null
+          payment_conditions: string | null
+          price: number | null
+          price_unit: string | null
+          refund_policy: string | null
+          status: string
+          supplier_id: string
+          updated_at: string
+          validity_end: string | null
+          validity_start: string | null
+        }
+        Insert: {
+          cancellation_policy?: string | null
+          category?: string
+          created_at?: string
+          created_by?: string | null
+          currency?: string | null
+          description?: string | null
+          duration?: string | null
+          id?: string
+          name: string
+          notes?: string | null
+          payment_conditions?: string | null
+          price?: number | null
+          price_unit?: string | null
+          refund_policy?: string | null
+          status?: string
+          supplier_id: string
+          updated_at?: string
+          validity_end?: string | null
+          validity_start?: string | null
+        }
+        Update: {
+          cancellation_policy?: string | null
+          category?: string
+          created_at?: string
+          created_by?: string | null
+          currency?: string | null
+          description?: string | null
+          duration?: string | null
+          id?: string
+          name?: string
+          notes?: string | null
+          payment_conditions?: string | null
+          price?: number | null
+          price_unit?: string | null
+          refund_policy?: string | null
+          status?: string
+          supplier_id?: string
+          updated_at?: string
+          validity_end?: string | null
+          validity_start?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "supplier_services_supplier_id_fkey"
+            columns: ["supplier_id"]
+            isOneToOne: false
+            referencedRelation: "suppliers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       suppliers: {
         Row: {
           cancellation_policy: string | null
