@@ -1,7 +1,8 @@
 import { NavLink, useLocation } from 'react-router-dom';
-import { LayoutDashboard, Map, CheckCircle, Sun, PanelLeftClose, PanelLeft, Users, Globe, CreditCard, ClipboardList, Bot } from 'lucide-react';
+import { LayoutDashboard, Map, CheckCircle, Sun, PanelLeftClose, PanelLeft, Users, Globe, CreditCard, ClipboardList, Bot, Shield, LogOut } from 'lucide-react';
 import { useState } from 'react';
 import { cn } from '@/lib/utils';
+import { useAuth } from '@/hooks/useAuth';
 
 const navItems = [
   { to: '/', icon: LayoutDashboard, label: 'Dashboard' },
@@ -14,9 +15,20 @@ const navItems = [
   { to: '/agents', icon: Bot, label: 'AI Agents' },
 ];
 
+const adminItems = [
+  { to: '/admin/users', icon: Shield, label: 'Gestão Utilizadores' },
+];
+
 const AppSidebar = () => {
   const location = useLocation();
   const [collapsed, setCollapsed] = useState(true);
+  const { profile, isAdmin, signOut } = useAuth();
+
+  const initials = profile?.full_name
+    ? profile.full_name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()
+    : profile?.email?.slice(0, 2).toUpperCase() || '??';
+
+  const allItems = [...navItems, ...(isAdmin ? adminItems : [])];
 
   return (
     <aside
@@ -49,7 +61,7 @@ const AppSidebar = () => {
       )}
 
       <nav className="flex-1 py-4 px-2 space-y-1">
-        {navItems.map((item) => {
+        {allItems.map((item) => {
           const isActive =
             item.to === '/'
               ? location.pathname === '/'
@@ -79,20 +91,27 @@ const AppSidebar = () => {
         <div className="p-4 border-t border-sidebar-border">
           <div className="flex items-center gap-2">
             <div className="h-7 w-7 rounded-full bg-sidebar-accent flex items-center justify-center text-xs font-medium text-sidebar-accent-foreground shrink-0">
-              MS
+              {initials}
             </div>
-            <div>
-              <p className="text-xs font-medium text-sidebar-accent-foreground">Maria S.</p>
-              <p className="text-[10px] text-sidebar-muted">Sales</p>
+            <div className="flex-1 min-w-0">
+              <p className="text-xs font-medium text-sidebar-accent-foreground truncate">
+                {profile?.full_name || profile?.email || 'Utilizador'}
+              </p>
             </div>
+            <button onClick={signOut} title="Sair" className="p-1 hover:bg-sidebar-accent rounded">
+              <LogOut className="h-3.5 w-3.5 text-sidebar-muted" />
+            </button>
           </div>
         </div>
       )}
       {collapsed && (
-        <div className="p-2 border-t border-sidebar-border flex justify-center">
+        <div className="p-2 border-t border-sidebar-border flex flex-col items-center gap-2">
           <div className="h-7 w-7 rounded-full bg-sidebar-accent flex items-center justify-center text-xs font-medium text-sidebar-accent-foreground">
-            MS
+            {initials}
           </div>
+          <button onClick={signOut} title="Sair" className="p-1 hover:bg-sidebar-accent rounded">
+            <LogOut className="h-3.5 w-3.5 text-sidebar-muted" />
+          </button>
         </div>
       )}
     </aside>
