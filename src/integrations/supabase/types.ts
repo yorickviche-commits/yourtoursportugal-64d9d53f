@@ -167,6 +167,7 @@ export type Database = {
       }
       partner_services: {
         Row: {
+          booking_conditions: string | null
           cancellation_policy: string | null
           category: string
           commission_percent: number | null
@@ -181,6 +182,7 @@ export type Database = {
           partner_id: string
           payment_conditions: string | null
           price: number | null
+          price_child: number | null
           price_unit: string | null
           refund_policy: string | null
           status: string
@@ -189,6 +191,7 @@ export type Database = {
           validity_start: string | null
         }
         Insert: {
+          booking_conditions?: string | null
           cancellation_policy?: string | null
           category?: string
           commission_percent?: number | null
@@ -203,6 +206,7 @@ export type Database = {
           partner_id: string
           payment_conditions?: string | null
           price?: number | null
+          price_child?: number | null
           price_unit?: string | null
           refund_policy?: string | null
           status?: string
@@ -211,6 +215,7 @@ export type Database = {
           validity_start?: string | null
         }
         Update: {
+          booking_conditions?: string | null
           cancellation_policy?: string | null
           category?: string
           commission_percent?: number | null
@@ -225,6 +230,7 @@ export type Database = {
           partner_id?: string
           payment_conditions?: string | null
           price?: number | null
+          price_child?: number | null
           price_unit?: string | null
           refund_policy?: string | null
           status?: string
@@ -520,6 +526,7 @@ export type Database = {
       }
       supplier_services: {
         Row: {
+          booking_conditions: string | null
           cancellation_policy: string | null
           category: string
           created_at: string
@@ -532,6 +539,7 @@ export type Database = {
           notes: string | null
           payment_conditions: string | null
           price: number | null
+          price_child: number | null
           price_unit: string | null
           refund_policy: string | null
           status: string
@@ -541,6 +549,7 @@ export type Database = {
           validity_start: string | null
         }
         Insert: {
+          booking_conditions?: string | null
           cancellation_policy?: string | null
           category?: string
           created_at?: string
@@ -553,6 +562,7 @@ export type Database = {
           notes?: string | null
           payment_conditions?: string | null
           price?: number | null
+          price_child?: number | null
           price_unit?: string | null
           refund_policy?: string | null
           status?: string
@@ -562,6 +572,7 @@ export type Database = {
           validity_start?: string | null
         }
         Update: {
+          booking_conditions?: string | null
           cancellation_policy?: string | null
           category?: string
           created_at?: string
@@ -574,6 +585,7 @@ export type Database = {
           notes?: string | null
           payment_conditions?: string | null
           price?: number | null
+          price_child?: number | null
           price_unit?: string | null
           refund_policy?: string | null
           status?: string
