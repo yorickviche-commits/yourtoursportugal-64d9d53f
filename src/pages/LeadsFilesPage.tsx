@@ -219,7 +219,7 @@ const LeadsFilesPage = () => {
                   {filteredLeads.map(lead => (
                     <tr key={lead.id} onClick={() => navigate(`/leads/${lead.id}`)}
                       className="border-b border-border last:border-0 hover:bg-muted/30 transition-colors cursor-pointer">
-                      <td className="px-4 py-3 text-xs text-muted-foreground">{lead.id.replace('L-', '')}</td>
+                      <td className="px-4 py-3 text-xs text-muted-foreground">{lead.id}</td>
                       <td className="px-4 py-3">
                         <p className="text-xs font-medium text-[hsl(var(--info))] hover:underline">{lead.clientName}</p>
                       </td>

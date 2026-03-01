@@ -300,7 +300,7 @@ const LeadDetailPage = () => {
           <div className="flex items-start justify-between">
             <div>
               <h1 className="text-lg font-bold text-foreground">
-                Nº{lead.id.replace('L-', '')} - {lead.email} - {lead.destination} - adt:{lead.pax} - chl:0 - inf:0
+                {lead.id} - {lead.email} - {lead.destination} - adt:{lead.pax} - chl:0 - inf:0
               </h1>
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
@@ -377,7 +377,7 @@ const LeadDetailPage = () => {
               <div className="grid grid-cols-3 gap-4">
                 <div>
                   <label className="text-[10px] text-muted-foreground uppercase">Nº VI</label>
-                  <Input className="h-8 text-xs mt-1" defaultValue={lead.id.replace('L-', '')} readOnly />
+                  <Input className="h-8 text-xs mt-1" defaultValue={lead.id} readOnly />
                 </div>
                 <div>
                   <label className="text-[10px] text-muted-foreground uppercase">Criador da Simulação</label>
