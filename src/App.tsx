@@ -11,6 +11,7 @@ import LeadsFilesPage from "./pages/LeadsFilesPage";
 import LeadDetailPage from "./pages/LeadDetailPage";
 import CRMPage from "./pages/CRMPage";
 import PaymentsPage from "./pages/PaymentsPage";
+import TasksPage from "./pages/TasksPage";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -28,6 +29,7 @@ const App = () => (
           <Route path="/leads" element={<LeadsFilesPage />} />
           <Route path="/leads/:id" element={<LeadDetailPage />} />
           <Route path="/approvals" element={<ApprovalsPage />} />
+          <Route path="/tasks" element={<TasksPage />} />
           <Route path="/crm" element={<CRMPage />} />
           <Route path="/payments" element={<PaymentsPage />} />
           <Route path="*" element={<NotFound />} />
