@@ -12,6 +12,7 @@ import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { LeadStatus } from '@/types/leads';
 import EditableItinerary, { ItineraryDay } from '@/components/trip/EditableItinerary';
+import ItineraryEditor from '@/components/itinerary/ItineraryEditor';
 import EditableCostingTable, { CostingDayData, CostingItem } from '@/components/trip/EditableCostingTable';
 import {
   DropdownMenu,
@@ -590,49 +591,13 @@ const LeadDetailPage = () => {
 
         {/* Itinerário */}
         {activeTab === 'itinerario' && (
-          <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <h3 className="text-sm font-bold text-foreground">Itinerário Digital (Customer-Facing)</h3>
-              <Button size="sm" className="text-xs gap-1 bg-gradient-to-r from-[hsl(var(--info))] to-[hsl(var(--info)/0.7)] text-white"
-                onClick={() => generateAI('digital_itinerary')} disabled={aiLoading === 'digital_itinerary'}>
-                {aiLoading === 'digital_itinerary' ? <><Loader2 className="h-3 w-3 animate-spin" /> A gerar...</> : '🤖 Gerar Itinerário com AI'}
-              </Button>
-            </div>
-            {aiResults.digital_itinerary ? (
-              <div className="space-y-4">
-                {aiResults.digital_itinerary.title && (
-                  <div className="text-center py-4">
-                    <h2 className="text-lg font-bold text-foreground">{aiResults.digital_itinerary.title}</h2>
-                    {aiResults.digital_itinerary.subtitle && <p className="text-sm text-muted-foreground">{aiResults.digital_itinerary.subtitle}</p>}
-                  </div>
-                )}
-                {(aiResults.digital_itinerary.days || []).map((day: any, i: number) => (
-                  <div key={i} className="bg-card rounded-lg border p-5">
-                    <p className="text-xs font-bold text-[hsl(var(--info))] uppercase">Dia {day.day}</p>
-                    <p className="text-base font-semibold text-foreground mt-1">{day.title}</p>
-                    <p className="text-sm text-muted-foreground mt-2 leading-relaxed">{day.narrative}</p>
-                    {day.highlights?.length > 0 && (
-                      <div className="mt-3 flex flex-wrap gap-1.5">
-                        {day.highlights.map((h: string, j: number) => (
-                          <span key={j} className="text-[10px] bg-[hsl(var(--info)/0.1)] text-[hsl(var(--info))] px-2 py-0.5 rounded-full">✨ {h}</span>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                ))}
-                {aiResults.digital_itinerary.raw && (
-                  <div className="bg-card rounded-lg border p-4">
-                    <pre className="text-xs text-foreground whitespace-pre-wrap">{aiResults.digital_itinerary.raw}</pre>
-                  </div>
-                )}
-              </div>
-            ) : (
-              <div className="bg-card rounded-lg border p-6 text-center space-y-2">
-                <p className="text-sm text-muted-foreground">Itinerário digital customer-facing com imagens, gerado pelo Claude AI</p>
-                <p className="text-xs text-muted-foreground">Versão comercial, inspiracional e visual para envio ao cliente.</p>
-              </div>
-            )}
-          </div>
+          <ItineraryEditor
+            leadId={lead.id}
+            clientName={lead.clientName}
+            destination={lead.destination}
+            travelDates={lead.travelDates}
+            travelPlannerDays={itineraryDays.length > 0 ? itineraryDays : undefined}
+          />
         )}
 
         {/* Operações */}

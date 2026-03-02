@@ -14,3 +14,9 @@ verify_jwt = false
 
 [functions.generate-email]
 verify_jwt = false
+
+[functions.search-destination-images]
+verify_jwt = false
+
+[functions.extract-supplier-data]
+verify_jwt = false

@@ -31,6 +31,7 @@ import AdminKPIPage from "./pages/AdminKPIPage";
 import AdminSupplierDetailPage from "./pages/AdminSupplierDetailPage";
 import PartnersPage from "./pages/PartnersPage";
 import PartnerDetailPage from "./pages/PartnerDetailPage";
+import ItineraryPreviewPage from "./pages/ItineraryPreviewPage";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -49,6 +50,7 @@ const App = () => (
             <Route path="/signup" element={<SignupPage />} />
             <Route path="/forgot-password" element={<ForgotPasswordPage />} />
             <Route path="/reset-password" element={<ResetPasswordPage />} />
+            <Route path="/preview/:id" element={<ItineraryPreviewPage />} />
 
             {/* Protected routes */}
             <Route path="/" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />

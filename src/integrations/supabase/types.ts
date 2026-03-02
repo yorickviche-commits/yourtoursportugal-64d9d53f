@@ -83,6 +83,107 @@ export type Database = {
         }
         Relationships: []
       }
+      itineraries: {
+        Row: {
+          client_name: string | null
+          cover_image_url: string | null
+          created_at: string
+          created_by: string | null
+          id: string
+          lead_id: string
+          status: string
+          subtitle: string | null
+          title: string
+          travel_dates: string | null
+          updated_at: string
+        }
+        Insert: {
+          client_name?: string | null
+          cover_image_url?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          lead_id: string
+          status?: string
+          subtitle?: string | null
+          title?: string
+          travel_dates?: string | null
+          updated_at?: string
+        }
+        Update: {
+          client_name?: string | null
+          cover_image_url?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          lead_id?: string
+          status?: string
+          subtitle?: string | null
+          title?: string
+          travel_dates?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      itinerary_days: {
+        Row: {
+          created_at: string
+          day_number: number
+          description: string | null
+          highlights: string[] | null
+          id: string
+          images: Json | null
+          inclusions: string[] | null
+          itinerary_id: string
+          latitude: number | null
+          location_name: string | null
+          longitude: number | null
+          narrative: string | null
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          day_number: number
+          description?: string | null
+          highlights?: string[] | null
+          id?: string
+          images?: Json | null
+          inclusions?: string[] | null
+          itinerary_id: string
+          latitude?: number | null
+          location_name?: string | null
+          longitude?: number | null
+          narrative?: string | null
+          title?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          day_number?: number
+          description?: string | null
+          highlights?: string[] | null
+          id?: string
+          images?: Json | null
+          inclusions?: string[] | null
+          itinerary_id?: string
+          latitude?: number | null
+          location_name?: string | null
+          longitude?: number | null
+          narrative?: string | null
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "itinerary_days_itinerary_id_fkey"
+            columns: ["itinerary_id"]
+            isOneToOne: false
+            referencedRelation: "itineraries"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       partner_files: {
         Row: {
           created_at: string
