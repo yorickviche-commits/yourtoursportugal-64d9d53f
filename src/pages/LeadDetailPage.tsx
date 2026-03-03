@@ -1,6 +1,6 @@
-import { useState } from 'react';
-import { useParams, Link } from 'react-router-dom';
-import { ArrowLeft, Save, Trash2, FileText, ClipboardList, Eye, FileIcon, Mail, Clock, Loader2, ChevronDown, Plus } from 'lucide-react';
+import { useState, useCallback } from 'react';
+import { useParams, Link, useNavigate } from 'react-router-dom';
+import { ArrowLeft, Save, Trash2, FileText, ClipboardList, Eye, FileIcon, Mail, Clock, Loader2, ChevronDown, Plus, Copy } from 'lucide-react';
 import AppLayout from '@/components/AppLayout';
 import { useLeads } from '@/hooks/useLeads';
 import { Input } from '@/components/ui/input';
@@ -32,8 +32,6 @@ const DETAIL_TABS: { key: DetailTab; label: string }[] = [
   { key: 'operacoes', label: 'Operações' },
 ];
 
-const RIGHT_TABS = ['Email', 'Tasks', 'Notas'];
-
 const CATEGORIAS = ['Premium & Boutique', 'Standard', 'Luxury', 'Budget', 'Adventure'];
 const DESTINOS = ['Porto & Douro Valley', 'Lisbon & Sintra', 'Algarve', 'Azores', 'Madeira', 'Minho', 'Alentejo', 'Silver Coast'];
 const IDIOMAS = ['EN', 'PT', 'FR', 'ES', 'DE', 'IT', 'NL'];
@@ -42,18 +40,14 @@ const ORIGENS = ['website', 'AI Simulation', 'referral', 'partner', 'social_medi
 // Mock operations data per day
 const MOCK_OPS_DAYS = [
   {
-    day: 1,
-    date: '15 de maio',
-    title: 'chegada em Lisboa e transfer do grupo para o hotel (só ida)',
+    day: 1, date: '15 de maio', title: 'chegada em Lisboa e transfer do grupo para o hotel (só ida)',
     weekday: 'Friday, 15/May/2026',
     items: [
       { id: 'op1', activity: 'Transporte para todo o programa', startTime: '', endTime: '', supplier: 'Cola Limousine', pax: 0, netTotal: 3590, paid: 0, reservation: '-', payment: '-', invoice: '-' },
     ],
   },
   {
-    day: 2,
-    date: '16 de maio',
-    title: 'city tour de dia inteiro com guia pela cidade de Lisboa',
+    day: 2, date: '16 de maio', title: 'city tour de dia inteiro com guia pela cidade de Lisboa',
     weekday: 'Saturday, 16/May/2026',
     items: [
       { id: 'op2', activity: 'Guia local FD', startTime: '', endTime: '', supplier: '', pax: 0, netTotal: 200, paid: 0, reservation: '-', payment: '-', invoice: '-' },
@@ -61,9 +55,7 @@ const MOCK_OPS_DAYS = [
     ],
   },
   {
-    day: 3,
-    date: '17 de maio',
-    title: 'tour visitando Sintra, Cascais e Estoril',
+    day: 3, date: '17 de maio', title: 'tour visitando Sintra, Cascais e Estoril',
     weekday: 'Sunday, 17/May/2026',
     items: [
       { id: 'op4', activity: 'Entrada Palácio Nacional de Pena', startTime: '', endTime: '', supplier: 'Parques de Sintra', pax: 10, netTotal: 200, paid: 0, reservation: '-', payment: '-', invoice: '-' },
@@ -74,22 +66,9 @@ const MOCK_OPS_DAYS = [
   },
 ];
 
-const PAYMENT_STATUSES = [
-  { label: 'CONTA MENSAL', color: 'text-[hsl(var(--info))]' },
-  { label: 'PAGO PELO BACKOFFICE', color: 'text-[hsl(var(--info))]' },
-  { label: 'PAGO PELO GUIA', color: 'text-[hsl(var(--info))]' },
-  { label: 'PAGO PARCIALMENTE', color: 'text-[hsl(var(--warning))]' },
-  { label: 'A MARCAR PELO GUIA', color: 'text-[hsl(var(--warning))]' },
-  { label: 'A PAGAR PELO BACKOFFICE', color: 'text-[hsl(var(--warning))]' },
-  { label: 'NÃO PAGO', color: 'text-[hsl(var(--urgent))]' },
-];
-
 const OperacoesTab = ({ activeVersion }: { activeVersion: number }) => {
   const [checkedItems, setCheckedItems] = useState<Record<string, boolean>>({});
-
-  const toggleCheck = (id: string) => {
-    setCheckedItems(prev => ({ ...prev, [id]: !prev[id] }));
-  };
+  const toggleCheck = (id: string) => setCheckedItems(prev => ({ ...prev, [id]: !prev[id] }));
 
   return (
     <div className="space-y-6">
@@ -97,25 +76,17 @@ const OperacoesTab = ({ activeVersion }: { activeVersion: number }) => {
         <h3 className="text-sm font-bold text-foreground">Operações</h3>
         <div className="flex items-center gap-2">
           <span className="text-xs text-muted-foreground">Baseado na versão aceite (V{activeVersion})</span>
-          <Button variant="outline" size="sm" className="text-xs gap-1">
-            <ClipboardList className="h-3 w-3" /> Briefing FSEs
-          </Button>
-          <Button variant="outline" size="sm" className="text-xs gap-1">
-            <FileText className="h-3 w-3" /> Briefing Cliente
-          </Button>
+          <Button variant="outline" size="sm" className="text-xs gap-1"><ClipboardList className="h-3 w-3" /> Briefing FSEs</Button>
+          <Button variant="outline" size="sm" className="text-xs gap-1"><FileText className="h-3 w-3" /> Briefing Cliente</Button>
         </div>
       </div>
-
       {MOCK_OPS_DAYS.map(day => (
         <div key={day.day} className="bg-card rounded-lg border overflow-hidden">
-          {/* Day header */}
           <div className="px-4 py-3 border-b border-border">
             <p className="text-xs font-bold text-[hsl(var(--info))]">Dia {day.day}.</p>
             <p className="text-sm font-bold text-[hsl(var(--info))]">{day.date} – {day.title}</p>
             <p className="text-[10px] text-muted-foreground">{day.weekday}</p>
           </div>
-
-          {/* Table header */}
           <div className="overflow-x-auto">
             <table className="w-full text-xs">
               <thead>
@@ -137,12 +108,7 @@ const OperacoesTab = ({ activeVersion }: { activeVersion: number }) => {
                 {day.items.map(item => (
                   <tr key={item.id} className="border-t border-border hover:bg-muted/20">
                     <td className="px-2 py-3 text-center">
-                      <input
-                        type="checkbox"
-                        checked={!!checkedItems[item.id]}
-                        onChange={() => toggleCheck(item.id)}
-                        className="h-3.5 w-3.5 rounded border-border"
-                      />
+                      <input type="checkbox" checked={!!checkedItems[item.id]} onChange={() => toggleCheck(item.id)} className="h-3.5 w-3.5 rounded border-border" />
                     </td>
                     <td className="px-3 py-3 text-foreground">{item.activity}</td>
                     <td className="px-3 py-3">
@@ -154,17 +120,12 @@ const OperacoesTab = ({ activeVersion }: { activeVersion: number }) => {
                     <td className="px-3 py-3 text-[hsl(var(--info))]">{item.supplier || <span className="text-muted-foreground">null</span>}</td>
                     <td className="px-3 py-3 text-center font-medium text-[hsl(var(--urgent))]">{item.pax}</td>
                     <td className="px-3 py-3 text-right font-medium">{item.netTotal} €</td>
-                    <td className="px-3 py-3 text-center">
-                      <Input className="h-6 text-[10px] w-16 mx-auto" defaultValue={item.paid} />
-                    </td>
+                    <td className="px-3 py-3 text-center"><Input className="h-6 text-[10px] w-16 mx-auto" defaultValue={item.paid} /></td>
                     <td className="px-3 py-3 text-center text-muted-foreground">{item.reservation}</td>
                     <td className="px-3 py-3 text-center text-muted-foreground">{item.payment}</td>
-                    <td className="px-3 py-3 text-center">
-                      <Eye className="h-3.5 w-3.5 text-[hsl(var(--info))] mx-auto cursor-pointer" />
-                    </td>
+                    <td className="px-3 py-3 text-center"><Eye className="h-3.5 w-3.5 text-[hsl(var(--info))] mx-auto cursor-pointer" /></td>
                     <td className="px-3 py-3 text-center">
                       <div className="flex items-center justify-center gap-1">
-                        <FileIcon className="h-3.5 w-3.5 text-muted-foreground cursor-pointer hover:text-foreground" />
                         <FileIcon className="h-3.5 w-3.5 text-muted-foreground cursor-pointer hover:text-foreground" />
                         <Mail className="h-3.5 w-3.5 text-muted-foreground cursor-pointer hover:text-foreground" />
                       </div>
@@ -192,10 +153,10 @@ const LEAD_STATUSES: { value: LeadStatus; label: string; color: string }[] = [
 
 const LeadDetailPage = () => {
   const { id } = useParams<{ id: string }>();
-  const { leads } = useLeads();
+  const navigate = useNavigate();
+  const { leads, updateLead, addLead, generateId, removeLead } = useLeads();
   const lead = leads.find(l => l.id === id);
   const [activeTab, setActiveTab] = useState<DetailTab>('dados_gerais');
-  const [leadStatus, setLeadStatus] = useState<LeadStatus>(lead?.status || 'new');
   const [aiLoading, setAiLoading] = useState<string | null>(null);
   const [aiResults, setAiResults] = useState<Record<string, any>>({});
   const [itineraryDays, setItineraryDays] = useState<ItineraryDay[]>([]);
@@ -203,13 +164,91 @@ const LeadDetailPage = () => {
   const [finalPrice, setFinalPrice] = useState(0);
   const { toast } = useToast();
 
-  // Tag select states
+  // Editable form state - initialized from lead
+  const [formState, setFormState] = useState(() => ({
+    clientName: lead?.clientName || '',
+    email: lead?.email || '',
+    phone: lead?.phone || '',
+    travelDates: lead?.travelDates || '',
+    travelEndDate: lead?.travelEndDate || '',
+    numberOfDays: lead?.numberOfDays || 0,
+    datesType: lead?.datesType || 'estimated' as 'concrete' | 'estimated' | 'flexible',
+    pax: lead?.pax || 2,
+    paxChildren: lead?.paxChildren || 0,
+    paxInfants: lead?.paxInfants || 0,
+    budgetLevel: lead?.budgetLevel || '',
+    notes: lead?.notes || '',
+    salesOwner: lead?.salesOwner || '',
+  }));
+
+  const [leadStatus, setLeadStatus] = useState<LeadStatus>(lead?.status || 'new');
   const [categoria, setCategoria] = useState<string[]>(lead?.comfortLevel ? [lead.comfortLevel] : []);
-  const [destino, setDestino] = useState<string[]>(lead?.destination ? [lead.destination] : []);
+  const [destino, setDestino] = useState<string[]>(lead?.destination ? lead.destination.split(', ').filter(Boolean) : []);
   const [idioma, setIdioma] = useState<string[]>(['EN']);
   const [origem, setOrigem] = useState<string[]>(lead?.source === 'ai_simulation' ? ['AI Simulation'] : lead?.source ? [lead.source] : []);
   const [travelStyles, setTravelStyles] = useState<string[]>(lead?.travelStyle || []);
-  const [activeVersion, setActiveVersion] = useState(1);
+  const [activeVersion, setActiveVersion] = useState(lead?.activeVersion || 0);
+
+  const updateFormField = (key: string, value: any) => {
+    setFormState(prev => ({ ...prev, [key]: value }));
+  };
+
+  // Save / Update lead
+  const handleSave = useCallback(() => {
+    if (!lead) return;
+    updateLead(lead.id, {
+      clientName: formState.clientName,
+      email: formState.email,
+      phone: formState.phone || undefined,
+      travelDates: formState.travelDates,
+      travelEndDate: formState.travelEndDate || undefined,
+      numberOfDays: formState.numberOfDays || undefined,
+      datesType: formState.datesType,
+      pax: formState.pax,
+      paxChildren: formState.paxChildren,
+      paxInfants: formState.paxInfants,
+      budgetLevel: formState.budgetLevel,
+      notes: formState.notes || undefined,
+      salesOwner: formState.salesOwner,
+      status: leadStatus,
+      destination: destino.join(', ') || 'A definir',
+      comfortLevel: categoria[0] || undefined,
+      travelStyle: travelStyles,
+      source: (origem[0]?.toLowerCase().replace(/ /g, '_') || lead.source) as any,
+    });
+    toast({ title: 'Simulação guardada!', description: `${formState.clientName} atualizado com sucesso.` });
+  }, [lead, formState, leadStatus, destino, categoria, travelStyles, origem, updateLead, toast]);
+
+  // Duplicate - creates a new lead with a new ID and all the same data
+  const handleDuplicate = useCallback(() => {
+    if (!lead) return;
+    const newId = generateId();
+    addLead({
+      ...lead,
+      id: newId,
+      createdAt: new Date().toISOString(),
+      activeVersion: 0,
+    });
+    toast({ title: `Lead duplicada!`, description: `Nova simulação ${newId} criada.` });
+    navigate(`/leads/${newId}`);
+  }, [lead, generateId, addLead, navigate, toast]);
+
+  // New version - increments version within the same lead
+  const handleNewVersion = useCallback(() => {
+    if (!lead) return;
+    const newVersion = activeVersion + 1;
+    setActiveVersion(newVersion);
+    updateLead(lead.id, { activeVersion: newVersion });
+    toast({ title: `Versão V${newVersion} criada`, description: 'Dados da versão anterior copiados.' });
+  }, [lead, activeVersion, updateLead, toast]);
+
+  // Remove lead
+  const handleRemove = useCallback(() => {
+    if (!lead) return;
+    removeLead(lead.id);
+    toast({ title: 'Simulação removida' });
+    navigate('/leads');
+  }, [lead, removeLead, navigate, toast]);
 
   const generateAI = async (type: 'travel_planner' | 'budget' | 'digital_itinerary') => {
     if (!lead) return;
@@ -218,23 +257,23 @@ const LeadDetailPage = () => {
       const { data, error } = await supabase.functions.invoke('generate-itinerary', {
         body: {
           leadData: {
-            clientName: lead.clientName,
-            destination: lead.destination,
-            travelDates: lead.travelDates,
-            pax: lead.pax,
-            travelStyles: lead.travelStyle || [],
-            comfortLevel: lead.comfortLevel || '',
-            budgetLevel: lead.budgetLevel,
+            clientName: formState.clientName,
+            destination: destino.join(', '),
+            travelDates: formState.travelDates + (formState.travelEndDate ? ` - ${formState.travelEndDate}` : ''),
+            pax: formState.pax,
+            travelStyles: travelStyles,
+            comfortLevel: categoria[0] || '',
+            budgetLevel: formState.budgetLevel,
             magicQuestion: lead.magicQuestion,
-            notes: lead.notes,
+            notes: formState.notes,
+            numberOfDays: formState.numberOfDays || undefined,
           },
           type,
         },
       });
       if (error) throw error;
       setAiResults(prev => ({ ...prev, [type]: data.result }));
-      
-      // Populate editable state from AI results
+
       if (type === 'travel_planner' && data.result.days) {
         setItineraryDays(data.result.days.map((d: any, i: number) => ({
           day: d.day || i + 1,
@@ -256,20 +295,18 @@ const LeadDetailPage = () => {
               id: `cost-${i}-${j}`,
               activity: item.activity || '',
               supplier: item.supplier || '',
-              nrPeople: lead?.pax || 1,
+              nrPeople: formState.pax || 1,
               netCost,
               marginPercent,
               pvp: Math.round(pvp * 100) / 100,
-              totalPrice: Math.round(pvp * (lead?.pax || 1) * 100) / 100,
+              totalPrice: Math.round(pvp * formState.pax * 100) / 100,
               pricePerPerson: Math.round(pvp * 100) / 100,
             };
           }),
         })));
-        if (data.result.summary?.totalPVP) {
-          setFinalPrice(data.result.summary.totalPVP);
-        }
+        if (data.result.summary?.totalPVP) setFinalPrice(data.result.summary.totalPVP);
       }
-      
+
       toast({ title: 'AI gerou com sucesso', description: `Modelo usado: ${data.modelUsed}` });
     } catch (e: any) {
       console.error('AI generation error:', e);
@@ -303,7 +340,7 @@ const LeadDetailPage = () => {
           <div className="flex items-start justify-between">
             <div>
               <h1 className="text-lg font-bold text-foreground">
-                {lead.id} - {lead.email} - {lead.destination} - adt:{lead.pax} - chl:0 - inf:0
+                {lead.id} - {formState.email} - {destino.join(', ') || lead.destination} - adt:{formState.pax} - chl:{formState.paxChildren} - inf:{formState.paxInfants}
               </h1>
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
@@ -324,7 +361,7 @@ const LeadDetailPage = () => {
             <div className="flex items-center gap-2">
               <Button variant="outline" size="sm" className="text-xs">Pagamento</Button>
               <div className="bg-destructive text-destructive-foreground text-xs font-bold px-3 py-1.5 rounded">
-                NOT PAID 0€ - {lead.budgetLevel}
+                NOT PAID 0€ - {formState.budgetLevel}
               </div>
             </div>
           </div>
@@ -347,18 +384,18 @@ const LeadDetailPage = () => {
           </div>
           <div className="flex items-center gap-3">
             <EmailComposerDialog lead={{
-              clientName: lead.clientName,
-              email: lead.email,
-              phone: lead.phone,
-              destination: lead.destination,
-              travelDates: lead.travelDates,
-              pax: lead.pax,
+              clientName: formState.clientName,
+              email: formState.email,
+              phone: formState.phone,
+              destination: destino.join(', '),
+              travelDates: formState.travelDates,
+              pax: formState.pax,
               status: leadStatus,
-              budgetLevel: lead.budgetLevel,
-              travelStyle: lead.travelStyle,
-              comfortLevel: lead.comfortLevel,
+              budgetLevel: formState.budgetLevel,
+              travelStyle: travelStyles,
+              comfortLevel: categoria[0],
               magicQuestion: lead.magicQuestion,
-              notes: lead.notes,
+              notes: formState.notes,
               leadId: lead.id,
             }}>
               <button className="text-xs text-[hsl(var(--info))] hover:text-foreground transition-colors font-medium flex items-center gap-1">
@@ -366,9 +403,7 @@ const LeadDetailPage = () => {
               </button>
             </EmailComposerDialog>
             {['Tasks', 'Notas'].map(tab => (
-              <button key={tab} className="text-xs text-muted-foreground hover:text-foreground transition-colors">
-                {tab}
-              </button>
+              <button key={tab} className="text-xs text-muted-foreground hover:text-foreground transition-colors">{tab}</button>
             ))}
           </div>
         </div>
@@ -379,7 +414,7 @@ const LeadDetailPage = () => {
             {/* Version selector */}
             <div className="flex items-center gap-3">
               <div className="flex items-center gap-1">
-                {[1, 2, 3].map(v => (
+                {Array.from({ length: activeVersion + 1 }, (_, i) => i).map(v => (
                   <button key={v} onClick={() => setActiveVersion(v)}
                     className={cn("px-2.5 py-1 text-xs rounded border transition-colors",
                       activeVersion === v ? "bg-[hsl(var(--info))] text-white border-[hsl(var(--info))]" : "border-border text-muted-foreground hover:text-foreground"
@@ -388,9 +423,13 @@ const LeadDetailPage = () => {
                   </button>
                 ))}
               </div>
-              <span className="text-xs text-muted-foreground">🔒 Versão · {activeVersion}</span>
-              <Button variant="outline" size="sm" className="text-xs">Duplicar</Button>
-              <Button variant="outline" size="sm" className="text-xs">Nova Versão</Button>
+              <span className="text-xs text-muted-foreground">🔒 Versão · V{activeVersion}</span>
+              <Button variant="outline" size="sm" className="text-xs gap-1" onClick={handleDuplicate}>
+                <Copy className="h-3 w-3" /> Duplicar
+              </Button>
+              <Button variant="outline" size="sm" className="text-xs gap-1" onClick={handleNewVersion}>
+                <Plus className="h-3 w-3" /> Nova Versão
+              </Button>
             </div>
 
             {/* Informação geral */}
@@ -403,7 +442,7 @@ const LeadDetailPage = () => {
                 </div>
                 <div>
                   <label className="text-[10px] text-muted-foreground uppercase">Criador da Simulação</label>
-                  <Input className="h-8 text-xs mt-1" defaultValue={lead.salesOwner} />
+                  <Input className="h-8 text-xs mt-1" value={formState.salesOwner} onChange={e => updateFormField('salesOwner', e.target.value)} />
                 </div>
                 <div>
                   <label className="text-[10px] text-muted-foreground uppercase">Data</label>
@@ -418,61 +457,87 @@ const LeadDetailPage = () => {
               <div className="grid grid-cols-3 gap-4">
                 <div>
                   <label className="text-[10px] text-muted-foreground uppercase">Nome</label>
-                  <Input className="h-8 text-xs mt-1" defaultValue={lead.clientName} />
+                  <Input className="h-8 text-xs mt-1" value={formState.clientName} onChange={e => updateFormField('clientName', e.target.value)} />
                 </div>
                 <div>
                   <label className="text-[10px] text-muted-foreground uppercase">E-mail</label>
-                  <Input className="h-8 text-xs mt-1" defaultValue={lead.email} />
+                  <Input className="h-8 text-xs mt-1" type="email" value={formState.email} onChange={e => updateFormField('email', e.target.value)} />
                 </div>
                 <div>
                   <label className="text-[10px] text-muted-foreground uppercase">Telefone</label>
-                  <Input className="h-8 text-xs mt-1" defaultValue={lead.phone || ''} />
+                  <Input className="h-8 text-xs mt-1" value={formState.phone} onChange={e => updateFormField('phone', e.target.value)} />
                 </div>
               </div>
             </div>
 
-            {/* Dados da viagem - with tag selects */}
+            {/* Dados da viagem */}
             <div>
               <h3 className="text-xs font-semibold text-muted-foreground mb-3">Dados da viagem</h3>
               <div className="grid grid-cols-3 gap-4">
                 <TagSelect label="Categoria" value={categoria} options={CATEGORIAS} onChange={setCategoria} />
                 <TagSelect label="Destino" value={destino} options={DESTINOS} onChange={setDestino} multiple />
                 <div>
-                  <label className="text-[10px] text-muted-foreground uppercase">Data inicial</label>
-                  <Input className="h-8 text-xs mt-1" type="date" defaultValue={lead.travelDates} />
+                  <label className="text-[10px] text-muted-foreground uppercase">Tipo de Datas</label>
+                  <div className="flex gap-1 mt-1">
+                    {(['concrete', 'estimated', 'flexible'] as const).map(dt => (
+                      <button key={dt} onClick={() => updateFormField('datesType', dt)}
+                        className={cn("px-2.5 py-1.5 text-[10px] rounded border transition-colors",
+                          formState.datesType === dt
+                            ? dt === 'concrete' ? "bg-[hsl(var(--success))] text-white border-[hsl(var(--success))]"
+                            : dt === 'estimated' ? "bg-[hsl(var(--warning))] text-white border-[hsl(var(--warning))]"
+                            : "bg-[hsl(var(--info))] text-white border-[hsl(var(--info))]"
+                            : "border-border text-muted-foreground"
+                        )}>
+                        {dt === 'concrete' ? 'Concretas' : dt === 'estimated' ? 'Estimadas' : 'Flexível (dias)'}
+                      </button>
+                    ))}
+                  </div>
                 </div>
               </div>
+
+              {/* Date fields - conditional */}
               <div className="grid grid-cols-3 gap-4 mt-3">
+                {formState.datesType !== 'flexible' ? (
+                  <>
+                    <div>
+                      <label className="text-[10px] text-muted-foreground uppercase">Data Início</label>
+                      <Input className="h-8 text-xs mt-1" type="date" value={formState.travelDates} onChange={e => updateFormField('travelDates', e.target.value)} />
+                    </div>
+                    <div>
+                      <label className="text-[10px] text-muted-foreground uppercase">Data Fim</label>
+                      <Input className="h-8 text-xs mt-1" type="date" value={formState.travelEndDate} onChange={e => updateFormField('travelEndDate', e.target.value)} />
+                    </div>
+                  </>
+                ) : (
+                  <div>
+                    <label className="text-[10px] text-muted-foreground uppercase">Nº de Dias</label>
+                    <Input className="h-8 text-xs mt-1" type="number" min={1} value={formState.numberOfDays} onChange={e => updateFormField('numberOfDays', parseInt(e.target.value) || 0)} />
+                  </div>
+                )}
                 <div>
                   <label className="text-[10px] text-muted-foreground uppercase">Nº de adultos</label>
-                  <Input className="h-8 text-xs mt-1" type="number" defaultValue={lead.pax} />
+                  <Input className="h-8 text-xs mt-1" type="number" value={formState.pax} onChange={e => updateFormField('pax', parseInt(e.target.value) || 1)} />
                 </div>
+              </div>
+
+              <div className="grid grid-cols-3 gap-4 mt-3">
                 <div>
                   <label className="text-[10px] text-muted-foreground uppercase">Nº de jovens</label>
-                  <Input className="h-8 text-xs mt-1" type="number" defaultValue={0} />
+                  <Input className="h-8 text-xs mt-1" type="number" value={formState.paxChildren} onChange={e => updateFormField('paxChildren', parseInt(e.target.value) || 0)} />
                 </div>
                 <div>
                   <label className="text-[10px] text-muted-foreground uppercase">Nº de crianças</label>
-                  <Input className="h-8 text-xs mt-1" type="number" defaultValue={0} />
-                </div>
-              </div>
-              <div className="grid grid-cols-3 gap-4 mt-3">
-                <div>
-                  <label className="text-[10px] text-muted-foreground uppercase">Budget total da viagem (€)</label>
-                  <Input className="h-8 text-xs mt-1" defaultValue="" />
-                </div>
-                <div>
-                  <label className="text-[10px] text-muted-foreground uppercase">Total da Viagem (€)</label>
-                  <Input className="h-8 text-xs mt-1" defaultValue="" />
+                  <Input className="h-8 text-xs mt-1" type="number" value={formState.paxInfants} onChange={e => updateFormField('paxInfants', parseInt(e.target.value) || 0)} />
                 </div>
                 <TagSelect label="Idioma" value={idioma} options={IDIOMAS} onChange={setIdioma} />
               </div>
+
               <div className="grid grid-cols-3 gap-4 mt-3">
-                <TagSelect label="Origem do Itinerário" value={origem} options={ORIGENS} onChange={setOrigem} />
                 <div>
-                  <label className="text-[10px] text-muted-foreground uppercase">Valor a Receber Pelo Guia</label>
-                  <Input className="h-8 text-xs mt-1" defaultValue="" />
+                  <label className="text-[10px] text-muted-foreground uppercase">Budget total da viagem (€)</label>
+                  <Input className="h-8 text-xs mt-1" value={formState.budgetLevel} onChange={e => updateFormField('budgetLevel', e.target.value)} />
                 </div>
+                <TagSelect label="Origem do Itinerário" value={origem} options={ORIGENS} onChange={setOrigem} />
                 <div>
                   <label className="text-[10px] text-muted-foreground uppercase">Desconto</label>
                   <Input className="h-8 text-xs mt-1" defaultValue="" />
@@ -480,14 +545,10 @@ const LeadDetailPage = () => {
               </div>
             </div>
 
-            {/* Travel styles as tag select */}
-            <TagSelect
-              label="Estilos de viagem"
-              value={travelStyles}
+            {/* Travel styles */}
+            <TagSelect label="Estilos de viagem" value={travelStyles}
               options={['Food & Wine', 'Culture & History', 'Nature & Adventure', 'Beach & Relax', 'City Break', 'Road Trip', 'Wellness', 'Photography']}
-              onChange={setTravelStyles}
-              multiple
-            />
+              onChange={setTravelStyles} multiple />
 
             {/* Magic question */}
             {lead.magicQuestion && (
@@ -497,10 +558,10 @@ const LeadDetailPage = () => {
               </div>
             )}
 
-            {/* Preferências */}
+            {/* Notas */}
             <div>
               <label className="text-[10px] text-muted-foreground uppercase">Preferências / Notas</label>
-              <Textarea className="mt-1 text-xs" rows={3} defaultValue={lead.notes || ''} />
+              <Textarea className="mt-1 text-xs" rows={3} value={formState.notes} onChange={e => updateFormField('notes', e.target.value)} />
             </div>
 
             {/* Valor Net + Margem */}
@@ -526,11 +587,11 @@ const LeadDetailPage = () => {
 
             {/* Actions */}
             <div className="flex items-center justify-between border-t pt-4">
-              <Button variant="destructive" size="sm" className="text-xs gap-1">
+              <Button variant="destructive" size="sm" className="text-xs gap-1" onClick={handleRemove}>
                 <Trash2 className="h-3 w-3" /> Remover
               </Button>
-              <Button size="sm" className="text-xs gap-1">
-                <Save className="h-3 w-3" /> Atualizar
+              <Button size="sm" className="text-xs gap-1" onClick={handleSave}>
+                <Save className="h-3 w-3" /> Guardar
               </Button>
             </div>
           </div>
@@ -542,17 +603,21 @@ const LeadDetailPage = () => {
             <div className="flex items-center justify-between">
               <h3 className="text-sm font-bold text-foreground">Travel Planner</h3>
               <Button size="sm" className="text-xs gap-1 bg-gradient-to-r from-[hsl(var(--info))] to-[hsl(var(--info)/0.7)] text-white"
-                onClick={async () => {
-                  await generateAI('travel_planner');
-                }} disabled={aiLoading === 'travel_planner'}>
-                {aiLoading === 'travel_planner' ? <><Loader2 className="h-3 w-3 animate-spin" /> A gerar...</> : '🤖 Gerar com Claude AI'}
+                onClick={() => generateAI('travel_planner')} disabled={aiLoading === 'travel_planner'}>
+                {aiLoading === 'travel_planner' ? <><Loader2 className="h-3 w-3 animate-spin" /> A gerar...</> : '🤖 Gerar com AI'}
               </Button>
+            </div>
+            {/* Context summary */}
+            <div className="bg-muted/50 rounded-lg border p-3 text-xs space-y-1">
+              <p><span className="font-medium">Cliente:</span> {formState.clientName} · <span className="font-medium">Destino:</span> {destino.join(', ') || 'A definir'}</p>
+              <p><span className="font-medium">Datas:</span> {formState.datesType === 'flexible' ? `${formState.numberOfDays} dias` : `${formState.travelDates}${formState.travelEndDate ? ` → ${formState.travelEndDate}` : ''}`} · <span className="font-medium">Pax:</span> {formState.pax} adt + {formState.paxChildren} chl</p>
+              <p><span className="font-medium">Estilos:</span> {travelStyles.join(', ') || '—'} · <span className="font-medium">Categoria:</span> {categoria[0] || '—'}</p>
             </div>
             {itineraryDays.length > 0 ? (
               <EditableItinerary days={itineraryDays} onChange={setItineraryDays} />
             ) : (
               <div className="bg-card rounded-lg border p-6 text-center space-y-2">
-                <p className="text-sm text-muted-foreground">O Travel Planner será gerado automaticamente pelo Claude AI</p>
+                <p className="text-sm text-muted-foreground">O Travel Planner será gerado automaticamente pela AI</p>
                 <p className="text-xs text-muted-foreground">Com base nos dados do lead, discovery form e base de dados YT.</p>
                 <p className="text-xs text-muted-foreground mt-2">Ou adicione dias manualmente:</p>
                 <Button variant="outline" size="sm" className="text-xs gap-1 mt-2" onClick={() => setItineraryDays([{ day: 1, title: '', description: '', images: [] }])}>
@@ -569,9 +634,7 @@ const LeadDetailPage = () => {
             <div className="flex items-center justify-between">
               <h3 className="text-sm font-bold text-foreground">Orçamentação & Margens</h3>
               <Button size="sm" className="text-xs gap-1 bg-gradient-to-r from-[hsl(var(--info))] to-[hsl(var(--info)/0.7)] text-white"
-                onClick={async () => {
-                  await generateAI('budget');
-                }} disabled={aiLoading === 'budget'}>
+                onClick={() => generateAI('budget')} disabled={aiLoading === 'budget'}>
                 {aiLoading === 'budget' ? <><Loader2 className="h-3 w-3 animate-spin" /> A calcular...</> : '🤖 Calcular Budget com AI'}
               </Button>
             </div>
@@ -580,7 +643,7 @@ const LeadDetailPage = () => {
             ) : (
               <div className="bg-card rounded-lg border p-6 text-center space-y-2">
                 <p className="text-sm text-muted-foreground">Orçamentação detalhada por dia</p>
-                <p className="text-xs text-muted-foreground">Claude AI consulta a base de dados de custos e calcula margens automaticamente.</p>
+                <p className="text-xs text-muted-foreground">AI consulta a base de dados de custos e calcula margens automaticamente.</p>
                 <Button variant="outline" size="sm" className="text-xs gap-1 mt-2" onClick={() => setCostingDays([{ day: 1, title: 'Dia 1', items: [] }])}>
                   <Plus className="h-3 w-3" /> Começar Costing Manual
                 </Button>
@@ -593,9 +656,9 @@ const LeadDetailPage = () => {
         {activeTab === 'itinerario' && (
           <ItineraryEditor
             leadId={lead.id}
-            clientName={lead.clientName}
-            destination={lead.destination}
-            travelDates={lead.travelDates}
+            clientName={formState.clientName}
+            destination={destino.join(', ') || lead.destination}
+            travelDates={formState.travelDates}
             travelPlannerDays={itineraryDays.length > 0 ? itineraryDays : undefined}
           />
         )}

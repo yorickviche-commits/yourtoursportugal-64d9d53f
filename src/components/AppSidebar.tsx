@@ -1,28 +1,31 @@
 import { NavLink, useLocation } from 'react-router-dom';
-import { LayoutDashboard, Map, CheckCircle, Sun, PanelLeftClose, PanelLeft, Users, Globe, CreditCard, ClipboardList, Bot, Shield, LogOut, Settings, FileText, ShieldCheck, Package, Plug, BarChart3, Handshake, Briefcase } from 'lucide-react';
+import { LayoutDashboard, Map, CheckCircle, Sun, PanelLeftClose, PanelLeft, Users, Globe, CreditCard, ClipboardList, Bot, Shield, LogOut, Settings, FileText, ShieldCheck, Package, Plug, BarChart3, Handshake, Briefcase, FolderOpen } from 'lucide-react';
 import { useState } from 'react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/hooks/useAuth';
 
 const navItems = [
   { to: '/', icon: LayoutDashboard, label: 'Dashboard' },
-  { to: '/trips', icon: Map, label: 'Reservas Confirmadas' },
-  { to: '/leads', icon: Users, label: 'Leads & Files' },
+  { to: '/approvals', icon: CheckCircle, label: 'Processos & Aprovações' },
   { to: '/tasks', icon: ClipboardList, label: 'Tasks & Pipeline' },
-  { to: '/approvals', icon: CheckCircle, label: 'Processos / Aprovações' },
-  { to: '/crm', icon: Globe, label: 'CRM (NetHunt)' },
-  { to: '/payments', icon: CreditCard, label: 'Pagamentos (WeTravel)' },
+  { to: '/leads', icon: Users, label: 'Leads & Files' },
+  { to: '/trips', icon: Map, label: 'Reservas Confirmadas' },
   { to: '/agents', icon: Bot, label: 'AI Agents' },
+  { to: '/crm', icon: Globe, label: 'CRM (NetHunt)' },
+  { to: '/payments', icon: CreditCard, label: 'WeTravel' },
+];
+
+const comercialItems = [
+  { to: '/admin/suppliers', icon: Package, label: 'FSEs' },
+  { to: '/admin/partners', icon: Handshake, label: 'Partners' },
 ];
 
 const adminItems = [
   { to: '/admin/users', icon: Shield, label: 'Utilizadores' },
   { to: '/admin/permissions', icon: ShieldCheck, label: 'Permissões' },
-  { to: '/admin/settings', icon: Settings, label: 'Definições' },
-  { to: '/admin/suppliers', icon: Package, label: 'Fornecedores' },
-  { to: '/admin/partners', icon: Handshake, label: 'Partners' },
   { to: '/admin/integrations', icon: Plug, label: 'Integrações' },
   { to: '/admin/kpis', icon: BarChart3, label: 'KPIs' },
+  { to: '/admin/settings', icon: Settings, label: 'Definições' },
   { to: '/admin/logs', icon: FileText, label: 'Activity Logs' },
 ];
 
@@ -35,7 +38,30 @@ const AppSidebar = () => {
     ? profile.full_name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()
     : profile?.email?.slice(0, 2).toUpperCase() || '??';
 
-  const allItems = [...navItems, ...(isAdmin ? adminItems : [])];
+  const renderNavItem = (item: { to: string; icon: any; label: string }) => {
+    const isActive =
+      item.to === '/'
+        ? location.pathname === '/'
+        : location.pathname.startsWith(item.to);
+
+    return (
+      <NavLink
+        key={item.to}
+        to={item.to}
+        title={item.label}
+        className={cn(
+          "flex items-center gap-3 rounded-md text-sm transition-colors",
+          collapsed ? "justify-center px-2 py-2.5" : "px-3 py-2.5",
+          isActive
+            ? 'bg-sidebar-accent text-sidebar-accent-foreground font-medium'
+            : 'text-sidebar-foreground hover:bg-sidebar-accent/50 hover:text-sidebar-accent-foreground'
+        )}
+      >
+        <item.icon className="h-4 w-4 shrink-0" />
+        {!collapsed && item.label}
+      </NavLink>
+    );
+  };
 
   return (
     <aside
@@ -67,31 +93,26 @@ const AppSidebar = () => {
         </button>
       )}
 
-      <nav className="flex-1 py-4 px-2 space-y-1">
-        {allItems.map((item) => {
-          const isActive =
-            item.to === '/'
-              ? location.pathname === '/'
-              : location.pathname.startsWith(item.to);
+      <nav className="flex-1 py-4 px-2 space-y-1 overflow-y-auto">
+        {navItems.map(renderNavItem)}
 
-          return (
-            <NavLink
-              key={item.to}
-              to={item.to}
-              title={item.label}
-              className={cn(
-                "flex items-center gap-3 rounded-md text-sm transition-colors",
-                collapsed ? "justify-center px-2 py-2.5" : "px-3 py-2.5",
-                isActive
-                  ? 'bg-sidebar-accent text-sidebar-accent-foreground font-medium'
-                  : 'text-sidebar-foreground hover:bg-sidebar-accent/50 hover:text-sidebar-accent-foreground'
-              )}
-            >
-              <item.icon className="h-4 w-4 shrink-0" />
-              {!collapsed && item.label}
-            </NavLink>
-          );
-        })}
+        {/* Comercial section */}
+        {!collapsed && (
+          <p className="text-[10px] uppercase text-sidebar-muted font-semibold tracking-wider px-3 pt-4 pb-1">Comercial</p>
+        )}
+        {collapsed && <div className="border-t border-sidebar-border my-2" />}
+        {comercialItems.map(renderNavItem)}
+
+        {/* Admin section */}
+        {isAdmin && (
+          <>
+            {!collapsed && (
+              <p className="text-[10px] uppercase text-sidebar-muted font-semibold tracking-wider px-3 pt-4 pb-1">Admin</p>
+            )}
+            {collapsed && <div className="border-t border-sidebar-border my-2" />}
+            {adminItems.map(renderNavItem)}
+          </>
+        )}
       </nav>
 
       {!collapsed && (

@@ -193,14 +193,6 @@ const LeadsFilesPage = () => {
                   <Input placeholder="Pesquisar..." value={search} onChange={e => setSearch(e.target.value)}
                     className="pl-8 h-8 text-sm w-48" />
                 </div>
-                <Button onClick={() => setNewLeadOpen(true)} size="sm" variant="outline" className="gap-1">
-                  <Plus className="h-3.5 w-3.5" /> Nova Lead
-                </Button>
-                <Button onClick={() => setSimulationOpen(true)}
-                  className="bg-gradient-to-r from-[hsl(var(--info))] to-[hsl(var(--urgent)/0.8)] hover:opacity-90 text-white gap-2 text-xs">
-                  <Sparkles className="h-3.5 w-3.5" />
-                  New AI Simulation
-                </Button>
               </div>
             </div>
 

@@ -8,7 +8,12 @@ export interface Lead {
   phone?: string;
   destination: string;
   travelDates: string;
+  travelEndDate?: string;
+  numberOfDays?: number;
+  datesType?: 'concrete' | 'estimated' | 'flexible';
   pax: number;
+  paxChildren?: number;
+  paxInfants?: number;
   status: LeadStatus;
   source: LeadSource;
   budgetLevel: string;
@@ -19,6 +24,7 @@ export interface Lead {
   travelStyle?: string[];
   comfortLevel?: string;
   magicQuestion?: string;
+  activeVersion?: number;
 }
 
 export interface FileItem {
