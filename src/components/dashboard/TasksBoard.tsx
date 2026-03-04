@@ -8,7 +8,7 @@ import { useTasksQuery, useUpdateTask, type DbTask } from '@/hooks/useTasksQuery
 
 export type TaskCategory = 'reservas_fse' | 'briefing_fse' | 'briefing_guia' | 'briefing_cliente' | 'checklist' | 'geral';
 export type TaskPriority = 'urgent' | 'high' | 'medium' | 'low';
-export type TaskStatus = 'pending' | 'in_progress' | 'done';
+export type TaskStatus = 'pending' | 'in_progress' | 'done' | 'blocked';
 export type TaskTeam = 'sales' | 'operations';
 
 export interface OperationalTask {
