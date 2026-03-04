@@ -54,7 +54,7 @@ OUTPUT FORMAT - Return ONLY valid JSON with this exact structure:
         "lunch": {
           "label": "Almoço",
           "items": [
-            { "title": "Lunch at Cantinho do Avillez", "description": "Chef José Avillez's casual Porto restaurant. Try the octopus rice.", "location": "Rua Mouzinho da Silveira 166", "duration": "1h30" }
+            { "title": "Lunch at Cantinho do Avillez", "description": "Chef José Avillez's casual Porto restaurant.", "location": "Rua Mouzinho da Silveira 166", "duration": "1h30" }
           ]
         },
         "afternoon": {
@@ -66,7 +66,6 @@ OUTPUT FORMAT - Return ONLY valid JSON with this exact structure:
         "night": {
           "label": "Noite",
           "items": [
-            { "title": "Sunset drinks at Esplanada do Morro", "description": "Craft cocktails overlooking the Douro river at golden hour", "location": "Vila Nova de Gaia", "duration": "1h30" },
             { "title": "Dinner at DOP", "description": "Fine dining by chef Rui Paula with tasting menu", "location": "Palácio das Artes, Porto", "duration": "2h" }
           ]
         }
@@ -99,37 +98,25 @@ function calculateDays(leadData: ItineraryRequest['leadData']): number {
     }
   }
   if (leadData.numberOfDays && leadData.numberOfDays > 0) return leadData.numberOfDays;
-  // Try to infer from notes/destination context
   const notesLower = (leadData.notes || '').toLowerCase() + ' ' + (leadData.destination || '').toLowerCase();
   const daysMatch = notesLower.match(/(\d+)\s*d(?:ays|ias)/);
   if (daysMatch) return parseInt(daysMatch[1]);
-  return 5; // sensible default
+  return 5;
 }
 
-serve(async (req) => {
-  if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders });
-  }
+function buildPrompts(leadData: ItineraryRequest['leadData'], type: string, numDays: number) {
+  let systemPrompt: string;
+  if (type === 'travel_planner') systemPrompt = TRAVEL_PLANNER_SYSTEM;
+  else if (type === 'budget') systemPrompt = BUDGET_SYSTEM;
+  else systemPrompt = DIGITAL_SYSTEM;
 
-  try {
-    const { leadData, type } = (await req.json()) as ItineraryRequest;
-    const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
-    if (!LOVABLE_API_KEY) throw new Error('LOVABLE_API_KEY is not configured');
+  const dateInfo = leadData.datesType === 'flexible'
+    ? `${numDays} days trip (flexible dates)`
+    : leadData.travelEndDate
+      ? `${leadData.travelDates} to ${leadData.travelEndDate} (${numDays} days)`
+      : `Starting ${leadData.travelDates} for ${numDays} days`;
 
-    const numDays = calculateDays(leadData);
-    
-    let systemPrompt: string;
-    if (type === 'travel_planner') systemPrompt = TRAVEL_PLANNER_SYSTEM;
-    else if (type === 'budget') systemPrompt = BUDGET_SYSTEM;
-    else systemPrompt = DIGITAL_SYSTEM;
-
-    const dateInfo = leadData.datesType === 'flexible' 
-      ? `${numDays} days trip (flexible dates)` 
-      : leadData.travelEndDate 
-        ? `${leadData.travelDates} to ${leadData.travelEndDate} (${numDays} days)` 
-        : `Starting ${leadData.travelDates} for ${numDays} days`;
-
-    const userPrompt = `Client: ${leadData.clientName}
+  const userPrompt = `Client: ${leadData.clientName}
 Destination: ${leadData.destination}
 Travel Dates: ${dateInfo}
 EXACT NUMBER OF DAYS TO PLAN: ${numDays} days — you MUST create exactly ${numDays} days, no more, no less.
@@ -142,40 +129,99 @@ ${leadData.notes ? `Additional Notes: ${leadData.notes}` : ''}
 
 Create a ${type === 'travel_planner' ? `detailed ${numDays}-day travel plan` : type === 'budget' ? 'detailed budget breakdown' : 'customer-facing digital itinerary'} for this trip in Portugal. Remember: EXACTLY ${numDays} days.`;
 
-    const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+  return { systemPrompt, userPrompt };
+}
+
+async function tryLovableAI(systemPrompt: string, userPrompt: string): Promise<string> {
+  const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
+  if (!LOVABLE_API_KEY) throw new Error('LOVABLE_API_KEY not available');
+
+  const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${LOVABLE_API_KEY}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      model: 'google/gemini-2.5-flash',
+      messages: [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: userPrompt },
+      ],
+      max_tokens: 8192,
+    }),
+  });
+
+  if (!response.ok) {
+    const t = await response.text();
+    throw new Error(`Lovable AI error [${response.status}]: ${t}`);
+  }
+
+  const data = await response.json();
+  return data.choices?.[0]?.message?.content || '';
+}
+
+async function tryGeminiDirect(systemPrompt: string, userPrompt: string): Promise<string> {
+  const GEMINI_API_KEY = Deno.env.get('GEMINI_API_KEY');
+  if (!GEMINI_API_KEY) throw new Error('GEMINI_API_KEY not available');
+
+  const response = await fetch(
+    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`,
+    {
       method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${LOVABLE_API_KEY}`,
-        'Content-Type': 'application/json',
-      },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        model: 'google/gemini-2.5-flash',
-        messages: [
-          { role: 'system', content: systemPrompt },
-          { role: 'user', content: userPrompt },
+        contents: [
+          { role: 'user', parts: [{ text: `${systemPrompt}\n\n${userPrompt}` }] }
         ],
-        max_tokens: 8192,
+        generationConfig: {
+          maxOutputTokens: 8192,
+          temperature: 0.7,
+        },
       }),
-    });
-
-    if (!response.ok) {
-      if (response.status === 429) {
-        return new Response(JSON.stringify({ error: 'Rate limit exceeded. Please try again in a moment.' }), {
-          status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        });
-      }
-      if (response.status === 402) {
-        return new Response(JSON.stringify({ error: 'AI credits exhausted. Please add credits in Settings.' }), {
-          status: 402, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        });
-      }
-      const t = await response.text();
-      console.error('AI gateway error:', response.status, t);
-      throw new Error(`AI gateway error [${response.status}]`);
     }
+  );
 
-    const data = await response.json();
-    const resultText = data.choices?.[0]?.message?.content || '';
+  if (!response.ok) {
+    const t = await response.text();
+    throw new Error(`Gemini direct error [${response.status}]: ${t}`);
+  }
+
+  const data = await response.json();
+  return data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+}
+
+serve(async (req) => {
+  if (req.method === 'OPTIONS') {
+    return new Response(null, { headers: corsHeaders });
+  }
+
+  try {
+    const { leadData, type } = (await req.json()) as ItineraryRequest;
+    const numDays = calculateDays(leadData);
+    const { systemPrompt, userPrompt } = buildPrompts(leadData, type, numDays);
+
+    let resultText = '';
+    let modelUsed = '';
+
+    // Try Lovable AI first, then Gemini direct as fallback
+    try {
+      console.log('Trying Lovable AI gateway...');
+      resultText = await tryLovableAI(systemPrompt, userPrompt);
+      modelUsed = 'lovable-ai';
+      console.log('Lovable AI succeeded');
+    } catch (lovableErr) {
+      console.error('Lovable AI failed:', lovableErr);
+      console.log('Falling back to Gemini direct...');
+      try {
+        resultText = await tryGeminiDirect(systemPrompt, userPrompt);
+        modelUsed = 'gemini-direct';
+        console.log('Gemini direct succeeded');
+      } catch (geminiErr) {
+        console.error('Gemini direct also failed:', geminiErr);
+        throw new Error('All AI providers failed. Please try again.');
+      }
+    }
 
     let parsed;
     try {
@@ -185,7 +231,7 @@ Create a ${type === 'travel_planner' ? `detailed ${numDays}-day travel plan` : t
       parsed = { raw: resultText };
     }
 
-    return new Response(JSON.stringify({ result: parsed, modelUsed: 'lovable-ai' }), {
+    return new Response(JSON.stringify({ result: parsed, modelUsed }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   } catch (e) {
