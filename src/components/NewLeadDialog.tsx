@@ -10,7 +10,8 @@ import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { cn } from '@/lib/utils';
 import TagSelect from '@/components/TagSelect';
-import { useLeads } from '@/hooks/useLeads';
+import { useCreateLead } from '@/hooks/useLeadsQuery';
+import { logActivity } from '@/hooks/useActivityLog';
 
 const IDIOMAS = ['EN', 'PT', 'FR', 'ES', 'DE', 'IT', 'NL'];
 const DESTINOS = ['Porto & Douro Valley', 'Lisbon & Sintra', 'Algarve', 'Azores', 'Madeira', 'Minho', 'Alentejo', 'Silver Coast'];
@@ -32,17 +33,8 @@ interface FormData {
 }
 
 const emptyForm: FormData = {
-  clientName: '',
-  email: '',
-  phone: '',
-  travelDates: '',
-  datesType: 'estimated',
-  pax: 2,
-  language: ['EN'],
-  budget: '',
-  destination: [],
-  request: '',
-  preferences: '',
+  clientName: '', email: '', phone: '', travelDates: '', datesType: 'estimated',
+  pax: 2, language: ['EN'], budget: '', destination: [], request: '', preferences: '',
 };
 
 const NewLeadDialog = ({ open, onOpenChange }: { open: boolean; onOpenChange: (v: boolean) => void }) => {
@@ -52,7 +44,7 @@ const NewLeadDialog = ({ open, onOpenChange }: { open: boolean; onOpenChange: (v
   const [aiLoading, setAiLoading] = useState(false);
   const { toast } = useToast();
   const navigate = useNavigate();
-  const { addLead, generateId } = useLeads();
+  const createLead = useCreateLead();
 
   const updateField = <K extends keyof FormData>(key: K, value: FormData[K]) => {
     setForm(prev => ({ ...prev, [key]: value }));
@@ -65,63 +57,55 @@ const NewLeadDialog = ({ open, onOpenChange }: { open: boolean; onOpenChange: (v
     }
     setAiLoading(true);
     try {
-      const { data, error } = await supabase.functions.invoke('parse-lead-email', {
-        body: { emailText },
-      });
+      const { data, error } = await supabase.functions.invoke('parse-lead-email', { body: { emailText } });
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
-
       const e = data.extracted;
       setForm({
-        clientName: e.clientName || '',
-        email: e.email || '',
-        phone: e.phone || '',
-        travelDates: e.travelDates || '',
-        datesType: e.datesType || 'estimated',
-        pax: e.pax || 2,
-        language: e.language ? [e.language] : ['EN'],
-        budget: e.budget || '',
-        destination: e.destination ? [e.destination] : [],
-        request: e.request || '',
-        preferences: e.preferences || '',
+        clientName: e.clientName || '', email: e.email || '', phone: e.phone || '',
+        travelDates: e.travelDates || '', datesType: e.datesType || 'estimated',
+        pax: e.pax || 2, language: e.language ? [e.language] : ['EN'],
+        budget: e.budget || '', destination: e.destination ? [e.destination] : [],
+        request: e.request || '', preferences: e.preferences || '',
       });
       setMode('manual');
-      toast({ title: 'Dados extraídos com sucesso!', description: 'Revise e confirme os campos preenchidos.' });
+      toast({ title: 'Dados extraídos com sucesso!' });
     } catch (err: any) {
-      console.error('AI import error:', err);
       toast({ title: 'Erro na importação AI', description: err.message, variant: 'destructive' });
     } finally {
       setAiLoading(false);
     }
   };
 
-  const handleCreate = () => {
+  const handleCreate = async () => {
     if (!form.clientName.trim()) {
       toast({ title: 'Nome obrigatório', variant: 'destructive' });
       return;
     }
-    const newId = generateId();
-    addLead({
-      id: newId,
-      clientName: form.clientName,
-      email: form.email,
-      phone: form.phone || undefined,
-      destination: form.destination.join(', ') || 'A definir',
-      travelDates: form.travelDates || 'A definir',
-      pax: form.pax,
-      status: 'new',
-      source: 'direct',
-      budgetLevel: form.budget || '€€',
-      salesOwner: 'Yorick',
-      createdAt: new Date().toISOString(),
-      notes: [form.request, form.preferences].filter(Boolean).join('\n') || undefined,
-    });
-    toast({ title: `Lead ${newId} criada!`, description: `${form.clientName} registado com sucesso.` });
-    onOpenChange(false);
-    setForm({ ...emptyForm });
-    setEmailText('');
-    setMode('manual');
-    navigate(`/leads/${newId}`);
+    try {
+      const newLead = await createLead.mutateAsync({
+        client_name: form.clientName,
+        email: form.email,
+        phone: form.phone,
+        destination: form.destination.join(', ') || 'A definir',
+        travel_dates: form.travelDates || 'A definir',
+        pax: form.pax,
+        status: 'new',
+        source: 'direct',
+        budget_level: form.budget || '€€',
+        sales_owner: 'Yorick',
+        notes: [form.request, form.preferences].filter(Boolean).join('\n') || '',
+      });
+      await logActivity('lead_created', 'lead', newLead.id, { client_name: form.clientName });
+      toast({ title: `Lead ${newLead.lead_code} criada!`, description: `${form.clientName} registado com sucesso.` });
+      onOpenChange(false);
+      setForm({ ...emptyForm });
+      setEmailText('');
+      setMode('manual');
+      navigate(`/leads/${newLead.id}`);
+    } catch (err: any) {
+      toast({ title: 'Erro ao criar lead', description: err.message, variant: 'destructive' });
+    }
   };
 
   return (
@@ -134,42 +118,20 @@ const NewLeadDialog = ({ open, onOpenChange }: { open: boolean; onOpenChange: (v
           </DialogDescription>
         </DialogHeader>
 
-        {/* Mode toggle */}
         <div className="flex gap-1 p-1 bg-muted rounded-lg w-fit">
-          <button
-            onClick={() => setMode('manual')}
-            className={cn(
-              "px-4 py-1.5 text-xs font-medium rounded-md transition-colors",
-              mode === 'manual' ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
-            )}
-          >
-            <Plus className="h-3 w-3 inline mr-1" />
-            Manual
+          <button onClick={() => setMode('manual')} className={cn("px-4 py-1.5 text-xs font-medium rounded-md transition-colors", mode === 'manual' ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground")}>
+            <Plus className="h-3 w-3 inline mr-1" /> Manual
           </button>
-          <button
-            onClick={() => setMode('ai')}
-            className={cn(
-              "px-4 py-1.5 text-xs font-medium rounded-md transition-colors",
-              mode === 'ai' ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
-            )}
-          >
-            <Sparkles className="h-3 w-3 inline mr-1" />
-            AI Import
+          <button onClick={() => setMode('ai')} className={cn("px-4 py-1.5 text-xs font-medium rounded-md transition-colors", mode === 'ai' ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground")}>
+            <Sparkles className="h-3 w-3 inline mr-1" /> AI Import
           </button>
         </div>
 
-        {/* AI Import mode */}
         {mode === 'ai' && (
           <div className="space-y-3">
             <div>
               <Label className="text-xs text-muted-foreground">Cole aqui a conversa de email</Label>
-              <Textarea
-                value={emailText}
-                onChange={e => setEmailText(e.target.value)}
-                placeholder="Cole o conteúdo do email aqui... A AI vai extrair automaticamente nome, email, datas, destino, etc."
-                rows={10}
-                className="mt-1 text-xs font-mono"
-              />
+              <Textarea value={emailText} onChange={e => setEmailText(e.target.value)} placeholder="Cole o conteúdo do email aqui..." rows={10} className="mt-1 text-xs font-mono" />
             </div>
             <Button onClick={handleAIImport} disabled={aiLoading} className="w-full gap-2 bg-gradient-to-r from-[hsl(var(--info))] to-[hsl(var(--info)/0.7)] text-white">
               {aiLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
@@ -178,10 +140,8 @@ const NewLeadDialog = ({ open, onOpenChange }: { open: boolean; onOpenChange: (v
           </div>
         )}
 
-        {/* Manual form */}
         {mode === 'manual' && (
           <div className="space-y-4">
-            {/* Client info */}
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <Label className="text-[10px] text-muted-foreground uppercase">Nome *</Label>
@@ -202,8 +162,6 @@ const NewLeadDialog = ({ open, onOpenChange }: { open: boolean; onOpenChange: (v
                 <Input className="h-8 text-xs mt-1" type="number" min={1} value={form.pax} onChange={e => updateField('pax', parseInt(e.target.value) || 1)} />
               </div>
             </div>
-
-            {/* Travel dates */}
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <Label className="text-[10px] text-muted-foreground uppercase">Datas de Viagem</Label>
@@ -212,35 +170,19 @@ const NewLeadDialog = ({ open, onOpenChange }: { open: boolean; onOpenChange: (v
               <div>
                 <Label className="text-[10px] text-muted-foreground uppercase">Tipo de Datas</Label>
                 <div className="flex gap-2 mt-1">
-                  <button
-                    onClick={() => updateField('datesType', 'concrete')}
-                    className={cn("px-3 py-1.5 text-xs rounded border transition-colors", form.datesType === 'concrete' ? "bg-[hsl(var(--info))] text-white border-[hsl(var(--info))]" : "border-border text-muted-foreground")}
-                  >
-                    Concretas
-                  </button>
-                  <button
-                    onClick={() => updateField('datesType', 'estimated')}
-                    className={cn("px-3 py-1.5 text-xs rounded border transition-colors", form.datesType === 'estimated' ? "bg-[hsl(var(--warning))] text-white border-[hsl(var(--warning))]" : "border-border text-muted-foreground")}
-                  >
-                    Estimadas
-                  </button>
+                  <button onClick={() => updateField('datesType', 'concrete')} className={cn("px-3 py-1.5 text-xs rounded border transition-colors", form.datesType === 'concrete' ? "bg-[hsl(var(--info))] text-white border-[hsl(var(--info))]" : "border-border text-muted-foreground")}>Concretas</button>
+                  <button onClick={() => updateField('datesType', 'estimated')} className={cn("px-3 py-1.5 text-xs rounded border transition-colors", form.datesType === 'estimated' ? "bg-[hsl(var(--warning))] text-white border-[hsl(var(--warning))]" : "border-border text-muted-foreground")}>Estimadas</button>
                 </div>
               </div>
             </div>
-
-            {/* Destination & Language */}
             <div className="grid grid-cols-2 gap-3">
               <TagSelect label="Destino" value={form.destination} options={DESTINOS} onChange={v => updateField('destination', v)} multiple />
               <TagSelect label="Idioma" value={form.language} options={IDIOMAS} onChange={v => updateField('language', v)} />
             </div>
-
-            {/* Budget */}
             <div>
               <Label className="text-[10px] text-muted-foreground uppercase">Budget (se aplicável)</Label>
               <Input className="h-8 text-xs mt-1" value={form.budget} onChange={e => updateField('budget', e.target.value)} placeholder="Ex: 5000€, €€€, flexible..." />
             </div>
-
-            {/* Request & Preferences */}
             <div>
               <Label className="text-[10px] text-muted-foreground uppercase">Pedido / O que procura</Label>
               <Textarea className="mt-1 text-xs" rows={2} value={form.request} onChange={e => updateField('request', e.target.value)} placeholder="Descrição do pedido..." />
@@ -249,10 +191,8 @@ const NewLeadDialog = ({ open, onOpenChange }: { open: boolean; onOpenChange: (v
               <Label className="text-[10px] text-muted-foreground uppercase">Preferências Específicas</Label>
               <Textarea className="mt-1 text-xs" rows={2} value={form.preferences} onChange={e => updateField('preferences', e.target.value)} placeholder="Preferências, alergias, necessidades especiais..." />
             </div>
-
-            {/* Create button */}
-            <Button onClick={handleCreate} className="w-full gap-2">
-              <Plus className="h-4 w-4" />
+            <Button onClick={handleCreate} disabled={createLead.isPending} className="w-full gap-2">
+              {createLead.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
               Criar Lead
             </Button>
           </div>
@@ -262,13 +202,8 @@ const NewLeadDialog = ({ open, onOpenChange }: { open: boolean; onOpenChange: (v
   );
 };
 
-// Floating button component to render in AppLayout
 export const NewLeadFAB = ({ onClick }: { onClick: () => void }) => (
-  <button
-    onClick={onClick}
-    className="fixed bottom-6 right-6 z-40 h-12 px-5 bg-[hsl(var(--info))] hover:bg-[hsl(var(--info)/0.9)] text-white rounded-full shadow-lg flex items-center gap-2 transition-all hover:scale-105 active:scale-95"
-    title="Nova Lead"
-  >
+  <button onClick={onClick} className="fixed bottom-6 right-6 z-40 h-12 px-5 bg-[hsl(var(--info))] hover:bg-[hsl(var(--info)/0.9)] text-white rounded-full shadow-lg flex items-center gap-2 transition-all hover:scale-105 active:scale-95" title="Nova Lead">
     <Plus className="h-5 w-5" />
     <span className="text-sm font-medium hidden sm:inline">Nova Lead</span>
   </button>
