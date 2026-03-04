@@ -36,53 +36,60 @@ const DESTINOS = ['Porto & Douro Valley', 'Lisbon & Sintra', 'Algarve', 'Azores'
 const IDIOMAS = ['EN', 'PT', 'FR', 'ES', 'DE', 'IT', 'NL'];
 const ORIGENS = ['website', 'AI Simulation', 'referral', 'partner', 'social_media', 'direct'];
 
-const MOCK_OPS_DAYS = [
-  { day: 1, date: '15 de maio', title: 'chegada em Lisboa e transfer do grupo para o hotel (só ida)', weekday: 'Friday, 15/May/2026', items: [
-    { id: 'op1', activity: 'Transporte para todo o programa', startTime: '', endTime: '', supplier: 'Cola Limousine', pax: 0, netTotal: 3590, paid: 0, reservation: '-', payment: '-', invoice: '-' },
-  ]},
-];
+const OperacoesTab = ({ activeVersion, leadId }: { activeVersion: number; leadId: string }) => {
+  // Pull costing data from DB as operational view
+  const { data: costingDays = [] } = useQuery({
+    queryKey: ['lead_costing_data', leadId],
+    queryFn: async () => {
+      const { data, error } = await supabase.from('lead_costing_data').select('*').eq('lead_id', leadId).order('day_number');
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!leadId,
+  });
 
-const OperacoesTab = ({ activeVersion }: { activeVersion: number }) => {
-  const [checkedItems, setCheckedItems] = useState<Record<string, boolean>>({});
-  const toggleCheck = (id: string) => setCheckedItems(prev => ({ ...prev, [id]: !prev[id] }));
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h3 className="text-sm font-bold text-foreground">Operações</h3>
         <span className="text-xs text-muted-foreground">Baseado na versão aceite (V{activeVersion})</span>
       </div>
-      {MOCK_OPS_DAYS.map(day => (
-        <div key={day.day} className="bg-card rounded-lg border overflow-hidden">
-          <div className="px-4 py-3 border-b border-border">
-            <p className="text-xs font-bold text-[hsl(var(--info))]">Dia {day.day}.</p>
-            <p className="text-sm font-bold text-[hsl(var(--info))]">{day.date} – {day.title}</p>
-          </div>
-          <div className="overflow-x-auto">
-            <table className="w-full text-xs">
-              <thead>
-                <tr className="bg-muted/50 text-muted-foreground">
-                  <th className="w-8 px-2 py-2"></th>
-                  <th className="text-left px-3 py-2 font-medium">Atividade</th>
-                  <th className="text-left px-3 py-2 font-medium">Fornecedor</th>
-                  <th className="text-right px-3 py-2 font-medium">Valor NET</th>
-                </tr>
-              </thead>
-              <tbody>
-                {day.items.map(item => (
-                  <tr key={item.id} className="border-t border-border">
-                    <td className="px-2 py-3 text-center">
-                      <input type="checkbox" checked={!!checkedItems[item.id]} onChange={() => toggleCheck(item.id)} className="h-3.5 w-3.5" />
-                    </td>
-                    <td className="px-3 py-3">{item.activity}</td>
-                    <td className="px-3 py-3 text-[hsl(var(--info))]">{item.supplier}</td>
-                    <td className="px-3 py-3 text-right font-medium">{item.netTotal} €</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      ))}
+      {costingDays.length === 0 ? (
+        <p className="text-xs text-muted-foreground text-center py-8">Sem dados de custos aprovados. Gere custos no separador "Custos" primeiro.</p>
+      ) : (
+        costingDays.map(day => {
+          const items = Array.isArray(day.items) ? day.items as any[] : [];
+          return (
+            <div key={day.id} className="bg-card rounded-lg border overflow-hidden">
+              <div className="px-4 py-3 border-b border-border">
+                <p className="text-xs font-bold text-[hsl(var(--info))]">Dia {day.day_number}</p>
+                <p className="text-sm font-bold text-[hsl(var(--info))]">{day.title}</p>
+              </div>
+              <div className="overflow-x-auto">
+                <table className="w-full text-xs">
+                  <thead>
+                    <tr className="bg-muted/50 text-muted-foreground">
+                      <th className="text-left px-3 py-2 font-medium">Item</th>
+                      <th className="text-right px-3 py-2 font-medium">Custo</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {items.map((item: any, idx: number) => (
+                      <tr key={idx} className="border-t border-border">
+                        <td className="px-3 py-3">{item.description || item.activity || '—'}</td>
+                        <td className="px-3 py-3 text-right font-medium">{item.unitCost || item.netTotal || 0} €</td>
+                      </tr>
+                    ))}
+                    {items.length === 0 && (
+                      <tr><td colSpan={2} className="text-center py-4 text-muted-foreground">Sem itens</td></tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          );
+        })
+      )}
     </div>
   );
 };
@@ -597,7 +604,7 @@ const LeadDetailPage = () => {
         )}
 
         {/* Operações */}
-        {activeTab === 'operacoes' && <OperacoesTab activeVersion={activeVersion} />}
+        {activeTab === 'operacoes' && lead && <OperacoesTab activeVersion={activeVersion} leadId={lead.id} />}
       </div>
     </AppLayout>
   );

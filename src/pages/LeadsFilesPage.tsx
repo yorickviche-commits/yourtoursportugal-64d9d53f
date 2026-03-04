@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import AppLayout from '@/components/AppLayout';
-import { mockFiles } from '@/data/mockLeads';
+import { useDocumentsQuery } from '@/hooks/useDocumentsQuery';
 import { useLeadsQuery } from '@/hooks/useLeadsQuery';
 import { cn } from '@/lib/utils';
 import { Sparkles, Search, FileText, Image, Table2, File, ExternalLink, User, MapPin, Tag, Plus, Eye, Loader2 } from 'lucide-react';
@@ -61,11 +61,7 @@ const LeadsFilesPage = () => {
     return true;
   });
 
-  const filteredFiles = mockFiles.filter(f => {
-    if (search && !f.name.toLowerCase().includes(search.toLowerCase()) &&
-        !f.tags.some(t => t.toLowerCase().includes(search.toLowerCase()))) return false;
-    return true;
-  });
+  const filteredFiles: any[] = []; // Documents now managed per-entity via useDocumentsQuery
 
   const totalVolume = leads.reduce((sum, l) => {
     const budgetMap: Record<string, number> = { '€€': 3000, '€€€': 6000, '€€€€': 12000 };
@@ -88,7 +84,7 @@ const LeadsFilesPage = () => {
         <div className="flex items-center gap-1 border-b border-border">
           {([
             { key: 'leads' as Tab, label: 'Simulações', count: leads.length },
-            { key: 'files' as Tab, label: 'Ficheiros', count: mockFiles.length },
+            { key: 'files' as Tab, label: 'Ficheiros', count: filteredFiles.length },
           ]).map(tab => (
             <button key={tab.key} onClick={() => setActiveTab(tab.key)}
               className={cn(
