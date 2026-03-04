@@ -12,7 +12,7 @@ import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { LeadStatus } from '@/types/leads';
-import EditableItinerary, { ItineraryDay } from '@/components/trip/EditableItinerary';
+import TravelPlannerEditor, { PlannerDay, PlannerItem, PeriodKey, emptyPeriods, genId } from '@/components/trip/TravelPlannerEditor';
 import ItineraryEditor from '@/components/itinerary/ItineraryEditor';
 import EditableCostingTable, { CostingDayData, CostingItem } from '@/components/trip/EditableCostingTable';
 import {
@@ -114,7 +114,7 @@ const LeadDetailPage = () => {
   const [activeTab, setActiveTab] = useState<DetailTab>('dados_gerais');
   const [aiLoading, setAiLoading] = useState<string | null>(null);
   const [aiResults, setAiResults] = useState<Record<string, any>>({});
-  const [itineraryDays, setItineraryDays] = useState<ItineraryDay[]>([]);
+  const [plannerDays, setPlannerDays] = useState<PlannerDay[]>([]);
   const [costingDays, setCostingDays] = useState<CostingDayData[]>([]);
   const [finalPrice, setFinalPrice] = useState(0);
   const { toast } = useToast();
@@ -156,14 +156,36 @@ const LeadDetailPage = () => {
 
   // Hydrate planner from DB
   useEffect(() => {
-    if (savedPlannerDays && savedPlannerDays.length > 0 && itineraryDays.length === 0) {
-      setItineraryDays(savedPlannerDays.map((d: any) => ({
-        day: d.day_number,
-        title: d.title || '',
-        description: d.description || '',
-        images: Array.isArray(d.images) ? d.images : [],
-        activities: Array.isArray(d.activities) ? d.activities : [],
-      })));
+    if (savedPlannerDays && savedPlannerDays.length > 0 && plannerDays.length === 0) {
+      setPlannerDays(savedPlannerDays.map((d: any) => {
+        // If saved with period structure
+        if (d.activities && typeof d.activities === 'object' && !Array.isArray(d.activities) && d.activities.morning) {
+          return {
+            day: d.day_number,
+            title: d.title || '',
+            date: d.description || '',
+            periods: {
+              morning: { label: 'Manhã', items: (d.activities.morning?.items || []).map((it: any) => ({ ...it, id: it.id || genId() })) },
+              lunch: { label: 'Almoço', items: (d.activities.lunch?.items || []).map((it: any) => ({ ...it, id: it.id || genId() })) },
+              afternoon: { label: 'Tarde', items: (d.activities.afternoon?.items || []).map((it: any) => ({ ...it, id: it.id || genId() })) },
+              night: { label: 'Noite', items: (d.activities.night?.items || []).map((it: any) => ({ ...it, id: it.id || genId() })) },
+            },
+          };
+        }
+        // Legacy flat activities format
+        const legacyItems = Array.isArray(d.activities) ? d.activities : [];
+        return {
+          day: d.day_number,
+          title: d.title || '',
+          date: d.description || '',
+          periods: {
+            morning: { label: 'Manhã', items: legacyItems.filter((_: any, i: number) => i === 0).map((a: any) => ({ id: genId(), title: a.activity || a.title || '', description: a.details || a.description || '', location: a.location || '', duration: a.duration || a.time || '' })) },
+            lunch: { label: 'Almoço', items: legacyItems.filter((_: any, i: number) => i === 1).map((a: any) => ({ id: genId(), title: a.activity || a.title || '', description: a.details || a.description || '', location: a.location || '', duration: a.duration || a.time || '' })) },
+            afternoon: { label: 'Tarde', items: legacyItems.filter((_: any, i: number) => i === 2).map((a: any) => ({ id: genId(), title: a.activity || a.title || '', description: a.details || a.description || '', location: a.location || '', duration: a.duration || a.time || '' })) },
+            night: { label: 'Noite', items: legacyItems.filter((_: any, i: number) => i >= 3).map((a: any) => ({ id: genId(), title: a.activity || a.title || '', description: a.details || a.description || '', location: a.location || '', duration: a.duration || a.time || '' })) },
+          },
+        };
+      }));
     }
   }, [savedPlannerDays]);
 
@@ -192,7 +214,7 @@ const LeadDetailPage = () => {
   const [activeVersion, setActiveVersion] = useState(0);
 
   // Save planner data to DB
-  const savePlannerData = useCallback(async (days: ItineraryDay[]) => {
+  const savePlannerData = useCallback(async (days: PlannerDay[]) => {
     if (!id || !lead) return;
     try {
       await supabase.from('lead_planner_data').delete().eq('lead_id', id).eq('version', activeVersion);
@@ -203,9 +225,9 @@ const LeadDetailPage = () => {
             version: activeVersion,
             day_number: d.day,
             title: d.title,
-            description: d.description || '',
-            activities: (d.activities || []) as any,
-            images: (d.images || []) as any,
+            description: d.date || '',
+            activities: d.periods as any,
+            images: [] as any,
           }))
         );
       }
@@ -363,10 +385,14 @@ const LeadDetailPage = () => {
         body: {
           leadData: {
             clientName: formState.clientName, destination: destino.join(', '),
-            travelDates: formState.travelDates + (formState.travelEndDate ? ` - ${formState.travelEndDate}` : ''),
-            pax: formState.pax, travelStyles, comfortLevel: categoria[0] || '',
+            travelDates: formState.travelDates,
+            travelEndDate: formState.travelEndDate || undefined,
+            datesType: formState.datesType,
+            numberOfDays: formState.numberOfDays || undefined,
+            pax: formState.pax, paxChildren: formState.paxChildren, paxInfants: formState.paxInfants,
+            travelStyles, comfortLevel: categoria[0] || '',
             budgetLevel: formState.budgetLevel, magicQuestion: lead.magic_question,
-            notes: formState.notes, numberOfDays: formState.numberOfDays || undefined,
+            notes: formState.notes,
           },
           type,
         },
@@ -374,8 +400,18 @@ const LeadDetailPage = () => {
       if (error) throw error;
       setAiResults(prev => ({ ...prev, [type]: data.result }));
       if (type === 'travel_planner' && data.result.days) {
-        const newDays = data.result.days.map((d: any, i: number) => ({ day: d.day || i + 1, title: d.title || '', description: d.description || '', images: [], activities: d.activities || [] }));
-        setItineraryDays(newDays);
+        const newDays: PlannerDay[] = data.result.days.map((d: any, i: number) => ({
+          day: d.day || i + 1,
+          title: d.title || '',
+          date: d.date || '',
+          periods: {
+            morning: { label: 'Manhã', items: (d.periods?.morning?.items || []).map((it: any) => ({ id: genId(), title: it.title || '', description: it.description || '', location: it.location || '', duration: it.duration || '' })) },
+            lunch: { label: 'Almoço', items: (d.periods?.lunch?.items || []).map((it: any) => ({ id: genId(), title: it.title || '', description: it.description || '', location: it.location || '', duration: it.duration || '' })) },
+            afternoon: { label: 'Tarde', items: (d.periods?.afternoon?.items || []).map((it: any) => ({ id: genId(), title: it.title || '', description: it.description || '', location: it.location || '', duration: it.duration || '' })) },
+            night: { label: 'Noite', items: (d.periods?.night?.items || []).map((it: any) => ({ id: genId(), title: it.title || '', description: it.description || '', location: it.location || '', duration: it.duration || '' })) },
+          },
+        }));
+        setPlannerDays(newDays);
         savePlannerData(newDays);
       }
       if (type === 'budget' && data.result.days) {
@@ -567,14 +603,15 @@ const LeadDetailPage = () => {
               <p><span className="font-medium">Datas:</span> {formState.datesType === 'flexible' ? `${formState.numberOfDays} dias` : `${formState.travelDates}${formState.travelEndDate ? ` → ${formState.travelEndDate}` : ''}`} · <span className="font-medium">Pax:</span> {formState.pax} adt + {formState.paxChildren} chl</p>
               <p><span className="font-medium">Estilos:</span> {travelStyles.join(', ') || '—'} · <span className="font-medium">Categoria:</span> {categoria[0] || '—'}</p>
             </div>
-            {itineraryDays.length > 0 ? (
-              <EditableItinerary days={itineraryDays} onChange={setItineraryDays} />
-            ) : (
-              <div className="bg-card rounded-lg border p-6 text-center space-y-2">
-                <p className="text-sm text-muted-foreground">O Travel Planner será gerado automaticamente pela AI</p>
-                <Button variant="outline" size="sm" className="text-xs gap-1 mt-2" onClick={() => setItineraryDays([{ day: 1, title: '', description: '', images: [] }])}><Plus className="h-3 w-3" /> Começar Itinerário</Button>
-              </div>
-            )}
+            <TravelPlannerEditor
+              days={plannerDays}
+              onChange={setPlannerDays}
+              onSave={async (days) => {
+                await savePlannerData(days);
+                toast({ title: 'Plano guardado!', description: `${days.length} dias salvos com sucesso.` });
+              }}
+              saving={false}
+            />
           </div>
         )}
 
@@ -600,7 +637,7 @@ const LeadDetailPage = () => {
 
         {/* Itinerário */}
         {activeTab === 'itinerario' && (
-          <ItineraryEditor leadId={lead.id} clientName={formState.clientName} destination={destino.join(', ') || lead.destination} travelDates={formState.travelDates} travelPlannerDays={itineraryDays.length > 0 ? itineraryDays : undefined} />
+          <ItineraryEditor leadId={lead.id} clientName={formState.clientName} destination={destino.join(', ') || lead.destination} travelDates={formState.travelDates} travelPlannerDays={plannerDays.length > 0 ? plannerDays.map(d => ({ day: d.day, title: d.title, description: Object.values(d.periods).flatMap(p => p.items.map(it => it.title)).join(', '), images: [] })) : undefined} />
         )}
 
         {/* Operações */}
