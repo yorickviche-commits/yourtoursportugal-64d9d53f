@@ -15,6 +15,7 @@ import { LeadStatus } from '@/types/leads';
 import TravelPlannerEditor, { PlannerDay, PlannerItem, PeriodKey, emptyPeriods, genId } from '@/components/trip/TravelPlannerEditor';
 import ItineraryEditor from '@/components/itinerary/ItineraryEditor';
 import EditableCostingTable, { CostingDayData, CostingItem } from '@/components/trip/EditableCostingTable';
+import LeadCostingEditor, { LeadCostingDay, LeadCostItem } from '@/components/trip/LeadCostingEditor';
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
@@ -115,7 +116,7 @@ const LeadDetailPage = () => {
   const [aiLoading, setAiLoading] = useState<string | null>(null);
   const [aiResults, setAiResults] = useState<Record<string, any>>({});
   const [plannerDays, setPlannerDays] = useState<PlannerDay[]>([]);
-  const [costingDays, setCostingDays] = useState<CostingDayData[]>([]);
+  const [costingDays, setCostingDays] = useState<LeadCostingDay[]>([]);
   const [finalPrice, setFinalPrice] = useState(0);
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -195,7 +196,23 @@ const LeadDetailPage = () => {
       setCostingDays(savedCostingDays.map((d: any) => ({
         day: d.day_number,
         title: d.title || `Dia ${d.day_number}`,
-        items: Array.isArray(d.items) ? d.items : [],
+        date: d.description || '',
+        items: Array.isArray(d.items) ? d.items.map((item: any) => ({
+          id: item.id || `ci-${Math.random().toString(36).slice(2, 7)}`,
+          description: item.description || item.activity || '',
+          supplier: item.supplier || '',
+          pricingType: item.pricingType || 'total',
+          numAdults: item.numAdults ?? item.nrPeople ?? 0,
+          priceAdults: item.priceAdults ?? item.netCost ?? 0,
+          numChildren: item.numChildren ?? 0,
+          priceChildren: item.priceChildren ?? 0,
+          netTotal: item.netTotal ?? 0,
+          marginPercent: item.marginPercent ?? 30,
+          pvpTotal: item.pvpTotal ?? item.pvp ?? 0,
+          profit: item.profit ?? 0,
+          status: item.status || 'neutro',
+          notes: item.notes || [],
+        })) : [],
       })));
     }
   }, [savedCostingDays]);
@@ -238,7 +255,7 @@ const LeadDetailPage = () => {
   }, [id, lead, activeVersion, queryClient]);
 
   // Save costing data to DB
-  const saveCostingData = useCallback(async (days: CostingDayData[]) => {
+  const saveCostingData = useCallback(async (days: LeadCostingDay[]) => {
     if (!id || !lead) return;
     try {
       await supabase.from('lead_costing_data').delete().eq('lead_id', id).eq('version', activeVersion);
@@ -415,10 +432,7 @@ const LeadDetailPage = () => {
         savePlannerData(newDays);
       }
       if (type === 'budget' && data.result.days) {
-        const newCostDays = data.result.days.map((d: any, i: number) => ({ day: d.day || i + 1, title: `Dia ${d.day || i + 1}`, items: (d.items || []).map((item: any, j: number) => { const netCost = item.netCost || 0; const marginPercent = item.marginPercent || 30; const pvp = netCost * (1 + marginPercent / 100); return { id: `cost-${i}-${j}`, activity: item.activity || '', supplier: item.supplier || '', nrPeople: formState.pax || 1, netCost, marginPercent, pvp: Math.round(pvp * 100) / 100, totalPrice: Math.round(pvp * formState.pax * 100) / 100, pricePerPerson: Math.round(pvp * 100) / 100 }; }) }));
-        setCostingDays(newCostDays);
-        saveCostingData(newCostDays);
-        if (data.result.summary?.totalPVP) setFinalPrice(data.result.summary.totalPVP);
+        // Budget AI not used — costing mirrors planner structure
       }
       toast({ title: 'AI gerou com sucesso', description: `Modelo usado: ${data.modelUsed}` });
     } catch (e: any) {
@@ -620,18 +634,23 @@ const LeadDetailPage = () => {
           <div className="space-y-4">
             <div className="flex items-center justify-between">
               <h3 className="text-sm font-bold text-foreground">Orçamentação & Margens</h3>
-              <Button size="sm" className="text-xs gap-1 bg-gradient-to-r from-[hsl(var(--info))] to-[hsl(var(--info)/0.7)] text-white" onClick={() => generateAI('budget')} disabled={aiLoading === 'budget'}>
-                {aiLoading === 'budget' ? <><Loader2 className="h-3 w-3 animate-spin" /> A calcular...</> : '🤖 Calcular Budget com AI'}
-              </Button>
             </div>
-            {costingDays.length > 0 ? (
-              <EditableCostingTable days={costingDays} onChange={setCostingDays} finalPrice={finalPrice} onFinalPriceChange={setFinalPrice} />
-            ) : (
-              <div className="bg-card rounded-lg border p-6 text-center space-y-2">
-                <p className="text-sm text-muted-foreground">Orçamentação detalhada por dia</p>
-                <Button variant="outline" size="sm" className="text-xs gap-1 mt-2" onClick={() => setCostingDays([{ day: 1, title: 'Dia 1', items: [] }])}><Plus className="h-3 w-3" /> Começar Costing Manual</Button>
-              </div>
-            )}
+            <div className="bg-muted/50 rounded-lg border p-3 text-xs space-y-1">
+              <p><span className="font-medium">Pax:</span> {formState.pax} adultos + {formState.paxChildren} crianças · <span className="font-medium">Destino:</span> {destino.join(', ') || 'A definir'}</p>
+              <p><span className="font-medium">Planner:</span> {plannerDays.length} dias definidos</p>
+            </div>
+            <LeadCostingEditor
+              costingDays={costingDays}
+              onChange={setCostingDays}
+              onSave={async (days) => {
+                await saveCostingData(days);
+                toast({ title: 'Custos guardados!', description: `${days.length} dias salvos.` });
+              }}
+              saving={false}
+              plannerDays={plannerDays}
+              pax={formState.pax}
+              paxChildren={formState.paxChildren}
+            />
           </div>
         )}
 
