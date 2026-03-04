@@ -253,6 +253,94 @@ export type Database = {
           },
         ]
       }
+      lead_costing_data: {
+        Row: {
+          created_at: string
+          day_number: number
+          id: string
+          items: Json | null
+          lead_id: string
+          title: string
+          updated_at: string
+          version: number
+        }
+        Insert: {
+          created_at?: string
+          day_number: number
+          id?: string
+          items?: Json | null
+          lead_id: string
+          title?: string
+          updated_at?: string
+          version?: number
+        }
+        Update: {
+          created_at?: string
+          day_number?: number
+          id?: string
+          items?: Json | null
+          lead_id?: string
+          title?: string
+          updated_at?: string
+          version?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lead_costing_data_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      lead_planner_data: {
+        Row: {
+          activities: Json | null
+          created_at: string
+          day_number: number
+          description: string | null
+          id: string
+          images: Json | null
+          lead_id: string
+          title: string
+          updated_at: string
+          version: number
+        }
+        Insert: {
+          activities?: Json | null
+          created_at?: string
+          day_number: number
+          description?: string | null
+          id?: string
+          images?: Json | null
+          lead_id: string
+          title?: string
+          updated_at?: string
+          version?: number
+        }
+        Update: {
+          activities?: Json | null
+          created_at?: string
+          day_number?: number
+          description?: string | null
+          id?: string
+          images?: Json | null
+          lead_id?: string
+          title?: string
+          updated_at?: string
+          version?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lead_planner_data_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       leads: {
         Row: {
           active_version: number | null

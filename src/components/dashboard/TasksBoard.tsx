@@ -4,6 +4,7 @@ import { pt } from 'date-fns/locale';
 import { ChevronLeft, ChevronRight, CheckCircle2, Circle, AlertTriangle, Clock, FileText, Users, Truck, ClipboardList } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Link } from 'react-router-dom';
+import { useTasksQuery, useUpdateTask, type DbTask } from '@/hooks/useTasksQuery';
 
 export type TaskCategory = 'reservas_fse' | 'briefing_fse' | 'briefing_guia' | 'briefing_cliente' | 'checklist' | 'geral';
 export type TaskPriority = 'urgent' | 'high' | 'medium' | 'low';
@@ -39,30 +40,24 @@ export const PRIORITY_CONFIG: Record<TaskPriority, { label: string; bgClass: str
   low: { label: 'Baixa', bgClass: 'bg-muted', textClass: 'text-muted-foreground' },
 };
 
-export const MOCK_TASKS: OperationalTask[] = [
-  // Operations tasks
-  { id: 'tk1', title: 'Confirmar hotel upgrade Wright', date: '2026-02-28', category: 'reservas_fse', priority: 'urgent', status: 'pending', team: 'operations', tripId: 'T-002', clientName: 'James & Claire Wright', assignedTo: 'João P.' },
-  { id: 'tk2', title: 'Enviar briefing guia Douro Valley', date: '2026-02-28', category: 'briefing_guia', priority: 'urgent', status: 'pending', team: 'operations', tripId: 'T-002', clientName: 'James & Claire Wright', assignedTo: 'João P.' },
-  { id: 'tk4', title: 'Confirmar guia Sintra Novak', date: '2026-03-01', category: 'reservas_fse', priority: 'urgent', status: 'pending', team: 'operations', tripId: 'T-005', clientName: 'The Novak Family', assignedTo: 'João P.' },
-  { id: 'tk5', title: 'Reservar wine tour Henderson', date: '2026-03-02', category: 'reservas_fse', priority: 'high', status: 'pending', team: 'operations', tripId: 'T-001', clientName: 'The Henderson Family', assignedTo: 'João P.' },
-  { id: 'tk6', title: 'Briefing FSE transporte Henderson', date: '2026-03-02', category: 'briefing_fse', priority: 'high', status: 'pending', team: 'operations', tripId: 'T-001', clientName: 'The Henderson Family', assignedTo: 'João P.' },
-  { id: 'tk7', title: 'Checklist pre-arrival Henderson', date: '2026-03-03', category: 'checklist', priority: 'medium', status: 'pending', team: 'operations', tripId: 'T-001', clientName: 'The Henderson Family', assignedTo: 'João P.' },
-  { id: 'tk10', title: 'Preparar briefing guia Novak', date: '2026-03-04', category: 'briefing_guia', priority: 'high', status: 'pending', team: 'operations', tripId: 'T-005', clientName: 'The Novak Family', assignedTo: 'João P.' },
-  { id: 'tk11', title: 'Verificar transfers Novak', date: '2026-03-04', category: 'checklist', priority: 'medium', status: 'pending', team: 'operations', tripId: 'T-005', clientName: 'The Novak Family', assignedTo: 'João P.' },
-  { id: 'tk12', title: 'Confirmar restaurante DOC Wright', date: '2026-02-28', category: 'reservas_fse', priority: 'high', status: 'done', team: 'operations', tripId: 'T-002', clientName: 'James & Claire Wright', assignedTo: 'João P.' },
-  // Sales tasks
-  { id: 'tk3', title: 'Briefing final cliente Wright', date: '2026-02-28', category: 'briefing_cliente', priority: 'high', status: 'in_progress', team: 'sales', tripId: 'T-002', clientName: 'James & Claire Wright', assignedTo: 'Maria S.' },
-  { id: 'tk8', title: 'Briefing cliente Henderson', date: '2026-03-02', category: 'briefing_cliente', priority: 'medium', status: 'pending', team: 'sales', tripId: 'T-001', clientName: 'The Henderson Family', assignedTo: 'Maria S.' },
-  { id: 'tk9', title: 'Follow-up proposta Mitchell', date: '2026-03-01', category: 'geral', priority: 'medium', status: 'pending', team: 'sales', tripId: 'T-003', clientName: 'Sarah Mitchell Group', assignedTo: 'Maria S.' },
-  { id: 'tk13', title: 'Enviar proposta Alentejo Richards', date: '2026-03-01', category: 'geral', priority: 'high', status: 'pending', team: 'sales', tripId: 'T-006', clientName: 'Emma & Tom Richards', assignedTo: 'Maria S.' },
-  { id: 'tk14', title: 'Agendar call Robert Chen', date: '2026-03-02', category: 'geral', priority: 'medium', status: 'pending', team: 'sales', tripId: 'T-004', clientName: 'Robert Chen', assignedTo: 'Maria S.' },
-  { id: 'tk15', title: 'Revisão pricing Novak Family', date: '2026-03-03', category: 'geral', priority: 'high', status: 'pending', team: 'sales', tripId: 'T-005', clientName: 'The Novak Family', assignedTo: 'Maria S.' },
-];
+// Convert DB task to UI task
+const dbToUiTask = (t: DbTask): OperationalTask => ({
+  id: t.id,
+  title: t.title,
+  date: t.due_date || t.created_at.split('T')[0],
+  category: (t.category as TaskCategory) || 'geral',
+  priority: (t.priority as TaskPriority) || 'medium',
+  status: (t.status as TaskStatus) || 'pending',
+  team: (t.team as TaskTeam) || 'operations',
+  tripId: t.trip_id || undefined,
+  clientName: undefined,
+  assignedTo: t.assigned_to || undefined,
+});
 
 // ─── Shared Task Card Component ───
 export const TaskCard = ({ task, onToggle }: { task: OperationalTask; onToggle: (id: string) => void }) => {
-  const catCfg = CATEGORY_CONFIG[task.category];
-  const priCfg = PRIORITY_CONFIG[task.priority];
+  const catCfg = CATEGORY_CONFIG[task.category] || CATEGORY_CONFIG.geral;
+  const priCfg = PRIORITY_CONFIG[task.priority] || PRIORITY_CONFIG.medium;
   const CatIcon = catCfg.icon;
 
   return (
@@ -90,7 +85,7 @@ export const TaskCard = ({ task, onToggle }: { task: OperationalTask; onToggle: 
           </div>
           {task.tripId && (
             <Link to={`/trips/${task.tripId}`} className="text-[8px] text-[hsl(var(--info))] hover:underline">
-              {task.tripId}
+              {task.tripId.substring(0, 8)}...
             </Link>
           )}
         </div>
@@ -102,19 +97,27 @@ export const TaskCard = ({ task, onToggle }: { task: OperationalTask; onToggle: 
 // ─── TasksBoard for Dashboard Calendar ───
 const TasksBoard = () => {
   const [selectedDate, setSelectedDate] = useState(new Date());
-  const [tasks, setTasks] = useState<OperationalTask[]>(MOCK_TASKS);
+  const { data: dbTasks = [] } = useTasksQuery();
+  const updateTask = useUpdateTask();
   const [filterCategory, setFilterCategory] = useState<TaskCategory | 'all'>('all');
   const [filterPriority, setFilterPriority] = useState<TaskPriority | 'all'>('all');
 
+  const tasks = useMemo(() => dbTasks.map(dbToUiTask), [dbTasks]);
+
   const days = useMemo(() => Array.from({ length: 7 }, (_, i) => addDays(startOfDay(selectedDate), i)), [selectedDate]);
 
-  const toggleTask = (id: string) => {
-    setTasks(prev => prev.map(t => t.id === id ? { ...t, status: t.status === 'done' ? 'pending' : 'done' } : t));
+  const toggleTask = (taskId: string) => {
+    const task = dbTasks.find(t => t.id === taskId);
+    if (!task) return;
+    const newStatus = task.status === 'done' ? 'pending' : 'done';
+    updateTask.mutate({ id: taskId, updates: { status: newStatus } });
   };
 
   const getTasksForDay = (day: Date, team?: TaskTeam) => {
     return tasks
-      .filter(t => isSameDay(parseISO(t.date), day))
+      .filter(t => {
+        try { return isSameDay(parseISO(t.date), day); } catch { return false; }
+      })
       .filter(t => !team || t.team === team)
       .filter(t => filterCategory === 'all' || t.category === filterCategory)
       .filter(t => filterPriority === 'all' || t.priority === filterPriority)
@@ -122,15 +125,15 @@ const TasksBoard = () => {
         const pOrder = { urgent: 0, high: 1, medium: 2, low: 3 };
         if (a.status === 'done' && b.status !== 'done') return 1;
         if (a.status !== 'done' && b.status === 'done') return -1;
-        return pOrder[a.priority] - pOrder[b.priority];
+        return (pOrder[a.priority] || 2) - (pOrder[b.priority] || 2);
       });
   };
 
   const allFiltered = tasks
     .filter(t => filterCategory === 'all' || t.category === filterCategory)
     .filter(t => filterPriority === 'all' || t.priority === filterPriority);
-  const todayTasks = allFiltered.filter(t => isSameDay(parseISO(t.date), new Date()));
-  const overdueTasks = allFiltered.filter(t => isBefore(parseISO(t.date), startOfDay(new Date())) && t.status !== 'done');
+  const todayTasks = allFiltered.filter(t => { try { return isSameDay(parseISO(t.date), new Date()); } catch { return false; } });
+  const overdueTasks = allFiltered.filter(t => { try { return isBefore(parseISO(t.date), startOfDay(new Date())) && t.status !== 'done'; } catch { return false; } });
   const pendingCount = allFiltered.filter(t => t.status !== 'done').length;
   const doneCount = allFiltered.filter(t => t.status === 'done').length;
 
@@ -231,7 +234,7 @@ const TasksBoard = () => {
         </h3>
       </div>
 
-      {/* 7-day columns with Sales / Operations separation */}
+      {/* 7-day columns */}
       <div className="grid grid-cols-7 gap-2">
         {days.map(day => {
           const allDayTasks = getTasksForDay(day);
@@ -253,19 +256,12 @@ const TasksBoard = () => {
                 <p className={cn("text-sm font-bold", isT && "text-[hsl(var(--info))]")}>{format(day, 'd')}</p>
                 {allDone && <p className="text-[9px] text-[hsl(var(--success))] font-medium">✓ Tudo feito</p>}
               </div>
-
               <div className="p-1.5 space-y-2">
-                {/* Operations section */}
                 {renderDaySection(day, 'operations', '⚙ Operations', 'bg-[hsl(var(--info))]/10 text-[hsl(var(--info))]')}
-
-                {/* Separator if both sections have tasks */}
                 {getTasksForDay(day, 'operations').length > 0 && getTasksForDay(day, 'sales').length > 0 && (
                   <div className="border-t border-border my-1" />
                 )}
-
-                {/* Sales section */}
                 {renderDaySection(day, 'sales', '💼 Sales', 'bg-[hsl(var(--warning))]/10 text-[hsl(var(--warning))]')}
-
                 {allDayTasks.length === 0 && (
                   <p className="text-[9px] text-muted-foreground text-center py-4">—</p>
                 )}
