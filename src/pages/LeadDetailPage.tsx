@@ -19,6 +19,7 @@ import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import EmailComposerDialog from '@/components/leads/EmailComposerDialog';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 
 type DetailTab = 'dados_gerais' | 'travel_planner' | 'custos' | 'itinerario' | 'operacoes';
 
@@ -110,6 +111,65 @@ const LeadDetailPage = () => {
   const [costingDays, setCostingDays] = useState<CostingDayData[]>([]);
   const [finalPrice, setFinalPrice] = useState(0);
   const { toast } = useToast();
+  const queryClient = useQueryClient();
+
+  // Load persisted planner data
+  const { data: savedPlannerDays } = useQuery({
+    queryKey: ['lead_planner', id, lead?.active_version],
+    queryFn: async () => {
+      if (!id) return [];
+      const { data, error } = await supabase
+        .from('lead_planner_data')
+        .select('*')
+        .eq('lead_id', id)
+        .eq('version', lead?.active_version ?? 0)
+        .order('day_number', { ascending: true });
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: !!id && !!lead,
+  });
+
+  // Load persisted costing data
+  const { data: savedCostingDays } = useQuery({
+    queryKey: ['lead_costing', id, lead?.active_version],
+    queryFn: async () => {
+      if (!id) return [];
+      const { data, error } = await supabase
+        .from('lead_costing_data')
+        .select('*')
+        .eq('lead_id', id)
+        .eq('version', lead?.active_version ?? 0)
+        .order('day_number', { ascending: true });
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: !!id && !!lead,
+  });
+
+  // Hydrate planner from DB
+  useEffect(() => {
+    if (savedPlannerDays && savedPlannerDays.length > 0 && itineraryDays.length === 0) {
+      setItineraryDays(savedPlannerDays.map((d: any) => ({
+        day: d.day_number,
+        title: d.title || '',
+        description: d.description || '',
+        images: Array.isArray(d.images) ? d.images : [],
+        activities: Array.isArray(d.activities) ? d.activities : [],
+      })));
+    }
+  }, [savedPlannerDays]);
+
+  // Hydrate costing from DB
+  useEffect(() => {
+    if (savedCostingDays && savedCostingDays.length > 0 && costingDays.length === 0) {
+      setCostingDays(savedCostingDays.map((d: any) => ({
+        day: d.day_number,
+        title: d.title || `Dia ${d.day_number}`,
+        items: Array.isArray(d.items) ? d.items : [],
+      })));
+    }
+  }, [savedCostingDays]);
 
   const [formState, setFormState] = useState({
     clientName: '', email: '', phone: '', travelDates: '', travelEndDate: '',
@@ -123,6 +183,52 @@ const LeadDetailPage = () => {
   const [origem, setOrigem] = useState<string[]>([]);
   const [travelStyles, setTravelStyles] = useState<string[]>([]);
   const [activeVersion, setActiveVersion] = useState(0);
+
+  // Save planner data to DB
+  const savePlannerData = useCallback(async (days: ItineraryDay[]) => {
+    if (!id || !lead) return;
+    try {
+      await supabase.from('lead_planner_data').delete().eq('lead_id', id).eq('version', activeVersion);
+      if (days.length > 0) {
+        await supabase.from('lead_planner_data').insert(
+          days.map(d => ({
+            lead_id: id,
+            version: activeVersion,
+            day_number: d.day,
+            title: d.title,
+            description: d.description || '',
+            activities: (d.activities || []) as any,
+            images: (d.images || []) as any,
+          }))
+        );
+      }
+      queryClient.invalidateQueries({ queryKey: ['lead_planner', id] });
+    } catch (e) {
+      console.error('Failed to save planner data:', e);
+    }
+  }, [id, lead, activeVersion, queryClient]);
+
+  // Save costing data to DB
+  const saveCostingData = useCallback(async (days: CostingDayData[]) => {
+    if (!id || !lead) return;
+    try {
+      await supabase.from('lead_costing_data').delete().eq('lead_id', id).eq('version', activeVersion);
+      if (days.length > 0) {
+        await supabase.from('lead_costing_data').insert(
+          days.map(d => ({
+            lead_id: id,
+            version: activeVersion,
+            day_number: d.day,
+            title: d.title,
+            items: (d.items || []) as any,
+          }))
+        );
+      }
+      queryClient.invalidateQueries({ queryKey: ['lead_costing', id] });
+    } catch (e) {
+      console.error('Failed to save costing data:', e);
+    }
+  }, [id, lead, activeVersion, queryClient]);
 
   // Sync form from DB lead
   useEffect(() => {
@@ -261,10 +367,14 @@ const LeadDetailPage = () => {
       if (error) throw error;
       setAiResults(prev => ({ ...prev, [type]: data.result }));
       if (type === 'travel_planner' && data.result.days) {
-        setItineraryDays(data.result.days.map((d: any, i: number) => ({ day: d.day || i + 1, title: d.title || '', description: d.description || '', images: [], activities: d.activities || [] })));
+        const newDays = data.result.days.map((d: any, i: number) => ({ day: d.day || i + 1, title: d.title || '', description: d.description || '', images: [], activities: d.activities || [] }));
+        setItineraryDays(newDays);
+        savePlannerData(newDays);
       }
       if (type === 'budget' && data.result.days) {
-        setCostingDays(data.result.days.map((d: any, i: number) => ({ day: d.day || i + 1, title: `Dia ${d.day || i + 1}`, items: (d.items || []).map((item: any, j: number) => { const netCost = item.netCost || 0; const marginPercent = item.marginPercent || 30; const pvp = netCost * (1 + marginPercent / 100); return { id: `cost-${i}-${j}`, activity: item.activity || '', supplier: item.supplier || '', nrPeople: formState.pax || 1, netCost, marginPercent, pvp: Math.round(pvp * 100) / 100, totalPrice: Math.round(pvp * formState.pax * 100) / 100, pricePerPerson: Math.round(pvp * 100) / 100 }; }) })));
+        const newCostDays = data.result.days.map((d: any, i: number) => ({ day: d.day || i + 1, title: `Dia ${d.day || i + 1}`, items: (d.items || []).map((item: any, j: number) => { const netCost = item.netCost || 0; const marginPercent = item.marginPercent || 30; const pvp = netCost * (1 + marginPercent / 100); return { id: `cost-${i}-${j}`, activity: item.activity || '', supplier: item.supplier || '', nrPeople: formState.pax || 1, netCost, marginPercent, pvp: Math.round(pvp * 100) / 100, totalPrice: Math.round(pvp * formState.pax * 100) / 100, pricePerPerson: Math.round(pvp * 100) / 100 }; }) }));
+        setCostingDays(newCostDays);
+        saveCostingData(newCostDays);
         if (data.result.summary?.totalPVP) setFinalPrice(data.result.summary.totalPVP);
       }
       toast({ title: 'AI gerou com sucesso', description: `Modelo usado: ${data.modelUsed}` });
