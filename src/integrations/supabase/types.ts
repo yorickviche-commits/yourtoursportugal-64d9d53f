@@ -116,6 +116,142 @@ export type Database = {
           },
         ]
       }
+      contacts: {
+        Row: {
+          company: string | null
+          created_at: string
+          email: string | null
+          id: string
+          lead_id: string | null
+          name: string
+          notes: string | null
+          phone: string | null
+          role: string | null
+          updated_at: string
+        }
+        Insert: {
+          company?: string | null
+          created_at?: string
+          email?: string | null
+          id?: string
+          lead_id?: string | null
+          name?: string
+          notes?: string | null
+          phone?: string | null
+          role?: string | null
+          updated_at?: string
+        }
+        Update: {
+          company?: string | null
+          created_at?: string
+          email?: string | null
+          id?: string
+          lead_id?: string | null
+          name?: string
+          notes?: string | null
+          phone?: string | null
+          role?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "contacts_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      cost_items: {
+        Row: {
+          category: string
+          created_at: string
+          currency: string | null
+          description: string
+          id: string
+          margin_percent: number | null
+          notes: string | null
+          quantity: number
+          supplier: string | null
+          total_cost: number | null
+          trip_id: string
+          unit_cost: number
+          updated_at: string
+        }
+        Insert: {
+          category?: string
+          created_at?: string
+          currency?: string | null
+          description?: string
+          id?: string
+          margin_percent?: number | null
+          notes?: string | null
+          quantity?: number
+          supplier?: string | null
+          total_cost?: number | null
+          trip_id: string
+          unit_cost?: number
+          updated_at?: string
+        }
+        Update: {
+          category?: string
+          created_at?: string
+          currency?: string | null
+          description?: string
+          id?: string
+          margin_percent?: number | null
+          notes?: string | null
+          quantity?: number
+          supplier?: string | null
+          total_cost?: number | null
+          trip_id?: string
+          unit_cost?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cost_items_trip_id_fkey"
+            columns: ["trip_id"]
+            isOneToOne: false
+            referencedRelation: "trips"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      documents: {
+        Row: {
+          created_at: string
+          entity_id: string
+          entity_type: string
+          file_name: string
+          file_type: string | null
+          file_url: string
+          id: string
+          uploaded_by: string | null
+        }
+        Insert: {
+          created_at?: string
+          entity_id: string
+          entity_type: string
+          file_name?: string
+          file_type?: string | null
+          file_url?: string
+          id?: string
+          uploaded_by?: string | null
+        }
+        Update: {
+          created_at?: string
+          entity_id?: string
+          entity_type?: string
+          file_name?: string
+          file_type?: string | null
+          file_url?: string
+          id?: string
+          uploaded_by?: string | null
+        }
+        Relationships: []
+      }
       integration_settings: {
         Row: {
           api_key_ref: string | null
@@ -1119,6 +1255,59 @@ export type Database = {
           },
           {
             foreignKeyName: "tasks_trip_id_fkey"
+            columns: ["trip_id"]
+            isOneToOne: false
+            referencedRelation: "trips"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      trip_itinerary_items: {
+        Row: {
+          created_at: string
+          day_number: number
+          description: string | null
+          end_time: string | null
+          id: string
+          location: string | null
+          notes: string | null
+          sort_order: number | null
+          start_time: string | null
+          title: string
+          trip_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          day_number: number
+          description?: string | null
+          end_time?: string | null
+          id?: string
+          location?: string | null
+          notes?: string | null
+          sort_order?: number | null
+          start_time?: string | null
+          title?: string
+          trip_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          day_number?: number
+          description?: string | null
+          end_time?: string | null
+          id?: string
+          location?: string | null
+          notes?: string | null
+          sort_order?: number | null
+          start_time?: string | null
+          title?: string
+          trip_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "trip_itinerary_items_trip_id_fkey"
             columns: ["trip_id"]
             isOneToOne: false
             referencedRelation: "trips"
