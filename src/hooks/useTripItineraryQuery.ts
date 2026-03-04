@@ -12,6 +12,12 @@ export interface DbTripItineraryItem {
   end_time: string | null;
   notes: string | null;
   sort_order: number;
+  supplier: string | null;
+  num_people: number;
+  net_total: number;
+  paid_amount: number;
+  reservation_status: string;
+  payment_status: string;
   created_at: string;
   updated_at: string;
 }

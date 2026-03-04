@@ -13,6 +13,11 @@ export interface DbCostItem {
   total_cost: number; // generated column
   notes: string | null;
   currency: string;
+  pricing_type: string;
+  num_adults: number;
+  price_adults: number;
+  status: string;
+  day_number: number;
   created_at: string;
   updated_at: string;
 }

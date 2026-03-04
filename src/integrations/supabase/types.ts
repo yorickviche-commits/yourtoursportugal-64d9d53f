@@ -168,11 +168,16 @@ export type Database = {
           category: string
           created_at: string
           currency: string | null
+          day_number: number
           description: string
           id: string
           margin_percent: number | null
           notes: string | null
+          num_adults: number
+          price_adults: number
+          pricing_type: string
           quantity: number
+          status: string
           supplier: string | null
           total_cost: number | null
           trip_id: string
@@ -183,11 +188,16 @@ export type Database = {
           category?: string
           created_at?: string
           currency?: string | null
+          day_number?: number
           description?: string
           id?: string
           margin_percent?: number | null
           notes?: string | null
+          num_adults?: number
+          price_adults?: number
+          pricing_type?: string
           quantity?: number
+          status?: string
           supplier?: string | null
           total_cost?: number | null
           trip_id: string
@@ -198,11 +208,16 @@ export type Database = {
           category?: string
           created_at?: string
           currency?: string | null
+          day_number?: number
           description?: string
           id?: string
           margin_percent?: number | null
           notes?: string | null
+          num_adults?: number
+          price_adults?: number
+          pricing_type?: string
           quantity?: number
+          status?: string
           supplier?: string | null
           total_cost?: number | null
           trip_id?: string
@@ -285,6 +300,39 @@ export type Database = {
           name?: string
           status?: string
           updated_at?: string
+        }
+        Relationships: []
+      }
+      item_notes: {
+        Row: {
+          attachment_name: string | null
+          attachment_url: string | null
+          created_at: string
+          created_by: string | null
+          entity_id: string
+          entity_type: string
+          id: string
+          note_text: string | null
+        }
+        Insert: {
+          attachment_name?: string | null
+          attachment_url?: string | null
+          created_at?: string
+          created_by?: string | null
+          entity_id: string
+          entity_type: string
+          id?: string
+          note_text?: string | null
+        }
+        Update: {
+          attachment_name?: string | null
+          attachment_url?: string | null
+          created_at?: string
+          created_by?: string | null
+          entity_id?: string
+          entity_type?: string
+          id?: string
+          note_text?: string | null
         }
         Relationships: []
       }
@@ -1270,9 +1318,15 @@ export type Database = {
           end_time: string | null
           id: string
           location: string | null
+          net_total: number
           notes: string | null
+          num_people: number
+          paid_amount: number
+          payment_status: string
+          reservation_status: string
           sort_order: number | null
           start_time: string | null
+          supplier: string | null
           title: string
           trip_id: string
           updated_at: string
@@ -1284,9 +1338,15 @@ export type Database = {
           end_time?: string | null
           id?: string
           location?: string | null
+          net_total?: number
           notes?: string | null
+          num_people?: number
+          paid_amount?: number
+          payment_status?: string
+          reservation_status?: string
           sort_order?: number | null
           start_time?: string | null
+          supplier?: string | null
           title?: string
           trip_id: string
           updated_at?: string
@@ -1298,9 +1358,15 @@ export type Database = {
           end_time?: string | null
           id?: string
           location?: string | null
+          net_total?: number
           notes?: string | null
+          num_people?: number
+          paid_amount?: number
+          payment_status?: string
+          reservation_status?: string
           sort_order?: number | null
           start_time?: string | null
+          supplier?: string | null
           title?: string
           trip_id?: string
           updated_at?: string

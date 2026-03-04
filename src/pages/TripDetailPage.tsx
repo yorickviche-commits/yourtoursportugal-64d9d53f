@@ -2,8 +2,8 @@ import { useState, useMemo } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import {
   ArrowLeft, FileText, MessageSquare,
-  PanelRightClose, PanelRight, ChevronDown, ChevronRight,
-  Plus, Trash2, Pencil, Upload, X,
+  PanelRightClose, PanelRight,
+  Plus, Trash2, Upload, X,
   AlertTriangle, CreditCard, CheckCircle2, Circle, Loader2,
 } from 'lucide-react';
 import AppLayout from '@/components/AppLayout';
@@ -21,21 +21,12 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import { logActivity } from '@/hooks/useActivityLog';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import EditableCostingTable from '@/components/trip/EditableCostingTable';
+import OperationsTable from '@/components/trip/OperationsTable';
 import { formatDistanceToNow } from 'date-fns';
 import { pt } from 'date-fns/locale';
 
-type TripTab = 'details' | 'itinerary' | 'costing' | 'contacts' | 'activity' | 'documents';
-
-const COST_CATEGORIES = [
-  { value: 'accommodation', label: 'Alojamento' },
-  { value: 'transport', label: 'Transporte' },
-  { value: 'guide', label: 'Guia' },
-  { value: 'meals', label: 'Refeições' },
-  { value: 'activity', label: 'Atividade' },
-  { value: 'entrance', label: 'Entradas' },
-  { value: 'other', label: 'Outro' },
-];
+type TripTab = 'details' | 'itinerary' | 'costing' | 'operations' | 'contacts' | 'activity' | 'documents';
 
 const TripDetailPage = () => {
   const { id } = useParams<{ id: string }>();
@@ -62,15 +53,9 @@ const TripDetailPage = () => {
   const createDoc = useCreateDocument();
   const deleteDoc = useDeleteDocument();
 
-  // New item forms
+  // New itinerary form
   const [newItDay, setNewItDay] = useState(1);
   const [newItTitle, setNewItTitle] = useState('');
-  const [newCostDesc, setNewCostDesc] = useState('');
-  const [newCostCat, setNewCostCat] = useState('other');
-  const [newCostUnit, setNewCostUnit] = useState(0);
-  const [newCostQty, setNewCostQty] = useState(1);
-  const [newCostMargin, setNewCostMargin] = useState(0);
-  const [newCostSupplier, setNewCostSupplier] = useState('');
 
   // Checklist local state
   const [checklistItems, setChecklistItems] = useState([
@@ -83,7 +68,7 @@ const TripDetailPage = () => {
   ]);
   const [newCheckItem, setNewCheckItem] = useState('');
 
-  // Derived data (must be after all hooks, before any returns)
+  // Derived data
   const totalValue = trip?.total_value || 0;
   const costSubtotal = costItems.reduce((sum, c) => sum + (c.total_cost || 0), 0);
   const profit = totalValue - costSubtotal;
@@ -102,6 +87,7 @@ const TripDetailPage = () => {
     { key: 'details', label: 'Detalhes' },
     { key: 'itinerary', label: `Itinerário (${itineraryItems.length})` },
     { key: 'costing', label: `Custos (${costItems.length})` },
+    { key: 'operations', label: 'Operações' },
     { key: 'contacts', label: `Contactos (${contacts.length})` },
     { key: 'activity', label: `Atividade (${activityLogs.length})` },
     { key: 'documents', label: `Docs (${documents.length})` },
@@ -129,7 +115,6 @@ const TripDetailPage = () => {
     );
   }
 
-  // (moved above early returns)
   const toggleCheckItem = (checkId: number) => setChecklistItems(prev => prev.map(i => i.id === checkId ? { ...i, done: !i.done } : i));
   const addCheckItem = () => { if (!newCheckItem.trim()) return; setChecklistItems(prev => [...prev, { id: Date.now(), label: newCheckItem.trim(), done: false }]); setNewCheckItem(''); };
   const removeCheckItem = (checkId: number) => setChecklistItems(prev => prev.filter(i => i.id !== checkId));
@@ -150,15 +135,31 @@ const TripDetailPage = () => {
     toast({ title: 'Item adicionado' });
   };
 
-  const handleAddCostItem = async () => {
-    if (!newCostDesc.trim()) return;
-    await createCost.mutateAsync({ trip_id: trip.id, category: newCostCat, description: newCostDesc.trim(), supplier: newCostSupplier || null, unit_cost: newCostUnit, quantity: newCostQty, margin_percent: newCostMargin });
-    await logActivity('cost_item_added', 'trip', trip.id, { description: newCostDesc });
-    setNewCostDesc(''); setNewCostUnit(0); setNewCostQty(1); setNewCostMargin(0); setNewCostSupplier('');
-    toast({ title: 'Custo adicionado' });
+  // Costing handlers (dynamic save)
+  const handleAddCostItem = async (item: any) => {
+    await createCost.mutateAsync(item);
+    await logActivity('cost_item_added', 'trip', trip.id);
+  };
+  const handleUpdateCostItem = async (costId: string, updates: any) => {
+    await updateCost.mutateAsync({ id: costId, updates });
+  };
+  const handleDeleteCostItem = async (costId: string) => {
+    await deleteCost.mutateAsync({ id: costId, tripId: trip.id });
+    await logActivity('cost_item_deleted', 'trip', trip.id);
   };
 
-  // (moved above early returns)
+  // Operations handlers (dynamic save)
+  const handleAddOpsItem = async (item: any) => {
+    await createItinerary.mutateAsync(item);
+    await logActivity('ops_item_added', 'trip', trip.id);
+  };
+  const handleUpdateOpsItem = async (itemId: string, updates: any) => {
+    await updateItinerary.mutateAsync({ id: itemId, updates });
+  };
+  const handleDeleteOpsItem = async (itemId: string) => {
+    await deleteItinerary.mutateAsync({ id: itemId, tripId: trip.id });
+    await logActivity('ops_item_deleted', 'trip', trip.id);
+  };
 
   return (
     <AppLayout>
@@ -186,7 +187,7 @@ const TripDetailPage = () => {
           </div>
         </div>
 
-        {/* Blocker alert */}
+        {/* Blocker */}
         {trip.has_blocker && (
           <div className="rounded-lg p-3 flex items-start gap-2 border bg-destructive/5 border-destructive/20">
             <AlertTriangle className="h-4 w-4 text-destructive shrink-0 mt-0.5" />
@@ -223,10 +224,10 @@ const TripDetailPage = () => {
         </div>
 
         {/* Tabs */}
-        <div className="flex items-center gap-1 border-b border-border">
+        <div className="flex items-center gap-1 border-b border-border overflow-x-auto">
           {tabs.map(tab => (
             <button key={tab.key} onClick={() => setActiveTab(tab.key)}
-              className={cn("px-4 py-2 text-xs font-medium border-b-2 transition-colors -mb-px",
+              className={cn("px-4 py-2 text-xs font-medium border-b-2 transition-colors -mb-px whitespace-nowrap",
                 activeTab === tab.key ? "border-[hsl(var(--info))] text-[hsl(var(--info))]" : "border-transparent text-muted-foreground hover:text-foreground"
               )}>{tab.label}</button>
           ))}
@@ -309,94 +310,27 @@ const TripDetailPage = () => {
 
             {/* Costing Tab */}
             {activeTab === 'costing' && (
-              <div className="space-y-4">
-                <div className="bg-card rounded-lg border p-4">
-                  <h2 className="text-sm font-semibold mb-3">Adicionar Custo</h2>
-                  <div className="grid grid-cols-6 gap-2 items-end">
-                    <div className="col-span-2">
-                      <label className="text-[10px] text-muted-foreground">Descrição</label>
-                      <Input value={newCostDesc} onChange={e => setNewCostDesc(e.target.value)} className="h-8 text-xs" placeholder="Ex: Hotel 4* Porto" />
-                    </div>
-                    <div>
-                      <label className="text-[10px] text-muted-foreground">Categoria</label>
-                      <Select value={newCostCat} onValueChange={setNewCostCat}>
-                        <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
-                        <SelectContent>{COST_CATEGORIES.map(c => <SelectItem key={c.value} value={c.value} className="text-xs">{c.label}</SelectItem>)}</SelectContent>
-                      </Select>
-                    </div>
-                    <div>
-                      <label className="text-[10px] text-muted-foreground">Custo Unit.</label>
-                      <Input type="number" value={newCostUnit} onChange={e => setNewCostUnit(Number(e.target.value))} className="h-8 text-xs" />
-                    </div>
-                    <div>
-                      <label className="text-[10px] text-muted-foreground">Qtd</label>
-                      <Input type="number" value={newCostQty} onChange={e => setNewCostQty(Number(e.target.value))} className="h-8 text-xs" />
-                    </div>
-                    <div>
-                      <Button size="sm" className="text-xs gap-1 w-full" onClick={handleAddCostItem} disabled={createCost.isPending}>
-                        <Plus className="h-3 w-3" /> Add
-                      </Button>
-                    </div>
-                  </div>
-                </div>
+              <div className="bg-card rounded-lg border overflow-hidden">
+                <EditableCostingTable
+                  items={costItems}
+                  tripId={trip.id}
+                  onAddItem={handleAddCostItem}
+                  onUpdateItem={handleUpdateCostItem}
+                  onDeleteItem={handleDeleteCostItem}
+                />
+              </div>
+            )}
 
-                <div className="bg-card rounded-lg border overflow-hidden">
-                  <table className="w-full text-xs">
-                    <thead>
-                      <tr className="bg-muted/50 text-muted-foreground">
-                        <th className="text-left px-3 py-2 font-medium">Descrição</th>
-                        <th className="text-left px-3 py-2 font-medium">Categoria</th>
-                        <th className="text-left px-3 py-2 font-medium">Fornecedor</th>
-                        <th className="text-right px-3 py-2 font-medium">Unit.</th>
-                        <th className="text-right px-3 py-2 font-medium">Qtd</th>
-                        <th className="text-right px-3 py-2 font-medium">Margem%</th>
-                        <th className="text-right px-3 py-2 font-medium">Total</th>
-                        <th className="w-8"></th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {costItems.map(item => (
-                        <tr key={item.id} className="border-t border-border group hover:bg-muted/30">
-                          <td className="px-3 py-2">{item.description}</td>
-                          <td className="px-3 py-2">{COST_CATEGORIES.find(c => c.value === item.category)?.label || item.category}</td>
-                          <td className="px-3 py-2 text-[hsl(var(--info))]">{item.supplier || '—'}</td>
-                          <td className="px-3 py-2 text-right">€{item.unit_cost}</td>
-                          <td className="px-3 py-2 text-right">{item.quantity}</td>
-                          <td className="px-3 py-2 text-right">{item.margin_percent}%</td>
-                          <td className="px-3 py-2 text-right font-medium">€{(item.total_cost || 0).toLocaleString()}</td>
-                          <td className="px-1">
-                            <button onClick={async () => { await deleteCost.mutateAsync({ id: item.id, tripId: trip.id }); await logActivity('cost_item_deleted', 'trip', trip.id); }}
-                              className="opacity-0 group-hover:opacity-100 p-1 hover:bg-muted rounded">
-                              <Trash2 className="h-3 w-3 text-destructive" />
-                            </button>
-                          </td>
-                        </tr>
-                      ))}
-                      {costItems.length === 0 && (
-                        <tr><td colSpan={8} className="text-center py-6 text-muted-foreground">Sem custos registados</td></tr>
-                      )}
-                    </tbody>
-                    {costItems.length > 0 && (
-                      <tfoot className="bg-muted/30 font-medium">
-                        <tr className="border-t-2 border-border">
-                          <td colSpan={6} className="px-3 py-2 text-right">Subtotal Custos:</td>
-                          <td className="px-3 py-2 text-right">€{costSubtotal.toLocaleString()}</td>
-                          <td></td>
-                        </tr>
-                        <tr>
-                          <td colSpan={6} className="px-3 py-2 text-right">Valor da Viagem:</td>
-                          <td className="px-3 py-2 text-right">€{totalValue.toLocaleString()}</td>
-                          <td></td>
-                        </tr>
-                        <tr className="border-t border-border">
-                          <td colSpan={6} className="px-3 py-2 text-right font-bold">Lucro:</td>
-                          <td className={cn("px-3 py-2 text-right font-bold", profit > 0 ? "text-[hsl(var(--success))]" : "text-destructive")}>€{profit.toLocaleString()}</td>
-                          <td></td>
-                        </tr>
-                      </tfoot>
-                    )}
-                  </table>
-                </div>
+            {/* Operations Tab */}
+            {activeTab === 'operations' && (
+              <div className="bg-card rounded-lg border overflow-hidden">
+                <OperationsTable
+                  items={itineraryItems}
+                  tripId={trip.id}
+                  onAddItem={handleAddOpsItem}
+                  onUpdateItem={handleUpdateOpsItem}
+                  onDeleteItem={handleDeleteOpsItem}
+                />
               </div>
             )}
 
@@ -485,7 +419,6 @@ const TripDetailPage = () => {
           {/* Right Sidebar */}
           {rightPanelOpen && (
             <div className="w-[280px] shrink-0 space-y-4">
-              {/* Operational Checklist */}
               <div className="bg-card rounded-lg border p-4">
                 <h2 className="text-sm font-semibold mb-3">Operational Checklist</h2>
                 <div className="space-y-1.5">
