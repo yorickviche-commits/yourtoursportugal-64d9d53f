@@ -47,6 +47,75 @@ export type Database = {
         }
         Relationships: []
       }
+      approvals: {
+        Row: {
+          client_name: string | null
+          created_at: string
+          id: string
+          lead_id: string | null
+          priority: string | null
+          resolved_at: string | null
+          resolved_by: string | null
+          status: string
+          submitted_at: string
+          submitted_by: string | null
+          summary: string | null
+          title: string
+          trip_id: string | null
+          type: string
+          updated_at: string
+        }
+        Insert: {
+          client_name?: string | null
+          created_at?: string
+          id?: string
+          lead_id?: string | null
+          priority?: string | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          status?: string
+          submitted_at?: string
+          submitted_by?: string | null
+          summary?: string | null
+          title?: string
+          trip_id?: string | null
+          type?: string
+          updated_at?: string
+        }
+        Update: {
+          client_name?: string | null
+          created_at?: string
+          id?: string
+          lead_id?: string | null
+          priority?: string | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          status?: string
+          submitted_at?: string
+          submitted_by?: string | null
+          summary?: string | null
+          title?: string
+          trip_id?: string | null
+          type?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "approvals_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "approvals_trip_id_fkey"
+            columns: ["trip_id"]
+            isOneToOne: false
+            referencedRelation: "trips"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       integration_settings: {
         Row: {
           api_key_ref: string | null
@@ -180,6 +249,98 @@ export type Database = {
             columns: ["itinerary_id"]
             isOneToOne: false
             referencedRelation: "itineraries"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      leads: {
+        Row: {
+          active_version: number | null
+          budget_level: string | null
+          client_name: string
+          comfort_level: string | null
+          created_at: string
+          created_by: string | null
+          dates_type: string | null
+          destination: string | null
+          email: string | null
+          id: string
+          lead_code: string
+          magic_question: string | null
+          notes: string | null
+          number_of_days: number | null
+          pax: number | null
+          pax_children: number | null
+          pax_infants: number | null
+          phone: string | null
+          sales_owner: string | null
+          source: string
+          status: string
+          travel_dates: string | null
+          travel_end_date: string | null
+          travel_style: Json | null
+          updated_at: string
+        }
+        Insert: {
+          active_version?: number | null
+          budget_level?: string | null
+          client_name?: string
+          comfort_level?: string | null
+          created_at?: string
+          created_by?: string | null
+          dates_type?: string | null
+          destination?: string | null
+          email?: string | null
+          id?: string
+          lead_code: string
+          magic_question?: string | null
+          notes?: string | null
+          number_of_days?: number | null
+          pax?: number | null
+          pax_children?: number | null
+          pax_infants?: number | null
+          phone?: string | null
+          sales_owner?: string | null
+          source?: string
+          status?: string
+          travel_dates?: string | null
+          travel_end_date?: string | null
+          travel_style?: Json | null
+          updated_at?: string
+        }
+        Update: {
+          active_version?: number | null
+          budget_level?: string | null
+          client_name?: string
+          comfort_level?: string | null
+          created_at?: string
+          created_by?: string | null
+          dates_type?: string | null
+          destination?: string | null
+          email?: string | null
+          id?: string
+          lead_code?: string
+          magic_question?: string | null
+          notes?: string | null
+          number_of_days?: number | null
+          pax?: number | null
+          pax_children?: number | null
+          pax_infants?: number | null
+          phone?: string | null
+          sales_owner?: string | null
+          source?: string
+          status?: string
+          travel_dates?: string | null
+          travel_end_date?: string | null
+          travel_style?: Json | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "leads_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
         ]
@@ -803,6 +964,160 @@ export type Database = {
           value?: Json
         }
         Relationships: []
+      }
+      tasks: {
+        Row: {
+          assigned_to: string | null
+          category: string | null
+          created_at: string
+          created_by: string | null
+          description: string | null
+          due_date: string | null
+          id: string
+          lead_id: string | null
+          priority: string | null
+          status: string
+          team: string | null
+          title: string
+          trip_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          assigned_to?: string | null
+          category?: string | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          due_date?: string | null
+          id?: string
+          lead_id?: string | null
+          priority?: string | null
+          status?: string
+          team?: string | null
+          title?: string
+          trip_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          assigned_to?: string | null
+          category?: string | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          due_date?: string | null
+          id?: string
+          lead_id?: string | null
+          priority?: string | null
+          status?: string
+          team?: string | null
+          title?: string
+          trip_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tasks_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tasks_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tasks_trip_id_fkey"
+            columns: ["trip_id"]
+            isOneToOne: false
+            referencedRelation: "trips"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      trips: {
+        Row: {
+          blocker_note: string | null
+          budget_level: string | null
+          client_name: string
+          created_at: string
+          created_by: string | null
+          destination: string | null
+          end_date: string | null
+          has_blocker: boolean | null
+          id: string
+          lead_id: string | null
+          notes: string | null
+          pax: number | null
+          sales_owner: string | null
+          start_date: string | null
+          status: string
+          total_value: number | null
+          trip_code: string
+          updated_at: string
+          urgency: string | null
+        }
+        Insert: {
+          blocker_note?: string | null
+          budget_level?: string | null
+          client_name?: string
+          created_at?: string
+          created_by?: string | null
+          destination?: string | null
+          end_date?: string | null
+          has_blocker?: boolean | null
+          id?: string
+          lead_id?: string | null
+          notes?: string | null
+          pax?: number | null
+          sales_owner?: string | null
+          start_date?: string | null
+          status?: string
+          total_value?: number | null
+          trip_code?: string
+          updated_at?: string
+          urgency?: string | null
+        }
+        Update: {
+          blocker_note?: string | null
+          budget_level?: string | null
+          client_name?: string
+          created_at?: string
+          created_by?: string | null
+          destination?: string | null
+          end_date?: string | null
+          has_blocker?: boolean | null
+          id?: string
+          lead_id?: string | null
+          notes?: string | null
+          pax?: number | null
+          sales_owner?: string | null
+          start_date?: string | null
+          status?: string
+          total_value?: number | null
+          trip_code?: string
+          updated_at?: string
+          urgency?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "trips_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "trips_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       user_roles: {
         Row: {
