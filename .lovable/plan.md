@@ -1,125 +1,93 @@
 
 
-# Plan: Connect Everything to the Database — Make It Real
+# Audit: What Works vs What Doesn't — Full Gap Analysis
 
-## Current State
+## CONNECTED TO DATABASE (Real Data)
 
-The entire application runs on **in-memory mock data**. Nothing persists between page reloads. Here's what needs to move to the database:
+| Feature | Page | Status | Details |
+|---------|------|--------|---------|
+| **Leads List** | `LeadsFilesPage` | **WORKS** | Reads from `leads` table (5 records). Filters, search, stats all use real data |
+| **Lead Detail — Dados Gerais** | `LeadDetailPage` | **WORKS** | Save, duplicate, new version, delete, status change — all write to DB |
+| **Lead Creation (Nova Lead)** | `NewLeadDialog` | **WORKS** | Inserts into `leads` table with auto-generated `YT-YYYY-####` code |
+| **AI Import (email parse)** | `NewLeadDialog` | **WORKS** | Calls `parse-lead-email` edge function |
+| **Dashboard stats** | `Dashboard` | **WORKS** | Counts trips, leads, approvals from real DB data |
+| **Trips List** | `TripsPage` | **WORKS** | Reads from `trips` table (6 records) with urgency filters |
+| **Approvals List + Approve/Reject** | `ApprovalsPage` | **WORKS** | Full CRUD on `approvals` table, activity logging |
+| **Itinerary Editor** | `LeadDetailPage > Itinerário` | **WORKS** | Reads/writes `itineraries` + `itinerary_days` tables |
+| **Public Preview** | `/preview/:id` | **WORKS** | Public route reads published itineraries |
+| **Auth (Login/Signup)** | `LoginPage` | **WORKS** | Real Supabase auth with email/password |
 
-| Data | Current Source | Status |
-|------|---------------|--------|
-| Leads/Simulations | `mockLeads.ts` + React context (in-memory) | Not persisted |
-| Trips | `mockData.ts` (static) | Not persisted |
-| Approvals | `mockData.ts` (static) | Not persisted |
-| Tasks | `TasksBoard.tsx` (static) | Not persisted |
-| Dashboard stats | `mockData.ts` (static) | Not persisted |
-| Itineraries | Supabase tables exist | Partially connected |
-| Operations | Hardcoded in `LeadDetailPage` | Not persisted |
+## NOT CONNECTED — Still Using Mock/Static Data
 
-The itineraries/itinerary_days tables already exist in Supabase. Everything else needs tables.
+| Feature | Page | Problem | Fix Required |
+|---------|------|---------|--------------|
+| **Trip Detail** | `TripDetailPage` | Uses `mockTrips.find()` + hardcoded itinerary, costing, operations, checklist, files, notifications | Rewrite to use `useTripQuery()` + DB for all sub-data |
+| **Tasks Page** | `TasksPage` | Uses `MOCK_TASKS` from `TasksBoard.tsx` (hardcoded array). "Nova Task" button does nothing | Connect to `tasks` table, add create/update/toggle mutations |
+| **Dashboard TasksBoard** | `TasksBoard` component | Same `MOCK_TASKS` hardcoded array, calendar view uses static data | Connect to `tasks` table |
+| **Travel Planner data** | `LeadDetailPage` | AI generates itinerary but result is stored in React state only — lost on refresh | Persist `itineraryDays` to a `lead_versions` or `lead_planner_data` table |
+| **Costing data** | `LeadDetailPage` | AI generates budget but result is stored in React state only — lost on refresh | Persist `costingDays` to a `lead_costing` table |
+| **Operations tab** | `LeadDetailPage` | Hardcoded `MOCK_OPS_DAYS` — no real data | Should pull from approved costing data |
+| **Files tab (Leads)** | `LeadsFilesPage` | Uses `mockFiles` from `mockLeads.ts` | Connect to storage or a `lead_files` table |
+| **CRM Page** | `CRMPage` | Unknown state | Likely placeholder/mock |
+| **Partners Page** | `PartnersPage` | Has DB tables but need to verify connection | Check if using real queries |
+| **Suppliers Pages** | `AdminSuppliersPage` | Has DB tables | Verify connection |
+| **Activity Logs** | `AdminActivityLogsPage` | Table exists, `logActivity()` hook exists, but 0 records — likely RLS blocking inserts | Fix RLS: current policy requires `auth.uid() = user_id` but `user_id` might be null |
+
+## CRITICAL ISSUES
+
+1. **Activity Logs RLS**: Policy requires `user_id = auth.uid()` but `logActivity()` sets `user_id` from `getUser()` which may not match in all cases. 0 records in DB confirms inserts are failing silently.
+
+2. **Travel Planner + Costing data loss**: The most important workflow (AI generates plan → approve → generate costing → operations) loses ALL data on page refresh because it's stored in `useState` only.
+
+3. **TripDetailPage completely static**: Uses `mockTrips.find(t => t.id === id)` — any trip created via DB will show "Trip not found".
+
+4. **Tasks completely static**: The entire Kanban board and task management is hardcoded mock data.
 
 ---
 
 ## Implementation Plan
 
-### Phase 1: Create Database Tables
+### Phase 1: Fix Critical Data Persistence (Travel Planner + Costing)
 
-Create new Supabase tables via migrations:
+Create two new tables:
+- **`lead_planner_data`** — stores AI-generated travel planner days per lead/version
+- **`lead_costing_data`** — stores AI-generated costing days per lead/version
 
-**`leads` table** — core entity for all simulations
-- id (uuid), lead_code (text, auto-generated YT-YYYY-####), client_name, email, phone, destination, travel_dates, travel_end_date, number_of_days, dates_type, pax, pax_children, pax_infants, status, source, budget_level, sales_owner, notes, travel_style (jsonb), comfort_level, magic_question, active_version, created_by (uuid ref profiles), created_at, updated_at
-- RLS: authenticated users can CRUD their org's leads
+This ensures the core workflow (Dados Gerais → Travel Planner → Custos → Operações) persists across sessions.
 
-**`trips` table** — confirmed bookings
-- id (uuid), trip_code (text), client_name, destination, start_date, end_date, status, sales_owner, budget_level, pax, urgency, total_value, notes, has_blocker, blocker_note, lead_id (ref leads), created_by, created_at, updated_at
-- RLS: authenticated can read/write
+### Phase 2: Connect TripDetailPage to Database
 
-**`approvals` table**
-- id, trip_id, client_name, type, title, submitted_by, submitted_at, priority, summary, status (pending/approved/rejected), resolved_by, resolved_at
-- RLS: authenticated can read, manage own
+Replace `mockTrips.find()` with `useTripQuery(id)`. Move checklist, files, notifications to DB-backed state or at minimum to the `trips` table JSONB fields.
 
-**`tasks` table**
-- id, title, description, category, priority, status, team, assigned_to, due_date, trip_id, lead_id, created_by, created_at, updated_at
-- RLS: authenticated can CRUD
+### Phase 3: Connect Tasks to Database
 
-### Phase 2: Replace Mock Data with Supabase Queries
+Rewrite `TasksPage` and `TasksBoard` to use `useTasksQuery` hook (already exists). Add create task dialog, toggle mutations, and Kanban drag-and-drop persistence.
 
-For each page, replace static imports with real-time Supabase queries using React Query:
+### Phase 4: Fix Activity Logs
 
-1. **`useLeads` hook** — rewrite to fetch/mutate from `leads` table instead of React state
-2. **`LeadsFilesPage`** — query leads table with filters, search, pagination
-3. **`LeadDetailPage`** — fetch single lead, save/update/delete to DB
-4. **`Dashboard`** — aggregate queries (count trips next 7 days, pending approvals, etc.)
-5. **`TripsPage`** — query trips table with urgency filters
-6. **`TripDetailPage`** — fetch/update trip from DB
-7. **`ApprovalsPage`** — query approvals, update status on approve/reject
-8. **`TasksPage`** — full CRUD on tasks table
+Fix the RLS policy or the insert logic so activity logs actually persist. Currently 0 records despite the hook being called.
 
-### Phase 3: Wire All Buttons and Actions
+### Phase 5: Connect Operations Tab
 
-Every action button must trigger a real database mutation:
+Wire the Operations tab in LeadDetailPage to pull from approved costing data instead of `MOCK_OPS_DAYS`.
 
-- **Nova Lead** → INSERT into leads table → navigate to detail
-- **Guardar (Save)** → UPDATE lead in DB
-- **Duplicar** → INSERT new lead with copied data
-- **Nova Versão** → UPDATE active_version on lead
-- **Remover** → DELETE lead (or soft-delete with status)
-- **Status change** → UPDATE lead/trip status
-- **Approve/Reject** → UPDATE approval status
-- **Task toggle** → UPDATE task status
-- **New Task** → INSERT into tasks
+### Phase 6: Connect Files
 
-### Phase 4: Activity Logging
-
-The `activity_logs` table already exists. Wire key actions to log:
-- Lead created/updated/deleted
-- Trip status changed
-- Approval resolved
-- Task completed
+Replace `mockFiles` in LeadsFilesPage with real file references (either from storage bucket or a `lead_files` table).
 
 ---
 
-## Technical Approach
+## Execution Priority
 
-- Use **React Query** (`useQuery` / `useMutation`) for all data fetching and mutations with proper cache invalidation
-- Create custom hooks: `useLeadsQuery`, `useTripsQuery`, `useTasksQuery`, `useApprovalsQuery`
-- Seed the database with the existing mock data so the team starts with familiar records
-- Keep the `LeadsProvider` context but back it with Supabase instead of useState
-- All RLS policies use `auth.uid() IS NOT NULL` for authenticated access (internal team only)
-
----
+1. **Travel Planner + Costing persistence** — without this, the core product workflow breaks on every refresh
+2. **TripDetailPage** — trips exist in DB but detail page can't show them
+3. **Tasks** — hooks exist, just need to connect pages
+4. **Activity Logs fix** — quick RLS fix
+5. **Operations tab + Files** — lower priority, can use interim solutions
 
 ## Files to Create/Modify
 
-**New files:**
-- `src/hooks/useLeadsQuery.ts` — Supabase-backed leads hook
-- `src/hooks/useTripsQuery.ts` — Supabase-backed trips hook  
-- `src/hooks/useTasksQuery.ts` — Supabase-backed tasks hook
-- `src/hooks/useApprovalsQuery.ts` — Supabase-backed approvals hook
-
-**Modified files:**
-- `src/pages/Dashboard.tsx` — real data queries
-- `src/pages/LeadsFilesPage.tsx` — real leads from DB
-- `src/pages/LeadDetailPage.tsx` — real CRUD
-- `src/pages/TripsPage.tsx` — real trips from DB
-- `src/pages/TripDetailPage.tsx` — real trip CRUD
-- `src/pages/ApprovalsPage.tsx` — real approvals
-- `src/pages/TasksPage.tsx` — real tasks
-- `src/components/NewLeadDialog.tsx` — insert to DB
-- `src/components/leads/AISimulationForm.tsx` — insert to DB
-
-**Database migrations:** 1 migration with leads, trips, approvals, tasks tables + RLS + seed data
-
----
-
-## Execution Order
-
-Given the scope, this should be implemented in this sequence:
-1. Database migration (all 4 tables + RLS + seed data)
-2. Leads system (highest priority — most used feature)
-3. Trips + Dashboard
-4. Tasks + Approvals
-5. Activity logging integration
-
-This will make the entire system production-ready with real persistence.
+**New DB tables:** `lead_planner_data`, `lead_costing_data`
+**Modified pages:** `TripDetailPage`, `TasksPage`, `TasksBoard`, `LeadDetailPage` (persist planner/costing), `LeadsFilesPage` (remove mockFiles)
+**Fix:** `useActivityLog.ts` or RLS policy on `activity_logs`
 
