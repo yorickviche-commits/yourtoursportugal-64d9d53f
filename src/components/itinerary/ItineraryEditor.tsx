@@ -272,16 +272,25 @@ const ItineraryEditor = ({ leadId, clientName, destination, travelDates, travelP
     updateDay(dayIndex, { images: [...itinerary.days[dayIndex].images, { url: '', caption: '' }] });
   };
 
-  // AI image auto-fill for a day
+  // Build a smart search query from day content
+  const buildImageQuery = (day: ItineraryDayData): string => {
+    const parts: string[] = [];
+    if (day.location_name) parts.push(day.location_name);
+    if (day.title) parts.push(day.title);
+    // Extract key activities from highlights
+    if (day.highlights.length > 0) parts.push(day.highlights.slice(0, 2).join(', '));
+    parts.push('Portugal travel');
+    return parts.join(' ').slice(0, 120);
+  };
+
+  // AI image auto-fill for a day (all 3 images)
   const autoFillImages = async (dayIndex: number) => {
     const day = itinerary.days[dayIndex];
     setLoadingImages(dayIndex);
     try {
+      const query = buildImageQuery(day);
       const { data, error } = await supabase.functions.invoke('search-destination-images', {
-        body: {
-          query: `${day.title} ${day.location_name} Portugal travel`,
-          count: 3,
-        },
+        body: { query, count: 3, mode: 'search' },
       });
       if (error) throw error;
       if (data?.images?.length) {
@@ -292,12 +301,67 @@ const ItineraryEditor = ({ leadId, clientName, destination, travelDates, travelP
           })),
         });
         toast({ title: 'Imagens encontradas', description: `${data.images.length} imagens adicionadas ao Dia ${day.day_number}` });
+      } else {
+        toast({ title: 'Sem imagens encontradas', variant: 'destructive' });
       }
     } catch (e: any) {
       toast({ title: 'Erro ao buscar imagens', description: e.message, variant: 'destructive' });
     } finally {
       setLoadingImages(null);
     }
+  };
+
+  // Regenerate a single image (AI generated)
+  const [regenIdx, setRegenIdx] = useState<string | null>(null);
+  const regenerateImage = async (dayIndex: number, imgIndex: number) => {
+    const day = itinerary.days[dayIndex];
+    const key = `${dayIndex}-${imgIndex}`;
+    setRegenIdx(key);
+    try {
+      const query = `${day.title} ${day.location_name || ''} Portugal`;
+      const { data, error } = await supabase.functions.invoke('search-destination-images', {
+        body: { query, count: 1, mode: 'search' },
+      });
+      if (error) throw error;
+      if (data?.images?.[0]) {
+        updateImage(dayIndex, imgIndex, { url: data.images[0].url, caption: data.images[0].caption });
+        toast({ title: 'Imagem regenerada' });
+      }
+    } catch (e: any) {
+      toast({ title: 'Erro', description: e.message, variant: 'destructive' });
+    } finally {
+      setRegenIdx(null);
+    }
+  };
+
+  // Handle file upload for an image slot
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [uploadTarget, setUploadTarget] = useState<{ dayIdx: number; imgIdx: number } | null>(null);
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !uploadTarget) return;
+
+    try {
+      const ext = file.name.split('.').pop() || 'jpg';
+      const path = `itinerary-images/${leadId}/${Date.now()}.${ext}`;
+      const { error: upErr } = await supabase.storage.from('supplier-files').upload(path, file, { upsert: true });
+      if (upErr) throw upErr;
+      
+      const { data: urlData } = supabase.storage.from('supplier-files').getPublicUrl(path);
+      updateImage(uploadTarget.dayIdx, uploadTarget.imgIdx, { url: urlData.publicUrl, caption: file.name.replace(/\.[^.]+$/, '') });
+      toast({ title: 'Imagem carregada' });
+    } catch (err: any) {
+      toast({ title: 'Erro no upload', description: err.message, variant: 'destructive' });
+    } finally {
+      setUploadTarget(null);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  };
+
+  const triggerUpload = (dayIdx: number, imgIdx: number) => {
+    setUploadTarget({ dayIdx, imgIdx });
+    setTimeout(() => fileInputRef.current?.click(), 50);
   };
 
   // Save itinerary to DB
