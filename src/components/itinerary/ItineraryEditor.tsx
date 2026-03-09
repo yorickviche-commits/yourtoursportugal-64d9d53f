@@ -446,7 +446,8 @@ const ItineraryEditor = ({ leadId, clientName, destination, travelDates, travelP
 
   return (
     <div className="space-y-4">
-      {/* Header controls */}
+      {/* Hidden file input for uploads */}
+      <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleFileUpload} />
       <div className="flex items-center justify-between flex-wrap gap-2">
         <h3 className="text-sm font-bold text-foreground">Itinerário Digital (Customer-Facing)</h3>
         <div className="flex items-center gap-2">
