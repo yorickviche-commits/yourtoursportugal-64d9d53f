@@ -5,113 +5,80 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
 };
 
-// Curated high-quality Unsplash images for Portugal destinations
-const PORTUGAL_IMAGES: Record<string, { url: string; caption: string }[]> = {
-  'lisbon': [
-    { url: 'https://images.unsplash.com/photo-1585208798174-6cedd86e019a?w=800&h=600&fit=crop', caption: 'Lisbon cityscape' },
-    { url: 'https://images.unsplash.com/photo-1555881400-74d7acaacd8b?w=800&h=600&fit=crop', caption: 'Traditional tram in Lisbon' },
-    { url: 'https://images.unsplash.com/photo-1548707309-dcebeab426c8?w=800&h=600&fit=crop', caption: 'Belém Tower' },
-  ],
-  'lisboa': [
-    { url: 'https://images.unsplash.com/photo-1585208798174-6cedd86e019a?w=800&h=600&fit=crop', caption: 'Lisbon cityscape' },
-    { url: 'https://images.unsplash.com/photo-1555881400-74d7acaacd8b?w=800&h=600&fit=crop', caption: 'Traditional tram in Lisbon' },
-    { url: 'https://images.unsplash.com/photo-1548707309-dcebeab426c8?w=800&h=600&fit=crop', caption: 'Belém Tower' },
-  ],
-  'porto': [
-    { url: 'https://images.unsplash.com/photo-1555881400-74d7acaacd8b?w=800&h=600&fit=crop', caption: 'Porto riverside' },
-    { url: 'https://images.unsplash.com/photo-1513735492246-483525079686?w=800&h=600&fit=crop', caption: 'Porto wine cellars' },
-    { url: 'https://images.unsplash.com/photo-1558618666-fcd25c85f82e?w=800&h=600&fit=crop', caption: 'Dom Luís Bridge' },
-  ],
-  'sintra': [
-    { url: 'https://images.unsplash.com/photo-1536663815808-535e2280d2c2?w=800&h=600&fit=crop', caption: 'Pena Palace, Sintra' },
-    { url: 'https://images.unsplash.com/photo-1580323956656-26bbb7206e14?w=800&h=600&fit=crop', caption: 'Sintra gardens' },
-    { url: 'https://images.unsplash.com/photo-1613832278685-e3235f682f10?w=800&h=600&fit=crop', caption: 'Quinta da Regaleira' },
-  ],
-  'douro': [
-    { url: 'https://images.unsplash.com/photo-1560969184-10fe8719e047?w=800&h=600&fit=crop', caption: 'Douro Valley vineyards' },
-    { url: 'https://images.unsplash.com/photo-1601134991665-a020399422e3?w=800&h=600&fit=crop', caption: 'Douro River terraces' },
-    { url: 'https://images.unsplash.com/photo-1596394516093-501ba68a0ba6?w=800&h=600&fit=crop', caption: 'Wine tasting in Douro' },
-  ],
-  'algarve': [
-    { url: 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=800&h=600&fit=crop', caption: 'Algarve coastline' },
-    { url: 'https://images.unsplash.com/photo-1540979388789-6cee28a1cdc9?w=800&h=600&fit=crop', caption: 'Benagil Cave' },
-    { url: 'https://images.unsplash.com/photo-1548574505-5e239809ee19?w=800&h=600&fit=crop', caption: 'Lagos cliffs' },
-  ],
-  'default': [
-    { url: 'https://images.unsplash.com/photo-1555881400-74d7acaacd8b?w=800&h=600&fit=crop', caption: 'Portugal landscape' },
-    { url: 'https://images.unsplash.com/photo-1513735492246-483525079686?w=800&h=600&fit=crop', caption: 'Portuguese architecture' },
-    { url: 'https://images.unsplash.com/photo-1585208798174-6cedd86e019a?w=800&h=600&fit=crop', caption: 'Portugal views' },
-  ],
-};
+// Search Unsplash API for real, relevant images
+async function searchUnsplash(query: string, count: number): Promise<{ url: string; caption: string }[]> {
+  const UNSPLASH_KEY = Deno.env.get('UNSPLASH_ACCESS_KEY');
+  if (!UNSPLASH_KEY) {
+    console.log('No UNSPLASH_ACCESS_KEY configured');
+    return [];
+  }
 
-// Try AI-powered image search using Lovable AI
-async function searchWithAI(query: string, count: number): Promise<{ url: string; caption: string }[]> {
+  try {
+    const params = new URLSearchParams({
+      query: query,
+      per_page: String(Math.min(count, 10)),
+      orientation: 'landscape',
+      content_filter: 'high',
+    });
+
+    const res = await fetch(`https://api.unsplash.com/search/photos?${params}`, {
+      headers: { Authorization: `Client-ID ${UNSPLASH_KEY}` },
+    });
+
+    if (!res.ok) {
+      console.error('Unsplash API error:', res.status, await res.text());
+      return [];
+    }
+
+    const data = await res.json();
+    return (data.results || []).slice(0, count).map((photo: any) => ({
+      url: `${photo.urls?.regular || photo.urls?.small}`,
+      caption: photo.alt_description || photo.description || query,
+    }));
+  } catch (e) {
+    console.error('Unsplash search failed:', e);
+    return [];
+  }
+}
+
+// Generate image with AI as fallback
+async function generateWithAI(query: string): Promise<{ url: string; caption: string } | null> {
   const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
-  if (!LOVABLE_API_KEY) return [];
+  if (!LOVABLE_API_KEY) return null;
 
   try {
     const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${LOVABLE_API_KEY}`,
+        Authorization: `Bearer ${LOVABLE_API_KEY}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'google/gemini-2.5-flash',
+        model: 'google/gemini-3.1-flash-image-preview',
         messages: [
           {
-            role: 'system',
-            content: `You are a travel photography curator for Portugal. Given a search query, return ${count} Unsplash photo URLs that best match the destination. Use real, high-quality Unsplash photo IDs you know about. Return JSON array only.`
-          },
-          {
             role: 'user',
-            content: `Find ${count} beautiful travel photos for: "${query}". Return ONLY a JSON array like: [{"url": "https://images.unsplash.com/photo-XXXXX?w=800&h=600&fit=crop", "caption": "description"}]`
-          }
+            content: `Generate a beautiful, photorealistic travel photograph of: ${query}. Make it look like a professional travel magazine photo with warm lighting, vivid colors, and a sense of place. Landscape orientation.`,
+          },
         ],
-        tools: [
-          {
-            type: "function",
-            function: {
-              name: "return_images",
-              description: "Return curated travel images",
-              parameters: {
-                type: "object",
-                properties: {
-                  images: {
-                    type: "array",
-                    items: {
-                      type: "object",
-                      properties: {
-                        url: { type: "string" },
-                        caption: { type: "string" }
-                      },
-                      required: ["url", "caption"],
-                      additionalProperties: false
-                    }
-                  }
-                },
-                required: ["images"],
-                additionalProperties: false
-              }
-            }
-          }
-        ],
-        tool_choice: { type: "function", function: { name: "return_images" } }
+        modalities: ['image', 'text'],
       }),
     });
 
-    if (!response.ok) return [];
+    if (!response.ok) {
+      console.error('AI image gen error:', response.status);
+      return null;
+    }
 
     const data = await response.json();
-    const toolCall = data.choices?.[0]?.message?.tool_calls?.[0];
-    if (toolCall?.function?.arguments) {
-      const parsed = JSON.parse(toolCall.function.arguments);
-      return parsed.images || [];
+    const imageData = data.choices?.[0]?.message?.images?.[0]?.image_url?.url;
+    if (imageData) {
+      return { url: imageData, caption: query };
     }
   } catch (e) {
-    console.error('AI image search failed:', e);
+    console.error('AI image generation failed:', e);
   }
-  return [];
+  return null;
 }
 
 serve(async (req) => {
@@ -120,24 +87,27 @@ serve(async (req) => {
   }
 
   try {
-    const { query, count = 3 } = await req.json();
+    const { query, count = 3, mode = 'search' } = await req.json();
+    // mode: 'search' = Unsplash + AI fallback, 'generate' = AI only (for single regen)
 
-    // Try AI-powered search first
-    let images = await searchWithAI(query, count);
+    if (mode === 'generate') {
+      // Generate a single AI image
+      const result = await generateWithAI(query);
+      return new Response(JSON.stringify({ images: result ? [result] : [] }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
 
-    // Fallback to curated images
-    if (!images.length) {
-      const lower = (query || '').toLowerCase();
-      let matched: { url: string; caption: string }[] = [];
+    // Default: search Unsplash first
+    let images = await searchUnsplash(query, count);
 
-      for (const [key, imgs] of Object.entries(PORTUGAL_IMAGES)) {
-        if (key !== 'default' && lower.includes(key)) {
-          matched = imgs;
-          break;
-        }
+    // If Unsplash returned fewer than requested, fill with AI-generated
+    if (images.length < count) {
+      const needed = count - images.length;
+      for (let i = 0; i < needed; i++) {
+        const aiImg = await generateWithAI(`${query} - view ${i + 1}`);
+        if (aiImg) images.push(aiImg);
       }
-
-      images = (matched.length ? matched : PORTUGAL_IMAGES.default).slice(0, count);
     }
 
     return new Response(JSON.stringify({ images }), {
