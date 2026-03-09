@@ -625,36 +625,59 @@ const ItineraryEditor = ({ leadId, clientName, destination, travelDates, travelP
                         </Button>
                       </div>
                       <div className="grid grid-cols-3 gap-3">
-                        {day.images.map((img, imgIndex) => (
-                          <div key={imgIndex} className="relative group">
-                            <div className="aspect-[4/3] rounded-lg overflow-hidden bg-muted border">
-                              {img.url ? (
-                                <img src={img.url} alt={img.caption} className="w-full h-full object-cover"
-                                  onError={e => { (e.target as HTMLImageElement).src = '/placeholder.svg'; }} />
-                              ) : (
-                                <div className="w-full h-full flex items-center justify-center text-muted-foreground">
-                                  <ImagePlus className="h-6 w-6" />
-                                </div>
-                              )}
+                        {day.images.map((img, imgIndex) => {
+                          const isRegening = regenIdx === `${dayIndex}-${imgIndex}`;
+                          return (
+                            <div key={imgIndex} className="relative group">
+                              <div className="aspect-[4/3] rounded-lg overflow-hidden bg-muted border">
+                                {img.url ? (
+                                  <img src={img.url} alt={img.caption} className="w-full h-full object-cover"
+                                    onError={e => { (e.target as HTMLImageElement).src = '/placeholder.svg'; }} />
+                                ) : (
+                                  <div className="w-full h-full flex items-center justify-center text-muted-foreground">
+                                    <ImagePlus className="h-6 w-6" />
+                                  </div>
+                                )}
+                              </div>
+                              {/* Overlay actions */}
+                              <div className="absolute top-1 right-1 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                <button onClick={() => regenerateImage(dayIndex, imgIndex)} disabled={isRegening}
+                                  className="bg-background/90 backdrop-blur text-foreground rounded-full w-6 h-6 flex items-center justify-center border shadow-sm hover:bg-muted" title="Regenerar">
+                                  {isRegening ? <Loader2 className="h-3 w-3 animate-spin" /> : <RefreshCw className="h-3 w-3" />}
+                                </button>
+                                <button onClick={() => triggerUpload(dayIndex, imgIndex)}
+                                  className="bg-background/90 backdrop-blur text-foreground rounded-full w-6 h-6 flex items-center justify-center border shadow-sm hover:bg-muted" title="Upload">
+                                  <Upload className="h-3 w-3" />
+                                </button>
+                                <button onClick={() => removeImage(dayIndex, imgIndex)}
+                                  className="bg-destructive text-destructive-foreground rounded-full w-6 h-6 flex items-center justify-center shadow-sm" title="Remover">
+                                  <X className="h-3 w-3" />
+                                </button>
+                              </div>
+                              <Input className="h-6 text-[10px] mt-1" value={img.caption}
+                                onChange={e => updateImage(dayIndex, imgIndex, { caption: e.target.value })}
+                                placeholder="Legenda..." />
+                              <Input className="h-6 text-[10px] mt-0.5" value={img.url}
+                                onChange={e => updateImage(dayIndex, imgIndex, { url: e.target.value })}
+                                placeholder="URL da imagem..." />
                             </div>
-                            <button onClick={() => removeImage(dayIndex, imgIndex)}
-                              className="absolute top-1 right-1 bg-destructive text-destructive-foreground rounded-full w-5 h-5 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                              <X className="h-3 w-3" />
-                            </button>
-                            <Input className="h-6 text-[10px] mt-1" value={img.caption}
-                              onChange={e => updateImage(dayIndex, imgIndex, { caption: e.target.value })}
-                              placeholder="Legenda..." />
-                            <Input className="h-6 text-[10px] mt-0.5" value={img.url}
-                              onChange={e => updateImage(dayIndex, imgIndex, { url: e.target.value })}
-                              placeholder="URL da imagem ou Unsplash..." />
-                          </div>
-                        ))}
+                          );
+                        })}
                         {day.images.length < 3 && (
-                          <button onClick={() => addImageSlot(dayIndex)}
-                            className="aspect-[4/3] rounded-lg border-2 border-dashed border-border flex flex-col items-center justify-center text-muted-foreground hover:text-foreground hover:border-foreground/30 transition-colors">
-                            <ImagePlus className="h-6 w-6 mb-1" />
-                            <span className="text-[10px]">Adicionar Imagem</span>
-                          </button>
+                          <div className="aspect-[4/3] rounded-lg border-2 border-dashed border-border flex flex-col items-center justify-center gap-2">
+                            <button onClick={() => addImageSlot(dayIndex)}
+                              className="flex flex-col items-center text-muted-foreground hover:text-foreground transition-colors">
+                              <ImagePlus className="h-5 w-5 mb-0.5" />
+                              <span className="text-[10px]">URL / Cole link</span>
+                            </button>
+                            <button onClick={() => {
+                              addImageSlot(dayIndex);
+                              setTimeout(() => triggerUpload(dayIndex, day.images.length), 100);
+                            }}
+                              className="flex items-center gap-1 text-[10px] text-[hsl(var(--info))] hover:underline">
+                              <Upload className="h-3 w-3" /> Upload ficheiro
+                            </button>
+                          </div>
                         )}
                       </div>
                     </div>
