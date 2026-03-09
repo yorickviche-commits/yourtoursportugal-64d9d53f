@@ -37,6 +37,55 @@ const DESTINOS = ['Porto & Douro Valley', 'Lisbon & Sintra', 'Algarve', 'Azores'
 const IDIOMAS = ['EN', 'PT', 'FR', 'ES', 'DE', 'IT', 'NL'];
 const ORIGENS = ['website', 'AI Simulation', 'referral', 'partner', 'social_media', 'direct'];
 
+const MONTHS = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
+
+function MonthYearPicker({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  // Parse existing value — could be "2026-05" or a date string or "Maio 2026"
+  const now = new Date();
+  let selectedMonth = now.getMonth();
+  let selectedYear = now.getFullYear();
+
+  if (value) {
+    // Try YYYY-MM format
+    const ym = value.match(/^(\d{4})-(\d{2})/);
+    if (ym) { selectedYear = parseInt(ym[1]); selectedMonth = parseInt(ym[2]) - 1; }
+    else {
+      // Try "Month Year" format
+      const mi = MONTHS.findIndex(m => value.toLowerCase().includes(m.toLowerCase()));
+      if (mi >= 0) selectedMonth = mi;
+      const yr = value.match(/\d{4}/);
+      if (yr) selectedYear = parseInt(yr[0]);
+    }
+  }
+
+  const years = Array.from({ length: 5 }, (_, i) => now.getFullYear() + i);
+
+  return (
+    <div className="flex gap-1.5">
+      <select
+        className="h-8 text-xs border rounded-md px-2 bg-background flex-1"
+        value={selectedMonth}
+        onChange={e => {
+          const m = parseInt(e.target.value);
+          onChange(`${selectedYear}-${String(m + 1).padStart(2, '0')}`);
+        }}
+      >
+        {MONTHS.map((m, i) => <option key={i} value={i}>{m}</option>)}
+      </select>
+      <select
+        className="h-8 text-xs border rounded-md px-2 bg-background w-[80px]"
+        value={selectedYear}
+        onChange={e => {
+          const y = parseInt(e.target.value);
+          onChange(`${y}-${String(selectedMonth + 1).padStart(2, '0')}`);
+        }}
+      >
+        {years.map(y => <option key={y} value={y}>{y}</option>)}
+      </select>
+    </div>
+  );
+}
+
 const OperacoesTab = ({ activeVersion, leadId }: { activeVersion: number; leadId: string }) => {
   // Pull costing data from DB as operational view
   const { data: costingDays = [] } = useQuery({
@@ -561,11 +610,55 @@ const LeadDetailPage = () => {
                 </div>
               </div>
               <div className="grid grid-cols-3 gap-4 mt-3">
-                {formState.datesType !== 'flexible' ? (<>
-                  <div><label className="text-[10px] text-muted-foreground uppercase">Data Início</label><Input className="h-8 text-xs mt-1" type="date" value={formState.travelDates} onChange={e => updateFormField('travelDates', e.target.value)} /></div>
-                  <div><label className="text-[10px] text-muted-foreground uppercase">Data Fim</label><Input className="h-8 text-xs mt-1" type="date" value={formState.travelEndDate} onChange={e => updateFormField('travelEndDate', e.target.value)} /></div>
-                </>) : (
-                  <div><label className="text-[10px] text-muted-foreground uppercase">Nº de Dias</label><Input className="h-8 text-xs mt-1" type="number" min={1} value={formState.numberOfDays} onChange={e => updateFormField('numberOfDays', parseInt(e.target.value) || 0)} /></div>
+                {formState.datesType === 'concrete' && (<>
+                  <div>
+                    <label className="text-[10px] text-muted-foreground uppercase">Data Início</label>
+                    <Input className="h-8 text-xs mt-1" type="date" value={formState.travelDates} onChange={e => {
+                      const startVal = e.target.value;
+                      updateFormField('travelDates', startVal);
+                      // Auto-calc numberOfDays
+                      if (startVal && formState.travelEndDate) {
+                        const diff = Math.ceil((new Date(formState.travelEndDate).getTime() - new Date(startVal).getTime()) / 86400000) + 1;
+                        if (diff > 0) updateFormField('numberOfDays', diff);
+                      }
+                    }} />
+                  </div>
+                  <div>
+                    <label className="text-[10px] text-muted-foreground uppercase">Data Fim</label>
+                    <Input className="h-8 text-xs mt-1" type="date" value={formState.travelEndDate} onChange={e => {
+                      const endVal = e.target.value;
+                      updateFormField('travelEndDate', endVal);
+                      if (formState.travelDates && endVal) {
+                        const diff = Math.ceil((new Date(endVal).getTime() - new Date(formState.travelDates).getTime()) / 86400000) + 1;
+                        if (diff > 0) updateFormField('numberOfDays', diff);
+                      }
+                    }} />
+                  </div>
+                  <div>
+                    <label className="text-[10px] text-muted-foreground uppercase">Nº de Dias</label>
+                    <Input className="h-8 text-xs mt-1 bg-muted/50" type="number" value={formState.numberOfDays} readOnly />
+                  </div>
+                </>)}
+                {formState.datesType === 'estimated' && (<>
+                  <div>
+                    <label className="text-[10px] text-muted-foreground uppercase">Mês Previsto</label>
+                    <div className="mt-1">
+                      <MonthYearPicker
+                        value={formState.travelDates}
+                        onChange={(val) => updateFormField('travelDates', val)}
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="text-[10px] text-muted-foreground uppercase">Nº de Dias</label>
+                    <Input className="h-8 text-xs mt-1" type="number" min={1} value={formState.numberOfDays} onChange={e => updateFormField('numberOfDays', parseInt(e.target.value) || 0)} />
+                  </div>
+                </>)}
+                {formState.datesType === 'flexible' && (
+                  <div>
+                    <label className="text-[10px] text-muted-foreground uppercase">Nº de Dias</label>
+                    <Input className="h-8 text-xs mt-1" type="number" min={1} value={formState.numberOfDays} onChange={e => updateFormField('numberOfDays', parseInt(e.target.value) || 0)} />
+                  </div>
                 )}
                 <div><label className="text-[10px] text-muted-foreground uppercase">Nº de adultos</label><Input className="h-8 text-xs mt-1" type="number" value={formState.pax} onChange={e => updateFormField('pax', parseInt(e.target.value) || 1)} /></div>
               </div>
