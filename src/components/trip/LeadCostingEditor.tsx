@@ -395,7 +395,7 @@ const LeadCostingEditor = ({ costingDays, onChange, onSave, saving, plannerDays,
                                 <Input className="h-7 text-xs border-0 bg-transparent shadow-none focus-visible:ring-1 px-1" defaultValue={item.description} onBlur={e => updateItem(dayIdx, itemIdx, { description: e.target.value })} placeholder="Atividade..." />
                               </td>
                               <td className="px-1 py-1">
-                                <Input className="h-7 text-xs border-0 bg-transparent shadow-none focus-visible:ring-1 px-1" defaultValue={item.supplier} onBlur={e => updateItem(dayIdx, itemIdx, { supplier: e.target.value })} placeholder="Fornecedor..." />
+                                <SupplierSearchDropdown value={item.supplier} onChange={v => updateItem(dayIdx, itemIdx, { supplier: v })} />
                               </td>
                               <td className="px-1 py-1">
                                 <Select defaultValue={item.pricingType} onValueChange={v => updateItem(dayIdx, itemIdx, { pricingType: v as any })}>
