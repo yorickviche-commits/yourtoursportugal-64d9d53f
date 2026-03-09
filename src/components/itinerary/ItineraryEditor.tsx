@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react';
-import { ChevronDown, ChevronRight, Plus, Trash2, ImagePlus, X, MapPin, Loader2, Link2, Upload, Sparkles, Eye, Copy } from 'lucide-react';
+import { useState, useEffect, useRef } from 'react';
+import { ChevronDown, ChevronRight, Plus, Trash2, ImagePlus, X, MapPin, Loader2, Link2, Upload, Sparkles, Eye, Copy, RefreshCw } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
@@ -272,16 +272,25 @@ const ItineraryEditor = ({ leadId, clientName, destination, travelDates, travelP
     updateDay(dayIndex, { images: [...itinerary.days[dayIndex].images, { url: '', caption: '' }] });
   };
 
-  // AI image auto-fill for a day
+  // Build a smart search query from day content
+  const buildImageQuery = (day: ItineraryDayData): string => {
+    const parts: string[] = [];
+    if (day.location_name) parts.push(day.location_name);
+    if (day.title) parts.push(day.title);
+    // Extract key activities from highlights
+    if (day.highlights.length > 0) parts.push(day.highlights.slice(0, 2).join(', '));
+    parts.push('Portugal travel');
+    return parts.join(' ').slice(0, 120);
+  };
+
+  // AI image auto-fill for a day (all 3 images)
   const autoFillImages = async (dayIndex: number) => {
     const day = itinerary.days[dayIndex];
     setLoadingImages(dayIndex);
     try {
+      const query = buildImageQuery(day);
       const { data, error } = await supabase.functions.invoke('search-destination-images', {
-        body: {
-          query: `${day.title} ${day.location_name} Portugal travel`,
-          count: 3,
-        },
+        body: { query, count: 3, mode: 'search' },
       });
       if (error) throw error;
       if (data?.images?.length) {
@@ -292,12 +301,67 @@ const ItineraryEditor = ({ leadId, clientName, destination, travelDates, travelP
           })),
         });
         toast({ title: 'Imagens encontradas', description: `${data.images.length} imagens adicionadas ao Dia ${day.day_number}` });
+      } else {
+        toast({ title: 'Sem imagens encontradas', variant: 'destructive' });
       }
     } catch (e: any) {
       toast({ title: 'Erro ao buscar imagens', description: e.message, variant: 'destructive' });
     } finally {
       setLoadingImages(null);
     }
+  };
+
+  // Regenerate a single image (AI generated)
+  const [regenIdx, setRegenIdx] = useState<string | null>(null);
+  const regenerateImage = async (dayIndex: number, imgIndex: number) => {
+    const day = itinerary.days[dayIndex];
+    const key = `${dayIndex}-${imgIndex}`;
+    setRegenIdx(key);
+    try {
+      const query = `${day.title} ${day.location_name || ''} Portugal`;
+      const { data, error } = await supabase.functions.invoke('search-destination-images', {
+        body: { query, count: 1, mode: 'search' },
+      });
+      if (error) throw error;
+      if (data?.images?.[0]) {
+        updateImage(dayIndex, imgIndex, { url: data.images[0].url, caption: data.images[0].caption });
+        toast({ title: 'Imagem regenerada' });
+      }
+    } catch (e: any) {
+      toast({ title: 'Erro', description: e.message, variant: 'destructive' });
+    } finally {
+      setRegenIdx(null);
+    }
+  };
+
+  // Handle file upload for an image slot
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [uploadTarget, setUploadTarget] = useState<{ dayIdx: number; imgIdx: number } | null>(null);
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !uploadTarget) return;
+
+    try {
+      const ext = file.name.split('.').pop() || 'jpg';
+      const path = `itinerary-images/${leadId}/${Date.now()}.${ext}`;
+      const { error: upErr } = await supabase.storage.from('supplier-files').upload(path, file, { upsert: true });
+      if (upErr) throw upErr;
+      
+      const { data: urlData } = supabase.storage.from('supplier-files').getPublicUrl(path);
+      updateImage(uploadTarget.dayIdx, uploadTarget.imgIdx, { url: urlData.publicUrl, caption: file.name.replace(/\.[^.]+$/, '') });
+      toast({ title: 'Imagem carregada' });
+    } catch (err: any) {
+      toast({ title: 'Erro no upload', description: err.message, variant: 'destructive' });
+    } finally {
+      setUploadTarget(null);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  };
+
+  const triggerUpload = (dayIdx: number, imgIdx: number) => {
+    setUploadTarget({ dayIdx, imgIdx });
+    setTimeout(() => fileInputRef.current?.click(), 50);
   };
 
   // Save itinerary to DB
@@ -382,7 +446,8 @@ const ItineraryEditor = ({ leadId, clientName, destination, travelDates, travelP
 
   return (
     <div className="space-y-4">
-      {/* Header controls */}
+      {/* Hidden file input for uploads */}
+      <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleFileUpload} />
       <div className="flex items-center justify-between flex-wrap gap-2">
         <h3 className="text-sm font-bold text-foreground">Itinerário Digital (Customer-Facing)</h3>
         <div className="flex items-center gap-2">
@@ -560,36 +625,59 @@ const ItineraryEditor = ({ leadId, clientName, destination, travelDates, travelP
                         </Button>
                       </div>
                       <div className="grid grid-cols-3 gap-3">
-                        {day.images.map((img, imgIndex) => (
-                          <div key={imgIndex} className="relative group">
-                            <div className="aspect-[4/3] rounded-lg overflow-hidden bg-muted border">
-                              {img.url ? (
-                                <img src={img.url} alt={img.caption} className="w-full h-full object-cover"
-                                  onError={e => { (e.target as HTMLImageElement).src = '/placeholder.svg'; }} />
-                              ) : (
-                                <div className="w-full h-full flex items-center justify-center text-muted-foreground">
-                                  <ImagePlus className="h-6 w-6" />
-                                </div>
-                              )}
+                        {day.images.map((img, imgIndex) => {
+                          const isRegening = regenIdx === `${dayIndex}-${imgIndex}`;
+                          return (
+                            <div key={imgIndex} className="relative group">
+                              <div className="aspect-[4/3] rounded-lg overflow-hidden bg-muted border">
+                                {img.url ? (
+                                  <img src={img.url} alt={img.caption} className="w-full h-full object-cover"
+                                    onError={e => { (e.target as HTMLImageElement).src = '/placeholder.svg'; }} />
+                                ) : (
+                                  <div className="w-full h-full flex items-center justify-center text-muted-foreground">
+                                    <ImagePlus className="h-6 w-6" />
+                                  </div>
+                                )}
+                              </div>
+                              {/* Overlay actions */}
+                              <div className="absolute top-1 right-1 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                <button onClick={() => regenerateImage(dayIndex, imgIndex)} disabled={isRegening}
+                                  className="bg-background/90 backdrop-blur text-foreground rounded-full w-6 h-6 flex items-center justify-center border shadow-sm hover:bg-muted" title="Regenerar">
+                                  {isRegening ? <Loader2 className="h-3 w-3 animate-spin" /> : <RefreshCw className="h-3 w-3" />}
+                                </button>
+                                <button onClick={() => triggerUpload(dayIndex, imgIndex)}
+                                  className="bg-background/90 backdrop-blur text-foreground rounded-full w-6 h-6 flex items-center justify-center border shadow-sm hover:bg-muted" title="Upload">
+                                  <Upload className="h-3 w-3" />
+                                </button>
+                                <button onClick={() => removeImage(dayIndex, imgIndex)}
+                                  className="bg-destructive text-destructive-foreground rounded-full w-6 h-6 flex items-center justify-center shadow-sm" title="Remover">
+                                  <X className="h-3 w-3" />
+                                </button>
+                              </div>
+                              <Input className="h-6 text-[10px] mt-1" value={img.caption}
+                                onChange={e => updateImage(dayIndex, imgIndex, { caption: e.target.value })}
+                                placeholder="Legenda..." />
+                              <Input className="h-6 text-[10px] mt-0.5" value={img.url}
+                                onChange={e => updateImage(dayIndex, imgIndex, { url: e.target.value })}
+                                placeholder="URL da imagem..." />
                             </div>
-                            <button onClick={() => removeImage(dayIndex, imgIndex)}
-                              className="absolute top-1 right-1 bg-destructive text-destructive-foreground rounded-full w-5 h-5 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                              <X className="h-3 w-3" />
-                            </button>
-                            <Input className="h-6 text-[10px] mt-1" value={img.caption}
-                              onChange={e => updateImage(dayIndex, imgIndex, { caption: e.target.value })}
-                              placeholder="Legenda..." />
-                            <Input className="h-6 text-[10px] mt-0.5" value={img.url}
-                              onChange={e => updateImage(dayIndex, imgIndex, { url: e.target.value })}
-                              placeholder="URL da imagem ou Unsplash..." />
-                          </div>
-                        ))}
+                          );
+                        })}
                         {day.images.length < 3 && (
-                          <button onClick={() => addImageSlot(dayIndex)}
-                            className="aspect-[4/3] rounded-lg border-2 border-dashed border-border flex flex-col items-center justify-center text-muted-foreground hover:text-foreground hover:border-foreground/30 transition-colors">
-                            <ImagePlus className="h-6 w-6 mb-1" />
-                            <span className="text-[10px]">Adicionar Imagem</span>
-                          </button>
+                          <div className="aspect-[4/3] rounded-lg border-2 border-dashed border-border flex flex-col items-center justify-center gap-2">
+                            <button onClick={() => addImageSlot(dayIndex)}
+                              className="flex flex-col items-center text-muted-foreground hover:text-foreground transition-colors">
+                              <ImagePlus className="h-5 w-5 mb-0.5" />
+                              <span className="text-[10px]">URL / Cole link</span>
+                            </button>
+                            <button onClick={() => {
+                              addImageSlot(dayIndex);
+                              setTimeout(() => triggerUpload(dayIndex, day.images.length), 100);
+                            }}
+                              className="flex items-center gap-1 text-[10px] text-[hsl(var(--info))] hover:underline">
+                              <Upload className="h-3 w-3" /> Upload ficheiro
+                            </button>
+                          </div>
                         )}
                       </div>
                     </div>
