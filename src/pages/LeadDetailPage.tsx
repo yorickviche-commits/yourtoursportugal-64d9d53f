@@ -561,11 +561,55 @@ const LeadDetailPage = () => {
                 </div>
               </div>
               <div className="grid grid-cols-3 gap-4 mt-3">
-                {formState.datesType !== 'flexible' ? (<>
-                  <div><label className="text-[10px] text-muted-foreground uppercase">Data Início</label><Input className="h-8 text-xs mt-1" type="date" value={formState.travelDates} onChange={e => updateFormField('travelDates', e.target.value)} /></div>
-                  <div><label className="text-[10px] text-muted-foreground uppercase">Data Fim</label><Input className="h-8 text-xs mt-1" type="date" value={formState.travelEndDate} onChange={e => updateFormField('travelEndDate', e.target.value)} /></div>
-                </>) : (
-                  <div><label className="text-[10px] text-muted-foreground uppercase">Nº de Dias</label><Input className="h-8 text-xs mt-1" type="number" min={1} value={formState.numberOfDays} onChange={e => updateFormField('numberOfDays', parseInt(e.target.value) || 0)} /></div>
+                {formState.datesType === 'concrete' && (<>
+                  <div>
+                    <label className="text-[10px] text-muted-foreground uppercase">Data Início</label>
+                    <Input className="h-8 text-xs mt-1" type="date" value={formState.travelDates} onChange={e => {
+                      const startVal = e.target.value;
+                      updateFormField('travelDates', startVal);
+                      // Auto-calc numberOfDays
+                      if (startVal && formState.travelEndDate) {
+                        const diff = Math.ceil((new Date(formState.travelEndDate).getTime() - new Date(startVal).getTime()) / 86400000) + 1;
+                        if (diff > 0) updateFormField('numberOfDays', diff);
+                      }
+                    }} />
+                  </div>
+                  <div>
+                    <label className="text-[10px] text-muted-foreground uppercase">Data Fim</label>
+                    <Input className="h-8 text-xs mt-1" type="date" value={formState.travelEndDate} onChange={e => {
+                      const endVal = e.target.value;
+                      updateFormField('travelEndDate', endVal);
+                      if (formState.travelDates && endVal) {
+                        const diff = Math.ceil((new Date(endVal).getTime() - new Date(formState.travelDates).getTime()) / 86400000) + 1;
+                        if (diff > 0) updateFormField('numberOfDays', diff);
+                      }
+                    }} />
+                  </div>
+                  <div>
+                    <label className="text-[10px] text-muted-foreground uppercase">Nº de Dias</label>
+                    <Input className="h-8 text-xs mt-1 bg-muted/50" type="number" value={formState.numberOfDays} readOnly />
+                  </div>
+                </>)}
+                {formState.datesType === 'estimated' && (<>
+                  <div>
+                    <label className="text-[10px] text-muted-foreground uppercase">Mês Previsto</label>
+                    <div className="mt-1">
+                      <MonthYearPicker
+                        value={formState.travelDates}
+                        onChange={(val) => updateFormField('travelDates', val)}
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="text-[10px] text-muted-foreground uppercase">Nº de Dias</label>
+                    <Input className="h-8 text-xs mt-1" type="number" min={1} value={formState.numberOfDays} onChange={e => updateFormField('numberOfDays', parseInt(e.target.value) || 0)} />
+                  </div>
+                </>)}
+                {formState.datesType === 'flexible' && (
+                  <div>
+                    <label className="text-[10px] text-muted-foreground uppercase">Nº de Dias</label>
+                    <Input className="h-8 text-xs mt-1" type="number" min={1} value={formState.numberOfDays} onChange={e => updateFormField('numberOfDays', parseInt(e.target.value) || 0)} />
+                  </div>
                 )}
                 <div><label className="text-[10px] text-muted-foreground uppercase">Nº de adultos</label><Input className="h-8 text-xs mt-1" type="number" value={formState.pax} onChange={e => updateFormField('pax', parseInt(e.target.value) || 1)} /></div>
               </div>
