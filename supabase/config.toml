@@ -20,3 +20,6 @@ verify_jwt = false
 
 [functions.extract-supplier-data]
 verify_jwt = false
+
+[functions.auto-fulfill-budget]
+verify_jwt = false
