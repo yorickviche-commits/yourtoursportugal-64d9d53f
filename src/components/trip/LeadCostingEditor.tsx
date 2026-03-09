@@ -192,11 +192,13 @@ interface LeadCostingEditorProps {
   plannerDays: PlannerDay[];
   pax: number;
   paxChildren: number;
+  destination?: string;
 }
 
 // ─── Component ───────────────────────────────────────
-const LeadCostingEditor = ({ costingDays, onChange, onSave, saving, plannerDays, pax, paxChildren }: LeadCostingEditorProps) => {
+const LeadCostingEditor = ({ costingDays, onChange, onSave, saving, plannerDays, pax, paxChildren, destination }: LeadCostingEditorProps) => {
   const [expandedDays, setExpandedDays] = useState<number[]>(costingDays.length > 0 ? costingDays.map(d => d.day) : []);
+  const [autoFilling, setAutoFilling] = useState(false);
 
   const toggleDay = (day: number) => {
     setExpandedDays(prev => prev.includes(day) ? prev.filter(d => d !== day) : [...prev, day]);
