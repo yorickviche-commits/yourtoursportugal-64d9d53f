@@ -650,7 +650,7 @@ const LeadDetailPage = () => {
               plannerDays={plannerDays}
               pax={formState.pax}
               paxChildren={formState.paxChildren}
-              destination={formState.destination}
+              destination={destino.join(', ') || lead?.destination || ''}
             />
           </div>
         )}
