@@ -1,5 +1,5 @@
 import { useState, useMemo, useCallback } from 'react';
-import { ChevronDown, ChevronRight, Plus, CheckCircle2, MinusCircle, XCircle, Sparkles, Pencil, Trash2, Save, Loader2 } from 'lucide-react';
+import { ChevronDown, ChevronRight, Plus, CheckCircle2, MinusCircle, XCircle, Sparkles, Pencil, Trash2, Save, Loader2, Wand2 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -7,6 +7,9 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/component
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
 import { cn } from '@/lib/utils';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
+import SupplierSearchDropdown from './SupplierSearchDropdown';
 import type { PlannerDay, PeriodKey } from './TravelPlannerEditor';
 
 // ─── Types ───────────────────────────────────────────
@@ -189,11 +192,13 @@ interface LeadCostingEditorProps {
   plannerDays: PlannerDay[];
   pax: number;
   paxChildren: number;
+  destination?: string;
 }
 
 // ─── Component ───────────────────────────────────────
-const LeadCostingEditor = ({ costingDays, onChange, onSave, saving, plannerDays, pax, paxChildren }: LeadCostingEditorProps) => {
+const LeadCostingEditor = ({ costingDays, onChange, onSave, saving, plannerDays, pax, paxChildren, destination }: LeadCostingEditorProps) => {
   const [expandedDays, setExpandedDays] = useState<number[]>(costingDays.length > 0 ? costingDays.map(d => d.day) : []);
+  const [autoFilling, setAutoFilling] = useState(false);
 
   const toggleDay = (day: number) => {
     setExpandedDays(prev => prev.includes(day) ? prev.filter(d => d !== day) : [...prev, day]);
@@ -233,12 +238,56 @@ const LeadCostingEditor = ({ costingDays, onChange, onSave, saving, plannerDays,
     onChange(updated);
   };
 
+  // Auto-Fulfill Budget via AI
+  const autoFulfillBudget = async () => {
+    const allItems = costingDays.flatMap((d, di) => 
+      d.items.map((item, ii) => ({ description: item.description, day: d.day, pricingType: item.pricingType, dayIdx: di, itemIdx: ii }))
+    );
+    if (allItems.length === 0) { toast.error('Sem rubricas para preencher.'); return; }
+    
+    setAutoFilling(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('auto-fulfill-budget', {
+        body: { items: allItems.map(i => ({ description: i.description, day: i.day, pricingType: i.pricingType })), destination: destination || '' },
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      
+      const suggestions = data?.suggestions || [];
+      if (suggestions.length === 0) { toast.warning('AI não retornou sugestões.'); return; }
+      
+      const updated = [...costingDays];
+      suggestions.forEach((sug: any) => {
+        const orig = allItems[sug.index];
+        if (!orig) return;
+        const items = [...updated[orig.dayIdx].items];
+        items[orig.itemIdx] = calcItem({
+          ...items[orig.itemIdx],
+          supplier: sug.supplier || items[orig.itemIdx].supplier,
+          priceAdults: sug.priceAdults ?? items[orig.itemIdx].priceAdults,
+          pricingType: sug.pricingType || items[orig.itemIdx].pricingType,
+          marginPercent: sug.marginPercent ?? items[orig.itemIdx].marginPercent,
+        });
+        updated[orig.dayIdx] = { ...updated[orig.dayIdx], items };
+      });
+      onChange(updated);
+      toast.success(`${suggestions.length} rubricas preenchidas com AI.`);
+    } catch (e: any) {
+      console.error('Auto-fulfill error:', e);
+      toast.error(e.message || 'Erro ao preencher orçamento.');
+    } finally {
+      setAutoFilling(false);
+    }
+  };
+
   // Grand totals (only 'aceite' and 'neutro' items)
   const activeItems = costingDays.flatMap(d => d.items.filter(i => i.status !== 'eliminar'));
   const grandNet = activeItems.reduce((s, i) => s + i.netTotal, 0);
   const grandPVP = activeItems.reduce((s, i) => s + i.pvpTotal, 0);
   const grandProfit = grandPVP - grandNet;
   const grandMargin = grandPVP > 0 ? (grandProfit / grandPVP) * 100 : 0;
+
+  const hasItems = costingDays.some(d => d.items.length > 0);
 
   return (
     <div className="space-y-3">
@@ -252,6 +301,12 @@ const LeadCostingEditor = ({ costingDays, onChange, onSave, saving, plannerDays,
           <button onClick={collapseAll} className="text-[10px] text-[hsl(var(--info))] hover:underline">Colapsar</button>
         </div>
         <div className="flex items-center gap-2">
+          {hasItems && (
+            <Button variant="outline" size="sm" className="text-xs gap-1 border-[hsl(var(--warning))]/50 text-[hsl(var(--warning))] hover:bg-[hsl(var(--warning))]/10" onClick={autoFulfillBudget} disabled={autoFilling}>
+              {autoFilling ? <Loader2 className="h-3 w-3 animate-spin" /> : <Wand2 className="h-3 w-3" />}
+              Auto-Fulfill Budget
+            </Button>
+          )}
           {plannerDays.length > 0 && (
             <Button variant="outline" size="sm" className="text-xs gap-1" onClick={populateFromPlanner}>
               <Plus className="h-3 w-3" /> Importar do Planner
@@ -340,7 +395,7 @@ const LeadCostingEditor = ({ costingDays, onChange, onSave, saving, plannerDays,
                                 <Input className="h-7 text-xs border-0 bg-transparent shadow-none focus-visible:ring-1 px-1" defaultValue={item.description} onBlur={e => updateItem(dayIdx, itemIdx, { description: e.target.value })} placeholder="Atividade..." />
                               </td>
                               <td className="px-1 py-1">
-                                <Input className="h-7 text-xs border-0 bg-transparent shadow-none focus-visible:ring-1 px-1" defaultValue={item.supplier} onBlur={e => updateItem(dayIdx, itemIdx, { supplier: e.target.value })} placeholder="Fornecedor..." />
+                                <SupplierSearchDropdown value={item.supplier} onChange={v => updateItem(dayIdx, itemIdx, { supplier: v })} />
                               </td>
                               <td className="px-1 py-1">
                                 <Select defaultValue={item.pricingType} onValueChange={v => updateItem(dayIdx, itemIdx, { pricingType: v as any })}>
