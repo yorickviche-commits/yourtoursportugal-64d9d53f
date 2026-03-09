@@ -1,5 +1,5 @@
 import { useState, useMemo, useCallback } from 'react';
-import { ChevronDown, ChevronRight, Plus, CheckCircle2, MinusCircle, XCircle, Sparkles, Pencil, Trash2, Save, Loader2 } from 'lucide-react';
+import { ChevronDown, ChevronRight, Plus, CheckCircle2, MinusCircle, XCircle, Sparkles, Pencil, Trash2, Save, Loader2, Wand2 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -7,6 +7,9 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/component
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
 import { cn } from '@/lib/utils';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
+import SupplierSearchDropdown from './SupplierSearchDropdown';
 import type { PlannerDay, PeriodKey } from './TravelPlannerEditor';
 
 // ─── Types ───────────────────────────────────────────
