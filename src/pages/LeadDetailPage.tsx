@@ -21,6 +21,11 @@ import {
 } from '@/components/ui/dropdown-menu';
 import EmailComposerDialog from '@/components/leads/EmailComposerDialog';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import ItemNotesDialog from '@/components/trip/ItemNotesDialog';
+import BookingRequestDialog from '@/components/trip/BookingRequestDialog';
+import { useLeadOperationsQuery, useUpsertLeadOperation, DbLeadOperation } from '@/hooks/useLeadOperationsQuery';
 
 type DetailTab = 'dados_gerais' | 'travel_planner' | 'custos' | 'itinerario' | 'operacoes';
 
