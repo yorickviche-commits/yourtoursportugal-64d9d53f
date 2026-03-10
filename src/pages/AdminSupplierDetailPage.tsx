@@ -18,6 +18,7 @@ import {
   ArrowLeft, Save, Plus, Pencil, Trash2, Upload, FileText,
   Link as LinkIcon, Sparkles, Loader2, ExternalLink, Package
 } from 'lucide-react';
+import SupplierScoring from '@/components/commercial/SupplierScoring';
 
 const CATEGORIES = ['hotel', 'guide', 'transport', 'winery', 'activity', 'restaurant', 'other'];
 const PRICE_UNITS = ['per_person', 'per_group', 'per_night', 'per_day', 'flat_rate'];
