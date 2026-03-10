@@ -476,6 +476,17 @@ const AdminSupplierDetailPage = () => {
             </div>
           </TabsContent>
 
+          {/* SCORING TAB */}
+          <TabsContent value="scoring">
+            <SupplierScoring
+              supplierId={id!}
+              supplierName={supplier.name}
+              supplierCategory={supplier.category}
+              services={services}
+              links={links}
+            />
+          </TabsContent>
+
           {/* FILES & LINKS TAB */}
           <TabsContent value="files">
             <div className="space-y-4">
