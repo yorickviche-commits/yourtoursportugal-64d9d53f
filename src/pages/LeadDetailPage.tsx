@@ -1075,7 +1075,7 @@ const LeadDetailPage = () => {
         )}
 
         {/* Operações */}
-        {activeTab === 'operacoes' && lead && <OperacoesTab activeVersion={activeVersion} leadId={lead.id} />}
+        {activeTab === 'operacoes' && lead && <OperacoesTab activeVersion={activeVersion} leadId={lead.id} leadCode={lead.lead_code} />}
       </div>
     </AppLayout>
   );
