@@ -65,6 +65,7 @@ const SmartImportDialog = ({ open, onOpenChange, entityType, onImportComplete }:
     setServicesData([]);
     setMissingFields([]);
     setEditingServiceIdx(null);
+    setPdfFile(null);
   };
 
   const handleClose = (open: boolean) => {
