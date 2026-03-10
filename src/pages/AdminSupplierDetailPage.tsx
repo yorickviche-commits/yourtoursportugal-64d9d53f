@@ -70,6 +70,7 @@ const AdminSupplierDetailPage = () => {
   const [services, setServices] = useState<SupplierService[]>([]);
   const [files, setFiles] = useState<SupplierFile[]>([]);
   const [links, setLinks] = useState<SupplierLink[]>([]);
+  const [idealFor, setIdealFor] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
