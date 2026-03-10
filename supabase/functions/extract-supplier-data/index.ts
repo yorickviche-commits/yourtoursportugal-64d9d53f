@@ -3,25 +3,11 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
 };
 
-Deno.serve(async (req) => {
-  if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders });
-  }
+function buildPrompt(text: string, entityType: string): string {
+  const isPartner = entityType === 'partner';
 
-  try {
-    const { text, entity_type } = await req.json();
-
-    if (!text || text.trim().length < 10) {
-      return new Response(
-        JSON.stringify({ success: false, error: 'Text too short to extract data' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    const isPartner = entity_type === 'partner';
-
-    const prompt = isPartner
-      ? `You are a senior travel operations data analyst at Your Tours Portugal. Your task is to extract EVERY possible piece of information about a B2B RESALE PARTNER from the following text (email, protocol document, contract, or partner communication).
+  if (isPartner) {
+    return `You are a senior travel operations data analyst at Your Tours Portugal. Your task is to extract EVERY possible piece of information about a B2B RESALE PARTNER from the following text (email, protocol document, contract, or partner communication).
 
 CONTEXT: Your Tours Portugal works with protocols/contracts that typically contain:
 - Section 1: Company data (Your Tours — ignore this, it's us)
@@ -93,8 +79,10 @@ Return this EXACT JSON structure:
 }
 
 TEXT TO ANALYZE:
-${text}`
-      : `You are a senior travel operations data analyst at Your Tours Portugal. Your task is to extract EVERY possible piece of information about a SUPPLIER (fornecedor/FSE) from the following text (email, protocol document, contract, rate sheet, or supplier communication).
+${text}`;
+  }
+
+  return `You are a senior travel operations data analyst at Your Tours Portugal. Your task is to extract EVERY possible piece of information about a SUPPLIER (fornecedor/FSE) from the following text (email, protocol document, contract, rate sheet, or supplier communication).
 
 CONTEXT: Your Tours Portugal works with protocols/contracts that typically contain:
 - Section 1: Company data (Your Tours — ignore this, it's us)
@@ -164,12 +152,55 @@ Return this EXACT JSON structure:
 
 TEXT TO ANALYZE:
 ${text}`;
+}
+
+Deno.serve(async (req) => {
+  if (req.method === 'OPTIONS') {
+    return new Response(null, { headers: corsHeaders });
+  }
+
+  try {
+    const body = await req.json();
+    const { text, pdf_base64, entity_type } = body;
 
     const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
     if (!LOVABLE_API_KEY) {
       return new Response(
         JSON.stringify({ success: false, error: 'LOVABLE_API_KEY not configured' }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    let messages: any[];
+
+    if (pdf_base64) {
+      // Use Gemini Vision to read the PDF directly
+      const systemPrompt = buildPrompt('(see attached PDF document)', entity_type);
+      
+      messages = [
+        {
+          role: 'user',
+          content: [
+            {
+              type: 'text',
+              text: systemPrompt.replace('(see attached PDF document)', 'Extract all data from the attached PDF protocol document. Follow the instructions above precisely.'),
+            },
+            {
+              type: 'image_url',
+              image_url: {
+                url: `data:application/pdf;base64,${pdf_base64}`,
+              },
+            },
+          ],
+        },
+      ];
+    } else if (text && text.trim().length >= 10) {
+      const prompt = buildPrompt(text, entity_type);
+      messages = [{ role: 'user', content: prompt }];
+    } else {
+      return new Response(
+        JSON.stringify({ success: false, error: 'No text or PDF provided' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
@@ -181,9 +212,7 @@ ${text}`;
       },
       body: JSON.stringify({
         model: 'google/gemini-2.5-flash',
-        messages: [
-          { role: 'user', content: prompt }
-        ],
+        messages,
       }),
     });
 
