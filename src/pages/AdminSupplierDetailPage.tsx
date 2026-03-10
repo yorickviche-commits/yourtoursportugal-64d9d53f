@@ -189,6 +189,30 @@ const AdminSupplierDetailPage = () => {
     fetchAll();
   };
 
+  // Auto-search supplier links (website, Google Maps, TripAdvisor)
+  const searchSupplierLinks = async (supplierName: string, category: string) => {
+    try {
+      const { data, error } = await supabase.functions.invoke('search-supplier-links', {
+        body: { name: supplierName, category, country: 'Portugal' },
+      });
+      if (error || !data?.success) return;
+      const foundLinks = data.links || [];
+      if (foundLinks.length > 0) {
+        const linksPayload = foundLinks.map((l: any) => ({
+          supplier_id: id,
+          name: l.name,
+          url: l.url,
+          description: l.description || null,
+        }));
+        await (supabase.from('supplier_links') as any).insert(linksPayload);
+        toast({ title: 'Links encontrados', description: `${foundLinks.length} link(s) adicionado(s) automaticamente.` });
+        fetchAll();
+      }
+    } catch (err) {
+      console.error('Error searching supplier links:', err);
+    }
+  };
+
   // Smart import handler
   const handleSmartImport = async (data: any) => {
     if (data.entity) {
@@ -217,8 +241,39 @@ const AdminSupplierDetailPage = () => {
       }));
       await (supabase.from('supplier_services') as any).insert(servicesPayload);
     }
+
+    // Auto-save PDF file if provided
+    if (data.pdfFile && id) {
+      try {
+        const file = data.pdfFile as File;
+        const ext = file.name.split('.').pop();
+        const path = `${id}/${Date.now()}.${ext}`;
+        const { error: uploadErr } = await supabase.storage.from('supplier-files').upload(path, file);
+        if (!uploadErr) {
+          const { data: urlData } = supabase.storage.from('supplier-files').getPublicUrl(path);
+          await (supabase.from('supplier_files') as any).insert({
+            supplier_id: id,
+            file_name: file.name,
+            file_url: urlData.publicUrl,
+            storage_path: path,
+            file_type: 'pdf',
+            size_bytes: file.size,
+          });
+        }
+      } catch (err) {
+        console.error('Error auto-saving PDF:', err);
+      }
+    }
+
     toast({ title: 'Dados importados', description: `${data.services?.length || 0} serviço(s)` });
     fetchAll();
+
+    // Auto-search links if supplier has no links yet
+    const supplierName = data.entity?.name || form.name;
+    const supplierCategory = data.entity?.category || form.category;
+    if (supplierName && links.length === 0) {
+      searchSupplierLinks(supplierName, supplierCategory);
+    }
   };
 
   if (!isAdmin) {

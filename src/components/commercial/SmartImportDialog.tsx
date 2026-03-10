@@ -53,6 +53,7 @@ const SmartImportDialog = ({ open, onOpenChange, entityType, onImportComplete }:
   const [servicesData, setServicesData] = useState<any[]>([]);
   const [missingFields, setMissingFields] = useState<string[]>([]);
   const [editingServiceIdx, setEditingServiceIdx] = useState<number | null>(null);
+  const [pdfFile, setPdfFile] = useState<File | null>(null);
 
   const categories = entityType === 'partner' ? PARTNER_CATEGORIES : SUPPLIER_CATEGORIES;
   const label = entityType === 'partner' ? 'parceiro' : 'fornecedor';
@@ -64,6 +65,7 @@ const SmartImportDialog = ({ open, onOpenChange, entityType, onImportComplete }:
     setServicesData([]);
     setMissingFields([]);
     setEditingServiceIdx(null);
+    setPdfFile(null);
   };
 
   const handleClose = (open: boolean) => {
@@ -101,6 +103,7 @@ const SmartImportDialog = ({ open, onOpenChange, entityType, onImportComplete }:
   const handlePdfUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    setPdfFile(file);
     setExtracting(true);
     try {
       const arrayBuffer = await file.arrayBuffer();
@@ -134,7 +137,7 @@ const SmartImportDialog = ({ open, onOpenChange, entityType, onImportComplete }:
   };
 
   const handleConfirmImport = () => {
-    onImportComplete({ entity: entityData, services: servicesData, missing_fields: missingFields });
+    onImportComplete({ entity: entityData, services: servicesData, missing_fields: missingFields, pdfFile });
     handleClose(false);
     toast({
       title: `${entityType === 'partner' ? 'Parceiro' : 'Fornecedor'} importado`,
