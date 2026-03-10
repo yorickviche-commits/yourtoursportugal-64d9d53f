@@ -1,0 +1,1 @@
+ALTER TABLE public.suppliers ADD COLUMN IF NOT EXISTS ideal_for jsonb DEFAULT '[]'::jsonb;
