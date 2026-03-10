@@ -316,6 +316,7 @@ const AdminSupplierDetailPage = () => {
           <TabsList>
             <TabsTrigger value="profile">Ficha</TabsTrigger>
             <TabsTrigger value="services">Serviços ({services.length})</TabsTrigger>
+            <TabsTrigger value="scoring">Scoring</TabsTrigger>
             <TabsTrigger value="files">Ficheiros & Links ({files.length + links.length})</TabsTrigger>
           </TabsList>
 
