@@ -119,7 +119,7 @@ const AdminSupplierDetailPage = () => {
   const handleSaveSupplier = async () => {
     setSaving(true);
     const { id: _id, created_at, updated_at, created_by, ...payload } = form;
-    await supabase.from('suppliers').update(payload as any).eq('id', id!);
+    await supabase.from('suppliers').update({ ...payload, ideal_for: idealFor } as any).eq('id', id!);
     toast({ title: 'Fornecedor atualizado' });
     setSaving(false);
     fetchAll();
