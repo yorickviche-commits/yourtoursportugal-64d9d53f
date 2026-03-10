@@ -19,6 +19,14 @@ import {
   Link as LinkIcon, Sparkles, Loader2, ExternalLink, Package
 } from 'lucide-react';
 import SupplierScoring from '@/components/commercial/SupplierScoring';
+import TagSelect from '@/components/TagSelect';
+
+const IDEAL_FOR_OPTIONS = [
+  'Famílias', 'Casais', 'Wine Lovers', 'Seniors', 'Crianças',
+  'Culture Lovers', 'History Aficionados', 'Foodies', 'Aventureiros',
+  'Grupos', 'Corporativo', 'Lua de Mel', 'Solo Travelers', 'Luxury',
+  'Budget', 'Eco-Friendly', 'Acessibilidade Reduzida',
+];
 
 const CATEGORIES = ['hotel', 'guide', 'transport', 'winery', 'activity', 'restaurant', 'other'];
 const PRICE_UNITS = ['per_person', 'per_group', 'per_night', 'per_day', 'flat_rate'];
