@@ -19,6 +19,14 @@ import {
   Link as LinkIcon, Sparkles, Loader2, ExternalLink, Package
 } from 'lucide-react';
 import SupplierScoring from '@/components/commercial/SupplierScoring';
+import TagSelect from '@/components/TagSelect';
+
+const IDEAL_FOR_OPTIONS = [
+  'Famílias', 'Casais', 'Wine Lovers', 'Seniors', 'Crianças',
+  'Culture Lovers', 'History Aficionados', 'Foodies', 'Aventureiros',
+  'Grupos', 'Corporativo', 'Lua de Mel', 'Solo Travelers', 'Luxury',
+  'Budget', 'Eco-Friendly', 'Acessibilidade Reduzida',
+];
 
 const CATEGORIES = ['hotel', 'guide', 'transport', 'winery', 'activity', 'restaurant', 'other'];
 const PRICE_UNITS = ['per_person', 'per_group', 'per_night', 'per_day', 'flat_rate'];
@@ -70,6 +78,7 @@ const AdminSupplierDetailPage = () => {
   const [services, setServices] = useState<SupplierService[]>([]);
   const [files, setFiles] = useState<SupplierFile[]>([]);
   const [links, setLinks] = useState<SupplierLink[]>([]);
+  const [idealFor, setIdealFor] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
@@ -97,7 +106,7 @@ const AdminSupplierDetailPage = () => {
       supabase.from('supplier_files').select('*').eq('supplier_id', id).order('created_at', { ascending: false }) as any,
       supabase.from('supplier_links').select('*').eq('supplier_id', id).order('created_at', { ascending: false }) as any,
     ]);
-    if (sRes.data) { setSupplier(sRes.data as any); setForm(sRes.data); }
+    if (sRes.data) { setSupplier(sRes.data as any); setForm(sRes.data); setIdealFor((sRes.data as any).ideal_for || []); }
     setServices((servRes.data as any[]) || []);
     setFiles((fRes.data as any[]) || []);
     setLinks((lRes.data as any[]) || []);
@@ -110,7 +119,7 @@ const AdminSupplierDetailPage = () => {
   const handleSaveSupplier = async () => {
     setSaving(true);
     const { id: _id, created_at, updated_at, created_by, ...payload } = form;
-    await supabase.from('suppliers').update(payload as any).eq('id', id!);
+    await supabase.from('suppliers').update({ ...payload, ideal_for: idealFor } as any).eq('id', id!);
     toast({ title: 'Fornecedor atualizado' });
     setSaving(false);
     fetchAll();
@@ -370,6 +379,17 @@ const AdminSupplierDetailPage = () => {
                   </div>
                 </div>
                 <div className="space-y-1.5">
+                  <Label className="text-xs">Ideal Para</Label>
+                  <TagSelect
+                    label=""
+                    value={idealFor}
+                    options={IDEAL_FOR_OPTIONS}
+                    onChange={setIdealFor}
+                    multiple
+                    placeholder="Perfis de viajante ideais..."
+                  />
+                </div>
+                <div className="space-y-1.5">
                   <Label className="text-xs">Política de Cancelamento</Label>
                   <Textarea value={form.cancellation_policy || ''} onChange={e => setForm({ ...form, cancellation_policy: e.target.value })} rows={2} />
                 </div>
@@ -484,6 +504,8 @@ const AdminSupplierDetailPage = () => {
               supplierCategory={supplier.category}
               services={services}
               links={links}
+              idealFor={idealFor}
+              onIdealForChange={setIdealFor}
             />
           </TabsContent>
 

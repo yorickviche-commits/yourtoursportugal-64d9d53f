@@ -16,28 +16,6 @@ Deno.serve(async (req) => {
     const links = body.links || [];
     const criteria = body.criteria || [];
 
-    // Build exact key list for AI to use
-    const keyList = criteria.map((c: Record<string, string>) => `"${c.key}"`).join(', ');
-    const critLines = criteria.map((c: Record<string, string>) => `- key="${c.key}": ${c.label} (${c.weight}%)`).join('\n');
-    const svcLines = services.slice(0, 5).map((s: Record<string, string>) => `${s.name} (${s.category})`).join(', ');
-    const linkLines = links.slice(0, 3).map((l: Record<string, string>) => `${l.name}: ${l.url}`).join(', ');
-
-    const prompt = `Score supplier "${name}" (category: ${category}) for a Portuguese DMC. Score each criterion 1-5.
-
-Services: ${svcLines || 'None listed'}
-Links: ${linkLines || 'None listed'}
-
-Criteria to score:
-${critLines}
-
-RULES:
-- If no info available for a criterion, score 3.
-- Be realistic, most scores should be 3-4.
-- Return ONLY valid JSON with this exact structure:
-{"scores":{${criteria.map((c: Record<string, string>) => `"${c.key}":3`).join(',')}},"occurrences":0,"notes":"Brief note in Portuguese"}
-
-IMPORTANT: Use EXACTLY these keys in scores: ${keyList}. No other keys.`;
-
     const lovableApiKey = Deno.env.get('LOVABLE_API_KEY');
     if (!lovableApiKey) {
       return new Response(JSON.stringify({ error: 'LOVABLE_API_KEY not configured' }), {
@@ -45,7 +23,86 @@ IMPORTANT: Use EXACTLY these keys in scores: ${keyList}. No other keys.`;
       });
     }
 
-    const res = await fetch('https://ai.lovable.dev/api/chat', {
+    // Step 1: Gather web context about the supplier
+    let webContext = '';
+    const websiteLink = links.find((l: any) => l.name?.toLowerCase().includes('website') || l.name?.toLowerCase().includes('site'));
+    const googleLink = links.find((l: any) => l.name?.toLowerCase().includes('google'));
+    const tripLink = links.find((l: any) => l.name?.toLowerCase().includes('tripadvisor'));
+
+    // Use a quick AI call to search for info about this supplier
+    const searchPrompt = `Search for information about "${name}" in Portugal, category: ${category}.
+${websiteLink ? `Website: ${websiteLink.url}` : ''}
+${googleLink ? `Google Maps: ${googleLink.url}` : ''}
+${tripLink ? `TripAdvisor: ${tripLink.url}` : ''}
+
+Based on what you know about this supplier/venue, provide a brief summary including:
+- Quality reputation
+- Service quality and hospitality
+- Location and accessibility
+- Reviews sentiment (Google/TripAdvisor if known)
+- Vegetarian options availability
+- Authenticity of experience
+- Any known issues or complaints
+- What type of travelers it's ideal for (families, couples, wine lovers, seniors, kids, foodies, etc.)
+
+If you don't have specific info, say so. Keep it brief (max 200 words).`;
+
+    try {
+      const searchRes = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${lovableApiKey}`,
+        },
+        body: JSON.stringify({
+          model: 'google/gemini-2.5-flash',
+          messages: [{ role: 'user', content: searchPrompt }],
+          temperature: 0.3,
+          max_tokens: 400,
+        }),
+      });
+      if (searchRes.ok) {
+        const searchResult = await searchRes.json();
+        webContext = searchResult.choices?.[0]?.message?.content || '';
+      }
+    } catch (e) {
+      console.log('Web context search failed, continuing without:', e);
+    }
+
+    // Step 2: Build scoring prompt with web context
+    const keyList = criteria.map((c: any) => `"${c.key}"`).join(', ');
+    const critLines = criteria.map((c: any) => `- key="${c.key}": ${c.label} — ${c.description} (weight: ${c.weight}%)`).join('\n');
+    const svcLines = services.slice(0, 8).map((s: any) => `- ${s.name} (${s.category})${s.price ? ` €${s.price}` : ''}`).join('\n');
+    const linkLines = links.map((l: any) => `- ${l.name}: ${l.url}`).join('\n');
+
+    const defaultScores = criteria.map((c: any) => `"${c.key}":3`).join(',');
+
+    const scoringPrompt = `You are an expert travel DMC operations manager evaluating supplier "${name}" (category: ${category}) in Portugal.
+
+SUPPLIER DATA:
+Services: ${svcLines || 'None listed'}
+Links: ${linkLines || 'None listed'}
+
+${webContext ? `WEB RESEARCH CONTEXT:\n${webContext}\n` : ''}
+
+SCORING CRITERIA (score each 1-5):
+${critLines}
+
+SCORING GUIDELINES:
+- 1 = Mau (very poor), 2 = Fraco (poor), 3 = Suficiente (adequate/no info), 4 = Bom (good), 5 = Excelente (excellent)
+- If you have NO information about a criterion, score it 3 (Suficiente)
+- If you found positive reviews/reputation, score higher (4-5)
+- If you found negative reviews/issues, score lower (1-2)
+- Be realistic: most scores should range 3-4 for average suppliers
+
+Also suggest what type of travelers this supplier is ideal for.
+
+Return ONLY this exact JSON structure (no markdown, no extra text):
+{"scores":{${defaultScores}},"occurrences":0,"notes":"Brief evaluation summary in Portuguese (2-3 sentences)","ideal_for":["families","couples","wine lovers"]}
+
+CRITICAL: Use EXACTLY these keys in scores: ${keyList}. Every key must be present.`;
+
+    const res = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -53,15 +110,25 @@ IMPORTANT: Use EXACTLY these keys in scores: ${keyList}. No other keys.`;
       },
       body: JSON.stringify({
         model: 'google/gemini-2.5-flash',
-        messages: [{ role: 'user', content: prompt }],
+        messages: [{ role: 'user', content: scoringPrompt }],
         temperature: 0.2,
-        max_tokens: 512,
+        max_tokens: 600,
       }),
     });
 
     if (!res.ok) {
       const errText = await res.text();
-      console.error('AI error:', errText);
+      console.error('AI error:', res.status, errText);
+      if (res.status === 429) {
+        return new Response(JSON.stringify({ error: 'Rate limit exceeded, please try again later.' }), {
+          status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+      if (res.status === 402) {
+        return new Response(JSON.stringify({ error: 'AI credits exhausted. Please add funds.' }), {
+          status: 402, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
       return new Response(JSON.stringify({ error: 'AI scoring failed' }), {
         status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
@@ -73,7 +140,10 @@ IMPORTANT: Use EXACTLY these keys in scores: ${keyList}. No other keys.`;
     let parsed: Record<string, unknown> = {};
     const jsonMatch = text.match(/\{[\s\S]*\}/);
     if (jsonMatch) {
-      try { parsed = JSON.parse(jsonMatch[0]); } catch (_e) {
+      try {
+        parsed = JSON.parse(jsonMatch[0]);
+      } catch (_e) {
+        console.error('JSON parse failed. Raw text:', text);
         return new Response(JSON.stringify({ error: 'Failed to parse AI response' }), {
           status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });
@@ -83,9 +153,18 @@ IMPORTANT: Use EXACTLY these keys in scores: ${keyList}. No other keys.`;
     // Validate and clamp scores
     const scores = parsed.scores as Record<string, number> | undefined;
     if (scores) {
-      for (const key of Object.keys(scores)) {
-        const v = scores[key];
-        if (typeof v !== 'number' || v < 1 || v > 5) scores[key] = 3;
+      // Ensure all criteria keys exist
+      for (const c of criteria) {
+        if (!(c.key in scores) || typeof scores[c.key] !== 'number') {
+          scores[c.key] = 3;
+        }
+        scores[c.key] = Math.max(1, Math.min(5, Math.round(scores[c.key])));
+      }
+    } else {
+      // Fallback: create default scores
+      parsed.scores = {};
+      for (const c of criteria) {
+        (parsed.scores as Record<string, number>)[c.key] = 3;
       }
     }
 

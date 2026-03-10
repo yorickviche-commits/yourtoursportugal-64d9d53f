@@ -1204,6 +1204,7 @@ export type Database = {
           created_by: string | null
           currency: string | null
           id: string
+          ideal_for: Json | null
           market_pricing: Json | null
           name: string
           net_rates: Json | null
@@ -1225,6 +1226,7 @@ export type Database = {
           created_by?: string | null
           currency?: string | null
           id?: string
+          ideal_for?: Json | null
           market_pricing?: Json | null
           name: string
           net_rates?: Json | null
@@ -1246,6 +1248,7 @@ export type Database = {
           created_by?: string | null
           currency?: string | null
           id?: string
+          ideal_for?: Json | null
           market_pricing?: Json | null
           name?: string
           net_rates?: Json | null

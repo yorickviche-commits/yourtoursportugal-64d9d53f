@@ -3,10 +3,10 @@ import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Progress } from '@/components/ui/progress';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
-import { Sparkles, Save, Loader2, Star, AlertTriangle, CheckCircle2, XCircle } from 'lucide-react';
+import { Sparkles, Save, Loader2, Star, CheckCircle2, XCircle } from 'lucide-react';
+import TagSelect from '@/components/TagSelect';
 
 // ─── Scoring Matrix from OPE-MOD.006.00 ───
 const SCORING_CRITERIA: Record<string, { criteria: { key: string; label: string; weight: number; description: string }[] }> = {
@@ -91,6 +91,13 @@ const SCORING_CRITERIA: Record<string, { criteria: { key: string; label: string;
   },
 };
 
+const IDEAL_FOR_OPTIONS = [
+  'Famílias', 'Casais', 'Wine Lovers', 'Seniors', 'Crianças',
+  'Culture Lovers', 'History Aficionados', 'Foodies', 'Aventureiros',
+  'Grupos', 'Corporativo', 'Lua de Mel', 'Solo Travelers', 'Luxury',
+  'Budget', 'Eco-Friendly', 'Acessibilidade Reduzida',
+];
+
 const SCORE_LABELS: Record<number, { label: string; color: string }> = {
   1: { label: 'Mau', color: 'text-destructive' },
   2: { label: 'Fraco', color: 'text-urgent' },
@@ -118,9 +125,11 @@ interface SupplierScoringProps {
   supplierCategory: string;
   services: any[];
   links: any[];
+  idealFor?: string[];
+  onIdealForChange?: (tags: string[]) => void;
 }
 
-export default function SupplierScoring({ supplierId, supplierName, supplierCategory, services, links }: SupplierScoringProps) {
+export default function SupplierScoring({ supplierId, supplierName, supplierCategory, services, links, idealFor = [], onIdealForChange }: SupplierScoringProps) {
   const { toast } = useToast();
   const [scores, setScores] = useState<Record<string, number>>({});
   const [occurrences, setOccurrences] = useState(0);
@@ -183,6 +192,12 @@ export default function SupplierScoring({ supplierId, supplierName, supplierCate
     } else {
       await (supabase.from('supplier_scores') as any).insert({ ...payload, scored_by: 'manual' });
     }
+
+    // Also save ideal_for to supplier
+    if (onIdealForChange) {
+      await (supabase.from('suppliers') as any).update({ ideal_for: idealFor }).eq('id', supplierId);
+    }
+
     toast({ title: 'Scoring guardado' });
     setSaving(false);
     loadScores();
@@ -206,9 +221,16 @@ export default function SupplierScoring({ supplierId, supplierName, supplierCate
         setScores(data.scores);
         setOccurrences(data.occurrences || 0);
         if (data.notes) setNotes(data.notes);
-        toast({ title: 'Scoring AI aplicado', description: 'Revisa os valores antes de guardar.' });
+        // Apply AI-suggested ideal_for tags
+        if (data.ideal_for && Array.isArray(data.ideal_for) && onIdealForChange) {
+          onIdealForChange(data.ideal_for);
+        }
+        toast({ title: 'Scoring AI aplicado', description: 'Revisa os valores e as tags "Ideal Para" antes de guardar.' });
+      } else {
+        toast({ title: 'Scoring AI', description: 'Não foi possível obter scores. Verifica os dados do fornecedor.', variant: 'destructive' });
       }
     } catch (err: any) {
+      console.error('Auto-score error:', err);
       toast({ title: 'Erro no auto-scoring', description: err.message, variant: 'destructive' });
     }
     setAutoScoring(false);
@@ -311,6 +333,23 @@ export default function SupplierScoring({ supplierId, supplierName, supplierCate
               </div>
             );
           })}
+        </CardContent>
+      </Card>
+
+      {/* Ideal For tags */}
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-sm">Ideal Para</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <TagSelect
+            label=""
+            value={idealFor}
+            options={IDEAL_FOR_OPTIONS}
+            onChange={tags => onIdealForChange?.(tags)}
+            multiple
+            placeholder="Selecionar perfis de viajante..."
+          />
         </CardContent>
       </Card>
 
