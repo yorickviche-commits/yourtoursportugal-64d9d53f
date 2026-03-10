@@ -148,18 +148,6 @@ const TripDetailPage = () => {
     await logActivity('cost_item_deleted', 'trip', trip.id);
   };
 
-  // Operations handlers (dynamic save)
-  const handleAddOpsItem = async (item: any) => {
-    await createItinerary.mutateAsync(item);
-    await logActivity('ops_item_added', 'trip', trip.id);
-  };
-  const handleUpdateOpsItem = async (itemId: string, updates: any) => {
-    await updateItinerary.mutateAsync({ id: itemId, updates });
-  };
-  const handleDeleteOpsItem = async (itemId: string) => {
-    await deleteItinerary.mutateAsync({ id: itemId, tripId: trip.id });
-    await logActivity('ops_item_deleted', 'trip', trip.id);
-  };
 
   return (
     <AppLayout>
