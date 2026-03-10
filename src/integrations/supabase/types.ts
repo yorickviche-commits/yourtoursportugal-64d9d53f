@@ -116,6 +116,44 @@ export type Database = {
           },
         ]
       }
+      booking_emails_log: {
+        Row: {
+          body: string
+          id: string
+          operation_id: string
+          sent_at: string
+          sent_by: string | null
+          subject: string
+          supplier_email: string | null
+        }
+        Insert: {
+          body: string
+          id?: string
+          operation_id: string
+          sent_at?: string
+          sent_by?: string | null
+          subject: string
+          supplier_email?: string | null
+        }
+        Update: {
+          body?: string
+          id?: string
+          operation_id?: string
+          sent_at?: string
+          sent_by?: string | null
+          subject?: string
+          supplier_email?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "booking_emails_log_operation_id_fkey"
+            columns: ["operation_id"]
+            isOneToOne: false
+            referencedRelation: "trip_operations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       contacts: {
         Row: {
           company: string | null
@@ -1430,6 +1468,63 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "trip_itinerary_items_trip_id_fkey"
+            columns: ["trip_id"]
+            isOneToOne: false
+            referencedRelation: "trips"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      trip_operations: {
+        Row: {
+          booking_status: string
+          cost_item_id: string
+          created_at: string
+          id: string
+          invoice_file_name: string | null
+          invoice_file_url: string | null
+          invoice_status: string
+          payment_status: string
+          schedule_time: string | null
+          trip_id: string
+          updated_at: string
+        }
+        Insert: {
+          booking_status?: string
+          cost_item_id: string
+          created_at?: string
+          id?: string
+          invoice_file_name?: string | null
+          invoice_file_url?: string | null
+          invoice_status?: string
+          payment_status?: string
+          schedule_time?: string | null
+          trip_id: string
+          updated_at?: string
+        }
+        Update: {
+          booking_status?: string
+          cost_item_id?: string
+          created_at?: string
+          id?: string
+          invoice_file_name?: string | null
+          invoice_file_url?: string | null
+          invoice_status?: string
+          payment_status?: string
+          schedule_time?: string | null
+          trip_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "trip_operations_cost_item_id_fkey"
+            columns: ["cost_item_id"]
+            isOneToOne: true
+            referencedRelation: "cost_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "trip_operations_trip_id_fkey"
             columns: ["trip_id"]
             isOneToOne: false
             referencedRelation: "trips"
