@@ -23,3 +23,9 @@ verify_jwt = false
 
 [functions.auto-fulfill-budget]
 verify_jwt = false
+
+[functions.auto-score-supplier]
+verify_jwt = false
+
+[functions.search-supplier-links]
+verify_jwt = false

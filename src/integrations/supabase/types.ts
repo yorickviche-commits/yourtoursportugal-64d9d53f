@@ -1058,6 +1058,59 @@ export type Database = {
           },
         ]
       }
+      supplier_scores: {
+        Row: {
+          classification: string | null
+          created_at: string
+          id: string
+          is_selected: boolean | null
+          notes: string | null
+          occurrences: number | null
+          qualification: string | null
+          scored_by: string | null
+          scores: Json
+          supplier_id: string
+          updated_at: string
+          weighted_average: number | null
+        }
+        Insert: {
+          classification?: string | null
+          created_at?: string
+          id?: string
+          is_selected?: boolean | null
+          notes?: string | null
+          occurrences?: number | null
+          qualification?: string | null
+          scored_by?: string | null
+          scores?: Json
+          supplier_id: string
+          updated_at?: string
+          weighted_average?: number | null
+        }
+        Update: {
+          classification?: string | null
+          created_at?: string
+          id?: string
+          is_selected?: boolean | null
+          notes?: string | null
+          occurrences?: number | null
+          qualification?: string | null
+          scored_by?: string | null
+          scores?: Json
+          supplier_id?: string
+          updated_at?: string
+          weighted_average?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "supplier_scores_supplier_id_fkey"
+            columns: ["supplier_id"]
+            isOneToOne: true
+            referencedRelation: "suppliers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       supplier_services: {
         Row: {
           booking_conditions: string | null

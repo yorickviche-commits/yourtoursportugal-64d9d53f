@@ -18,6 +18,7 @@ import {
   ArrowLeft, Save, Plus, Pencil, Trash2, Upload, FileText,
   Link as LinkIcon, Sparkles, Loader2, ExternalLink, Package
 } from 'lucide-react';
+import SupplierScoring from '@/components/commercial/SupplierScoring';
 
 const CATEGORIES = ['hotel', 'guide', 'transport', 'winery', 'activity', 'restaurant', 'other'];
 const PRICE_UNITS = ['per_person', 'per_group', 'per_night', 'per_day', 'flat_rate'];
@@ -315,6 +316,7 @@ const AdminSupplierDetailPage = () => {
           <TabsList>
             <TabsTrigger value="profile">Ficha</TabsTrigger>
             <TabsTrigger value="services">Serviços ({services.length})</TabsTrigger>
+            <TabsTrigger value="scoring">Scoring</TabsTrigger>
             <TabsTrigger value="files">Ficheiros & Links ({files.length + links.length})</TabsTrigger>
           </TabsList>
 
@@ -472,6 +474,17 @@ const AdminSupplierDetailPage = () => {
                 </div>
               )}
             </div>
+          </TabsContent>
+
+          {/* SCORING TAB */}
+          <TabsContent value="scoring">
+            <SupplierScoring
+              supplierId={id!}
+              supplierName={supplier.name}
+              supplierCategory={supplier.category}
+              services={services}
+              links={links}
+            />
           </TabsContent>
 
           {/* FILES & LINKS TAB */}
