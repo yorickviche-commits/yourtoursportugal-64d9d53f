@@ -53,6 +53,7 @@ const SmartImportDialog = ({ open, onOpenChange, entityType, onImportComplete }:
   const [servicesData, setServicesData] = useState<any[]>([]);
   const [missingFields, setMissingFields] = useState<string[]>([]);
   const [editingServiceIdx, setEditingServiceIdx] = useState<number | null>(null);
+  const [pdfFile, setPdfFile] = useState<File | null>(null);
 
   const categories = entityType === 'partner' ? PARTNER_CATEGORIES : SUPPLIER_CATEGORIES;
   const label = entityType === 'partner' ? 'parceiro' : 'fornecedor';
