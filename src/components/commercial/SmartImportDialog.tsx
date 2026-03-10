@@ -103,6 +103,7 @@ const SmartImportDialog = ({ open, onOpenChange, entityType, onImportComplete }:
   const handlePdfUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    setPdfFile(file);
     setExtracting(true);
     try {
       const arrayBuffer = await file.arrayBuffer();
