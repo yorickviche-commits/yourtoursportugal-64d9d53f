@@ -516,6 +516,59 @@ export type Database = {
           },
         ]
       }
+      lead_operations: {
+        Row: {
+          booking_status: string
+          created_at: string
+          day_number: number
+          id: string
+          invoice_file_name: string | null
+          invoice_file_url: string | null
+          invoice_status: string
+          item_key: string
+          lead_id: string
+          payment_status: string
+          schedule_time: string | null
+          updated_at: string
+        }
+        Insert: {
+          booking_status?: string
+          created_at?: string
+          day_number?: number
+          id?: string
+          invoice_file_name?: string | null
+          invoice_file_url?: string | null
+          invoice_status?: string
+          item_key: string
+          lead_id: string
+          payment_status?: string
+          schedule_time?: string | null
+          updated_at?: string
+        }
+        Update: {
+          booking_status?: string
+          created_at?: string
+          day_number?: number
+          id?: string
+          invoice_file_name?: string | null
+          invoice_file_url?: string | null
+          invoice_status?: string
+          item_key?: string
+          lead_id?: string
+          payment_status?: string
+          schedule_time?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lead_operations_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       lead_planner_data: {
         Row: {
           activities: Json | null
