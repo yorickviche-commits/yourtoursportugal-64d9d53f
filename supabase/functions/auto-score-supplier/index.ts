@@ -16,50 +16,59 @@ Deno.serve(async (req) => {
     const links = body.links || [];
     const criteria = body.criteria || [];
 
-    const geminiKey = Deno.env.get('GEMINI_API_KEY');
-    if (!geminiKey) {
-      return new Response(JSON.stringify({ error: 'GEMINI_API_KEY not configured' }), {
+    // Build exact key list for AI to use
+    const keyList = criteria.map((c: Record<string, string>) => `"${c.key}"`).join(', ');
+    const critLines = criteria.map((c: Record<string, string>) => `- key="${c.key}": ${c.label} (${c.weight}%)`).join('\n');
+    const svcLines = services.slice(0, 5).map((s: Record<string, string>) => `${s.name} (${s.category})`).join(', ');
+    const linkLines = links.slice(0, 3).map((l: Record<string, string>) => `${l.name}: ${l.url}`).join(', ');
+
+    const prompt = `Score supplier "${name}" (category: ${category}) for a Portuguese DMC. Score each criterion 1-5.
+
+Services: ${svcLines || 'None listed'}
+Links: ${linkLines || 'None listed'}
+
+Criteria to score:
+${critLines}
+
+RULES:
+- If no info available for a criterion, score 3.
+- Be realistic, most scores should be 3-4.
+- Return ONLY valid JSON with this exact structure:
+{"scores":{${criteria.map((c: Record<string, string>) => `"${c.key}":3`).join(',')}},"occurrences":0,"notes":"Brief note in Portuguese"}
+
+IMPORTANT: Use EXACTLY these keys in scores: ${keyList}. No other keys.`;
+
+    const lovableApiKey = Deno.env.get('LOVABLE_API_KEY');
+    if (!lovableApiKey) {
+      return new Response(JSON.stringify({ error: 'LOVABLE_API_KEY not configured' }), {
         status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
 
-    const svcLines = services.map((s: Record<string, string>) => `- ${s.name} (${s.category}): ${s.price || 'N/A'}`).join('\n');
-    const linkLines = links.map((l: Record<string, string>) => `- ${l.name}: ${l.url}`).join('\n');
-    const critLines = criteria.map((c: Record<string, string>) => `- "${c.key}": ${c.label} (weight: ${c.weight}%)`).join('\n');
-
-    const prompt = `Evaluate supplier "${name}" (${category}) for a Portuguese DMC. Score 1-5 per criterion.
-
-Services: ${svcLines || 'None'}
-Links: ${linkLines || 'None'}
-
-Criteria:
-${critLines}
-
-Rules: Limited info = score 3. Be realistic (most 3-4). Return ONLY JSON:
-{"scores":{"key":number},"occurrences":0,"notes":"Brief summary in Portuguese"}`;
-
-    const res = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${geminiKey}`,
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          contents: [{ parts: [{ text: prompt }] }],
-          generationConfig: { temperature: 0.2, maxOutputTokens: 512 },
-        }),
-      }
-    );
+    const res = await fetch('https://ai.lovable.dev/api/chat', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${lovableApiKey}`,
+      },
+      body: JSON.stringify({
+        model: 'google/gemini-2.5-flash',
+        messages: [{ role: 'user', content: prompt }],
+        temperature: 0.2,
+        max_tokens: 512,
+      }),
+    });
 
     if (!res.ok) {
       const errText = await res.text();
-      console.error('Gemini error:', errText);
+      console.error('AI error:', errText);
       return new Response(JSON.stringify({ error: 'AI scoring failed' }), {
         status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
 
     const result = await res.json();
-    const text = result.candidates?.[0]?.content?.parts?.[0]?.text || '{}';
+    const text = result.choices?.[0]?.message?.content || '{}';
 
     let parsed: Record<string, unknown> = {};
     const jsonMatch = text.match(/\{[\s\S]*\}/);
@@ -71,6 +80,7 @@ Rules: Limited info = score 3. Be realistic (most 3-4). Return ONLY JSON:
       }
     }
 
+    // Validate and clamp scores
     const scores = parsed.scores as Record<string, number> | undefined;
     if (scores) {
       for (const key of Object.keys(scores)) {
