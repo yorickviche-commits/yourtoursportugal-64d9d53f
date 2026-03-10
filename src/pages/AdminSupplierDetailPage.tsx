@@ -98,7 +98,7 @@ const AdminSupplierDetailPage = () => {
       supabase.from('supplier_files').select('*').eq('supplier_id', id).order('created_at', { ascending: false }) as any,
       supabase.from('supplier_links').select('*').eq('supplier_id', id).order('created_at', { ascending: false }) as any,
     ]);
-    if (sRes.data) { setSupplier(sRes.data as any); setForm(sRes.data); }
+    if (sRes.data) { setSupplier(sRes.data as any); setForm(sRes.data); setIdealFor((sRes.data as any).ideal_for || []); }
     setServices((servRes.data as any[]) || []);
     setFiles((fRes.data as any[]) || []);
     setLinks((lRes.data as any[]) || []);
