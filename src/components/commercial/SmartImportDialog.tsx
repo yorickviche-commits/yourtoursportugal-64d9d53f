@@ -105,26 +105,31 @@ const SmartImportDialog = ({ open, onOpenChange, entityType, onImportComplete }:
     try {
       const arrayBuffer = await file.arrayBuffer();
       const uint8Array = new Uint8Array(arrayBuffer);
-      let extractedText = '';
-      const binaryStr = Array.from(uint8Array).map(b => String.fromCharCode(b)).join('');
-      const textMatches = binaryStr.match(/\(([^)]+)\)/g);
-      if (textMatches) {
-        extractedText = textMatches.filter(m => m.length > 2).map(m => m.slice(1, -1)).filter(t => /[a-zA-ZÀ-ÿ0-9]/.test(t)).join(' ');
+      // Convert to base64 to send to edge function for AI Vision extraction
+      let binary = '';
+      const len = uint8Array.byteLength;
+      for (let i = 0; i < len; i++) {
+        binary += String.fromCharCode(uint8Array[i]);
       }
-      if (extractedText.length < 50) {
-        const textDecoder = new TextDecoder('utf-8', { fatal: false });
-        extractedText = textDecoder.decode(uint8Array).replace(/[^\x20-\x7E\xA0-\xFF\n\r\t]/g, ' ').replace(/\s{3,}/g, ' ').trim();
-      }
-      if (extractedText.length < 20) {
-        toast({ title: 'PDF não legível', description: 'Tente copiar e colar o conteúdo manualmente no separador "Copy-Paste".', variant: 'destructive' });
+      const base64 = btoa(binary);
+      
+      const { data, error } = await supabase.functions.invoke('extract-supplier-data', {
+        body: { pdf_base64: base64, entity_type: entityType },
+      });
+      if (error || !data?.success) {
+        toast({ title: 'Erro na extração', description: data?.error || error?.message, variant: 'destructive' });
         setExtracting(false);
         return;
       }
-      await processExtraction(extractedText.slice(0, 15000));
+      const extracted = data.data;
+      setEntityData(extracted.entity || {});
+      setServicesData(extracted.services || []);
+      setMissingFields(extracted.missing_fields || []);
+      setStep('review');
     } catch (err: any) {
       toast({ title: 'Erro', description: err.message, variant: 'destructive' });
-      setExtracting(false);
     }
+    setExtracting(false);
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
