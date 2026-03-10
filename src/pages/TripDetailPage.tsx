@@ -325,11 +325,10 @@ const TripDetailPage = () => {
             {activeTab === 'operations' && (
               <div className="bg-card rounded-lg border overflow-hidden">
                 <OperationsTable
-                  items={itineraryItems}
+                  costItems={costItems}
                   tripId={trip.id}
-                  onAddItem={handleAddOpsItem}
-                  onUpdateItem={handleUpdateOpsItem}
-                  onDeleteItem={handleDeleteOpsItem}
+                  tripCode={trip.trip_code}
+                  startDate={trip.start_date}
                 />
               </div>
             )}
