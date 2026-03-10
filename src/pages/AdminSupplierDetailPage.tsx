@@ -504,6 +504,8 @@ const AdminSupplierDetailPage = () => {
               supplierCategory={supplier.category}
               services={services}
               links={links}
+              idealFor={idealFor}
+              onIdealForChange={setIdealFor}
             />
           </TabsContent>
 
