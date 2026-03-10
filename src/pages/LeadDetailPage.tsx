@@ -1,6 +1,6 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef, useMemo } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Save, Trash2, FileText, ClipboardList, Eye, FileIcon, Mail, Clock, Loader2, ChevronDown, Plus, Copy } from 'lucide-react';
+import { ArrowLeft, Save, Trash2, FileText, ClipboardList, Eye, FileIcon, Mail, Clock, Loader2, ChevronDown, ChevronRight, Plus, Copy, Upload } from 'lucide-react';
 import AppLayout from '@/components/AppLayout';
 import { useLeadQuery, useUpdateLead, useCreateLead, useDeleteLead } from '@/hooks/useLeadsQuery';
 import { logActivity } from '@/hooks/useActivityLog';
@@ -21,6 +21,11 @@ import {
 } from '@/components/ui/dropdown-menu';
 import EmailComposerDialog from '@/components/leads/EmailComposerDialog';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import ItemNotesDialog from '@/components/trip/ItemNotesDialog';
+import BookingRequestDialog from '@/components/trip/BookingRequestDialog';
+import { useLeadOperationsQuery, useUpsertLeadOperation, DbLeadOperation } from '@/hooks/useLeadOperationsQuery';
 
 type DetailTab = 'dados_gerais' | 'travel_planner' | 'custos' | 'itinerario' | 'operacoes';
 
@@ -86,8 +91,41 @@ function MonthYearPicker({ value, onChange }: { value: string; onChange: (v: str
   );
 }
 
-const OperacoesTab = ({ activeVersion, leadId }: { activeVersion: number; leadId: string }) => {
-  // Pull costing data from DB as operational view
+const BOOKING_OPTIONS = [
+  { value: 'not_requested', label: 'Não Pedido', className: 'bg-muted text-muted-foreground' },
+  { value: 'requested', label: 'Pedido', className: 'bg-[hsl(var(--info))]/15 text-[hsl(var(--info))]' },
+  { value: 'confirmed', label: 'Confirmado', className: 'bg-[hsl(var(--success))]/15 text-[hsl(var(--success))]' },
+  { value: 'declined', label: 'Recusado', className: 'bg-destructive/15 text-destructive' },
+  { value: 'cancelled', label: 'Cancelado', className: 'bg-destructive/15 text-destructive' },
+  { value: 'waitlisted', label: 'Em Espera', className: 'bg-[hsl(var(--warning))]/15 text-[hsl(var(--warning))]' },
+];
+
+const PAYMENT_OPTIONS = [
+  { value: 'not_paid', label: 'Não Pago', className: 'bg-destructive/15 text-destructive' },
+  { value: 'partially_paid', label: 'Parcialmente Pago', className: 'bg-[hsl(var(--warning))]/15 text-[hsl(var(--warning))]' },
+  { value: 'paid', label: 'Pago', className: 'bg-[hsl(var(--success))]/15 text-[hsl(var(--success))]' },
+  { value: 'refunded', label: 'Reembolsado', className: 'bg-purple-100 text-purple-700' },
+];
+
+const INVOICE_OPTIONS = [
+  { value: 'no_invoice', label: 'Sem Fatura', className: 'bg-muted text-muted-foreground' },
+  { value: 'invoice_requested', label: 'Pedida', className: 'bg-[hsl(var(--info))]/15 text-[hsl(var(--info))]' },
+  { value: 'invoice_received', label: 'Recebida', className: 'bg-[hsl(var(--warning))]/15 text-[hsl(var(--warning))]' },
+  { value: 'invoice_approved', label: 'Aprovada', className: 'bg-[hsl(var(--success))]/15 text-[hsl(var(--success))]' },
+  { value: 'invoice_paid', label: 'Paga', className: 'bg-[hsl(var(--success))]/15 text-[hsl(var(--success))]' },
+];
+
+interface FlatCostItem {
+  id: string;
+  dayNumber: number;
+  dayTitle: string;
+  description: string;
+  supplier: string;
+  pax: number;
+  netValue: number;
+}
+
+const OperacoesTab = ({ activeVersion, leadId, leadCode }: { activeVersion: number; leadId: string; leadCode: string }) => {
   const { data: costingDays = [] } = useQuery({
     queryKey: ['lead_costing_data', leadId],
     queryFn: async () => {
@@ -98,48 +136,331 @@ const OperacoesTab = ({ activeVersion, leadId }: { activeVersion: number; leadId
     enabled: !!leadId,
   });
 
+  const { data: operations = [], isLoading: opsLoading } = useLeadOperationsQuery(leadId);
+  const upsertOp = useUpsertLeadOperation();
+  const { toast: opsToast } = useToast();
+  const [expandedDays, setExpandedDays] = useState<Set<number>>(new Set([1, 2, 3, 4, 5, 6, 7, 8, 9, 10]));
+  const [uploadingId, setUploadingId] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [activeUploadItemKey, setActiveUploadItemKey] = useState<string | null>(null);
+
+  // Map operations by item_key
+  const opsMap = useMemo(() => {
+    const map: Record<string, DbLeadOperation> = {};
+    operations.forEach(op => { map[op.item_key] = op; });
+    return map;
+  }, [operations]);
+
+  // Flatten costing days into grouped items
+  const itemsByDay = useMemo(() => {
+    const result: { day: number; title: string; items: FlatCostItem[] }[] = [];
+    costingDays.forEach((day: any) => {
+      const rawItems = Array.isArray(day.items) ? day.items : [];
+      const items: FlatCostItem[] = rawItems.map((item: any) => ({
+        id: item.id || `${day.day_number}-${Math.random().toString(36).slice(2)}`,
+        dayNumber: day.day_number,
+        dayTitle: day.title || `Dia ${day.day_number}`,
+        description: item.description || item.activity || '—',
+        supplier: item.supplier || '',
+        pax: item.numAdults || item.num_adults || 0,
+        netValue: item.netTotal || item.unitCost || item.unit_cost || 0,
+      }));
+      if (items.length > 0) result.push({ day: day.day_number, title: day.title || `Dia ${day.day_number}`, items });
+    });
+    return result;
+  }, [costingDays]);
+
+  const allItems = useMemo(() => itemsByDay.flatMap(d => d.items), [itemsByDay]);
+  const totalItems = allItems.length;
+  const confirmedCount = allItems.filter(ci => opsMap[ci.id]?.booking_status === 'confirmed').length;
+  const paidCount = allItems.filter(ci => opsMap[ci.id]?.payment_status === 'paid').length;
+  const invoicedCount = allItems.filter(ci => ['invoice_received', 'invoice_approved', 'invoice_paid'].includes(opsMap[ci.id]?.invoice_status || '')).length;
+
+  const toggleDay = (day: number) => {
+    setExpandedDays(prev => {
+      const next = new Set(prev);
+      next.has(day) ? next.delete(day) : next.add(day);
+      return next;
+    });
+  };
+
+  const handleOpFieldChange = useCallback(async (itemKey: string, dayNumber: number, field: string, value: any) => {
+    try {
+      await upsertOp.mutateAsync({
+        lead_id: leadId,
+        item_key: itemKey,
+        day_number: dayNumber,
+        [field]: value,
+      });
+    } catch (err: any) {
+      opsToast({ title: 'Erro ao guardar', description: err.message, variant: 'destructive' });
+    }
+  }, [upsertOp, leadId, opsToast]);
+
+  const handleInvoiceUpload = async (itemKey: string, dayNumber: number, file: File) => {
+    setUploadingId(itemKey);
+    try {
+      const ext = file.name.split('.').pop();
+      const path = `invoices/leads/${leadId}/${itemKey}_${Date.now()}.${ext}`;
+      const { error: uploadError } = await supabase.storage.from('supplier-files').upload(path, file);
+      if (uploadError) throw uploadError;
+
+      const { data: { publicUrl } } = supabase.storage.from('supplier-files').getPublicUrl(path);
+
+      await upsertOp.mutateAsync({
+        lead_id: leadId,
+        item_key: itemKey,
+        day_number: dayNumber,
+        invoice_file_url: publicUrl,
+        invoice_file_name: file.name,
+        invoice_status: 'invoice_received',
+      });
+
+      opsToast({ title: 'Fatura carregada com sucesso' });
+    } catch (err: any) {
+      opsToast({ title: 'Erro no upload', description: err.message, variant: 'destructive' });
+    } finally {
+      setUploadingId(null);
+    }
+  };
+
+  if (opsLoading) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+        <span className="ml-2 text-sm text-muted-foreground">A carregar operações...</span>
+      </div>
+    );
+  }
+
+  if (costingDays.length === 0) {
+    return (
+      <div className="text-center py-12">
+        <p className="text-sm text-muted-foreground">Sem dados de custos. Gere custos no separador "Custos" primeiro.</p>
+      </div>
+    );
+  }
+
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
+    <div className="space-y-0">
+      {/* Hidden file input */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept=".pdf,.jpg,.jpeg,.png,.webp"
+        className="hidden"
+        onChange={e => {
+          const file = e.target.files?.[0];
+          if (file && activeUploadItemKey) {
+            const item = allItems.find(i => i.id === activeUploadItemKey);
+            if (item) handleInvoiceUpload(activeUploadItemKey, item.dayNumber, file);
+          }
+          e.target.value = '';
+        }}
+      />
+
+      {/* Header */}
+      <div className="flex items-center justify-between mb-4">
         <h3 className="text-sm font-bold text-foreground">Operações</h3>
         <span className="text-xs text-muted-foreground">Baseado na versão aceite (V{activeVersion})</span>
       </div>
-      {costingDays.length === 0 ? (
-        <p className="text-xs text-muted-foreground text-center py-8">Sem dados de custos aprovados. Gere custos no separador "Custos" primeiro.</p>
-      ) : (
-        costingDays.map(day => {
-          const items = Array.isArray(day.items) ? day.items as any[] : [];
+
+      {/* Summary bar */}
+      <div className="px-4 py-3 border rounded-t-lg bg-muted/20 flex items-center gap-6 flex-wrap">
+        <h2 className="text-sm font-semibold">Gestão Operacional</h2>
+        <div className="flex items-center gap-4 ml-auto text-[10px]">
+          <div className="flex items-center gap-1.5">
+            <span className="h-2 w-2 rounded-full bg-[hsl(var(--success))]" />
+            <span>Confirmados: {confirmedCount}/{totalItems}</span>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <span className="h-2 w-2 rounded-full bg-[hsl(var(--info))]" />
+            <span>Pagos: {paidCount}/{totalItems}</span>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <span className="h-2 w-2 rounded-full bg-[hsl(var(--warning))]" />
+            <span>Faturas: {invoicedCount}/{totalItems}</span>
+          </div>
+        </div>
+      </div>
+
+      <div className="border border-t-0 rounded-b-lg overflow-hidden">
+        {itemsByDay.map(({ day, title, items: dayItems }) => {
+          const expanded = expandedDays.has(day);
+          const dayConfirmed = dayItems.filter(ci => opsMap[ci.id]?.booking_status === 'confirmed').length;
+
           return (
-            <div key={day.id} className="bg-card rounded-lg border overflow-hidden">
-              <div className="px-4 py-3 border-b border-border">
-                <p className="text-xs font-bold text-[hsl(var(--info))]">Dia {day.day_number}</p>
-                <p className="text-sm font-bold text-[hsl(var(--info))]">{day.title}</p>
-              </div>
-              <div className="overflow-x-auto">
-                <table className="w-full text-xs">
-                  <thead>
-                    <tr className="bg-muted/50 text-muted-foreground">
-                      <th className="text-left px-3 py-2 font-medium">Item</th>
-                      <th className="text-right px-3 py-2 font-medium">Custo</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {items.map((item: any, idx: number) => (
-                      <tr key={idx} className="border-t border-border">
-                        <td className="px-3 py-3">{item.description || item.activity || '—'}</td>
-                        <td className="px-3 py-3 text-right font-medium">{item.unitCost || item.netTotal || 0} €</td>
-                      </tr>
-                    ))}
-                    {items.length === 0 && (
-                      <tr><td colSpan={2} className="text-center py-4 text-muted-foreground">Sem itens</td></tr>
-                    )}
-                  </tbody>
-                </table>
-              </div>
+            <div key={day} className="border-b last:border-b-0">
+              <Collapsible open={expanded} onOpenChange={() => toggleDay(day)}>
+                <CollapsibleTrigger className="w-full flex items-center gap-3 p-4 hover:bg-muted/20 transition-colors text-left bg-muted/5">
+                  {expanded ? <ChevronDown className="h-4 w-4 text-muted-foreground" /> : <ChevronRight className="h-4 w-4 text-muted-foreground" />}
+                  <div className="flex-1">
+                    <span className="text-xs text-[hsl(var(--success))] font-medium">Dia {day}</span>
+                    <span className="text-xs text-[hsl(var(--info))] font-semibold ml-2">— {title}</span>
+                  </div>
+                  <span className="text-[10px] text-muted-foreground">{dayConfirmed}/{dayItems.length} confirmados</span>
+                </CollapsibleTrigger>
+
+                <CollapsibleContent>
+                  <div className="px-4 pb-4">
+                    {/* Header row */}
+                    <div className="grid grid-cols-[100px_2fr_1fr_60px_90px_130px_120px_120px_50px_50px_40px] gap-1 text-[10px] font-medium text-white uppercase bg-[hsl(var(--info))]/80 px-2 py-2 rounded-t">
+                      <div>Hora</div>
+                      <div>Atividade</div>
+                      <div>Fornecedor</div>
+                      <div className="text-center">Pax</div>
+                      <div className="text-center">NET (€)</div>
+                      <div className="text-center">Reserva</div>
+                      <div className="text-center">Pagamento</div>
+                      <div className="text-center">Fatura</div>
+                      <div className="text-center">📎</div>
+                      <div className="text-center">📝</div>
+                      <div className="text-center">✉️</div>
+                    </div>
+
+                    {/* Rows */}
+                    <div className="border border-t-0 rounded-b divide-y">
+                      {dayItems.map(item => {
+                        const op = opsMap[item.id];
+                        const scheduleTime = op?.schedule_time || '';
+                        const bookingStatus = op?.booking_status || 'not_requested';
+                        const paymentStatus = op?.payment_status || 'not_paid';
+                        const invoiceStatus = op?.invoice_status || 'no_invoice';
+                        const invoiceUrl = op?.invoice_file_url;
+                        const invoiceName = op?.invoice_file_name;
+
+                        const bookingOpt = BOOKING_OPTIONS.find(o => o.value === bookingStatus);
+                        const paymentOpt = PAYMENT_OPTIONS.find(o => o.value === paymentStatus);
+                        const invoiceOpt = INVOICE_OPTIONS.find(o => o.value === invoiceStatus);
+
+                        return (
+                          <div key={item.id} className="grid grid-cols-[100px_2fr_1fr_60px_90px_130px_120px_120px_50px_50px_40px] gap-1 px-2 py-2 items-center text-xs hover:bg-muted/10">
+                            {/* Schedule Time */}
+                            <div className="flex items-center gap-1">
+                              <Clock className="h-3 w-3 text-muted-foreground shrink-0" />
+                              <Input
+                                className="h-7 text-xs border-0 bg-transparent shadow-none focus-visible:ring-1 px-1 w-16"
+                                defaultValue={scheduleTime}
+                                onBlur={e => handleOpFieldChange(item.id, item.dayNumber, 'schedule_time', e.target.value || null)}
+                                placeholder="--:--"
+                              />
+                            </div>
+
+                            {/* Activity name */}
+                            <div className="text-xs font-medium truncate" title={item.description}>
+                              {item.description}
+                            </div>
+
+                            {/* Supplier */}
+                            <div className="text-xs text-muted-foreground truncate" title={item.supplier}>
+                              {item.supplier || '—'}
+                            </div>
+
+                            {/* Pax */}
+                            <div className="text-center text-xs">{item.pax || 0}</div>
+
+                            {/* NET Value */}
+                            <div className="text-center text-xs font-semibold">€{Number(item.netValue || 0).toFixed(0)}</div>
+
+                            {/* Booking Status */}
+                            <div>
+                              <Select value={bookingStatus} onValueChange={v => handleOpFieldChange(item.id, item.dayNumber, 'booking_status', v)}>
+                                <SelectTrigger className={cn("h-7 text-[10px] border-0 shadow-none rounded-full px-2", bookingOpt?.className)}>
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {BOOKING_OPTIONS.map(opt => (
+                                    <SelectItem key={opt.value} value={opt.value} className="text-xs">
+                                      <span className={opt.className.replace(/bg-[^ ]+ /, '')}>{opt.label}</span>
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </div>
+
+                            {/* Payment Status */}
+                            <div>
+                              <Select value={paymentStatus} onValueChange={v => handleOpFieldChange(item.id, item.dayNumber, 'payment_status', v)}>
+                                <SelectTrigger className={cn("h-7 text-[10px] border-0 shadow-none rounded-full px-2", paymentOpt?.className)}>
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {PAYMENT_OPTIONS.map(opt => (
+                                    <SelectItem key={opt.value} value={opt.value} className="text-xs">
+                                      <span className={opt.className.replace(/bg-[^ ]+ /, '')}>{opt.label}</span>
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </div>
+
+                            {/* Invoice Status */}
+                            <div>
+                              <Select value={invoiceStatus} onValueChange={v => handleOpFieldChange(item.id, item.dayNumber, 'invoice_status', v)}>
+                                <SelectTrigger className={cn("h-7 text-[10px] border-0 shadow-none rounded-full px-2", invoiceOpt?.className)}>
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {INVOICE_OPTIONS.map(opt => (
+                                    <SelectItem key={opt.value} value={opt.value} className="text-xs">
+                                      <span className={opt.className.replace(/bg-[^ ]+ /, '')}>{opt.label}</span>
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </div>
+
+                            {/* Invoice Upload */}
+                            <div className="flex items-center justify-center">
+                              {uploadingId === item.id ? (
+                                <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />
+                              ) : invoiceUrl ? (
+                                <a href={invoiceUrl} target="_blank" rel="noopener noreferrer" className="p-1 hover:bg-muted rounded" title={invoiceName || 'Ver fatura'}>
+                                  <FileText className="h-3 w-3 text-[hsl(var(--success))]" />
+                                </a>
+                              ) : (
+                                <button
+                                  className="p-1 hover:bg-muted rounded"
+                                  title="Upload fatura"
+                                  onClick={() => { setActiveUploadItemKey(item.id); fileInputRef.current?.click(); }}
+                                >
+                                  <Upload className="h-3 w-3 text-muted-foreground" />
+                                </button>
+                              )}
+                            </div>
+
+                            {/* Notes */}
+                            <div className="flex items-center justify-center">
+                              <ItemNotesDialog entityType="lead_cost_item" entityId={item.id} label={item.description} />
+                            </div>
+
+                            {/* Booking Request Email */}
+                            <div className="flex items-center justify-center">
+                              <BookingRequestDialog
+                                operationId={op?.id || null}
+                                costItemId={item.id}
+                                tripId={leadId}
+                                tripCode={leadCode}
+                                activityName={item.description}
+                                activityDate={`Dia ${item.dayNumber}`}
+                                scheduleTime={scheduleTime}
+                                supplierName={item.supplier}
+                                supplierEmail=""
+                                pax={item.pax}
+                                netValue={item.netValue}
+                              />
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </CollapsibleContent>
+              </Collapsible>
             </div>
           );
-        })
-      )}
+        })}
+      </div>
     </div>
   );
 };
@@ -754,7 +1075,7 @@ const LeadDetailPage = () => {
         )}
 
         {/* Operações */}
-        {activeTab === 'operacoes' && lead && <OperacoesTab activeVersion={activeVersion} leadId={lead.id} />}
+        {activeTab === 'operacoes' && lead && <OperacoesTab activeVersion={activeVersion} leadId={lead.id} leadCode={lead.lead_code} />}
       </div>
     </AppLayout>
   );

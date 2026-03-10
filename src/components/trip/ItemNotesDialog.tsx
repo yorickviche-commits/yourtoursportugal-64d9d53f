@@ -9,7 +9,7 @@ import { formatDistanceToNow } from 'date-fns';
 import { pt } from 'date-fns/locale';
 
 interface ItemNotesDialogProps {
-  entityType: 'cost_item' | 'itinerary_item';
+  entityType: 'cost_item' | 'itinerary_item' | 'lead_cost_item';
   entityId: string;
   label?: string;
 }
