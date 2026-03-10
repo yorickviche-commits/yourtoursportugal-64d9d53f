@@ -137,7 +137,7 @@ const SmartImportDialog = ({ open, onOpenChange, entityType, onImportComplete }:
   };
 
   const handleConfirmImport = () => {
-    onImportComplete({ entity: entityData, services: servicesData, missing_fields: missingFields });
+    onImportComplete({ entity: entityData, services: servicesData, missing_fields: missingFields, pdfFile });
     handleClose(false);
     toast({
       title: `${entityType === 'partner' ? 'Parceiro' : 'Fornecedor'} importado`,
