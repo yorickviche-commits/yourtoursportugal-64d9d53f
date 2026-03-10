@@ -379,6 +379,17 @@ const AdminSupplierDetailPage = () => {
                   </div>
                 </div>
                 <div className="space-y-1.5">
+                  <Label className="text-xs">Ideal Para</Label>
+                  <TagSelect
+                    label=""
+                    value={idealFor}
+                    options={IDEAL_FOR_OPTIONS}
+                    onChange={setIdealFor}
+                    multiple
+                    placeholder="Perfis de viajante ideais..."
+                  />
+                </div>
+                <div className="space-y-1.5">
                   <Label className="text-xs">Política de Cancelamento</Label>
                   <Textarea value={form.cancellation_policy || ''} onChange={e => setForm({ ...form, cancellation_policy: e.target.value })} rows={2} />
                 </div>
