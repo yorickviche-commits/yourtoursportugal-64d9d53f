@@ -448,6 +448,8 @@ const OperacoesTab = ({ activeVersion, leadId, leadCode }: { activeVersion: numb
                                 supplierEmail=""
                                 pax={item.pax}
                                 netValue={item.netValue}
+                                isLeadContext={true}
+                                dayNumber={item.dayNumber}
                               />
                             </div>
                           </div>

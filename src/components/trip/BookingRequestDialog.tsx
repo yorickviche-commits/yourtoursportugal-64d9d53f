@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import { useCreateBookingEmailLog, useUpsertTripOperation } from '@/hooks/useTripOperationsQuery';
+import { useUpsertLeadOperation } from '@/hooks/useLeadOperationsQuery';
 import { useCreateItemNote } from '@/hooks/useItemNotesQuery';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -21,18 +22,24 @@ interface BookingRequestDialogProps {
   supplierEmail: string;
   pax: number;
   netValue: number;
+  /** When used inside a Lead (not a Trip), set this to true */
+  isLeadContext?: boolean;
+  /** For lead context: the day number for upsert */
+  dayNumber?: number;
 }
 
 const BookingRequestDialog = ({
   operationId, costItemId, tripId, tripCode,
   activityName, activityDate, scheduleTime,
   supplierName, supplierEmail, pax, netValue,
+  isLeadContext = false, dayNumber = 1,
 }: BookingRequestDialogProps) => {
   const [open, setOpen] = useState(false);
   const [sending, setSending] = useState(false);
   const { toast } = useToast();
   const createLog = useCreateBookingEmailLog();
-  const upsertOp = useUpsertTripOperation();
+  const upsertTripOp = useUpsertTripOperation();
+  const upsertLeadOp = useUpsertLeadOperation();
   const createNote = useCreateItemNote();
 
   const defaultSubject = `Booking Request — ${activityName} — ${tripCode}`;
@@ -73,37 +80,56 @@ reservas@yourtours.pt`;
     }
     setSending(true);
     try {
-      // Ensure operation record exists
-      let opId = operationId;
-      if (!opId) {
-        const op = await upsertOp.mutateAsync({
-          cost_item_id: costItemId,
-          trip_id: tripId,
+      if (isLeadContext) {
+        // Lead context: use lead_operations table
+        await upsertLeadOp.mutateAsync({
+          lead_id: tripId, // tripId here is actually leadId
+          item_key: costItemId,
+          day_number: dayNumber,
           booking_status: 'requested',
         });
-        opId = op.id;
+
+        // Add note
+        await createNote.mutateAsync({
+          entity_type: 'lead_cost_item',
+          entity_id: costItemId,
+          note_text: `📧 Booking request enviado para ${to}\nAssunto: ${subject}`,
+        });
       } else {
-        await upsertOp.mutateAsync({
-          cost_item_id: costItemId,
-          trip_id: tripId,
-          booking_status: 'requested',
+        // Trip context: use trip_operations table
+        let opId = operationId;
+        if (!opId) {
+          const op = await upsertTripOp.mutateAsync({
+            cost_item_id: costItemId,
+            trip_id: tripId,
+            booking_status: 'requested',
+          });
+          opId = op.id;
+        } else {
+          await upsertTripOp.mutateAsync({
+            cost_item_id: costItemId,
+            trip_id: tripId,
+            booking_status: 'requested',
+          });
+        }
+
+        // Log the email in booking_emails_log (only for trip context with valid UUID)
+        if (opId) {
+          await createLog.mutateAsync({
+            operation_id: opId,
+            supplier_email: to,
+            subject,
+            body,
+          });
+        }
+
+        // Add note to cost item
+        await createNote.mutateAsync({
+          entity_type: 'cost_item',
+          entity_id: costItemId,
+          note_text: `📧 Booking request enviado para ${to}\nAssunto: ${subject}`,
         });
       }
-
-      // Log the email
-      await createLog.mutateAsync({
-        operation_id: opId!,
-        supplier_email: to,
-        subject,
-        body,
-      });
-
-      // Add note to cost item
-      await createNote.mutateAsync({
-        entity_type: 'cost_item',
-        entity_id: costItemId,
-        note_text: `📧 Booking request enviado para ${to}\nAssunto: ${subject}`,
-      });
 
       toast({ title: 'Pedido de reserva registado', description: 'Status atualizado para "Requested"' });
       setOpen(false);
