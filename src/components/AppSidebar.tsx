@@ -30,6 +30,7 @@ const reservasItems: NavItem[] = [
   { to: '/leads', icon: Users, label: 'Leads & Files' },
   { to: '/trips', icon: Map, label: 'Reservas Confirmadas' },
   { to: '/agents', icon: Bot, label: 'AI Agents' },
+  { to: '/ai-office', icon: Bot, label: 'AI Work Office' },
   { to: '/crm', icon: Globe, label: 'CRM (NetHunt)' },
   { to: '/payments', icon: CreditCard, label: 'WeTravel' },
 ];
