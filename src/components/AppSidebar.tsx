@@ -29,21 +29,21 @@ const reservasItems: NavItem[] = [
   { to: '/tasks', icon: ClipboardList, label: 'Tasks & Pipeline' },
   { to: '/leads', icon: Users, label: 'Leads & Files' },
   { to: '/trips', icon: Map, label: 'Reservas Confirmadas' },
-  { to: '/agents', icon: Bot, label: 'AI Agents' },
-  { to: '/ai-office', icon: Bot, label: 'AI Work Office' },
-  { to: '/crm', icon: Globe, label: 'CRM (NetHunt)' },
-  { to: '/payments', icon: CreditCard, label: 'WeTravel' },
 ];
 
 const comercialItems: NavItem[] = [
   { to: '/admin/suppliers', icon: Package, label: 'FSEs' },
   { to: '/admin/partners', icon: Handshake, label: 'Resellers' },
+  { to: '/admin/kpis', icon: BarChart3, label: 'KPIs' },
 ];
 
 const adminItems: NavItem[] = [
+  { to: '/agents', icon: Bot, label: 'AI Agents' },
+  { to: '/ai-office', icon: Bot, label: 'AI Work Office' },
+  { to: '/crm', icon: Globe, label: 'CRM (NetHunt)' },
+  { to: '/payments', icon: CreditCard, label: 'WeTravel' },
   { to: '/admin/users', icon: Shield, label: 'Utilizadores' },
   { to: '/admin/permissions', icon: ShieldCheck, label: 'Permissões' },
-  { to: '/admin/kpis', icon: BarChart3, label: 'KPIs' },
   { to: '/admin/settings', icon: Settings, label: 'Definições' },
   { to: '/admin/integrations', icon: Plug, label: 'Integrações' },
   { to: '/admin/logs', icon: FileText, label: 'Activity Logs' },
