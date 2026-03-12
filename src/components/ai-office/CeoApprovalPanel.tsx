@@ -5,6 +5,9 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { formatDistanceToNow } from 'date-fns';
 import { pt } from 'date-fns/locale';
 import { toast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
+import { Loader2 } from 'lucide-react';
+import { useState } from 'react';
 import type { ApprovalItem } from '@/hooks/useAIOffice';
 
 interface Props {
@@ -15,12 +18,24 @@ interface Props {
 }
 
 export default function CeoApprovalPanel({ open, onClose, approvals, onDecide }: Props) {
+  const [processing, setProcessing] = useState<string | null>(null);
+
   const handleDecision = async (id: string, decision: 'approved' | 'rejected') => {
-    const err = await onDecide(id, decision);
-    if (err) {
+    setProcessing(id);
+    try {
+      // Call orchestrator which handles approval + continues pipeline
+      const { data, error } = await supabase.functions.invoke('agent-orchestrator', {
+        body: { action: 'approve_decision', approvalId: id, decision },
+      });
+      if (error) throw error;
+
+      // Also update via the hook for optimistic UI
+      await onDecide(id, decision);
+      toast({ title: decision === 'approved' ? '✅ Aprovado — pipeline continuado' : '❌ Rejeitado' });
+    } catch (err: any) {
       toast({ title: 'Erro', description: err.message, variant: 'destructive' });
-    } else {
-      toast({ title: decision === 'approved' ? '✅ Aprovado' : '❌ Rejeitado' });
+    } finally {
+      setProcessing(null);
     }
   };
 
