@@ -16,6 +16,7 @@ import CRMRecordDetailPage from "./pages/CRMRecordDetailPage";
 import PaymentsPage from "./pages/PaymentsPage";
 import TasksPage from "./pages/TasksPage";
 import AgentDashboardPage from "./pages/AgentDashboardPage";
+import AIWorkOfficePage from "./pages/AIWorkOfficePage";
 import LoginPage from "./pages/LoginPage";
 import SignupPage from "./pages/SignupPage";
 import ForgotPasswordPage from "./pages/ForgotPasswordPage";
