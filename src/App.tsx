@@ -63,6 +63,7 @@ const App = () => (
             <Route path="/crm/:folderId/:recordId" element={<ProtectedRoute><CRMRecordDetailPage /></ProtectedRoute>} />
             <Route path="/payments" element={<ProtectedRoute><PaymentsPage /></ProtectedRoute>} />
             <Route path="/agents" element={<ProtectedRoute><AgentDashboardPage /></ProtectedRoute>} />
+            <Route path="/ai-office" element={<ProtectedRoute><AIWorkOfficePage /></ProtectedRoute>} />
 
             {/* Admin routes */}
             <Route path="/admin/users" element={<ProtectedRoute adminOnly><AdminUsersPage /></ProtectedRoute>} />
