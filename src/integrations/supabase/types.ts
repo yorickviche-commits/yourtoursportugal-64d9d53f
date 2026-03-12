@@ -47,6 +47,127 @@ export type Database = {
         }
         Relationships: []
       }
+      agent_activity_log: {
+        Row: {
+          actioned_at: string | null
+          actioned_by: string | null
+          agent_id: string
+          created_at: string | null
+          event_detail: Json | null
+          event_summary: string
+          event_type: string
+          id: string
+          related_entity: string | null
+          requires_action: boolean | null
+        }
+        Insert: {
+          actioned_at?: string | null
+          actioned_by?: string | null
+          agent_id: string
+          created_at?: string | null
+          event_detail?: Json | null
+          event_summary: string
+          event_type: string
+          id?: string
+          related_entity?: string | null
+          requires_action?: boolean | null
+        }
+        Update: {
+          actioned_at?: string | null
+          actioned_by?: string | null
+          agent_id?: string
+          created_at?: string | null
+          event_detail?: Json | null
+          event_summary?: string
+          event_type?: string
+          id?: string
+          related_entity?: string | null
+          requires_action?: boolean | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agent_activity_log_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "ai_agents"
+            referencedColumns: ["agent_id"]
+          },
+        ]
+      }
+      agent_status: {
+        Row: {
+          agent_id: string
+          current_entity: string | null
+          current_task: string | null
+          id: string
+          started_at: string | null
+          status: string
+          updated_at: string | null
+          waiting_for: string | null
+        }
+        Insert: {
+          agent_id: string
+          current_entity?: string | null
+          current_task?: string | null
+          id?: string
+          started_at?: string | null
+          status?: string
+          updated_at?: string | null
+          waiting_for?: string | null
+        }
+        Update: {
+          agent_id?: string
+          current_entity?: string | null
+          current_task?: string | null
+          id?: string
+          started_at?: string | null
+          status?: string
+          updated_at?: string | null
+          waiting_for?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agent_status_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: true
+            referencedRelation: "ai_agents"
+            referencedColumns: ["agent_id"]
+          },
+        ]
+      }
+      ai_agents: {
+        Row: {
+          agent_id: string
+          character_color: string | null
+          created_at: string | null
+          desk_position: Json | null
+          display_name: string
+          id: string
+          is_active: boolean | null
+          role_description: string | null
+        }
+        Insert: {
+          agent_id: string
+          character_color?: string | null
+          created_at?: string | null
+          desk_position?: Json | null
+          display_name: string
+          id?: string
+          is_active?: boolean | null
+          role_description?: string | null
+        }
+        Update: {
+          agent_id?: string
+          character_color?: string | null
+          created_at?: string | null
+          desk_position?: Json | null
+          display_name?: string
+          id?: string
+          is_active?: boolean | null
+          role_description?: string | null
+        }
+        Relationships: []
+      }
       approvals: {
         Row: {
           client_name: string | null
@@ -151,6 +272,65 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "trip_operations"
             referencedColumns: ["id"]
+          },
+        ]
+      }
+      ceo_approval_queue: {
+        Row: {
+          agent_id: string
+          amount_eur: number | null
+          approval_type: string
+          created_at: string | null
+          decided_at: string | null
+          decided_by: string | null
+          decision_note: string | null
+          description: string | null
+          id: string
+          lead_id: string | null
+          payload: Json | null
+          status: string | null
+          title: string
+          trip_id: string | null
+        }
+        Insert: {
+          agent_id: string
+          amount_eur?: number | null
+          approval_type: string
+          created_at?: string | null
+          decided_at?: string | null
+          decided_by?: string | null
+          decision_note?: string | null
+          description?: string | null
+          id?: string
+          lead_id?: string | null
+          payload?: Json | null
+          status?: string | null
+          title: string
+          trip_id?: string | null
+        }
+        Update: {
+          agent_id?: string
+          amount_eur?: number | null
+          approval_type?: string
+          created_at?: string | null
+          decided_at?: string | null
+          decided_by?: string | null
+          decision_note?: string | null
+          description?: string | null
+          id?: string
+          lead_id?: string | null
+          payload?: Json | null
+          status?: string | null
+          title?: string
+          trip_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ceo_approval_queue_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "ai_agents"
+            referencedColumns: ["agent_id"]
           },
         ]
       }
