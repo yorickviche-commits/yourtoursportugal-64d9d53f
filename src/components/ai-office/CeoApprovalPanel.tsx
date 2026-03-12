@@ -81,10 +81,10 @@ export default function CeoApprovalPanel({ open, onClose, approvals, onDecide }:
                     {formatDistanceToNow(new Date(item.created_at), { addSuffix: true, locale: pt })}
                   </p>
                   <div className="flex gap-2 pt-1">
-                    <Button size="sm" className="flex-1 h-7 text-xs" onClick={() => handleDecision(item.id, 'approved')}>
-                      ✅ Approve
+                    <Button size="sm" className="flex-1 h-7 text-xs" onClick={() => handleDecision(item.id, 'approved')} disabled={processing === item.id}>
+                      {processing === item.id ? <Loader2 className="h-3 w-3 animate-spin" /> : '✅ Approve'}
                     </Button>
-                    <Button size="sm" variant="outline" className="flex-1 h-7 text-xs border-destructive/30 text-destructive hover:bg-destructive/10" onClick={() => handleDecision(item.id, 'rejected')}>
+                    <Button size="sm" variant="outline" className="flex-1 h-7 text-xs border-destructive/30 text-destructive hover:bg-destructive/10" onClick={() => handleDecision(item.id, 'rejected')} disabled={processing === item.id}>
                       ❌ Reject
                     </Button>
                   </div>
