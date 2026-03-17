@@ -337,7 +337,7 @@ const OperacoesTab = ({ activeVersion, leadId, leadCode }: { activeVersion: numb
                         const invoiceOpt = INVOICE_OPTIONS.find(o => o.value === invoiceStatus);
 
                         return (
-                          <div key={item.id} className="grid grid-cols-[100px_2fr_1fr_60px_90px_130px_120px_120px_50px_50px_40px] gap-1 px-2 py-2 items-center text-xs hover:bg-muted/10">
+                          <div key={item.id} className="grid grid-cols-[100px_2fr_1fr_60px_90px_130px_120px_120px_50px_50px_40px_40px] gap-1 px-2 py-2 items-center text-xs hover:bg-muted/10">
                             {/* Schedule Time */}
                             <div className="flex items-center gap-1">
                               <Clock className="h-3 w-3 text-muted-foreground shrink-0" />
