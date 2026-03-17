@@ -248,63 +248,102 @@ Return a JSON object with:
 
 Use the extract_email tool to return the result.`;
 
-    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: "google/gemini-2.5-flash",
-        messages: [
-          { role: "system", content: systemPrompt },
-          { role: "user", content: userPrompt },
-        ],
-        tools: [{
-          type: "function",
-          function: {
-            name: "extract_email",
-            description: "Return the personalized email",
-            parameters: {
-              type: "object",
-              properties: {
-                subject: { type: "string" },
-                body: { type: "string" },
-                internal_notes: {
-                  type: "object",
-                  properties: {
-                    pipeline_stage: { type: "string" },
-                    lead_score_estimate: { type: "number" },
-                    missing_info: { type: "array", items: { type: "string" } },
-                    suggested_next_action: { type: "string" },
-                    assigned_to: { type: "string" },
-                  },
-                  required: ["pipeline_stage", "lead_score_estimate", "missing_info", "suggested_next_action", "assigned_to"],
-                },
-              },
-              required: ["subject", "body", "internal_notes"],
-              additionalProperties: false,
-            },
-          },
-        }],
-        tool_choice: { type: "function", function: { name: "extract_email" } },
-      }),
-    });
+    // Try Lovable AI gateway first, fallback to Gemini direct
+    let data: any;
 
-    if (!response.ok) {
-      if (response.status === 429) {
-        return new Response(JSON.stringify({ error: "Rate limit exceeded, please try again later." }), {
-          status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
+    try {
+      const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${LOVABLE_API_KEY}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          model: "google/gemini-2.5-flash",
+          messages: [
+            { role: "system", content: systemPrompt },
+            { role: "user", content: userPrompt },
+          ],
+          tools: [{
+            type: "function",
+            function: {
+              name: "extract_email",
+              description: "Return the personalized email",
+              parameters: {
+                type: "object",
+                properties: {
+                  subject: { type: "string" },
+                  body: { type: "string" },
+                  internal_notes: {
+                    type: "object",
+                    properties: {
+                      pipeline_stage: { type: "string" },
+                      lead_score_estimate: { type: "number" },
+                      missing_info: { type: "array", items: { type: "string" } },
+                      suggested_next_action: { type: "string" },
+                      assigned_to: { type: "string" },
+                    },
+                    required: ["pipeline_stage", "lead_score_estimate", "missing_info", "suggested_next_action", "assigned_to"],
+                  },
+                },
+                required: ["subject", "body", "internal_notes"],
+                additionalProperties: false,
+              },
+            },
+          }],
+          tool_choice: { type: "function", function: { name: "extract_email" } },
+        }),
+      });
+
+      if (!response.ok) {
+        if (response.status === 402 || response.status === 429) {
+          console.error(`Lovable AI returned ${response.status}, falling back to Gemini direct`);
+          throw new Error(`Gateway ${response.status}`);
+        }
+        const t = await response.text();
+        console.error("AI gateway error:", response.status, t);
+        throw new Error("AI gateway error");
       }
-      if (response.status === 402) {
-        return new Response(JSON.stringify({ error: "AI credits exhausted. Please add credits." }), {
+
+      data = await response.json();
+    } catch (gatewayErr) {
+      // Fallback to Gemini direct
+      const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY");
+      if (!GEMINI_API_KEY) {
+        return new Response(JSON.stringify({ error: "AI credits exhausted and no fallback key configured." }), {
           status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
-      const t = await response.text();
-      console.error("AI gateway error:", response.status, t);
-      throw new Error("AI gateway error");
+
+      console.log("Using Gemini direct fallback...");
+
+      const fallbackPrompt = `${systemPrompt}\n\n${userPrompt}\n\nIMPORTANT: Return ONLY a valid JSON object with keys "subject", "body", and "internal_notes". No markdown, no extra text.`;
+
+      const geminiRes = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            contents: [{ parts: [{ text: fallbackPrompt }] }],
+          }),
+        }
+      );
+
+      if (!geminiRes.ok) {
+        const errText = await geminiRes.text();
+        console.error("Gemini fallback error:", geminiRes.status, errText);
+        throw new Error("Both AI providers failed");
+      }
+
+      const geminiData = await geminiRes.json();
+      let rawText = geminiData.candidates?.[0]?.content?.parts?.[0]?.text || "";
+      rawText = rawText.replace(/```json\s*/g, "").replace(/```\s*/g, "").trim();
+
+      const result = JSON.parse(rawText);
+      return new Response(JSON.stringify({ email: result }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
     const data = await response.json();
