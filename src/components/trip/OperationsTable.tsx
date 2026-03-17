@@ -8,6 +8,7 @@ import { DbCostItem } from '@/hooks/useCostItemsQuery';
 import { useTripOperationsQuery, useUpsertTripOperation, DbTripOperation } from '@/hooks/useTripOperationsQuery';
 import ItemNotesDialog from './ItemNotesDialog';
 import BookingRequestDialog from './BookingRequestDialog';
+import BookingEmailHistory from './BookingEmailHistory';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { format, addDays, parseISO } from 'date-fns';
