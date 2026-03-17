@@ -5,9 +5,9 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
-import { useCreateBookingEmailLog, useUpsertTripOperation } from '@/hooks/useTripOperationsQuery';
+import { useUpsertTripOperation } from '@/hooks/useTripOperationsQuery';
 import { useUpsertLeadOperation } from '@/hooks/useLeadOperationsQuery';
-import { useCreateItemNote } from '@/hooks/useItemNotesQuery';
+import { useCreateBookingEmail } from '@/hooks/useBookingEmailsQuery';
 import { supabase } from '@/integrations/supabase/client';
 
 interface BookingRequestDialogProps {
@@ -22,25 +22,22 @@ interface BookingRequestDialogProps {
   supplierEmail: string;
   pax: number;
   netValue: number;
-  /** When used inside a Lead (not a Trip), set this to true */
   isLeadContext?: boolean;
-  /** For lead context: the day number for upsert */
   dayNumber?: number;
 }
 
 const BookingRequestDialog = ({
   operationId, costItemId, tripId, tripCode,
   activityName, activityDate, scheduleTime,
-  supplierName, supplierEmail, pax, netValue,
+  supplierName, supplierEmail: initialSupplierEmail, pax, netValue,
   isLeadContext = false, dayNumber = 1,
 }: BookingRequestDialogProps) => {
   const [open, setOpen] = useState(false);
   const [sending, setSending] = useState(false);
   const { toast } = useToast();
-  const createLog = useCreateBookingEmailLog();
+  const createEmailLog = useCreateBookingEmail();
   const upsertTripOp = useUpsertTripOperation();
   const upsertLeadOp = useUpsertLeadOperation();
-  const createNote = useCreateItemNote();
 
   const defaultSubject = `Booking Request — ${activityName} — ${tripCode}`;
   const defaultBody = `Dear ${supplierName || '[Supplier Name]'},
@@ -60,13 +57,40 @@ Best regards,
 Your Tours Portugal
 reservas@yourtours.pt`;
 
-  const [to, setTo] = useState(supplierEmail);
+  const [to, setTo] = useState(initialSupplierEmail);
   const [subject, setSubject] = useState(defaultSubject);
   const [body, setBody] = useState(defaultBody);
+  const [resolvedEmail, setResolvedEmail] = useState(initialSupplierEmail);
 
-  const handleOpen = (isOpen: boolean) => {
+  const handleOpen = async (isOpen: boolean) => {
     if (isOpen) {
-      setTo(supplierEmail);
+      // Try to resolve supplier email if not provided
+      let email = initialSupplierEmail;
+      if (!email && supplierName) {
+        try {
+          // Search in suppliers table
+          const { data: supplier } = await supabase
+            .from('suppliers')
+            .select('contact_email')
+            .ilike('name', `%${supplierName}%`)
+            .maybeSingle();
+          if (supplier?.contact_email) {
+            email = supplier.contact_email;
+          } else {
+            // Search in partners table
+            const { data: partner } = await supabase
+              .from('partners')
+              .select('contact_email')
+              .ilike('name', `%${supplierName}%`)
+              .maybeSingle();
+            if (partner?.contact_email) {
+              email = partner.contact_email;
+            }
+          }
+        } catch { /* ignore */ }
+      }
+      setResolvedEmail(email);
+      setTo(email);
       setSubject(`Booking Request — ${activityName} — ${tripCode}`);
       setBody(defaultBody);
     }
@@ -81,57 +105,42 @@ reservas@yourtours.pt`;
     setSending(true);
     try {
       if (isLeadContext) {
-        // Lead context: use lead_operations table
-        await upsertLeadOp.mutateAsync({
-          lead_id: tripId, // tripId here is actually leadId
+        // Lead context: upsert lead operation and get back the UUID id
+        const result = await upsertLeadOp.mutateAsync({
+          lead_id: tripId,
           item_key: costItemId,
           day_number: dayNumber,
           booking_status: 'requested',
         });
 
-        // Add note
-        await createNote.mutateAsync({
-          entity_type: 'lead_cost_item',
-          entity_id: costItemId,
-          note_text: `📧 Booking request enviado para ${to}\nAssunto: ${subject}`,
-        });
-      } else {
-        // Trip context: use trip_operations table
-        let opId = operationId;
-        if (!opId) {
-          const op = await upsertTripOp.mutateAsync({
-            cost_item_id: costItemId,
-            trip_id: tripId,
-            booking_status: 'requested',
-          });
-          opId = op.id;
-        } else {
-          await upsertTripOp.mutateAsync({
-            cost_item_id: costItemId,
-            trip_id: tripId,
-            booking_status: 'requested',
-          });
-        }
-
-        // Log the email in booking_emails_log (only for trip context with valid UUID)
-        if (opId) {
-          await createLog.mutateAsync({
-            operation_id: opId,
+        // Log the email using lead_operation_id (the real UUID)
+        const leadOpId = (result as any)?.id;
+        if (leadOpId) {
+          await createEmailLog.mutateAsync({
+            lead_operation_id: leadOpId,
             supplier_email: to,
             subject,
             body,
           });
         }
+      } else {
+        // Trip context: use trip_operations table
+        const op = await upsertTripOp.mutateAsync({
+          cost_item_id: costItemId,
+          trip_id: tripId,
+          booking_status: 'requested',
+        });
 
-        // Add note to cost item
-        await createNote.mutateAsync({
-          entity_type: 'cost_item',
-          entity_id: costItemId,
-          note_text: `📧 Booking request enviado para ${to}\nAssunto: ${subject}`,
+        // Log the email with operation_id
+        await createEmailLog.mutateAsync({
+          operation_id: op.id,
+          supplier_email: to,
+          subject,
+          body,
         });
       }
 
-      toast({ title: 'Pedido de reserva registado', description: 'Status atualizado para "Requested"' });
+      toast({ title: 'Pedido de reserva registado', description: 'Status atualizado para "Pedido"' });
       setOpen(false);
     } catch (err: any) {
       toast({ title: 'Erro', description: err.message, variant: 'destructive' });
@@ -144,7 +153,7 @@ reservas@yourtours.pt`;
     <Dialog open={open} onOpenChange={handleOpen}>
       <DialogTrigger asChild>
         <button className="p-1 hover:bg-muted rounded" title="Enviar pedido de reserva">
-          <Mail className="h-3 w-3 text-muted-foreground" />
+          <Send className="h-3 w-3 text-muted-foreground" />
         </button>
       </DialogTrigger>
       <DialogContent className="max-w-xl">

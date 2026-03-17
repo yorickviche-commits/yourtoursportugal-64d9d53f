@@ -241,7 +241,8 @@ export type Database = {
         Row: {
           body: string
           id: string
-          operation_id: string
+          lead_operation_id: string | null
+          operation_id: string | null
           sent_at: string
           sent_by: string | null
           subject: string
@@ -250,7 +251,8 @@ export type Database = {
         Insert: {
           body: string
           id?: string
-          operation_id: string
+          lead_operation_id?: string | null
+          operation_id?: string | null
           sent_at?: string
           sent_by?: string | null
           subject: string
@@ -259,13 +261,21 @@ export type Database = {
         Update: {
           body?: string
           id?: string
-          operation_id?: string
+          lead_operation_id?: string | null
+          operation_id?: string | null
           sent_at?: string
           sent_by?: string | null
           subject?: string
           supplier_email?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "booking_emails_log_lead_operation_id_fkey"
+            columns: ["lead_operation_id"]
+            isOneToOne: false
+            referencedRelation: "lead_operations"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "booking_emails_log_operation_id_fkey"
             columns: ["operation_id"]

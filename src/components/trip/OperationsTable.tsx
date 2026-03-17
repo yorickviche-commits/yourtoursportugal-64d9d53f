@@ -8,6 +8,7 @@ import { DbCostItem } from '@/hooks/useCostItemsQuery';
 import { useTripOperationsQuery, useUpsertTripOperation, DbTripOperation } from '@/hooks/useTripOperationsQuery';
 import ItemNotesDialog from './ItemNotesDialog';
 import BookingRequestDialog from './BookingRequestDialog';
+import BookingEmailHistory from './BookingEmailHistory';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { format, addDays, parseISO } from 'date-fns';
@@ -212,7 +213,7 @@ const OperationsTable = ({ costItems, tripId, tripCode, startDate }: OperationsT
               <CollapsibleContent>
                 <div className="px-4 pb-4">
                   {/* Header row */}
-                  <div className="grid grid-cols-[100px_2fr_1fr_60px_90px_130px_120px_120px_50px_50px_40px] gap-1 text-[10px] font-medium text-white uppercase bg-[hsl(var(--info))]/80 px-2 py-2 rounded-t">
+                  <div className="grid grid-cols-[100px_2fr_1fr_60px_90px_130px_120px_120px_50px_50px_40px_40px] gap-1 text-[10px] font-medium text-white uppercase bg-[hsl(var(--info))]/80 px-2 py-2 rounded-t">
                     <div>Hora</div>
                     <div>Atividade</div>
                     <div>Fornecedor</div>
@@ -224,6 +225,7 @@ const OperationsTable = ({ costItems, tripId, tripCode, startDate }: OperationsT
                     <div className="text-center">📎</div>
                     <div className="text-center">📝</div>
                     <div className="text-center">✉️</div>
+                    <div className="text-center">📨</div>
                   </div>
 
                   {/* Rows */}
@@ -243,7 +245,7 @@ const OperationsTable = ({ costItems, tripId, tripCode, startDate }: OperationsT
                       const invoiceOpt = INVOICE_OPTIONS.find(o => o.value === invoiceStatus);
 
                       return (
-                        <div key={item.id} className="grid grid-cols-[100px_2fr_1fr_60px_90px_130px_120px_120px_50px_50px_40px] gap-1 px-2 py-2 items-center text-xs hover:bg-muted/10">
+                        <div key={item.id} className="grid grid-cols-[100px_2fr_1fr_60px_90px_130px_120px_120px_50px_50px_40px_40px] gap-1 px-2 py-2 items-center text-xs hover:bg-muted/10">
                           {/* Schedule Time */}
                           <div className="flex items-center gap-1">
                             <Clock className="h-3 w-3 text-muted-foreground shrink-0" />
@@ -361,6 +363,14 @@ const OperationsTable = ({ costItems, tripId, tripCode, startDate }: OperationsT
                               supplierEmail=""
                               pax={item.num_adults || 0}
                               netValue={netValue}
+                            />
+                          </div>
+
+                          {/* Email History */}
+                          <div className="flex items-center justify-center">
+                            <BookingEmailHistory
+                              operationId={op?.id || undefined}
+                              label={item.description || ''}
                             />
                           </div>
                         </div>
