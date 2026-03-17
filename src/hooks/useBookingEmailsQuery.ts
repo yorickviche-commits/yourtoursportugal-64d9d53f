@@ -63,10 +63,10 @@ export const useBookingEmailsByLeadId = (leadId: string | undefined) => {
       if (!ops || ops.length === 0) return [];
 
       const opIds = (ops as any[]).map((o: any) => o.id);
-      const { data, error } = await supabase
-        .from('booking_emails_log')
+      const { data, error } = await (supabase
+        .from('booking_emails_log') as any)
         .select('*')
-        .in('lead_operation_id' as any, opIds)
+        .in('lead_operation_id', opIds)
         .order('sent_at', { ascending: false });
       if (error) throw error;
       return data as DbBookingEmail[];
