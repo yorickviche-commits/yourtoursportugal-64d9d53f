@@ -455,6 +455,14 @@ const OperacoesTab = ({ activeVersion, leadId, leadCode }: { activeVersion: numb
                                 dayNumber={item.dayNumber}
                               />
                             </div>
+
+                            {/* Email History */}
+                            <div className="flex items-center justify-center">
+                              <BookingEmailHistory
+                                leadOperationId={op?.id || undefined}
+                                label={item.description}
+                              />
+                            </div>
                           </div>
                         );
                       })}
