@@ -36,10 +36,10 @@ export const useBookingEmailsByLeadOperation = (leadOperationId: string | undefi
     queryKey: ['booking_emails', 'lead_operation', leadOperationId],
     queryFn: async () => {
       if (!leadOperationId) return [];
-      const { data, error } = await supabase
-        .from('booking_emails_log')
+      const { data, error } = await (supabase
+        .from('booking_emails_log') as any)
         .select('*')
-        .eq('lead_operation_id' as any, leadOperationId)
+        .eq('lead_operation_id', leadOperationId)
         .order('sent_at', { ascending: false });
       if (error) throw error;
       return data as DbBookingEmail[];
