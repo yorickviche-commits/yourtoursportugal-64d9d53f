@@ -365,6 +365,14 @@ const OperationsTable = ({ costItems, tripId, tripCode, startDate }: OperationsT
                               netValue={netValue}
                             />
                           </div>
+
+                          {/* Email History */}
+                          <div className="flex items-center justify-center">
+                            <BookingEmailHistory
+                              operationId={op?.id || undefined}
+                              label={item.description || ''}
+                            />
+                          </div>
                         </div>
                       );
                     })}
