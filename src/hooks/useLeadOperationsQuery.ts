@@ -45,7 +45,7 @@ export const useUpsertLeadOperation = () => {
         .select()
         .single();
       if (error) throw error;
-      return data;
+      return data as unknown as DbLeadOperation;
     },
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: ['lead_operations', variables.lead_id] });
