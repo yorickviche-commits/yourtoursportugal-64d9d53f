@@ -27,6 +27,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/component
 import ItemNotesDialog from '@/components/trip/ItemNotesDialog';
 import BookingRequestDialog from '@/components/trip/BookingRequestDialog';
 import { useLeadOperationsQuery, useUpsertLeadOperation, DbLeadOperation } from '@/hooks/useLeadOperationsQuery';
+import BookingEmailHistory from '@/components/trip/BookingEmailHistory';
 
 type DetailTab = 'dados_gerais' | 'travel_planner' | 'custos' | 'itinerario' | 'operacoes';
 
