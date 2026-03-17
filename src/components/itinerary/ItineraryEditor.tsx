@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { ChevronDown, ChevronRight, Plus, Trash2, ImagePlus, X, MapPin, Loader2, Link2, Upload, Sparkles, Eye, Copy, RefreshCw } from 'lucide-react';
+import { ChevronDown, ChevronRight, Plus, Trash2, ImagePlus, X, MapPin, Loader2, Link2, Upload, Sparkles, Eye, Copy, RefreshCw, Wand2 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
@@ -85,6 +85,8 @@ function guessCoordinates(text: string): { lat: number; lng: number } | null {
   return null;
 }
 
+type GeneratingField = `narrative-${number}` | `highlights-${number}` | `inclusions-${number}` | `all-${number}` | 'cover-image' | null;
+
 const ItineraryEditor = ({ leadId, clientName, destination, travelDates, travelPlannerDays }: ItineraryEditorProps) => {
   const { toast } = useToast();
   const [itinerary, setItinerary] = useState<ItineraryData>({
@@ -103,6 +105,7 @@ const ItineraryEditor = ({ leadId, clientName, destination, travelDates, travelP
   const [loadingImages, setLoadingImages] = useState<number | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [loaded, setLoaded] = useState(false);
+  const [generating, setGenerating] = useState<GeneratingField>(null);
 
   // Load existing itinerary
   useEffect(() => {
@@ -192,7 +195,6 @@ const ItineraryEditor = ({ leadId, clientName, destination, travelDates, travelP
     setItinerary(prev => {
       const days = [...prev.days];
       days[index] = { ...days[index], ...updates };
-      // Auto-guess coordinates when location changes
       if (updates.location_name || updates.title) {
         const text = (updates.location_name || days[index].location_name) + ' ' + (updates.title || days[index].title);
         const coords = guessCoordinates(text);
@@ -272,35 +274,93 @@ const ItineraryEditor = ({ leadId, clientName, destination, travelDates, travelP
     updateDay(dayIndex, { images: [...itinerary.days[dayIndex].images, { url: '', caption: '' }] });
   };
 
-  // Build a smart search query from day content
-  const buildImageQuery = (day: ItineraryDayData): string => {
-    const parts: string[] = [];
-    if (day.location_name) parts.push(day.location_name);
-    if (day.title) parts.push(day.title);
-    // Extract key activities from highlights
-    if (day.highlights.length > 0) parts.push(day.highlights.slice(0, 2).join(', '));
-    parts.push('Portugal travel');
-    return parts.join(' ').slice(0, 120);
+  // ──── AI Content Generation ────
+
+  const generateContent = async (dayIndex: number, type: 'narrative' | 'highlights' | 'inclusions' | 'all') => {
+    const day = itinerary.days[dayIndex];
+    const fieldKey = `${type}-${dayIndex}` as GeneratingField;
+    setGenerating(fieldKey);
+    try {
+      const { data, error } = await supabase.functions.invoke('generate-itinerary-content', {
+        body: {
+          type,
+          dayTitle: day.title,
+          dayNumber: day.day_number,
+          location: day.location_name,
+          destination,
+          existingHighlights: day.highlights.filter(Boolean),
+          existingInclusions: day.inclusions.filter(Boolean),
+          existingNarrative: day.narrative,
+          clientName,
+        },
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+
+      const updates: Partial<ItineraryDayData> = {};
+      if (data.narrative) updates.narrative = data.narrative;
+      if (data.highlights?.length) updates.highlights = data.highlights;
+      if (data.inclusions?.length) updates.inclusions = data.inclusions;
+
+      updateDay(dayIndex, updates);
+
+      const labels = { narrative: 'Narrativa', highlights: 'Destaques', inclusions: 'Inclusões', all: 'Conteúdo completo' };
+      toast({ title: `✨ ${labels[type]} gerado!`, description: `Dia ${day.day_number} atualizado com AI` });
+    } catch (e: any) {
+      toast({ title: 'Erro ao gerar conteúdo', description: e.message, variant: 'destructive' });
+    } finally {
+      setGenerating(null);
+    }
   };
 
-  // AI image auto-fill for a day (all 3 images)
+  // ──── Smart Image Queries ────
+
+  // Build unique, complementary search queries for each image slot
+  const buildSmartImageQueries = (day: ItineraryDayData, count: number): string[] => {
+    const queries: string[] = [];
+    const location = day.location_name || destination;
+    const allItems = [...day.highlights, ...day.inclusions].filter(Boolean);
+
+    // First image: main location/title
+    queries.push(`${day.title} ${location} Portugal landscape`);
+
+    // Subsequent images: based on specific highlights/inclusions to avoid repetition
+    for (let i = 1; i < count; i++) {
+      if (allItems[i - 1]) {
+        queries.push(`${allItems[i - 1]} ${location} Portugal`);
+      } else if (allItems.length > 0) {
+        queries.push(`${allItems[i % allItems.length]} ${location} Portugal detail`);
+      } else {
+        queries.push(`${location} Portugal ${i === 1 ? 'culture' : 'nature'} travel`);
+      }
+    }
+    return queries.map(q => q.slice(0, 120));
+  };
+
+  // AI image auto-fill for a day (smart per-slot queries)
   const autoFillImages = async (dayIndex: number) => {
     const day = itinerary.days[dayIndex];
     setLoadingImages(dayIndex);
     try {
-      const query = buildImageQuery(day);
-      const { data, error } = await supabase.functions.invoke('search-destination-images', {
-        body: { query, count: 3, mode: 'search' },
-      });
-      if (error) throw error;
-      if (data?.images?.length) {
-        updateDay(dayIndex, {
-          images: data.images.map((img: any) => ({
-            url: img.url,
-            caption: img.caption || day.title,
-          })),
+      const queries = buildSmartImageQueries(day, 3);
+      const imageResults: ItineraryImage[] = [];
+
+      // Fetch images with different queries for variety
+      for (let i = 0; i < queries.length; i++) {
+        const { data, error } = await supabase.functions.invoke('search-destination-images', {
+          body: { query: queries[i], count: 1, mode: 'search' },
         });
-        toast({ title: 'Imagens encontradas', description: `${data.images.length} imagens adicionadas ao Dia ${day.day_number}` });
+        if (!error && data?.images?.[0]) {
+          imageResults.push({
+            url: data.images[0].url,
+            caption: data.images[0].caption || day.title,
+          });
+        }
+      }
+
+      if (imageResults.length > 0) {
+        updateDay(dayIndex, { images: imageResults });
+        toast({ title: 'Imagens encontradas', description: `${imageResults.length} imagens adicionadas ao Dia ${day.day_number}` });
       } else {
         toast({ title: 'Sem imagens encontradas', variant: 'destructive' });
       }
@@ -311,14 +371,40 @@ const ItineraryEditor = ({ leadId, clientName, destination, travelDates, travelP
     }
   };
 
-  // Regenerate a single image (AI generated)
+  // ──── Cover Image (always main destination) ────
+
+  const autoFillCoverImage = async () => {
+    setGenerating('cover-image');
+    try {
+      const query = `${destination} Portugal panoramic skyline landmark`;
+      const { data, error } = await supabase.functions.invoke('search-destination-images', {
+        body: { query, count: 1, mode: 'search' },
+      });
+      if (error) throw error;
+      if (data?.images?.[0]) {
+        setItinerary(prev => ({ ...prev, cover_image_url: data.images[0].url }));
+        toast({ title: '🖼️ Imagem de capa gerada!', description: `Imagem de ${destination} adicionada` });
+      } else {
+        toast({ title: 'Sem imagens encontradas', variant: 'destructive' });
+      }
+    } catch (e: any) {
+      toast({ title: 'Erro', description: e.message, variant: 'destructive' });
+    } finally {
+      setGenerating(null);
+    }
+  };
+
+  // Regenerate a single image
   const [regenIdx, setRegenIdx] = useState<string | null>(null);
   const regenerateImage = async (dayIndex: number, imgIndex: number) => {
     const day = itinerary.days[dayIndex];
     const key = `${dayIndex}-${imgIndex}`;
     setRegenIdx(key);
     try {
-      const query = `${day.title} ${day.location_name || ''} Portugal`;
+      // Use specific highlight/inclusion for this slot to get a unique image
+      const allItems = [...day.highlights, ...day.inclusions].filter(Boolean);
+      const specificItem = allItems[imgIndex] || allItems[0] || '';
+      const query = `${specificItem} ${day.location_name || destination} Portugal`;
       const { data, error } = await supabase.functions.invoke('search-destination-images', {
         body: { query, count: 1, mode: 'search' },
       });
@@ -382,7 +468,6 @@ const ItineraryEditor = ({ leadId, clientName, destination, travelDates, travelP
           updated_at: new Date().toISOString(),
         }).eq('id', itineraryId);
 
-        // Delete existing days and re-insert
         await supabase.from('itinerary_days').delete().eq('itinerary_id', itineraryId);
       } else {
         const { data: newIt, error } = await supabase.from('itineraries').insert({
@@ -398,7 +483,6 @@ const ItineraryEditor = ({ leadId, clientName, destination, travelDates, travelP
         itineraryId = newIt.id;
       }
 
-      // Insert days
       if (itinerary.days.length > 0) {
         const daysToInsert = itinerary.days.map(d => ({
           itinerary_id: itineraryId!,
@@ -427,7 +511,6 @@ const ItineraryEditor = ({ leadId, clientName, destination, travelDates, travelP
         toast({ title: 'Guardado com sucesso' });
       }
 
-      // Reload to get IDs
       await loadItinerary();
     } catch (e: any) {
       toast({ title: 'Erro ao guardar', description: e.message, variant: 'destructive' });
@@ -443,6 +526,8 @@ const ItineraryEditor = ({ leadId, clientName, destination, travelDates, travelP
       toast({ title: 'Link copiado!' });
     }
   };
+
+  const isGenerating = (field: string) => generating === field;
 
   return (
     <div className="space-y-4">
@@ -497,10 +582,23 @@ const ItineraryEditor = ({ leadId, clientName, destination, travelDates, travelP
           </div>
         </div>
         <div>
-          <label className="text-[10px] text-muted-foreground uppercase">URL da Imagem de Capa</label>
-          <Input className="h-8 text-xs mt-1" value={itinerary.cover_image_url}
+          <div className="flex items-center justify-between mb-1">
+            <label className="text-[10px] text-muted-foreground uppercase">Imagem de Capa (Destino Principal)</label>
+            <Button variant="outline" size="sm" className="h-6 text-[10px] gap-1" onClick={autoFillCoverImage}
+              disabled={generating === 'cover-image' || !destination}>
+              {generating === 'cover-image' ? <Loader2 className="h-3 w-3 animate-spin" /> : <Sparkles className="h-3 w-3" />}
+              Auto-gerar de {destination || 'destino'}
+            </Button>
+          </div>
+          <Input className="h-8 text-xs" value={itinerary.cover_image_url}
             onChange={e => setItinerary(prev => ({ ...prev, cover_image_url: e.target.value }))}
             placeholder="https://..." />
+          {itinerary.cover_image_url && (
+            <div className="mt-2 aspect-[21/9] rounded-lg overflow-hidden bg-muted border max-h-32">
+              <img src={itinerary.cover_image_url} alt="Cover" className="w-full h-full object-cover"
+                onError={e => { (e.target as HTMLImageElement).src = '/placeholder.svg'; }} />
+            </div>
+          )}
         </div>
       </div>
 
@@ -539,6 +637,16 @@ const ItineraryEditor = ({ leadId, clientName, destination, travelDates, travelP
 
                 {expanded && (
                   <div className="px-4 pb-4 space-y-4">
+                    {/* Generate All button */}
+                    <div className="flex justify-end">
+                      <Button variant="outline" size="sm" className="text-[10px] gap-1 border-[hsl(var(--info)/0.3)] text-[hsl(var(--info))] hover:bg-[hsl(var(--info)/0.05)]"
+                        onClick={() => generateContent(dayIndex, 'all')}
+                        disabled={isGenerating(`all-${dayIndex}`) || !day.title}>
+                        {isGenerating(`all-${dayIndex}`) ? <Loader2 className="h-3 w-3 animate-spin" /> : <Wand2 className="h-3 w-3" />}
+                        Gerar tudo com AI
+                      </Button>
+                    </div>
+
                     <div className="grid grid-cols-2 gap-3">
                       <div>
                         <label className="text-[10px] text-muted-foreground uppercase">Título do Dia</label>
@@ -567,20 +675,37 @@ const ItineraryEditor = ({ leadId, clientName, destination, travelDates, travelP
                       </div>
                     </div>
 
+                    {/* Narrative with AI generate */}
                     <div>
-                      <label className="text-[10px] text-muted-foreground uppercase">Narrativa (texto inspiracional)</label>
-                      <Textarea className="text-xs mt-1 min-h-[80px]" value={day.narrative}
+                      <div className="flex items-center justify-between mb-1">
+                        <label className="text-[10px] text-muted-foreground uppercase">Narrativa (texto inspiracional)</label>
+                        <Button variant="ghost" size="sm" className="h-6 text-[10px] gap-1 text-[hsl(var(--info))]"
+                          onClick={() => generateContent(dayIndex, 'narrative')}
+                          disabled={isGenerating(`narrative-${dayIndex}`) || !day.title}>
+                          {isGenerating(`narrative-${dayIndex}`) ? <Loader2 className="h-3 w-3 animate-spin" /> : <Sparkles className="h-3 w-3" />}
+                          Gerar com AI
+                        </Button>
+                      </div>
+                      <Textarea className="text-xs min-h-[80px]" value={day.narrative}
                         onChange={e => updateDay(dayIndex, { narrative: e.target.value })}
                         placeholder="Texto inspiracional sobre o dia..." />
                     </div>
 
-                    {/* Highlights */}
+                    {/* Highlights with AI generate */}
                     <div>
                       <div className="flex items-center justify-between mb-1">
                         <label className="text-[10px] text-muted-foreground uppercase">Destaques</label>
-                        <Button variant="ghost" size="sm" className="h-6 text-[10px]" onClick={() => addHighlight(dayIndex)}>
-                          <Plus className="h-3 w-3" /> Adicionar
-                        </Button>
+                        <div className="flex items-center gap-1">
+                          <Button variant="ghost" size="sm" className="h-6 text-[10px] gap-1 text-[hsl(var(--info))]"
+                            onClick={() => generateContent(dayIndex, 'highlights')}
+                            disabled={isGenerating(`highlights-${dayIndex}`) || !day.title}>
+                            {isGenerating(`highlights-${dayIndex}`) ? <Loader2 className="h-3 w-3 animate-spin" /> : <Sparkles className="h-3 w-3" />}
+                            Gerar com AI
+                          </Button>
+                          <Button variant="ghost" size="sm" className="h-6 text-[10px]" onClick={() => addHighlight(dayIndex)}>
+                            <Plus className="h-3 w-3" /> Adicionar
+                          </Button>
+                        </div>
                       </div>
                       {day.highlights.map((h, hIndex) => (
                         <div key={hIndex} className="flex items-center gap-1 mb-1">
@@ -594,13 +719,21 @@ const ItineraryEditor = ({ leadId, clientName, destination, travelDates, travelP
                       ))}
                     </div>
 
-                    {/* Inclusions */}
+                    {/* Inclusions with AI generate */}
                     <div>
                       <div className="flex items-center justify-between mb-1">
                         <label className="text-[10px] text-muted-foreground uppercase">Inclusões</label>
-                        <Button variant="ghost" size="sm" className="h-6 text-[10px]" onClick={() => addInclusion(dayIndex)}>
-                          <Plus className="h-3 w-3" /> Adicionar
-                        </Button>
+                        <div className="flex items-center gap-1">
+                          <Button variant="ghost" size="sm" className="h-6 text-[10px] gap-1 text-[hsl(var(--info))]"
+                            onClick={() => generateContent(dayIndex, 'inclusions')}
+                            disabled={isGenerating(`inclusions-${dayIndex}`) || !day.title}>
+                            {isGenerating(`inclusions-${dayIndex}`) ? <Loader2 className="h-3 w-3 animate-spin" /> : <Sparkles className="h-3 w-3" />}
+                            Gerar com AI
+                          </Button>
+                          <Button variant="ghost" size="sm" className="h-6 text-[10px]" onClick={() => addInclusion(dayIndex)}>
+                            <Plus className="h-3 w-3" /> Adicionar
+                          </Button>
+                        </div>
                       </div>
                       {day.inclusions.map((inc, iIndex) => (
                         <div key={iIndex} className="flex items-center gap-1 mb-1">
