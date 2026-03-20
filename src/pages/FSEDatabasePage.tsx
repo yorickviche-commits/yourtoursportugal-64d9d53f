@@ -4,13 +4,13 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import {
   FileText, FolderOpen, Plus, Info, ExternalLink, MapPin,
   ChevronDown, ChevronRight, Database, BarChart3, Globe2, Users2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { FSE_DESTINATIONS, getFSEStats, type FSEDestination, type FSECategory, type FSEDocument } from "@/data/fseDatabase";
+import FSECreateModal from "@/components/commercial/FSECreateModal";
 
 // ─── Stats Header ───
 const StatsHeader = () => {
@@ -74,8 +74,8 @@ const DocChip = ({ doc }: { doc: FSEDocument }) => {
   );
 };
 
-// ─── Destination Card (Interactive Map Tab) ───
-const DestinationCard = ({ dest }: { dest: FSEDestination }) => {
+// ─── Destination Card ───
+const DestinationCard = ({ dest, onAdd }: { dest: FSEDestination; onAdd: (dest?: string, cat?: string) => void }) => {
   const [expanded, setExpanded] = useState(false);
   const [selectedCat, setSelectedCat] = useState<string | null>(null);
 
@@ -100,6 +100,9 @@ const DestinationCard = ({ dest }: { dest: FSEDestination }) => {
               {hasMulti && <Badge variant="outline" className="h-4 px-1 text-[9px] font-bold border-amber-500/30 text-amber-600">M</Badge>}
             </div>
             <div className="flex items-center gap-2">
+              <Button variant="ghost" size="icon" className="h-6 w-6" onClick={e => { e.stopPropagation(); onAdd(dest.name); }} title="Adicionar fornecedor">
+                <Plus className="h-3.5 w-3.5" />
+              </Button>
               <span className={cn(
                 "text-xs font-medium px-2 py-0.5 rounded-full",
                 filledCount === 0 ? "bg-red-100 text-red-600" : filledCount === totalCats ? "bg-emerald-100 text-emerald-700" : "bg-amber-100 text-amber-700"
@@ -121,18 +124,23 @@ const DestinationCard = ({ dest }: { dest: FSEDestination }) => {
 
             return (
               <div key={cat.id}>
-                <button
-                  onClick={() => setSelectedCat(isSelected ? null : cat.id)}
-                  className={cn(
-                    "w-full flex items-center gap-2 px-3 py-2 text-xs rounded-md transition-colors",
-                    isSelected ? "bg-primary/5 text-primary" : "hover:bg-muted/50 text-foreground"
-                  )}
-                >
-                  <StatusDot status={docCount > 0 ? (catHasMulti ? "multi-destination" : "active") : "empty"} />
-                  <span className="flex-1 text-left truncate">{cat.label}</span>
-                  {catHasMulti && <Badge variant="outline" className="h-4 px-1 text-[9px] font-bold border-amber-500/30 text-amber-600">M</Badge>}
-                  <span className="text-muted-foreground font-mono text-[11px]">{docCount}</span>
-                </button>
+                <div className="flex items-center">
+                  <button
+                    onClick={() => setSelectedCat(isSelected ? null : cat.id)}
+                    className={cn(
+                      "flex-1 flex items-center gap-2 px-3 py-2 text-xs rounded-md transition-colors",
+                      isSelected ? "bg-primary/5 text-primary" : "hover:bg-muted/50 text-foreground"
+                    )}
+                  >
+                    <StatusDot status={docCount > 0 ? (catHasMulti ? "multi-destination" : "active") : "empty"} />
+                    <span className="flex-1 text-left truncate">{cat.label}</span>
+                    {catHasMulti && <Badge variant="outline" className="h-4 px-1 text-[9px] font-bold border-amber-500/30 text-amber-600">M</Badge>}
+                    <span className="text-muted-foreground font-mono text-[11px]">{docCount}</span>
+                  </button>
+                  <Button variant="ghost" size="icon" className="h-6 w-6 shrink-0" onClick={() => onAdd(dest.name, cat.id)} title="Adicionar">
+                    <Plus className="h-3 w-3" />
+                  </Button>
+                </div>
 
                 {isSelected && docCount > 0 && (
                   <div className="ml-5 pl-3 border-l-2 border-primary/10 py-2 flex flex-wrap gap-1.5">
@@ -160,20 +168,17 @@ const DestinationCard = ({ dest }: { dest: FSEDestination }) => {
 };
 
 // ─── Interactive Map Tab ───
-const InteractiveMapTab = () => (
+const InteractiveMapTab = ({ onAdd }: { onAdd: (dest?: string, cat?: string) => void }) => (
   <div className="space-y-4">
-    {/* Info banner */}
     <div className="flex gap-3 p-3 rounded-lg bg-blue-50 border border-blue-200 text-blue-800 text-xs leading-relaxed">
       <Info className="h-4 w-4 shrink-0 mt-0.5" />
       <p>
         <strong>Regra de arquivo:</strong> parceiros com saídas de múltiplos destinos (ex: Living Tours, 2Feel) têm ficheiros separados por ponto de saída. O serviço com saída Porto arquiva-se em Porto; o serviço com saída Lisboa arquiva-se em Lisboa.
       </p>
     </div>
-
-    {/* Destination Grid */}
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
       {FSE_DESTINATIONS.map(dest => (
-        <DestinationCard key={dest.name} dest={dest} />
+        <DestinationCard key={dest.name} dest={dest} onAdd={onAdd} />
       ))}
     </div>
   </div>
@@ -183,7 +188,7 @@ const InteractiveMapTab = () => (
 const CAT_ORDER = ["aloj", "anim", "guias", "quintas", "rest", "mar", "terr", "mon"] as const;
 const CAT_HEADERS = ["Alojamento", "Anim. Turística", "Guias Externos", "Quintas & Caves", "Restauração", "Transp. Marítimos", "Transp. Terrestres", "Monumentos"];
 
-const SummaryTableTab = () => {
+const SummaryTableTab = ({ onAdd }: { onAdd: () => void }) => {
   const totals = CAT_ORDER.map(() => ({ count: 0, multi: false }));
   let grandTotal = 0;
   let grandFilledCats = 0;
@@ -207,110 +212,131 @@ const SummaryTableTab = () => {
   });
 
   return (
-    <div className="overflow-x-auto rounded-lg border border-border">
-      <table className="w-full text-xs">
-        <thead>
-          <tr className="bg-muted/50 border-b border-border">
-            <th className="sticky left-0 bg-muted/50 z-10 text-left px-3 py-2.5 font-semibold text-foreground">Destino</th>
-            {CAT_HEADERS.map(h => <th key={h} className="px-2 py-2.5 text-center font-semibold text-foreground whitespace-nowrap">{h}</th>)}
-            <th className="px-2 py-2.5 text-center font-semibold text-foreground">Total</th>
-            <th className="px-2 py-2.5 text-center font-semibold text-foreground whitespace-nowrap">Cats c/ docs</th>
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map(row => (
-            <tr key={row.name} className="border-b border-border/50 hover:bg-muted/30 transition-colors">
-              <td className="sticky left-0 bg-card z-10 px-3 py-2 font-medium text-foreground">{row.name}</td>
-              {row.cells.map((cell, i) => (
-                <td key={i} className="px-2 py-2 text-center">
+    <div className="space-y-3">
+      <div className="overflow-x-auto rounded-lg border border-border">
+        <table className="w-full text-xs">
+          <thead>
+            <tr className="bg-muted/50 border-b border-border">
+              <th className="sticky left-0 bg-muted/50 z-10 text-left px-3 py-2.5 font-semibold text-foreground">Destino</th>
+              {CAT_HEADERS.map(h => <th key={h} className="px-2 py-2.5 text-center font-semibold text-foreground whitespace-nowrap">{h}</th>)}
+              <th className="px-2 py-2.5 text-center font-semibold text-foreground">Total</th>
+              <th className="px-2 py-2.5 text-center font-semibold text-foreground whitespace-nowrap">Cats c/ docs</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map(row => (
+              <tr key={row.name} className="border-b border-border/50 hover:bg-muted/30 transition-colors">
+                <td className="sticky left-0 bg-card z-10 px-3 py-2 font-medium text-foreground">{row.name}</td>
+                {row.cells.map((cell, i) => (
+                  <td key={i} className="px-2 py-2 text-center">
+                    <div className="flex flex-col items-center gap-0.5">
+                      <StatusDot status={cell.count > 0 ? (cell.hasMulti ? "multi-destination" : "active") : "empty"} />
+                      <span className={cn("text-[11px] font-mono", cell.count === 0 ? "text-muted-foreground" : "font-medium")}>
+                        {cell.count === 0 ? "–" : cell.count}
+                      </span>
+                      {cell.hasMulti && <Badge variant="outline" className="h-3.5 px-1 text-[8px] font-bold border-amber-500/30 text-amber-600">M</Badge>}
+                    </div>
+                  </td>
+                ))}
+                <td className="px-2 py-2 text-center font-semibold">{row.rowTotal}</td>
+                <td className="px-2 py-2 text-center text-muted-foreground">{row.rowFilledCats}/8</td>
+              </tr>
+            ))}
+            <tr className="bg-muted/60 font-semibold border-t-2 border-border">
+              <td className="sticky left-0 bg-muted/60 z-10 px-3 py-2.5">TOTAL</td>
+              {totals.map((t, i) => (
+                <td key={i} className="px-2 py-2.5 text-center">
                   <div className="flex flex-col items-center gap-0.5">
-                    <StatusDot status={cell.count > 0 ? (cell.hasMulti ? "multi-destination" : "active") : "empty"} />
-                    <span className={cn("text-[11px] font-mono", cell.count === 0 ? "text-muted-foreground" : "font-medium")}>
-                      {cell.count === 0 ? "–" : cell.count}
-                    </span>
-                    {cell.hasMulti && <Badge variant="outline" className="h-3.5 px-1 text-[8px] font-bold border-amber-500/30 text-amber-600">M</Badge>}
+                    <span className="font-mono text-[11px]">{t.count}</span>
+                    {t.multi && <Badge variant="outline" className="h-3.5 px-1 text-[8px] font-bold border-amber-500/30 text-amber-600">M</Badge>}
                   </div>
                 </td>
               ))}
-              <td className="px-2 py-2 text-center font-semibold">{row.rowTotal}</td>
-              <td className="px-2 py-2 text-center text-muted-foreground">{row.rowFilledCats}/8</td>
+              <td className="px-2 py-2.5 text-center font-bold">{grandTotal}</td>
+              <td className="px-2 py-2.5 text-center">{grandFilledCats}/72</td>
             </tr>
-          ))}
-          {/* Totals */}
-          <tr className="bg-muted/60 font-semibold border-t-2 border-border">
-            <td className="sticky left-0 bg-muted/60 z-10 px-3 py-2.5">TOTAL</td>
-            {totals.map((t, i) => (
-              <td key={i} className="px-2 py-2.5 text-center">
-                <div className="flex flex-col items-center gap-0.5">
-                  <span className="font-mono text-[11px]">{t.count}</span>
-                  {t.multi && <Badge variant="outline" className="h-3.5 px-1 text-[8px] font-bold border-amber-500/30 text-amber-600">M</Badge>}
-                </div>
-              </td>
-            ))}
-            <td className="px-2 py-2.5 text-center font-bold">{grandTotal}</td>
-            <td className="px-2 py-2.5 text-center">{grandFilledCats}/72</td>
-          </tr>
-        </tbody>
-      </table>
+          </tbody>
+        </table>
+      </div>
+
+      {/* Add button in table view */}
+      <div className="flex justify-center">
+        <Button variant="outline" size="sm" className="gap-1.5 text-xs" onClick={onAdd}>
+          <Plus className="h-3.5 w-3.5" />
+          Adicionar Fornecedor FSE
+        </Button>
+      </div>
     </div>
   );
 };
 
 // ─── Main Page ───
-const FSEDatabasePage = () => (
-  <AppLayout>
-    <div className="space-y-5">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
-        <div>
-          <div className="flex items-center gap-2">
-            <Database className="h-5 w-5 text-primary" />
-            <h1 className="text-xl font-bold">Base de Dados FSE</h1>
+const FSEDatabasePage = () => {
+  const [modalOpen, setModalOpen] = useState(false);
+  const [prefillDest, setPrefillDest] = useState<string | undefined>();
+  const [prefillCat, setPrefillCat] = useState<string | undefined>();
+
+  const openModal = (dest?: string, cat?: string) => {
+    setPrefillDest(dest);
+    setPrefillCat(cat);
+    setModalOpen(true);
+  };
+
+  const handleSave = (data: any) => {
+    console.log('FSE saved:', data);
+    // Future: write to Supabase fse_suppliers table
+  };
+
+  return (
+    <AppLayout>
+      <div className="space-y-5">
+        {/* Header */}
+        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
+          <div>
+            <div className="flex items-center gap-2">
+              <Database className="h-5 w-5 text-primary" />
+              <h1 className="text-xl font-bold">Base de Dados FSE</h1>
+            </div>
+            <p className="text-sm text-muted-foreground mt-0.5">Parceiros & Protocolos de Fornecedores</p>
           </div>
-          <p className="text-sm text-muted-foreground mt-0.5">Parceiros & Protocolos de Fornecedores</p>
+          <Button size="sm" className="gap-1.5" onClick={() => openModal()}>
+            <Plus className="h-4 w-4" />
+            Adicionar FSE
+          </Button>
         </div>
-        <Dialog>
-          <DialogTrigger asChild>
-            <Button size="sm" className="gap-1.5">
-              <Plus className="h-4 w-4" />
-              Adicionar FSE
-            </Button>
-          </DialogTrigger>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Adicionar Novo FSE</DialogTitle>
-            </DialogHeader>
-            <p className="text-sm text-muted-foreground py-4">
-              Formulário de onboarding de novo fornecedor — em desenvolvimento. Futuramente criará pasta no Drive via Make.com.
-            </p>
-          </DialogContent>
-        </Dialog>
+
+        <StatsHeader />
+
+        <Tabs defaultValue="map" className="w-full">
+          <TabsList>
+            <TabsTrigger value="map" className="gap-1.5 text-xs">
+              <MapPin className="h-3.5 w-3.5" />
+              Mapa Interativo
+            </TabsTrigger>
+            <TabsTrigger value="table" className="gap-1.5 text-xs">
+              <BarChart3 className="h-3.5 w-3.5" />
+              Tabela Resumo
+            </TabsTrigger>
+          </TabsList>
+          <TabsContent value="map">
+            <InteractiveMapTab onAdd={openModal} />
+          </TabsContent>
+          <TabsContent value="table">
+            <SummaryTableTab onAdd={() => openModal()} />
+          </TabsContent>
+        </Tabs>
       </div>
 
-      {/* Stats */}
-      <StatsHeader />
-
-      {/* Tabs */}
-      <Tabs defaultValue="map" className="w-full">
-        <TabsList>
-          <TabsTrigger value="map" className="gap-1.5 text-xs">
-            <MapPin className="h-3.5 w-3.5" />
-            Mapa Interativo
-          </TabsTrigger>
-          <TabsTrigger value="table" className="gap-1.5 text-xs">
-            <BarChart3 className="h-3.5 w-3.5" />
-            Tabela Resumo
-          </TabsTrigger>
-        </TabsList>
-        <TabsContent value="map">
-          <InteractiveMapTab />
-        </TabsContent>
-        <TabsContent value="table">
-          <SummaryTableTab />
-        </TabsContent>
-      </Tabs>
-    </div>
-  </AppLayout>
-);
+      {/* Unified Create Modal */}
+      <FSECreateModal
+        open={modalOpen}
+        onOpenChange={setModalOpen}
+        prefillDestination={prefillDest}
+        prefillCategory={prefillCat}
+        onSave={handleSave}
+      />
+    </AppLayout>
+  );
+};
 
 export default FSEDatabasePage;
