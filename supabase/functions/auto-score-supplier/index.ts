@@ -75,23 +75,7 @@ Based on what you know about this supplier/venue, provide a brief summary includ
 If you don't have specific info, say so. Keep it brief (max 200 words).`;
 
     try {
-      const searchRes = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${lovableApiKey}`,
-        },
-        body: JSON.stringify({
-          model: 'google/gemini-2.5-flash',
-          messages: [{ role: 'user', content: searchPrompt }],
-          temperature: 0.3,
-          max_tokens: 400,
-        }),
-      });
-      if (searchRes.ok) {
-        const searchResult = await searchRes.json();
-        webContext = searchResult.choices?.[0]?.message?.content || '';
-      }
+      webContext = await callAI(searchPrompt, 400);
     } catch (e) {
       console.log('Web context search failed, continuing without:', e);
     }
