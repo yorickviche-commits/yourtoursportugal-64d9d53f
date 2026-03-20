@@ -204,11 +204,22 @@ async function runBudgetFulfill(supabase: any, lead: any, fseContext: string) {
         const period = activities[periodKey];
         if (period?.items) {
           for (const item of period.items) {
+            // Determine cost layer from AI output or infer from period
+            let costLayer = item.cost_layer || 'experience';
+            if (!item.cost_layer) {
+              if (periodKey === 'lunch') costLayer = 'meal';
+              else if (periodKey === 'night' && (item.title || '').toLowerCase().includes('hotel')) costLayer = 'accommodation';
+              else if (periodKey === 'night') costLayer = 'meal';
+            }
+
             costItems.push({
               description: item.title || item.description || 'Activity',
               day: day.day_number,
-              pricingType: periodKey === 'lunch' || periodKey === 'night' ? 'per_person' : 'total',
-              fse_supplier: item.fse_supplier || null, // Pass through matched supplier
+              pricingType: ['transport', 'guide', 'operational'].includes(costLayer) ? 'total' : 
+                           (periodKey === 'lunch' || periodKey === 'night' ? 'per_person' : 'total'),
+              fse_supplier: item.fse_supplier || null,
+              cost_layer: costLayer,
+              is_fixed_rate: item.is_fixed_rate || false,
             });
           }
         }
