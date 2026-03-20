@@ -3,155 +3,151 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
 };
 
-function buildPrompt(text: string, entityType: string): string {
-  const isPartner = entityType === 'partner';
+const FSE_CATEGORIES = [
+  '0 - Monumentos Nacionais',
+  '1 - Alojamento',
+  '2 - Animação Turística',
+  '3 - Guias Externos',
+  '4 - Quintas & Caves',
+  '5 - Restauração',
+  '6 - Transp. Marítimos',
+  '7 - Transp. Terrestres',
+];
 
-  if (isPartner) {
-    return `You are a senior travel operations data analyst at Your Tours Portugal. Your task is to extract EVERY possible piece of information about a B2B RESALE PARTNER from the following text (email, protocol document, contract, or partner communication).
+const FSE_DESTINATIONS = ['Açores', 'Alentejo', 'Algarve', 'Centro', 'Douro', 'Lisboa', 'Madeira', 'Norte', 'Porto'];
 
-CONTEXT: Your Tours Portugal works with protocols/contracts that typically contain:
-- Section 1: Company data (Your Tours — ignore this, it's us)
-- Section 2: Partner/Supplier data (FSE) — THIS is what we need to extract
-- Section 3: Partnership terms & validity
-- Section 4: Contracted services with detailed NET pricing (adult, child, baby, guide)
-- Section 5: Booking mode / reservation conditions
-- Section 6: Invoicing / payment mode
-- Section 7: Terms & conditions
+function buildFSEPrompt(inputDescription: string): string {
+  return `You are a senior travel operations data analyst at Your Tours Portugal, a Portuguese DMC.
+Your task is to extract ALL information from a supplier/partner protocol document and return structured JSON.
 
-CRITICAL RULES:
-- Extract MAXIMUM information. Fill every field you can find evidence for.
-- For each field you CANNOT find in the text, set it to null.
-- In "missing_fields", list ALL null fields important for a complete profile.
-- ALWAYS extract from Section 2 (partner data): name, address, NIF, IBAN, contact person, phone, email.
-- ALWAYS extract from Section 4 (services): create a SEPARATE service for EACH menu/package/service tier.
-- For EACH service extract: adult NET price, child NET price, baby price, guide price — as separate fields.
-- Extract booking conditions from Section 5 (e.g. "apenas por email").
-- Extract payment/invoicing conditions from Section 6.
-- Extract cancellation/refund terms from Section 7 or wherever mentioned.
-- Extract validity dates from Section 3.
-- Infer category from context (e.g. "restauração" → "restaurant", "alojamento" → "hotel").
-- Prices should be numbers (not strings). Currencies should be 3-letter codes.
-- Description should include what's included in the service (e.g. menu items, drinks, etc.)
-- "ideal_for" tags if mentioned (e.g. "Famílias", "Luxo", "Casais").
+CONTEXT: This is an FSE (Ficha de Serviço Externo) — a supplier protocol document containing commercial terms, services, and pricing.
+
+EXTRACTION RULES:
+1. Extract the supplier/partner name from the document header or Section 2 (NOT "Your Tours Portugal" — that's us).
+2. Map the category to ONE of: ${FSE_CATEGORIES.join(', ')}
+3. Map the destination(s) to: ${FSE_DESTINATIONS.join(', ')}
+   - CRITICAL: If the supplier operates from MULTIPLE departure points (e.g. Porto AND Lisboa), return an array of destinations and set multi_destination=true.
+4. Extract ALL services with NET pricing (adult, child, baby, guide prices).
+5. Extract booking conditions, payment/invoicing mode, cancellation policy, validity dates.
+6. For the supplier name, try to determine:
+   - Their official website URL
+   - Their TripAdvisor page URL
+   - Their Google Maps URL
+   - Their Google My Business URL
+   - 3-5 other relevant external links (social media, booking platforms, etc.)
+   If you cannot determine these from the document, set them to null.
 
 Return this EXACT JSON structure:
 {
-  "entity": {
-    "name": "string or null — partner company/person name (from Section 2, NOT Your Tours)",
-    "category": "travel_agency|tour_operator|hotel_concierge|online_platform|dmc|restaurant|hotel|guide|transport|winery|activity|other",
-    "contact_name": "string or null — responsible person name",
-    "contact_email": "string or null",
-    "contact_phone": "string or null — with country code if available",
-    "address": "string or null — full address",
-    "fiscal_number": "string or null — NIF/NIPC/VAT number",
-    "bank_iban": "string or null — IBAN",
-    "commission_percent": "number or null — default commission percentage",
-    "contract_type": "string or null — e.g. 'exclusive', 'non-exclusive', 'seasonal'",
-    "currency": "string — 3-letter code, default EUR",
-    "payment_terms": "string or null — full invoicing/payment mode from Section 6",
-    "territory": "string or null — markets or regions they cover",
-    "cancellation_policy": "string or null — full cancellation terms",
-    "notes": "string or null — ideal_for tags, special conditions, anything else relevant",
-    "validity_start": "YYYY-MM-DD or null — protocol validity start",
-    "validity_end": "YYYY-MM-DD or null — protocol validity end"
-  },
+  "supplier_name": "string — extracted supplier name",
+  "category": "string — one of the FSE categories listed above",
+  "sub_category": "string or null — e.g. '5★', '4★', 'Villas' for Alojamento",
+  "destinations": ["array of destination strings from the list above"],
+  "multi_destination": false,
+  "website": "string or null — official website URL",
+  "tripadvisor_url": "string or null",
+  "gmaps_url": "string or null",
+  "gmb_url": "string or null",
+  "extra_links": [{"name": "string", "url": "string"}],
+  "contact_name": "string or null",
+  "contact_email": "string or null",
+  "contact_phone": "string or null",
+  "address": "string or null",
+  "fiscal_number": "string or null — NIF/NIPC",
+  "bank_iban": "string or null",
+  "contract_type": "string or null",
+  "currency": "EUR",
+  "payment_terms": "string or null — full invoicing/payment mode",
+  "cancellation_policy": "string or null — full cancellation terms",
+  "validity_start": "YYYY-MM-DD or null",
+  "validity_end": "YYYY-MM-DD or null",
+  "notes": "string or null — special conditions, ideal_for tags, etc.",
   "services": [
     {
       "name": "string — service/menu/package name",
-      "description": "string or null — FULL description of what's included (menu items, drinks, experiences, etc.)",
-      "category": "private_tour|tailor_made|group_tour|transfer|experience|restaurant|hotel|other",
-      "duration": "string or null — e.g. '2 hours', 'Full day', 'Per night'",
-      "price": "number or 0 — NET price per adult",
-      "price_child": "number or 0 — NET price per child (include age range in notes if mentioned)",
+      "description": "string or null — what's included",
+      "category": "string",
+      "duration": "string or null",
+      "price": 0,
+      "price_child": 0,
       "price_unit": "per_person|per_group|per_night|per_day|flat_rate",
-      "currency": "string — 3-letter code",
-      "commission_percent": "number or null",
-      "booking_conditions": "string or null — HOW to book (email only, phone, platform, advance notice, etc.)",
-      "payment_conditions": "string or null — how and when to pay (advance, on-site, invoice terms, who collects invoice)",
-      "cancellation_policy": "string or null — cancellation rules specific to this service",
-      "refund_policy": "string or null — refund conditions and timelines",
-      "validity_start": "YYYY-MM-DD or null — rate validity start",
-      "validity_end": "YYYY-MM-DD or null — rate validity end",
-      "notes": "string or null — child age range, baby policy, guide price, VAT info, capacity limits, ideal_for tags, extras"
+      "currency": "EUR",
+      "booking_conditions": "string or null",
+      "payment_conditions": "string or null",
+      "cancellation_policy": "string or null",
+      "refund_policy": "string or null",
+      "validity_start": "YYYY-MM-DD or null",
+      "validity_end": "YYYY-MM-DD or null",
+      "notes": "string or null — child age, baby policy, guide price, VAT, extras"
     }
   ],
-  "missing_fields": ["array of field names that are null but IMPORTANT"]
+  "net_conditions": "string or null — summary of all NET pricing conditions and terms",
+  "missing_fields": ["array of field names that are null but important"]
 }
 
-TEXT TO ANALYZE:
-${text}`;
+${inputDescription}`;
+}
+
+async function callLovableGateway(messages: any[], apiKey: string): Promise<Response> {
+  return await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${apiKey}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      model: 'google/gemini-2.5-flash',
+      messages,
+    }),
+  });
+}
+
+async function callGeminiDirect(messages: any[], textContent: string, pdfBase64?: string): Promise<any> {
+  const GEMINI_API_KEY = Deno.env.get('GEMINI_API_KEY');
+  if (!GEMINI_API_KEY) throw new Error('No fallback API key available');
+
+  const parts: any[] = [];
+
+  if (pdfBase64) {
+    parts.push({
+      inline_data: {
+        mime_type: 'application/pdf',
+        data: pdfBase64,
+      },
+    });
+    parts.push({ text: messages[0].content || textContent });
+  } else {
+    const textMsg = typeof messages[0].content === 'string'
+      ? messages[0].content
+      : textContent;
+    parts.push({ text: textMsg });
   }
 
-  return `You are a senior travel operations data analyst at Your Tours Portugal. Your task is to extract EVERY possible piece of information about a SUPPLIER (fornecedor/FSE) from the following text (email, protocol document, contract, rate sheet, or supplier communication).
-
-CONTEXT: Your Tours Portugal works with protocols/contracts that typically contain:
-- Section 1: Company data (Your Tours — ignore this, it's us)
-- Section 2: Partner/Supplier data (FSE) — THIS is what we need to extract
-- Section 3: Partnership terms & validity
-- Section 4: Contracted services with detailed NET pricing (adult, child, baby, guide)
-- Section 5: Booking mode / reservation conditions
-- Section 6: Invoicing / payment mode
-- Section 7: Terms & conditions
-
-CRITICAL RULES:
-- Extract MAXIMUM information. Fill every field you can find evidence for.
-- For each field you CANNOT find in the text, set it to null.
-- In "missing_fields", list ALL null fields important for a complete supplier profile.
-- ALWAYS extract from Section 2 (FSE data): name, address, NIF, IBAN, contact person, phone, email.
-- ALWAYS extract from Section 4 (services): create a SEPARATE service entry for EACH menu/package/room/tier.
-- For EACH service extract: adult NET price, child NET price — as separate numeric fields.
-- Also extract baby policy and guide price into the notes field.
-- Extract booking conditions from Section 5 (e.g. "reservas apenas por email").
-- Extract payment/invoicing mode from Section 6 (e.g. "guia recolhe fatura, pagamento até dia 8 do mês seguinte").
-- Extract cancellation/refund terms from Section 7 or wherever mentioned.
-- Extract validity dates from Section 3.
-- Infer category from context (e.g. mentions rooms/check-in → "hotel", wine/cellar → "winery", vehicle/driver → "transport", menus/almoço → "restaurant").
-- If there are different price tiers (e.g. high/low season, different menus, room types), create SEPARATE service entries for each.
-- Prices should be numbers (not strings). Currencies should be 3-letter codes.
-- Description should include what's included (menu items, drinks, activities, etc.)
-
-Return this EXACT JSON structure:
-{
-  "entity": {
-    "name": "string or null — supplier/company name (from Section 2, NOT Your Tours)",
-    "category": "hotel|guide|transport|winery|activity|restaurant|other",
-    "contact_name": "string or null — responsible person name",
-    "contact_email": "string or null",
-    "contact_phone": "string or null — with country code if available",
-    "address": "string or null — full address",
-    "fiscal_number": "string or null — NIF/NIPC/VAT number",
-    "bank_iban": "string or null — IBAN",
-    "contract_type": "string or null — e.g. 'net rates', 'commission-based', 'allotment'",
-    "currency": "string — 3-letter code, default EUR",
-    "cancellation_policy": "string or null — FULL cancellation terms with deadlines and penalties",
-    "notes": "string or null — ideal_for tags, special conditions, parking, access, etc.",
-    "validity_start": "YYYY-MM-DD or null — protocol validity start",
-    "validity_end": "YYYY-MM-DD or null — protocol validity end"
-  },
-  "services": [
+  const response = await fetch(
+    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`,
     {
-      "name": "string — service/product/menu/room name",
-      "description": "string or null — FULL description of what's included/excluded (menu items, drinks, experiences)",
-      "category": "hotel|guide|transport|winery|activity|restaurant|other",
-      "duration": "string or null — e.g. '2 hours', 'Full day', 'Per night'",
-      "price": "number or 0 — NET price per adult",
-      "price_child": "number or 0 — NET price per child (include age range in notes)",
-      "price_unit": "per_person|per_group|per_night|per_day|flat_rate",
-      "currency": "string — 3-letter code",
-      "booking_conditions": "string or null — HOW to book (email only, phone, advance notice required, etc.)",
-      "payment_conditions": "string or null — invoicing process, payment deadlines, who collects invoice",
-      "cancellation_policy": "string or null — cancellation rules specific to this service",
-      "refund_policy": "string or null — refund conditions and timelines",
-      "validity_start": "YYYY-MM-DD or null — rate validity start",
-      "validity_end": "YYYY-MM-DD or null — rate validity end",
-      "notes": "string or null — child age range (e.g. '3-8 anos'), baby policy (e.g. '0-3 grátis'), guide price (e.g. '17€/guia'), VAT info, capacity, group size, extras, surcharges, ideal_for tags"
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        contents: [{ parts }],
+        generationConfig: {
+          responseMimeType: 'application/json',
+        },
+      }),
     }
-  ],
-  "missing_fields": ["array of field names that are null but IMPORTANT for a complete supplier profile"]
-}
+  );
 
-TEXT TO ANALYZE:
-${text}`;
+  if (!response.ok) {
+    const err = await response.text();
+    throw new Error(`Gemini direct error ${response.status}: ${err}`);
+  }
+
+  const data = await response.json();
+  const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+  if (!text) throw new Error('No content from Gemini');
+
+  const cleaned = text.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+  return JSON.parse(cleaned);
 }
 
 Deno.serve(async (req) => {
@@ -164,109 +160,128 @@ Deno.serve(async (req) => {
     const { text, pdf_base64, entity_type } = body;
 
     const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
-    if (!LOVABLE_API_KEY) {
-      return new Response(
-        JSON.stringify({ success: false, error: 'LOVABLE_API_KEY not configured' }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
 
+    let promptText: string;
     let messages: any[];
 
     if (pdf_base64) {
-      // Use Gemini Vision to read the PDF directly
-      const systemPrompt = buildPrompt('(see attached PDF document)', entity_type);
-      
-      messages = [
-        {
-          role: 'user',
-          content: [
-            {
-              type: 'text',
-              text: systemPrompt.replace('(see attached PDF document)', 'Extract all data from the attached PDF protocol document. Follow the instructions above precisely.'),
-            },
-            {
-              type: 'image_url',
-              image_url: {
-                url: `data:application/pdf;base64,${pdf_base64}`,
-              },
-            },
-          ],
-        },
-      ];
+      promptText = buildFSEPrompt('Extract all data from the attached PDF protocol document. Follow the instructions above precisely.');
+      messages = [{ role: 'user', content: promptText }];
     } else if (text && text.trim().length >= 10) {
-      const prompt = buildPrompt(text, entity_type);
-      messages = [{ role: 'user', content: prompt }];
+      promptText = buildFSEPrompt(`TEXT TO ANALYZE:\n${text}`);
+      messages = [{ role: 'user', content: promptText }];
     } else {
       return new Response(
-        JSON.stringify({ success: false, error: 'No text or PDF provided' }),
+        JSON.stringify({ success: false, error: 'Nenhum texto ou PDF fornecido. Cole o conteúdo do protocolo ou faça upload do PDF.' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${LOVABLE_API_KEY}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: 'google/gemini-2.5-flash',
-        messages,
-      }),
-    });
+    let parsed: any;
+    let usedFallback = false;
 
-    if (!response.ok) {
-      if (response.status === 429) {
+    // Try Lovable Gateway first (only for text, not PDF — gateway doesn't support inline PDF)
+    if (LOVABLE_API_KEY && !pdf_base64) {
+      try {
+        const response = await callLovableGateway(messages, LOVABLE_API_KEY);
+
+        if (response.ok) {
+          const aiResult = await response.json();
+          const content = aiResult.choices?.[0]?.message?.content;
+          if (content) {
+            const cleaned = content.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+            parsed = JSON.parse(cleaned);
+          }
+        } else if (response.status === 402 || response.status === 429) {
+          console.log(`Gateway returned ${response.status}, falling back to Gemini direct`);
+          usedFallback = true;
+        } else {
+          const errText = await response.text();
+          console.error('Gateway error:', response.status, errText);
+          usedFallback = true;
+        }
+      } catch (e) {
+        console.error('Gateway call failed:', e);
+        usedFallback = true;
+      }
+    } else {
+      // For PDF or no Lovable key, go straight to Gemini direct
+      usedFallback = true;
+    }
+
+    // Fallback: Gemini direct (handles PDF natively)
+    if (!parsed && usedFallback) {
+      try {
+        parsed = await callGeminiDirect(messages, promptText, pdf_base64);
+      } catch (e) {
+        console.error('Gemini direct fallback failed:', e);
         return new Response(
-          JSON.stringify({ success: false, error: 'Rate limit exceeded, please try again later.' }),
-          { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          JSON.stringify({ success: false, error: `Falha na extração AI: ${e instanceof Error ? e.message : 'Erro desconhecido'}` }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
-      if (response.status === 402) {
-        return new Response(
-          JSON.stringify({ success: false, error: 'AI credits exhausted.' }),
-          { status: 402, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
-      }
-      const errText = await response.text();
-      console.error('AI gateway error:', response.status, errText);
+    }
+
+    if (!parsed) {
       return new Response(
-        JSON.stringify({ success: false, error: 'AI extraction failed' }),
+        JSON.stringify({ success: false, error: 'Não foi possível extrair dados do documento' }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    const aiResult = await response.json();
-    const content = aiResult.choices?.[0]?.message?.content;
-
-    if (!content) {
-      return new Response(
-        JSON.stringify({ success: false, error: 'No content returned from AI' }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+    // Normalize: ensure destinations is always an array
+    if (parsed.destinations && !Array.isArray(parsed.destinations)) {
+      parsed.destinations = [parsed.destinations];
+    }
+    if (!parsed.destinations && parsed.destination) {
+      parsed.destinations = Array.isArray(parsed.destination) ? parsed.destination : [parsed.destination];
     }
 
-    let parsed;
-    try {
-      const cleaned = content.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
-      parsed = JSON.parse(cleaned);
-    } catch {
-      console.error('Failed to parse AI response:', content);
+    // Also keep backward-compat entity shape for existing SmartImportDialog
+    if (entity_type === 'supplier' || entity_type === 'partner') {
+      // Wrap in the entity/services format expected by SmartImportDialog
+      const entityData = {
+        name: parsed.supplier_name || parsed.name || null,
+        category: parsed.category || null,
+        contact_name: parsed.contact_name || null,
+        contact_email: parsed.contact_email || null,
+        contact_phone: parsed.contact_phone || null,
+        address: parsed.address || null,
+        fiscal_number: parsed.fiscal_number || null,
+        bank_iban: parsed.bank_iban || null,
+        contract_type: parsed.contract_type || null,
+        currency: parsed.currency || 'EUR',
+        cancellation_policy: parsed.cancellation_policy || null,
+        notes: parsed.notes || null,
+        validity_start: parsed.validity_start || null,
+        validity_end: parsed.validity_end || null,
+        payment_terms: parsed.payment_terms || null,
+        commission_percent: parsed.commission_percent || null,
+        territory: parsed.territory || null,
+      };
+
       return new Response(
-        JSON.stringify({ success: false, error: 'Failed to parse AI response' }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        JSON.stringify({
+          success: true,
+          data: {
+            entity: entityData,
+            services: parsed.services || [],
+            missing_fields: parsed.missing_fields || [],
+          },
+          fse_data: parsed,
+        }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
     return new Response(
-      JSON.stringify({ success: true, data: parsed }),
+      JSON.stringify({ success: true, data: parsed, fse_data: parsed }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   } catch (error) {
     console.error('Error:', error);
     return new Response(
-      JSON.stringify({ success: false, error: error instanceof Error ? error.message : 'Unknown error' }),
+      JSON.stringify({ success: false, error: error instanceof Error ? error.message : 'Erro desconhecido' }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }
