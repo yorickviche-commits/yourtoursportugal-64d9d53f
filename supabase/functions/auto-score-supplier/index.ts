@@ -113,40 +113,7 @@ Return ONLY this exact JSON structure (no markdown, no extra text):
 
 CRITICAL: Use EXACTLY these keys in scores: ${keyList}. Every key must be present.`;
 
-    const res = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${lovableApiKey}`,
-      },
-      body: JSON.stringify({
-        model: 'google/gemini-2.5-flash',
-        messages: [{ role: 'user', content: scoringPrompt }],
-        temperature: 0.2,
-        max_tokens: 600,
-      }),
-    });
-
-    if (!res.ok) {
-      const errText = await res.text();
-      console.error('AI error:', res.status, errText);
-      if (res.status === 429) {
-        return new Response(JSON.stringify({ error: 'Rate limit exceeded, please try again later.' }), {
-          status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        });
-      }
-      if (res.status === 402) {
-        return new Response(JSON.stringify({ error: 'AI credits exhausted. Please add funds.' }), {
-          status: 402, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        });
-      }
-      return new Response(JSON.stringify({ error: 'AI scoring failed' }), {
-        status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-    }
-
-    const result = await res.json();
-    const text = result.choices?.[0]?.message?.content || '{}';
+    const text = await callAI(scoringPrompt, 600);
 
     let parsed: Record<string, unknown> = {};
     const jsonMatch = text.match(/\{[\s\S]*\}/);
