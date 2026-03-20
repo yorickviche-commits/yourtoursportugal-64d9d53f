@@ -383,7 +383,8 @@ const LeadCostingEditor = ({ costingDays, onChange, onSave, saving, plannerDays,
                     <table className="w-full text-[10px]">
                       <thead>
                         <tr className="bg-muted/30 text-muted-foreground uppercase">
-                          <th className="text-left px-1.5 py-1.5 font-medium min-w-[160px]">Atividade</th>
+                          <th className="text-left px-1.5 py-1.5 font-medium w-[50px]">Camada</th>
+                          <th className="text-left px-1.5 py-1.5 font-medium min-w-[140px]">Atividade</th>
                           <th className="text-left px-1.5 py-1.5 font-medium w-[110px]">Fornecedor</th>
                           <th className="text-center px-1 py-1.5 font-medium w-[80px]">Por Pessoa/Total</th>
                           <th className="text-center px-1 py-1.5 font-medium w-[55px]">Nº Adt</th>
@@ -402,9 +403,19 @@ const LeadCostingEditor = ({ costingDays, onChange, onSave, saving, plannerDays,
                           const statusCfg = STATUS_OPTIONS.find(s => s.value === item.status) || STATUS_OPTIONS[0];
                           const StatusIcon = statusCfg.icon;
                           const isDeleted = item.status === 'eliminar';
+                          const layer = item.costLayer && LAYER_CONFIG[item.costLayer] ? LAYER_CONFIG[item.costLayer] : null;
 
                           return (
                             <tr key={item.id} className={cn("border-t border-border/30 hover:bg-muted/10 transition-colors", isDeleted && "opacity-40 line-through")}>
+                              <td className="px-1 py-1">
+                                {layer ? (
+                                  <span className={cn("inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[9px] font-medium", layer.bg, layer.text)} title={layer.label}>
+                                    {layer.emoji}
+                                    {item.isFixedRate && <span className="ml-0.5 text-[8px]">🔒</span>}
+                                    {item.isProtocol && <span className="ml-0.5 text-[8px]">✓</span>}
+                                  </span>
+                                ) : <span className="text-[9px] text-muted-foreground">—</span>}
+                              </td>
                               <td className="px-1 py-1">
                                 <Input className="h-7 text-xs border-0 bg-transparent shadow-none focus-visible:ring-1 px-1" defaultValue={item.description} onBlur={e => updateItem(dayIdx, itemIdx, { description: e.target.value })} placeholder="Atividade..." />
                               </td>
