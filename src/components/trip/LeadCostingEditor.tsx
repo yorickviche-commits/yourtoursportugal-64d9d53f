@@ -13,6 +13,17 @@ import SupplierSearchDropdown from './SupplierSearchDropdown';
 import type { PlannerDay, PeriodKey } from './TravelPlannerEditor';
 
 // ─── Types ───────────────────────────────────────────
+export type CostLayer = 'transport' | 'guide' | 'experience' | 'accommodation' | 'meal' | 'operational';
+
+const LAYER_CONFIG: Record<CostLayer, { label: string; emoji: string; bg: string; text: string }> = {
+  transport: { label: 'Transp.', emoji: '🚐', bg: 'bg-blue-100 dark:bg-blue-900/30', text: 'text-blue-700 dark:text-blue-300' },
+  guide: { label: 'Guia', emoji: '🧑‍🏫', bg: 'bg-green-100 dark:bg-green-900/30', text: 'text-green-700 dark:text-green-300' },
+  experience: { label: 'Exp.', emoji: '🍷', bg: 'bg-amber-100 dark:bg-amber-900/30', text: 'text-amber-700 dark:text-amber-300' },
+  accommodation: { label: 'Hotel', emoji: '🏨', bg: 'bg-purple-100 dark:bg-purple-900/30', text: 'text-purple-700 dark:text-purple-300' },
+  meal: { label: 'Refeição', emoji: '🍽️', bg: 'bg-orange-100 dark:bg-orange-900/30', text: 'text-orange-700 dark:text-orange-300' },
+  operational: { label: 'Oper.', emoji: '⚙️', bg: 'bg-gray-100 dark:bg-gray-800/30', text: 'text-gray-700 dark:text-gray-300' },
+};
+
 export interface LeadCostItem {
   id: string;
   description: string;
@@ -22,12 +33,15 @@ export interface LeadCostItem {
   priceAdults: number;
   numChildren: number;
   priceChildren: number;
-  netTotal: number; // calculated
+  netTotal: number;
   marginPercent: number;
-  pvpTotal: number; // calculated
-  profit: number; // calculated
+  pvpTotal: number;
+  profit: number;
   status: 'neutro' | 'aceite' | 'eliminar' | 'opcionais';
   notes: CostNote[];
+  costLayer?: CostLayer;
+  isProtocol?: boolean;
+  isFixedRate?: boolean;
 }
 
 export interface CostNote {
@@ -369,7 +383,8 @@ const LeadCostingEditor = ({ costingDays, onChange, onSave, saving, plannerDays,
                     <table className="w-full text-[10px]">
                       <thead>
                         <tr className="bg-muted/30 text-muted-foreground uppercase">
-                          <th className="text-left px-1.5 py-1.5 font-medium min-w-[160px]">Atividade</th>
+                          <th className="text-left px-1.5 py-1.5 font-medium w-[50px]">Camada</th>
+                          <th className="text-left px-1.5 py-1.5 font-medium min-w-[140px]">Atividade</th>
                           <th className="text-left px-1.5 py-1.5 font-medium w-[110px]">Fornecedor</th>
                           <th className="text-center px-1 py-1.5 font-medium w-[80px]">Por Pessoa/Total</th>
                           <th className="text-center px-1 py-1.5 font-medium w-[55px]">Nº Adt</th>
@@ -388,9 +403,19 @@ const LeadCostingEditor = ({ costingDays, onChange, onSave, saving, plannerDays,
                           const statusCfg = STATUS_OPTIONS.find(s => s.value === item.status) || STATUS_OPTIONS[0];
                           const StatusIcon = statusCfg.icon;
                           const isDeleted = item.status === 'eliminar';
+                          const layer = item.costLayer && LAYER_CONFIG[item.costLayer] ? LAYER_CONFIG[item.costLayer] : null;
 
                           return (
                             <tr key={item.id} className={cn("border-t border-border/30 hover:bg-muted/10 transition-colors", isDeleted && "opacity-40 line-through")}>
+                              <td className="px-1 py-1">
+                                {layer ? (
+                                  <span className={cn("inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[9px] font-medium", layer.bg, layer.text)} title={layer.label}>
+                                    {layer.emoji}
+                                    {item.isFixedRate && <span className="ml-0.5 text-[8px]">🔒</span>}
+                                    {item.isProtocol && <span className="ml-0.5 text-[8px]">✓</span>}
+                                  </span>
+                                ) : <span className="text-[9px] text-muted-foreground">—</span>}
+                              </td>
                               <td className="px-1 py-1">
                                 <Input className="h-7 text-xs border-0 bg-transparent shadow-none focus-visible:ring-1 px-1" defaultValue={item.description} onBlur={e => updateItem(dayIdx, itemIdx, { description: e.target.value })} placeholder="Atividade..." />
                               </td>

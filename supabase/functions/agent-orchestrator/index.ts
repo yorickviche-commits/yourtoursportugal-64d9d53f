@@ -204,11 +204,22 @@ async function runBudgetFulfill(supabase: any, lead: any, fseContext: string) {
         const period = activities[periodKey];
         if (period?.items) {
           for (const item of period.items) {
+            // Determine cost layer from AI output or infer from period
+            let costLayer = item.cost_layer || 'experience';
+            if (!item.cost_layer) {
+              if (periodKey === 'lunch') costLayer = 'meal';
+              else if (periodKey === 'night' && (item.title || '').toLowerCase().includes('hotel')) costLayer = 'accommodation';
+              else if (periodKey === 'night') costLayer = 'meal';
+            }
+
             costItems.push({
               description: item.title || item.description || 'Activity',
               day: day.day_number,
-              pricingType: periodKey === 'lunch' || periodKey === 'night' ? 'per_person' : 'total',
-              fse_supplier: item.fse_supplier || null, // Pass through matched supplier
+              pricingType: ['transport', 'guide', 'operational'].includes(costLayer) ? 'total' : 
+                           (periodKey === 'lunch' || periodKey === 'night' ? 'per_person' : 'total'),
+              fse_supplier: item.fse_supplier || null,
+              cost_layer: costLayer,
+              is_fixed_rate: item.is_fixed_rate || false,
             });
           }
         }
@@ -257,21 +268,28 @@ async function runBudgetFulfill(supabase: any, lead: any, fseContext: string) {
       }
 
       const costId = `ci-${Math.random().toString(36).slice(2, 7)}`;
+      const effectivePricingType = suggestion.pricingType || item.pricingType;
+      const effectiveNet = effectivePricingType === 'per_person' ? netCost * (lead.pax || 2) : netCost;
+      const effectivePVP = effectivePricingType === 'per_person' ? pvp * (lead.pax || 2) : pvp;
+      const effectiveProfit = effectivePVP - effectiveNet;
+
       costingByDay.get(item.day).items.push({
         id: costId,
         description: item.description,
         supplier: suggestion.supplier || '',
-        pricingType: suggestion.pricingType || item.pricingType,
+        pricingType: effectivePricingType,
         numAdults: lead.pax || 2,
         priceAdults: netCost,
         numChildren: lead.pax_children || 0,
         priceChildren: 0,
-        netTotal: item.pricingType === 'per_person' ? netCost * (lead.pax || 2) : netCost,
+        netTotal: effectiveNet,
         marginPercent,
-        pvpTotal: item.pricingType === 'per_person' ? pvp * (lead.pax || 2) : pvp,
-        profit: (pvp - netCost) * (item.pricingType === 'per_person' ? (lead.pax || 2) : 1),
+        pvpTotal: effectivePVP,
+        profit: effectiveProfit,
         status: isProtocol ? 'confirmado' : 'neutro',
         isProtocol,
+        isFixedRate: suggestion.isFixedRate || item.is_fixed_rate || false,
+        costLayer: suggestion.costLayer || item.cost_layer || 'experience',
         notes: [],
       });
       totalNet += item.pricingType === 'per_person' ? netCost * (lead.pax || 2) : netCost;

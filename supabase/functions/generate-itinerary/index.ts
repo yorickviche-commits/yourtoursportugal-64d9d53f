@@ -23,52 +23,161 @@ interface ItineraryRequest {
     notes?: string;
   };
   type: 'travel_planner' | 'budget' | 'digital_itinerary';
-  fseContext?: string; // Pre-built FSE supplier/service context injected by orchestrator
+  fseContext?: string;
 }
 
-const TRAVEL_PLANNER_SYSTEM = `You are a senior travel planner for Your Tours Portugal, with deep knowledge of Portuguese destinations, local experiences, restaurants, hidden gems, and logistics.
+// ─── YT FIXED GUIDE RATES (NET, IVA incl.) ─────────────
+const GUIDE_RATES_CONTEXT = `=== YOUR TOURS FIXED GUIDE RATES (NET, IVA incl.) — MANDATORY ===
+These are YT's internal fixed costs for freelancer guides. ALWAYS use these exact values.
+
+GUIDE IN YT VEHICLE (private tours):
+• Full-day (~10h): 125€ (flat rate per day, NOT per person)
+
+GUIDE + OWN VEHICLE (guide drives own car, specific routes):
+• Douro / Vinho Verde / Coimbra & Aveiro: 265€/day
+• Braga & Guimarães / Alto-Minho / Gerês: 250€/day
+• Santiago de Compostela: 275€/day
+• Porto City Full-Day: 225€/day
+
+CITY/LOCAL GUIDE (walking tours, bus services):
+• Half-day (~4h): 80€
+• Full-day (~10h): 150€
+
+CONTINUOUS SERVICE (multi-day bus circuits, 4+ days):
+• Full-day: 180€/day (incl. 1h meal break)
+
+EXTRAS (always additional):
+• Guide meal allowance: 15€/meal (when guide eats with group)
+• Night service (20:00-02:00): 80€
+• Extra hour: 20€/h
+• Displacement to service location: 15€
+• Fleet vehicle wash: 4.25€
+
+RULES:
+- Full-day = ~10h (07:30-19:30), includes 1h lunch + 20min vehicle cleanup
+- Half-day = ~4h (07:30-19:30)
+- For multi-day trips (4+ days/3+ nights), use continuous service rate
+- Guide meal is ALWAYS added when guide eats with group
+- Night service is additional if activity extends past 20:00
+- Fleet wash is added at end of each driving day`;
+
+const TRAVEL_PLANNER_SYSTEM = `You are a senior travel planner for Your Tours Portugal, a boutique DMC specialized in private, tailor-made travels in Portugal.
+
+=== LAYERED PLANNING APPROACH (CRITICAL) ===
+You MUST plan each day using this layered cost structure:
+
+LAYER 1 — TRANSPORT (base layer, always present):
+Every travel day needs transport. Options:
+a) YT fleet vehicle (van/minibus) — our own fleet, cost is operational (fuel, tolls, parking)
+b) Partner transport — from our partner database (buses, boats, trains)
+c) Client self-drives — no transport cost
+For each day, specify the transport type and route.
+
+LAYER 2 — GUIDE (almost always present):
+Every day with YT vehicle REQUIRES a guide. Use our FIXED guide rates (provided below).
+Match the correct rate based on:
+- Route/destination (Douro, Braga, Porto city, etc.)
+- Duration (full-day vs half-day)
+- Whether guide uses own vehicle or YT vehicle
+- Add meal allowance (15€) when guide eats with group
+- Add night service (80€) if activities go past 20:00
+
+LAYER 3 — EXPERIENCES (variable, depends on itinerary):
+Wine tastings, boat trips, cultural visits, activities, etc.
+PRIORITIZE our protocol suppliers (FSE database provided below).
+Use their exact NET prices when available.
+
+LAYER 4 — ACCOMMODATION (if multi-day trip):
+Hotels, quintas, etc. Match to client's comfort level and budget.
+Use protocol partners when available.
+
+LAYER 5 — MEALS (restaurants):
+Lunch and dinner. Use protocol restaurants when available.
+Consider: guide meal cost is separate operational cost.
+
+For each activity item, you MUST tag:
+- "cost_layer": one of "transport", "guide", "experience", "accommodation", "meal", "operational"
+- "fse_supplier": name of protocol supplier if matched, or null
+- "is_fixed_rate": true if using YT fixed rate sheet (guides, YT vehicle)
+
+${GUIDE_RATES_CONTEXT}
 
 CRITICAL RULES:
-1. RESPECT THE EXACT NUMBER OF DAYS. If the client has concrete dates (e.g. June 1-5), create exactly that many days (5 days). If flexible with "12 days", create exactly 12 days. NEVER create more or fewer days than specified.
+1. RESPECT THE EXACT NUMBER OF DAYS.
 2. Each day MUST be structured into exactly 4 time periods: "morning", "lunch", "afternoon", "night".
-3. If a period has no relevant activity (e.g. no night activity, or a free afternoon), include it with a single item marked as free time or rest.
-4. Each period can have 1-4 items/activities.
-5. Be specific with real venue names, addresses when possible, and realistic timings.
-6. Consider travel time between locations.
-7. For multi-destination trips, plan logical geographic flow to minimize backtracking.
-8. Include a mix of must-sees and hidden gems based on travel style preferences.
-9. IMPORTANT: When our internal FSE (supplier/partner) database is provided below, PRIORITIZE using those suppliers and their specific services/experiences. These are our contracted partners with negotiated rates. Only suggest external venues when no suitable protocol partner exists for that activity type.
+3. Be specific with real venue names and realistic timings.
+4. Consider travel time between locations.
+5. For multi-destination trips, plan logical geographic flow.
+6. Include a mix of must-sees and hidden gems based on travel style.
+7. PRIORITIZE protocol suppliers from our FSE database.
+8. ALWAYS include transport + guide as base cost layer for each day.
+9. Add operational extras: guide meal (15€), fleet wash (4.25€ per driving day), tolls, parking.
 
-OUTPUT FORMAT - Return ONLY valid JSON with this exact structure:
+OUTPUT FORMAT - Return ONLY valid JSON:
 {
   "days": [
     {
       "day": 1,
       "title": "Arrival & Porto Historic Center",
       "date": "2026-06-01",
+      "transport_summary": "YT Van — Porto Airport to Ribeira + city driving",
+      "guide_type": "yt_vehicle_fullday",
+      "guide_rate": 125,
       "periods": {
         "morning": {
           "label": "Manhã",
           "items": [
-            { "title": "Arrival at Porto Airport", "description": "Private transfer to hotel in Ribeira district", "location": "Porto Airport → Ribeira", "duration": "45min", "fse_supplier": "Name of protocol supplier if applicable or null" }
+            { 
+              "title": "Airport pickup + transfer to hotel",
+              "description": "Private transfer in YT van",
+              "location": "Porto Airport → Ribeira",
+              "duration": "45min",
+              "cost_layer": "transport",
+              "fse_supplier": null,
+              "is_fixed_rate": true
+            }
           ]
         },
         "lunch": {
           "label": "Almoço",
           "items": [
-            { "title": "Lunch at Cantinho do Avillez", "description": "Chef José Avillez's casual Porto restaurant.", "location": "Rua Mouzinho da Silveira 166", "duration": "1h30", "fse_supplier": null }
+            { 
+              "title": "Lunch at Cantinho do Avillez",
+              "description": "Chef José Avillez's casual Porto restaurant",
+              "location": "Rua Mouzinho da Silveira 166",
+              "duration": "1h30",
+              "cost_layer": "meal",
+              "fse_supplier": null,
+              "is_fixed_rate": false
+            }
           ]
         },
         "afternoon": {
           "label": "Tarde",
           "items": [
-            { "title": "Livraria Lello & Clérigos Tower", "description": "Visit the iconic bookstore and climb the tower for panoramic views", "location": "Centro Histórico do Porto", "duration": "2h", "fse_supplier": null }
+            { 
+              "title": "Livraria Lello & Clérigos Tower",
+              "description": "Visit the iconic bookstore and climb the tower",
+              "location": "Centro Histórico do Porto",
+              "duration": "2h",
+              "cost_layer": "experience",
+              "fse_supplier": null,
+              "is_fixed_rate": false
+            }
           ]
         },
         "night": {
           "label": "Noite",
           "items": [
-            { "title": "Dinner at DOP", "description": "Fine dining by chef Rui Paula with tasting menu", "location": "Palácio das Artes, Porto", "duration": "2h", "fse_supplier": null }
+            { 
+              "title": "Free evening / Hotel rest",
+              "description": "Free time to explore Porto nightlife",
+              "location": "Porto",
+              "duration": "—",
+              "cost_layer": "accommodation",
+              "fse_supplier": null,
+              "is_fixed_rate": false
+            }
           ]
         }
       }
@@ -78,15 +187,26 @@ OUTPUT FORMAT - Return ONLY valid JSON with this exact structure:
 
 const BUDGET_SYSTEM = `You are a travel costing specialist for Your Tours Portugal. Calculate a detailed budget breakdown.
 CRITICAL: The budget structure MUST match exactly the travel planner days and periods structure provided.
-For each item in each period of each day, estimate realistic Portuguese market costs.
-Include hidden operational costs: guide meals, tolls, parking, fuel, buffers.
-IMPORTANT: When FSE supplier data with NET prices is provided, use those exact prices. Only estimate market rates when no protocol price exists.
 
-Output JSON: { "summary": { "totalNet": number, "margin": number, "totalPVP": number, "profit": number }, "days": [{ "day": number, "title": string, "periods": { "morning": { "items": [{ "title": string, "supplier": string, "netCost": number, "marginPercent": number }] }, "lunch": {...}, "afternoon": {...}, "night": {...} } }] }`;
+=== LAYERED COSTING APPROACH ===
+Cost each day in layers:
+1. TRANSPORT: YT vehicle operational costs (fuel ~30-50€/day, tolls vary by route, parking 5-15€)
+2. GUIDE: Use the EXACT fixed rates from the guide rate sheet (125€ FD in YT vehicle, etc.)
+3. EXPERIENCES: Use protocol supplier NET prices when available, market rates otherwise
+4. ACCOMMODATION: Match to comfort level
+5. MEALS: Protocol restaurants first, then market rates (15-45€/person)
+6. OPERATIONAL: Guide meal (15€), fleet wash (4.25€), extra hours (20€/h), displacement (15€)
+
+${GUIDE_RATES_CONTEXT}
+
+IMPORTANT: When FSE supplier data with NET prices is provided, use those exact prices.
+For each item, tag the "cost_layer" field.
+
+Output JSON: { "summary": { "totalNet": number, "margin": number, "totalPVP": number, "profit": number, "layers": { "transport": number, "guide": number, "experience": number, "accommodation": number, "meal": number, "operational": number } }, "days": [{ "day": number, "title": string, "guide_rate": number, "periods": { "morning": { "items": [{ "title": string, "supplier": string, "netCost": number, "marginPercent": number, "cost_layer": string, "is_fixed_rate": boolean, "is_protocol": boolean }] }, "lunch": {...}, "afternoon": {...}, "night": {...} } }] }`;
 
 const DIGITAL_SYSTEM = `You are a creative travel writer for Your Tours Portugal. Create an inspirational customer-facing itinerary.
 Output JSON: { "title": string, "subtitle": string, "days": [{ "day": number, "title": string, "narrative": string, "highlights": string[], "mealSuggestions": string[] }] }
-Make it emotional, evocative, and aspirational.`;
+Make it emotional, evocative, and aspirational. Do NOT include any pricing or cost information.`;
 
 function calculateDays(leadData: ItineraryRequest['leadData']): number {
   if (leadData.datesType === 'flexible' && leadData.numberOfDays && leadData.numberOfDays > 0) {
@@ -134,7 +254,7 @@ Budget Level: ${leadData.budgetLevel}
 ${leadData.magicQuestion ? `Magic Question (what would make this trip unforgettable): ${leadData.magicQuestion}` : ''}
 ${leadData.notes ? `Additional Notes: ${leadData.notes}` : ''}
 ${fseBlock}
-Create a ${type === 'travel_planner' ? `detailed ${numDays}-day travel plan` : type === 'budget' ? 'detailed budget breakdown' : 'customer-facing digital itinerary'} for this trip in Portugal. Remember: EXACTLY ${numDays} days.`;
+Create a ${type === 'travel_planner' ? `detailed ${numDays}-day travel plan with LAYERED cost structure (transport→guide→experiences→accommodation→meals→operational). Tag each item with cost_layer, fse_supplier, and is_fixed_rate.` : type === 'budget' ? 'detailed layered budget breakdown' : 'customer-facing digital itinerary'} for this trip in Portugal. Remember: EXACTLY ${numDays} days.`;
 
   return { systemPrompt, userPrompt };
 }
@@ -213,7 +333,6 @@ serve(async (req) => {
     let resultText = '';
     let modelUsed = '';
 
-    // Try Lovable AI first, then Gemini direct as fallback
     try {
       console.log('Trying Lovable AI gateway...');
       resultText = await tryLovableAI(systemPrompt, userPrompt);
