@@ -13,6 +13,17 @@ import SupplierSearchDropdown from './SupplierSearchDropdown';
 import type { PlannerDay, PeriodKey } from './TravelPlannerEditor';
 
 // ─── Types ───────────────────────────────────────────
+export type CostLayer = 'transport' | 'guide' | 'experience' | 'accommodation' | 'meal' | 'operational';
+
+const LAYER_CONFIG: Record<CostLayer, { label: string; emoji: string; bg: string; text: string }> = {
+  transport: { label: 'Transp.', emoji: '🚐', bg: 'bg-blue-100 dark:bg-blue-900/30', text: 'text-blue-700 dark:text-blue-300' },
+  guide: { label: 'Guia', emoji: '🧑‍🏫', bg: 'bg-green-100 dark:bg-green-900/30', text: 'text-green-700 dark:text-green-300' },
+  experience: { label: 'Exp.', emoji: '🍷', bg: 'bg-amber-100 dark:bg-amber-900/30', text: 'text-amber-700 dark:text-amber-300' },
+  accommodation: { label: 'Hotel', emoji: '🏨', bg: 'bg-purple-100 dark:bg-purple-900/30', text: 'text-purple-700 dark:text-purple-300' },
+  meal: { label: 'Refeição', emoji: '🍽️', bg: 'bg-orange-100 dark:bg-orange-900/30', text: 'text-orange-700 dark:text-orange-300' },
+  operational: { label: 'Oper.', emoji: '⚙️', bg: 'bg-gray-100 dark:bg-gray-800/30', text: 'text-gray-700 dark:text-gray-300' },
+};
+
 export interface LeadCostItem {
   id: string;
   description: string;
@@ -22,12 +33,15 @@ export interface LeadCostItem {
   priceAdults: number;
   numChildren: number;
   priceChildren: number;
-  netTotal: number; // calculated
+  netTotal: number;
   marginPercent: number;
-  pvpTotal: number; // calculated
-  profit: number; // calculated
+  pvpTotal: number;
+  profit: number;
   status: 'neutro' | 'aceite' | 'eliminar' | 'opcionais';
   notes: CostNote[];
+  costLayer?: CostLayer;
+  isProtocol?: boolean;
+  isFixedRate?: boolean;
 }
 
 export interface CostNote {
