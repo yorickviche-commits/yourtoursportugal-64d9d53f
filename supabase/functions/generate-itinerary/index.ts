@@ -23,6 +23,7 @@ interface ItineraryRequest {
     notes?: string;
   };
   type: 'travel_planner' | 'budget' | 'digital_itinerary';
+  fseContext?: string; // Pre-built FSE supplier/service context injected by orchestrator
 }
 
 const TRAVEL_PLANNER_SYSTEM = `You are a senior travel planner for Your Tours Portugal, with deep knowledge of Portuguese destinations, local experiences, restaurants, hidden gems, and logistics.
@@ -36,6 +37,7 @@ CRITICAL RULES:
 6. Consider travel time between locations.
 7. For multi-destination trips, plan logical geographic flow to minimize backtracking.
 8. Include a mix of must-sees and hidden gems based on travel style preferences.
+9. IMPORTANT: When our internal FSE (supplier/partner) database is provided below, PRIORITIZE using those suppliers and their specific services/experiences. These are our contracted partners with negotiated rates. Only suggest external venues when no suitable protocol partner exists for that activity type.
 
 OUTPUT FORMAT - Return ONLY valid JSON with this exact structure:
 {
@@ -48,25 +50,25 @@ OUTPUT FORMAT - Return ONLY valid JSON with this exact structure:
         "morning": {
           "label": "Manhã",
           "items": [
-            { "title": "Arrival at Porto Airport", "description": "Private transfer to hotel in Ribeira district", "location": "Porto Airport → Ribeira", "duration": "45min" }
+            { "title": "Arrival at Porto Airport", "description": "Private transfer to hotel in Ribeira district", "location": "Porto Airport → Ribeira", "duration": "45min", "fse_supplier": "Name of protocol supplier if applicable or null" }
           ]
         },
         "lunch": {
           "label": "Almoço",
           "items": [
-            { "title": "Lunch at Cantinho do Avillez", "description": "Chef José Avillez's casual Porto restaurant.", "location": "Rua Mouzinho da Silveira 166", "duration": "1h30" }
+            { "title": "Lunch at Cantinho do Avillez", "description": "Chef José Avillez's casual Porto restaurant.", "location": "Rua Mouzinho da Silveira 166", "duration": "1h30", "fse_supplier": null }
           ]
         },
         "afternoon": {
           "label": "Tarde",
           "items": [
-            { "title": "Livraria Lello & Clérigos Tower", "description": "Visit the iconic bookstore and climb the tower for panoramic views", "location": "Centro Histórico do Porto", "duration": "2h" }
+            { "title": "Livraria Lello & Clérigos Tower", "description": "Visit the iconic bookstore and climb the tower for panoramic views", "location": "Centro Histórico do Porto", "duration": "2h", "fse_supplier": null }
           ]
         },
         "night": {
           "label": "Noite",
           "items": [
-            { "title": "Dinner at DOP", "description": "Fine dining by chef Rui Paula with tasting menu", "location": "Palácio das Artes, Porto", "duration": "2h" }
+            { "title": "Dinner at DOP", "description": "Fine dining by chef Rui Paula with tasting menu", "location": "Palácio das Artes, Porto", "duration": "2h", "fse_supplier": null }
           ]
         }
       }
@@ -78,6 +80,7 @@ const BUDGET_SYSTEM = `You are a travel costing specialist for Your Tours Portug
 CRITICAL: The budget structure MUST match exactly the travel planner days and periods structure provided.
 For each item in each period of each day, estimate realistic Portuguese market costs.
 Include hidden operational costs: guide meals, tolls, parking, fuel, buffers.
+IMPORTANT: When FSE supplier data with NET prices is provided, use those exact prices. Only estimate market rates when no protocol price exists.
 
 Output JSON: { "summary": { "totalNet": number, "margin": number, "totalPVP": number, "profit": number }, "days": [{ "day": number, "title": string, "periods": { "morning": { "items": [{ "title": string, "supplier": string, "netCost": number, "marginPercent": number }] }, "lunch": {...}, "afternoon": {...}, "night": {...} } }] }`;
 
@@ -104,7 +107,7 @@ function calculateDays(leadData: ItineraryRequest['leadData']): number {
   return 5;
 }
 
-function buildPrompts(leadData: ItineraryRequest['leadData'], type: string, numDays: number) {
+function buildPrompts(leadData: ItineraryRequest['leadData'], type: string, numDays: number, fseContext?: string) {
   let systemPrompt: string;
   if (type === 'travel_planner') systemPrompt = TRAVEL_PLANNER_SYSTEM;
   else if (type === 'budget') systemPrompt = BUDGET_SYSTEM;
@@ -116,6 +119,10 @@ function buildPrompts(leadData: ItineraryRequest['leadData'], type: string, numD
       ? `${leadData.travelDates} to ${leadData.travelEndDate} (${numDays} days)`
       : `Starting ${leadData.travelDates} for ${numDays} days`;
 
+  const fseBlock = fseContext
+    ? `\n\n--- YOUR TOURS PORTUGAL INTERNAL FSE DATABASE (Protocol Suppliers & Partners) ---\n${fseContext}\n--- END FSE DATABASE ---\nIMPORTANT: Prioritize these contracted suppliers when planning activities. They have negotiated rates and established partnerships.\nAlso consult our full FSE archive on Google Drive: https://drive.google.com/drive/folders/1HAjGSOKdgPQU3F3QPK6945OyeZMCJORN\n`
+    : '';
+
   const userPrompt = `Client: ${leadData.clientName}
 Destination: ${leadData.destination}
 Travel Dates: ${dateInfo}
@@ -126,7 +133,7 @@ Comfort Level: ${leadData.comfortLevel}
 Budget Level: ${leadData.budgetLevel}
 ${leadData.magicQuestion ? `Magic Question (what would make this trip unforgettable): ${leadData.magicQuestion}` : ''}
 ${leadData.notes ? `Additional Notes: ${leadData.notes}` : ''}
-
+${fseBlock}
 Create a ${type === 'travel_planner' ? `detailed ${numDays}-day travel plan` : type === 'budget' ? 'detailed budget breakdown' : 'customer-facing digital itinerary'} for this trip in Portugal. Remember: EXACTLY ${numDays} days.`;
 
   return { systemPrompt, userPrompt };
@@ -154,7 +161,9 @@ async function tryLovableAI(systemPrompt: string, userPrompt: string): Promise<s
 
   if (!response.ok) {
     const t = await response.text();
-    throw new Error(`Lovable AI error [${response.status}]: ${t}`);
+    const err: any = new Error(`Lovable AI error [${response.status}]: ${t}`);
+    err.status = response.status;
+    throw err;
   }
 
   const data = await response.json();
@@ -197,9 +206,9 @@ serve(async (req) => {
   }
 
   try {
-    const { leadData, type } = (await req.json()) as ItineraryRequest;
+    const { leadData, type, fseContext } = (await req.json()) as ItineraryRequest;
     const numDays = calculateDays(leadData);
-    const { systemPrompt, userPrompt } = buildPrompts(leadData, type, numDays);
+    const { systemPrompt, userPrompt } = buildPrompts(leadData, type, numDays, fseContext);
 
     let resultText = '';
     let modelUsed = '';
@@ -210,16 +219,20 @@ serve(async (req) => {
       resultText = await tryLovableAI(systemPrompt, userPrompt);
       modelUsed = 'lovable-ai';
       console.log('Lovable AI succeeded');
-    } catch (lovableErr) {
+    } catch (lovableErr: any) {
       console.error('Lovable AI failed:', lovableErr);
-      console.log('Falling back to Gemini direct...');
-      try {
-        resultText = await tryGeminiDirect(systemPrompt, userPrompt);
-        modelUsed = 'gemini-direct';
-        console.log('Gemini direct succeeded');
-      } catch (geminiErr) {
-        console.error('Gemini direct also failed:', geminiErr);
-        throw new Error('All AI providers failed. Please try again.');
+      if (lovableErr.status === 402 || lovableErr.status === 429 || !Deno.env.get('LOVABLE_API_KEY')) {
+        console.log('Falling back to Gemini direct...');
+        try {
+          resultText = await tryGeminiDirect(systemPrompt, userPrompt);
+          modelUsed = 'gemini-direct';
+          console.log('Gemini direct succeeded');
+        } catch (geminiErr) {
+          console.error('Gemini direct also failed:', geminiErr);
+          throw new Error('All AI providers failed. Please try again.');
+        }
+      } else {
+        throw lovableErr;
       }
     }
 
