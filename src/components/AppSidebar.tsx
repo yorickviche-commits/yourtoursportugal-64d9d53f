@@ -25,10 +25,8 @@ interface NavGroup {
 }
 
 const reservasItems: NavItem[] = [
-  { to: '/approvals', icon: CheckCircle, label: 'Processos & Aprovações' },
-  { to: '/tasks', icon: ClipboardList, label: 'Tasks & Pipeline' },
   { to: '/leads', icon: Users, label: 'Leads & Files' },
-  { to: '/trips', icon: Map, label: 'Reservas Confirmadas' },
+  { to: '/trips', icon: Map, label: 'Bookings & Reservas' },
 ];
 
 const comercialItems: NavItem[] = [
