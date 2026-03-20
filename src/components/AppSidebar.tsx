@@ -35,6 +35,7 @@ const comercialItems: NavItem[] = [
   { to: '/admin/suppliers', icon: Package, label: 'FSEs' },
   { to: '/admin/partners', icon: Handshake, label: 'Resellers' },
   { to: '/admin/kpis', icon: BarChart3, label: 'KPIs' },
+  { to: '/commercial/fse-database', icon: FileText, label: 'Base FSE' },
 ];
 
 const adminItems: NavItem[] = [
