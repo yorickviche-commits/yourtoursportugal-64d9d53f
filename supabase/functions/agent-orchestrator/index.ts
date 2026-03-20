@@ -6,7 +6,6 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
 };
 
-// Service role client for writing to agent tables
 function getServiceClient() {
   const url = Deno.env.get('SUPABASE_URL')!;
   const key = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
@@ -14,16 +13,11 @@ function getServiceClient() {
 }
 
 async function updateAgentStatus(
-  supabase: any,
-  agentId: string,
-  status: string,
-  currentTask?: string,
-  currentEntity?: string,
-  waitingFor?: string,
+  supabase: any, agentId: string, status: string,
+  currentTask?: string, currentEntity?: string, waitingFor?: string,
 ) {
   await supabase.from('agent_status').upsert({
-    agent_id: agentId,
-    status,
+    agent_id: agentId, status,
     current_task: currentTask || null,
     current_entity: currentEntity || null,
     waiting_for: waitingFor || null,
@@ -32,18 +26,11 @@ async function updateAgentStatus(
 }
 
 async function logAgentEvent(
-  supabase: any,
-  agentId: string,
-  eventType: string,
-  eventSummary: string,
-  requiresAction = false,
-  eventDetail?: Record<string, any>,
-  relatedEntity?: string,
+  supabase: any, agentId: string, eventType: string, eventSummary: string,
+  requiresAction = false, eventDetail?: Record<string, any>, relatedEntity?: string,
 ) {
   await supabase.from('agent_activity_log').insert({
-    agent_id: agentId,
-    event_type: eventType,
-    event_summary: eventSummary,
+    agent_id: agentId, event_type: eventType, event_summary: eventSummary,
     requires_action: requiresAction,
     event_detail: eventDetail || {},
     related_entity: relatedEntity || null,
@@ -54,16 +41,66 @@ async function resetAgent(supabase: any, agentId: string) {
   await updateAgentStatus(supabase, agentId, 'idle', 'Standing by');
 }
 
+// ─── BUILD FSE CONTEXT FROM DATABASE ───
+async function buildFSEContext(supabase: any, destination?: string): Promise<string> {
+  try {
+    // Fetch suppliers + services + partners + partner_services in parallel
+    const [suppRes, svcRes, partRes, pSvcRes] = await Promise.all([
+      supabase.from('suppliers').select('id,name,category,currency,notes,net_rates,ideal_for').eq('status', 'active'),
+      supabase.from('supplier_services').select('name,category,price,price_child,price_unit,supplier_id,currency,description,duration').eq('status', 'active'),
+      supabase.from('partners').select('id,name,category,currency,territory,commission_percent,notes').eq('status', 'active'),
+      supabase.from('partner_services').select('name,category,price,price_child,price_unit,partner_id,currency,description,duration').eq('status', 'active'),
+    ]);
+
+    const suppliers = suppRes.data || [];
+    const services = svcRes.data || [];
+    const partners = partRes.data || [];
+    const partnerServices = pSvcRes.data || [];
+
+    if (suppliers.length === 0 && partners.length === 0) return '';
+
+    const lines: string[] = [];
+
+    if (suppliers.length > 0) {
+      lines.push('=== PROTOCOL SUPPLIERS (FSE) ===');
+      for (const s of suppliers) {
+        const svcList = services.filter((sv: any) => sv.supplier_id === s.id);
+        lines.push(`• ${s.name} [${s.category}]${s.notes ? ` — ${s.notes.slice(0, 100)}` : ''}`);
+        if (s.ideal_for && Array.isArray(s.ideal_for) && s.ideal_for.length > 0) {
+          lines.push(`  Ideal for: ${s.ideal_for.join(', ')}`);
+        }
+        for (const sv of svcList) {
+          lines.push(`  → "${sv.name}" NET:${sv.price}€/${sv.price_unit}${sv.price_child ? ` child:${sv.price_child}€` : ''}${sv.duration ? ` dur:${sv.duration}` : ''}`);
+        }
+      }
+    }
+
+    if (partners.length > 0) {
+      lines.push('\n=== PARTNERS (RESELLERS) ===');
+      for (const p of partners) {
+        const pSvcs = partnerServices.filter((ps: any) => ps.partner_id === p.id);
+        lines.push(`• ${p.name} [${p.category}, ${p.territory || 'PT'}]${p.commission_percent ? ` comm:${p.commission_percent}%` : ''}`);
+        for (const ps of pSvcs) {
+          lines.push(`  → "${ps.name}" NET:${ps.price}€/${ps.price_unit}${ps.price_child ? ` child:${ps.price_child}€` : ''}${ps.duration ? ` dur:${ps.duration}` : ''}`);
+        }
+      }
+    }
+
+    lines.push('\nFull FSE archive: https://drive.google.com/drive/folders/1HAjGSOKdgPQU3F3QPK6945OyeZMCJORN');
+
+    return lines.join('\n');
+  } catch (err) {
+    console.error('Failed to build FSE context:', err);
+    return '';
+  }
+}
+
 // ─── PIPELINE: GENERATE TRAVEL PLAN ───
-async function runTravelPlanner(supabase: any, lead: any) {
+async function runTravelPlanner(supabase: any, lead: any, fseContext: string) {
   const agentId = 'itinerary_architect';
   try {
     await updateAgentStatus(supabase, agentId, 'working', `Designing itinerary for ${lead.client_name}`, lead.id);
     await logAgentEvent(supabase, agentId, 'task_started', `Started travel plan for ${lead.client_name} — ${lead.destination || 'Portugal'}`, false, { lead_id: lead.id }, lead.id);
-
-    // Call existing generate-itinerary function
-    const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
-    if (!LOVABLE_API_KEY) throw new Error('LOVABLE_API_KEY not configured');
 
     const travelStyles = Array.isArray(lead.travel_style) ? lead.travel_style : [];
 
@@ -91,6 +128,7 @@ async function runTravelPlanner(supabase: any, lead: any) {
           notes: lead.notes || '',
         },
         type: 'travel_planner',
+        fseContext, // Pass FSE database context to AI
       }),
     });
 
@@ -104,13 +142,11 @@ async function runTravelPlanner(supabase: any, lead: any) {
 
     if (days.length === 0) throw new Error('AI returned empty plan');
 
-    // Save planner data to lead_planner_data
     const version = lead.active_version || 0;
     await supabase.from('lead_planner_data').delete().eq('lead_id', lead.id).eq('version', version);
     
     const plannerRows = days.map((d: any, i: number) => ({
-      lead_id: lead.id,
-      version,
+      lead_id: lead.id, version,
       day_number: d.day || i + 1,
       title: d.title || `Day ${i + 1}`,
       description: d.date || '',
@@ -120,27 +156,35 @@ async function runTravelPlanner(supabase: any, lead: any) {
 
     await supabase.from('lead_planner_data').insert(plannerRows);
 
-    await logAgentEvent(supabase, agentId, 'task_completed', `✅ Travel plan generated: ${days.length} days for ${lead.client_name}`, false, { lead_id: lead.id, days_count: days.length, model: result.modelUsed }, lead.id);
+    const protocolCount = days.reduce((acc: number, d: any) => {
+      const periods = d.periods || {};
+      for (const p of Object.values(periods) as any[]) {
+        for (const item of (p?.items || [])) {
+          if (item.fse_supplier) acc++;
+        }
+      }
+      return acc;
+    }, 0);
+
+    await logAgentEvent(supabase, agentId, 'task_completed', `✅ Travel plan generated: ${days.length} days for ${lead.client_name}${protocolCount > 0 ? ` (${protocolCount} protocol suppliers matched)` : ''}`, false, { lead_id: lead.id, days_count: days.length, protocol_suppliers: protocolCount, model: result.modelUsed }, lead.id);
     await resetAgent(supabase, agentId);
 
     return { success: true, days };
   } catch (err: any) {
     await updateAgentStatus(supabase, agentId, 'error', err.message, lead.id);
     await logAgentEvent(supabase, agentId, 'error', `❌ Travel plan failed for ${lead.client_name}: ${err.message}`, false, { lead_id: lead.id, error: err.message }, lead.id);
-    // Reset after 5s
     setTimeout(() => resetAgent(supabase, agentId), 5000);
     throw err;
   }
 }
 
 // ─── PIPELINE: AUTO-FULFILL BUDGET ───
-async function runBudgetFulfill(supabase: any, lead: any) {
+async function runBudgetFulfill(supabase: any, lead: any, fseContext: string) {
   const agentId = 'pricing_margin';
   try {
     await updateAgentStatus(supabase, agentId, 'working', `Calculating budget for ${lead.client_name}`, lead.id);
     await logAgentEvent(supabase, agentId, 'task_started', `Started budget calculation for ${lead.client_name}`, false, { lead_id: lead.id }, lead.id);
 
-    // Get planner data to build cost items from
     const version = lead.active_version || 0;
     const { data: plannerDays } = await supabase
       .from('lead_planner_data')
@@ -153,7 +197,6 @@ async function runBudgetFulfill(supabase: any, lead: any) {
       throw new Error('No travel plan found. Generate travel plan first.');
     }
 
-    // Extract items from planner periods
     const costItems: any[] = [];
     for (const day of plannerDays) {
       const activities = day.activities || {};
@@ -165,6 +208,7 @@ async function runBudgetFulfill(supabase: any, lead: any) {
               description: item.title || item.description || 'Activity',
               day: day.day_number,
               pricingType: periodKey === 'lunch' || periodKey === 'night' ? 'per_person' : 'total',
+              fse_supplier: item.fse_supplier || null, // Pass through matched supplier
             });
           }
         }
@@ -175,7 +219,6 @@ async function runBudgetFulfill(supabase: any, lead: any) {
       throw new Error('No activities found in travel plan');
     }
 
-    // Call auto-fulfill-budget
     const response = await fetch(`${Deno.env.get('SUPABASE_URL')}/functions/v1/auto-fulfill-budget`, {
       method: 'POST',
       headers: {
@@ -185,21 +228,24 @@ async function runBudgetFulfill(supabase: any, lead: any) {
       body: JSON.stringify({
         items: costItems,
         destination: lead.destination || 'Portugal',
+        fseContext, // Pass FSE context for richer matching
       }),
     });
 
     if (!response.ok) throw new Error('auto-fulfill-budget failed');
     const { suggestions } = await response.json();
 
-    // Build costing data from suggestions
     const costingByDay = new Map<number, any>();
     let totalNet = 0;
+    let protocolItems = 0;
 
     costItems.forEach((item, idx) => {
       const suggestion = suggestions?.[idx] || {};
       const netCost = suggestion.priceAdults || 0;
       const marginPercent = suggestion.marginPercent || 30;
       const pvp = netCost * (1 + marginPercent / 100);
+      const isProtocol = suggestion.isProtocol || false;
+      if (isProtocol) protocolItems++;
 
       if (!costingByDay.has(item.day)) {
         const dayData = plannerDays.find((d: any) => d.day_number === item.day);
@@ -224,31 +270,28 @@ async function runBudgetFulfill(supabase: any, lead: any) {
         marginPercent,
         pvpTotal: item.pricingType === 'per_person' ? pvp * (lead.pax || 2) : pvp,
         profit: (pvp - netCost) * (item.pricingType === 'per_person' ? (lead.pax || 2) : 1),
-        status: 'neutro',
+        status: isProtocol ? 'confirmado' : 'neutro',
+        isProtocol,
         notes: [],
       });
       totalNet += item.pricingType === 'per_person' ? netCost * (lead.pax || 2) : netCost;
     });
 
-    // Save costing data
     await supabase.from('lead_costing_data').delete().eq('lead_id', lead.id).eq('version', version);
     const costingRows = [...costingByDay.values()].map(d => ({
-      lead_id: lead.id,
-      version,
+      lead_id: lead.id, version,
       day_number: d.day,
       title: d.title,
       items: d.items,
     }));
     await supabase.from('lead_costing_data').insert(costingRows);
 
-    const totalPVP = totalNet * 1.3; // Approx with 30% margin
+    const totalPVP = totalNet * 1.3;
 
-    await logAgentEvent(supabase, agentId, 'task_completed', `✅ Budget calculated: €${totalNet.toFixed(0)} NET / €${totalPVP.toFixed(0)} PVP for ${lead.client_name}`, false, { lead_id: lead.id, total_net: totalNet, total_pvp: totalPVP, items_count: costItems.length }, lead.id);
+    await logAgentEvent(supabase, agentId, 'task_completed', `✅ Budget: €${totalNet.toFixed(0)} NET / €${totalPVP.toFixed(0)} PVP for ${lead.client_name} (${protocolItems}/${costItems.length} protocol suppliers)`, false, { lead_id: lead.id, total_net: totalNet, total_pvp: totalPVP, items_count: costItems.length, protocol_items: protocolItems }, lead.id);
 
-    // Check if >€8k → create CEO approval
     if (totalPVP > 8000) {
       await updateAgentStatus(supabase, agentId, 'waiting', `Waiting for CEO approval: €${totalPVP.toFixed(0)}`, lead.id, 'CEO_APPROVAL');
-
       await supabase.from('ceo_approval_queue').insert({
         agent_id: agentId,
         approval_type: 'PROPOSAL_OVER_8K',
@@ -259,9 +302,7 @@ async function runBudgetFulfill(supabase: any, lead: any) {
         payload: { total_net: totalNet, total_pvp: totalPVP, days: plannerDays.length, pax: lead.pax },
         status: 'pending',
       });
-
       await logAgentEvent(supabase, agentId, 'approval_requested', `🔴 CEO approval needed: ${lead.client_name} — €${totalPVP.toFixed(0)}`, true, { lead_id: lead.id, amount: totalPVP }, lead.id);
-
       return { success: true, totalNet, totalPVP, needsApproval: true };
     }
 
@@ -276,7 +317,7 @@ async function runBudgetFulfill(supabase: any, lead: any) {
 }
 
 // ─── PIPELINE: GENERATE DIGITAL ITINERARY ───
-async function runDigitalItinerary(supabase: any, lead: any) {
+async function runDigitalItinerary(supabase: any, lead: any, fseContext: string) {
   const agentId = 'itinerary_architect';
   try {
     await updateAgentStatus(supabase, agentId, 'working', `Creating digital itinerary for ${lead.client_name}`, lead.id);
@@ -306,6 +347,7 @@ async function runDigitalItinerary(supabase: any, lead: any) {
           notes: lead.notes || '',
         },
         type: 'digital_itinerary',
+        fseContext,
       }),
     });
 
@@ -313,7 +355,6 @@ async function runDigitalItinerary(supabase: any, lead: any) {
     const result = await response.json();
     const itinerary = result.result;
 
-    // Create itinerary record
     const { data: itin } = await supabase.from('itineraries').insert({
       lead_id: lead.id,
       title: itinerary.title || `${lead.client_name} — ${lead.destination}`,
@@ -323,7 +364,6 @@ async function runDigitalItinerary(supabase: any, lead: any) {
       status: 'draft',
     }).select().single();
 
-    // Create itinerary days
     if (itin && itinerary.days) {
       const dayRows = itinerary.days.map((d: any, i: number) => ({
         itinerary_id: itin.id,
@@ -338,7 +378,6 @@ async function runDigitalItinerary(supabase: any, lead: any) {
 
     await logAgentEvent(supabase, agentId, 'task_completed', `✅ Digital itinerary created for ${lead.client_name}`, false, { lead_id: lead.id, itinerary_id: itin?.id }, lead.id);
     await resetAgent(supabase, agentId);
-
     return { success: true, itineraryId: itin?.id };
   } catch (err: any) {
     await updateAgentStatus(supabase, agentId, 'error', err.message, lead.id);
@@ -349,32 +388,27 @@ async function runDigitalItinerary(supabase: any, lead: any) {
 }
 
 // ─── FULL PIPELINE ───
-async function runFullPipeline(supabase: any, lead: any) {
+async function runFullPipeline(supabase: any, lead: any, fseContext: string) {
   const results: any = { plan: null, budget: null, itinerary: null };
 
-  // Step 1: Travel Plan
   try {
-    results.plan = await runTravelPlanner(supabase, lead);
+    results.plan = await runTravelPlanner(supabase, lead, fseContext);
   } catch (e: any) {
     return { error: `Travel plan failed: ${e.message}`, results };
   }
 
-  // Step 2: Budget
   try {
-    results.budget = await runBudgetFulfill(supabase, lead);
+    results.budget = await runBudgetFulfill(supabase, lead, fseContext);
   } catch (e: any) {
     return { error: `Budget failed: ${e.message}`, results };
   }
 
-  // Step 3: Digital itinerary (only if no approval needed)
   if (!results.budget.needsApproval) {
     try {
-      results.itinerary = await runDigitalItinerary(supabase, lead);
+      results.itinerary = await runDigitalItinerary(supabase, lead, fseContext);
     } catch (e: any) {
       return { error: `Digital itinerary failed: ${e.message}`, results };
     }
-
-    // Update lead status to proposal_sent
     await supabase.from('leads').update({ status: 'proposal_sent' }).eq('id', lead.id);
     await logAgentEvent(supabase, 'crm_manager', 'task_completed', `📋 Lead ${lead.lead_code} status → Proposta Enviada`, false, { lead_id: lead.id }, lead.id);
   }
@@ -412,12 +446,12 @@ serve(async (req) => {
         await logAgentEvent(supabase, agentId, 'approval_granted', `✅ CEO approved: ${approval.title}`, false, { approval_id: approvalId }, approval.lead_id);
         await resetAgent(supabase, agentId);
 
-        // Continue pipeline: generate digital itinerary
         if (approval.lead_id) {
           const { data: lead } = await supabase.from('leads').select('*').eq('id', approval.lead_id).single();
           if (lead) {
             try {
-              await runDigitalItinerary(supabase, lead);
+              const fseContext = await buildFSEContext(supabase, lead.destination);
+              await runDigitalItinerary(supabase, lead, fseContext);
               await supabase.from('leads').update({ status: 'proposal_sent' }).eq('id', lead.id);
               await logAgentEvent(supabase, 'crm_manager', 'task_completed', `📋 Lead ${lead.lead_code} status → Proposta Enviada`, false, { lead_id: lead.id }, lead.id);
             } catch (e) {
@@ -444,20 +478,25 @@ serve(async (req) => {
       .single();
     if (leadError || !lead) throw new Error('Lead not found');
 
+    // Build FSE context from our database ONCE for all pipeline steps
+    console.log('Building FSE context from suppliers/partners database...');
+    const fseContext = await buildFSEContext(supabase, lead.destination);
+    console.log(`FSE context built: ${fseContext.length} chars`);
+
     let result;
 
     switch (action) {
       case 'plan':
-        result = await runTravelPlanner(supabase, lead);
+        result = await runTravelPlanner(supabase, lead, fseContext);
         break;
       case 'cost':
-        result = await runBudgetFulfill(supabase, lead);
+        result = await runBudgetFulfill(supabase, lead, fseContext);
         break;
       case 'itinerary':
-        result = await runDigitalItinerary(supabase, lead);
+        result = await runDigitalItinerary(supabase, lead, fseContext);
         break;
       case 'full_pipeline':
-        result = await runFullPipeline(supabase, lead);
+        result = await runFullPipeline(supabase, lead, fseContext);
         break;
       default:
         throw new Error(`Unknown action: ${action}`);
