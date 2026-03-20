@@ -32,6 +32,7 @@ import AdminSupplierDetailPage from "./pages/AdminSupplierDetailPage";
 import PartnersPage from "./pages/PartnersPage";
 import PartnerDetailPage from "./pages/PartnerDetailPage";
 import ItineraryPreviewPage from "./pages/ItineraryPreviewPage";
+import FSEDatabasePage from "./pages/FSEDatabasePage";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -64,6 +65,7 @@ const App = () => (
             <Route path="/payments" element={<ProtectedRoute><PaymentsPage /></ProtectedRoute>} />
             <Route path="/agents" element={<ProtectedRoute><AgentDashboardPage /></ProtectedRoute>} />
             <Route path="/ai-office" element={<ProtectedRoute><AIWorkOfficePage /></ProtectedRoute>} />
+            <Route path="/commercial/fse-database" element={<ProtectedRoute><FSEDatabasePage /></ProtectedRoute>} />
 
             {/* Admin routes */}
             <Route path="/admin/users" element={<ProtectedRoute adminOnly><AdminUsersPage /></ProtectedRoute>} />
