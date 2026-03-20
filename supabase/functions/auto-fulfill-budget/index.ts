@@ -56,27 +56,44 @@ serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
-    const { items, destination } = await req.json();
+    const { items, destination, fseContext } = await req.json();
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    const headers = { apikey: supabaseKey, Authorization: `Bearer ${supabaseKey}` };
 
-    const [suppRes, svcRes] = await Promise.all([
-      fetch(`${supabaseUrl}/rest/v1/suppliers?status=eq.active&select=name,category,currency`, {
-        headers: { apikey: supabaseKey, Authorization: `Bearer ${supabaseKey}` },
-      }),
-      fetch(`${supabaseUrl}/rest/v1/supplier_services?status=eq.active&select=name,category,price,price_child,price_unit,supplier_id,currency`, {
-        headers: { apikey: supabaseKey, Authorization: `Bearer ${supabaseKey}` },
-      }),
+    // Fetch suppliers, supplier_services, partners, and partner_services in parallel
+    const [suppRes, svcRes, partRes, pSvcRes] = await Promise.all([
+      fetch(`${supabaseUrl}/rest/v1/suppliers?status=eq.active&select=id,name,category,currency,net_rates,commission_structure,notes`, { headers }),
+      fetch(`${supabaseUrl}/rest/v1/supplier_services?status=eq.active&select=name,category,price,price_child,price_unit,supplier_id,currency,description,duration,booking_conditions,payment_conditions`, { headers }),
+      fetch(`${supabaseUrl}/rest/v1/partners?status=eq.active&select=id,name,category,currency,territory,commission_percent,notes`, { headers }),
+      fetch(`${supabaseUrl}/rest/v1/partner_services?status=eq.active&select=name,category,price,price_child,price_unit,partner_id,currency,description,duration,booking_conditions,payment_conditions`, { headers }),
     ]);
 
     const suppliers = await suppRes.json();
     const services = await svcRes.json();
+    const partners = await partRes.json();
+    const partnerServices = await pSvcRes.json();
 
-    const supplierNames = (suppliers || []).map((s: any) => `${s.name} (${s.category})`).join(', ');
-    const serviceList = (services || []).slice(0, 50).map((s: any) =>
-      `"${s.name}" cat:${s.category} price:${s.price}€/${s.price_unit}`
+    // Build comprehensive supplier context
+    const supplierNames = (suppliers || []).map((s: any) =>
+      `${s.name} (${s.category})${s.notes ? ` — ${s.notes.slice(0, 80)}` : ''}`
     ).join('\n');
+
+    const serviceList = (services || []).map((s: any) => {
+      const supplier = (suppliers || []).find((sup: any) => sup.id === s.supplier_id);
+      return `"${s.name}" by ${supplier?.name || '?'} | cat:${s.category} | NET:${s.price}€/${s.price_unit}${s.price_child ? ` child:${s.price_child}€` : ''}${s.duration ? ` | dur:${s.duration}` : ''}`;
+    }).join('\n');
+
+    const partnerNames = (partners || []).map((p: any) =>
+      `${p.name} (${p.category}, ${p.territory || 'PT'})${p.commission_percent ? ` — comm:${p.commission_percent}%` : ''}`
+    ).join('\n');
+
+    const partnerServiceList = (partnerServices || []).map((s: any) => {
+      const partner = (partners || []).find((p: any) => p.id === s.partner_id);
+      return `"${s.name}" by ${partner?.name || '?'} | cat:${s.category} | NET:${s.price}€/${s.price_unit}${s.price_child ? ` child:${s.price_child}€` : ''}${s.duration ? ` | dur:${s.duration}` : ''}`;
+    }).join('\n');
+
     const itemDescriptions = items.map((it: any, i: number) =>
       `${i + 1}. Day ${it.day}: "${it.description}" (pricing: ${it.pricingType})`
     ).join('\n');
@@ -84,27 +101,39 @@ serve(async (req) => {
     const prompt = `You are a travel operations budget assistant for Your Tours Portugal.
 Destination: ${destination || 'Portugal'}
 
-Our registered suppliers (FSE database):
+=== OUR FSE (PROTOCOL SUPPLIERS) DATABASE ===
 ${supplierNames || 'No suppliers registered yet.'}
 
-Our supplier services with prices:
-${serviceList || 'No services registered yet.'}
+=== OUR SUPPLIER SERVICES WITH NET PRICES ===
+${serviceList || 'No supplier services yet.'}
 
-Cost items that need suppliers and pricing:
+=== OUR PARTNERS (RESELLERS) DATABASE ===
+${partnerNames || 'No partners registered yet.'}
+
+=== OUR PARTNER SERVICES WITH NET PRICES ===
+${partnerServiceList || 'No partner services yet.'}
+
+${fseContext ? `=== ADDITIONAL FSE CONTEXT ===\n${fseContext}\n` : ''}
+Also reference our full FSE protocol archive: https://drive.google.com/drive/folders/1HAjGSOKdgPQU3F3QPK6945OyeZMCJORN
+
+=== COST ITEMS THAT NEED SUPPLIERS AND PRICING ===
 ${itemDescriptions}
 
 For each item, suggest:
-1. The best matching supplier from our database (exact name match). If no good match, suggest "WEB" and provide a market-rate estimate.
-2. A realistic NET unit price in EUR based on Portugal tourism market rates for ${destination || 'Portugal'}.
+1. The best matching supplier/partner from our databases (EXACT name match from above). PRIORITIZE our protocol suppliers over external options. If no good match, suggest "WEB" and provide a market-rate estimate.
+2. A realistic NET unit price in EUR. USE THE EXACT NET PRICE from our database when a match exists. Only estimate market rates for "WEB" items.
 3. Whether pricing should be "per_person" or "total".
 
-IMPORTANT: Use real Portugal market rates. For restaurants: 15-45€/person. Hotels: 80-250€/night. Guides: 150-300€/day. Activities: 20-80€/person. Transport: 100-400€/day. Wine tastings: 15-40€/person.
+IMPORTANT: 
+- ALWAYS prefer our protocol suppliers/partners over external suggestions.
+- When using a protocol supplier, use their exact NET price from the database.
+- For "WEB" items, use real Portugal market rates: restaurants 15-45€/person, hotels 80-250€/night, guides 150-300€/day, activities 20-80€/person, transport 100-400€/day, wine tastings 15-40€/person.
 
 Return ONLY a JSON array with objects:
-[{"index":0,"supplier":"Name or WEB","priceAdults":25,"pricingType":"per_person","marginPercent":30}]`;
+[{"index":0,"supplier":"Exact Name from DB or WEB","priceAdults":25,"pricingType":"per_person","marginPercent":30,"isProtocol":true}]`;
 
     const messages = [
-      { role: "system", content: "You are a travel budget assistant. Return only valid JSON arrays." },
+      { role: "system", content: "You are a travel budget assistant. Return only valid JSON arrays. Prioritize protocol suppliers from the FSE database." },
       { role: "user", content: prompt },
     ];
 
