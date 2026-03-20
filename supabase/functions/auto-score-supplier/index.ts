@@ -17,10 +17,37 @@ Deno.serve(async (req) => {
     const criteria = body.criteria || [];
 
     const lovableApiKey = Deno.env.get('LOVABLE_API_KEY');
-    if (!lovableApiKey) {
-      return new Response(JSON.stringify({ error: 'LOVABLE_API_KEY not configured' }), {
+    const geminiApiKey = Deno.env.get('GEMINI_API_KEY');
+    if (!lovableApiKey && !geminiApiKey) {
+      return new Response(JSON.stringify({ error: 'No AI API key configured' }), {
         status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
+    }
+
+    async function callAI(prompt: string, maxTokens: number): Promise<string> {
+      if (lovableApiKey) {
+        try {
+          const res = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${lovableApiKey}` },
+            body: JSON.stringify({ model: 'google/gemini-2.5-flash', messages: [{ role: 'user', content: prompt }], temperature: 0.2, max_tokens: maxTokens }),
+          });
+          if (res.ok) {
+            const r = await res.json();
+            return r.choices?.[0]?.message?.content || '';
+          }
+          if (res.status !== 402 && res.status !== 429) console.error('Lovable AI error:', res.status);
+        } catch (e) { console.log('Lovable fallback triggered:', e); }
+      }
+      if (!geminiApiKey) throw new Error('AI credits exhausted. Please add credits at Settings > Workspace > Usage.');
+      const gRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${geminiApiKey}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }], generationConfig: { temperature: 0.2, maxOutputTokens: maxTokens } }),
+      });
+      if (!gRes.ok) { const t = await gRes.text(); throw new Error(`Gemini error ${gRes.status}: ${t}`); }
+      const gData = await gRes.json();
+      return gData.candidates?.[0]?.content?.parts?.[0]?.text || '';
     }
 
     // Step 1: Gather web context about the supplier
@@ -48,23 +75,7 @@ Based on what you know about this supplier/venue, provide a brief summary includ
 If you don't have specific info, say so. Keep it brief (max 200 words).`;
 
     try {
-      const searchRes = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${lovableApiKey}`,
-        },
-        body: JSON.stringify({
-          model: 'google/gemini-2.5-flash',
-          messages: [{ role: 'user', content: searchPrompt }],
-          temperature: 0.3,
-          max_tokens: 400,
-        }),
-      });
-      if (searchRes.ok) {
-        const searchResult = await searchRes.json();
-        webContext = searchResult.choices?.[0]?.message?.content || '';
-      }
+      webContext = await callAI(searchPrompt, 400);
     } catch (e) {
       console.log('Web context search failed, continuing without:', e);
     }
@@ -102,40 +113,7 @@ Return ONLY this exact JSON structure (no markdown, no extra text):
 
 CRITICAL: Use EXACTLY these keys in scores: ${keyList}. Every key must be present.`;
 
-    const res = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${lovableApiKey}`,
-      },
-      body: JSON.stringify({
-        model: 'google/gemini-2.5-flash',
-        messages: [{ role: 'user', content: scoringPrompt }],
-        temperature: 0.2,
-        max_tokens: 600,
-      }),
-    });
-
-    if (!res.ok) {
-      const errText = await res.text();
-      console.error('AI error:', res.status, errText);
-      if (res.status === 429) {
-        return new Response(JSON.stringify({ error: 'Rate limit exceeded, please try again later.' }), {
-          status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        });
-      }
-      if (res.status === 402) {
-        return new Response(JSON.stringify({ error: 'AI credits exhausted. Please add funds.' }), {
-          status: 402, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        });
-      }
-      return new Response(JSON.stringify({ error: 'AI scoring failed' }), {
-        status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-    }
-
-    const result = await res.json();
-    const text = result.choices?.[0]?.message?.content || '{}';
+    const text = await callAI(scoringPrompt, 600);
 
     let parsed: Record<string, unknown> = {};
     const jsonMatch = text.match(/\{[\s\S]*\}/);
