@@ -1758,6 +1758,68 @@ export type Database = {
           },
         ]
       }
+      travel_plans: {
+        Row: {
+          client_name: string
+          created_at: string
+          created_by: string | null
+          days: Json
+          end_date: string | null
+          extra_instructions: string | null
+          file_id: string | null
+          id: string
+          lead_id: string
+          narrative: string | null
+          pax: string | null
+          start_date: string | null
+          status: string
+          trip_title: string
+          updated_at: string
+        }
+        Insert: {
+          client_name?: string
+          created_at?: string
+          created_by?: string | null
+          days?: Json
+          end_date?: string | null
+          extra_instructions?: string | null
+          file_id?: string | null
+          id?: string
+          lead_id: string
+          narrative?: string | null
+          pax?: string | null
+          start_date?: string | null
+          status?: string
+          trip_title?: string
+          updated_at?: string
+        }
+        Update: {
+          client_name?: string
+          created_at?: string
+          created_by?: string | null
+          days?: Json
+          end_date?: string | null
+          extra_instructions?: string | null
+          file_id?: string | null
+          id?: string
+          lead_id?: string
+          narrative?: string | null
+          pax?: string | null
+          start_date?: string | null
+          status?: string
+          trip_title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "travel_plans_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       trip_itinerary_items: {
         Row: {
           created_at: string
