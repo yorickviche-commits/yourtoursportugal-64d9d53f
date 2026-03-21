@@ -78,16 +78,16 @@ const TravelPlanProposal = ({
   });
 
   // Hydrate plan from saved data
-  useState(() => {
-    if (savedPlan && !plan) {
-      const days = Array.isArray(savedPlan.days) ? savedPlan.days as unknown as ProposalDay[] : [];
-      setPlan({
-        trip_title: savedPlan.trip_title || '',
-        narrative: savedPlan.narrative || '',
-        days,
-      });
-    }
-  });
+  const hydratedRef = useRef(false);
+  if (savedPlan && !plan && !hydratedRef.current) {
+    hydratedRef.current = true;
+    const days = Array.isArray(savedPlan.days) ? savedPlan.days as unknown as ProposalDay[] : [];
+    setPlan({
+      trip_title: savedPlan.trip_title || '',
+      narrative: savedPlan.narrative || '',
+      days,
+    });
+  }
 
   // Check missing fields
   const missingFields: string[] = [];
