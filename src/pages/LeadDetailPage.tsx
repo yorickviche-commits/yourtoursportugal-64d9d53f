@@ -14,6 +14,7 @@ import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { LeadStatus } from '@/types/leads';
 import TravelPlannerEditor, { PlannerDay, PlannerItem, PeriodKey, emptyPeriods, genId } from '@/components/trip/TravelPlannerEditor';
+import TravelPlanProposal from '@/components/trip/TravelPlanProposal';
 import ItineraryEditor from '@/components/itinerary/ItineraryEditor';
 import EditableCostingTable, { CostingDayData, CostingItem } from '@/components/trip/EditableCostingTable';
 import LeadCostingEditor, { LeadCostingDay, LeadCostItem } from '@/components/trip/LeadCostingEditor';
@@ -500,6 +501,7 @@ const LeadDetailPage = () => {
   const [aiResults, setAiResults] = useState<Record<string, any>>({});
   const [plannerDays, setPlannerDays] = useState<PlannerDay[]>([]);
   const [costingDays, setCostingDays] = useState<LeadCostingDay[]>([]);
+  const [plannerSubTab, setPlannerSubTab] = useState<'operational' | 'proposal'>('operational');
   const [finalPrice, setFinalPrice] = useState(0);
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -1034,26 +1036,61 @@ const LeadDetailPage = () => {
         {/* Travel Planner */}
         {activeTab === 'travel_planner' && (
           <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <h3 className="text-sm font-bold text-foreground">Travel Planner</h3>
-              <Button size="sm" className="text-xs gap-1 bg-gradient-to-r from-[hsl(var(--info))] to-[hsl(var(--info)/0.7)] text-white" onClick={() => generateAI('travel_planner')} disabled={aiLoading === 'travel_planner'}>
-                {aiLoading === 'travel_planner' ? <><Loader2 className="h-3 w-3 animate-spin" /> A gerar...</> : '🤖 Gerar com AI'}
-              </Button>
+            {/* Sub-tabs: Planner Operacional | Proposta Cliente */}
+            <div className="flex items-center gap-0 border-b">
+              <button onClick={() => setPlannerSubTab('operational')} className={cn("px-4 py-2 text-xs font-medium border-b-2 transition-colors -mb-px", plannerSubTab === 'operational' ? "border-[hsl(var(--info))] text-[hsl(var(--info))]" : "border-transparent text-muted-foreground hover:text-foreground")}>
+                🗂 Planner Operacional
+              </button>
+              <button onClick={() => setPlannerSubTab('proposal')} className={cn("px-4 py-2 text-xs font-medium border-b-2 transition-colors -mb-px", plannerSubTab === 'proposal' ? "border-[hsl(var(--info))] text-[hsl(var(--info))]" : "border-transparent text-muted-foreground hover:text-foreground")}>
+                ✨ Proposta Cliente
+              </button>
             </div>
-            <div className="bg-muted/50 rounded-lg border p-3 text-xs space-y-1">
-              <p><span className="font-medium">Cliente:</span> {formState.clientName} · <span className="font-medium">Destino:</span> {destino.join(', ') || 'A definir'}</p>
-              <p><span className="font-medium">Datas:</span> {formState.datesType === 'flexible' ? `${formState.numberOfDays} dias` : `${formState.travelDates}${formState.travelEndDate ? ` → ${formState.travelEndDate}` : ''}`} · <span className="font-medium">Pax:</span> {formState.pax} adt + {formState.paxChildren} chl</p>
-              <p><span className="font-medium">Estilos:</span> {travelStyles.join(', ') || '—'} · <span className="font-medium">Categoria:</span> {categoria[0] || '—'}</p>
-            </div>
-            <TravelPlannerEditor
-              days={plannerDays}
-              onChange={setPlannerDays}
-              onSave={async (days) => {
-                await savePlannerData(days);
-                toast({ title: 'Plano guardado!', description: `${days.length} dias salvos com sucesso.` });
-              }}
-              saving={false}
-            />
+
+            {plannerSubTab === 'operational' && (
+              <>
+                <div className="flex items-center justify-between">
+                  <h3 className="text-sm font-bold text-foreground">Travel Planner</h3>
+                  <Button size="sm" className="text-xs gap-1 bg-gradient-to-r from-[hsl(var(--info))] to-[hsl(var(--info)/0.7)] text-white" onClick={() => generateAI('travel_planner')} disabled={aiLoading === 'travel_planner'}>
+                    {aiLoading === 'travel_planner' ? <><Loader2 className="h-3 w-3 animate-spin" /> A gerar...</> : '🤖 Gerar com AI'}
+                  </Button>
+                </div>
+                <div className="bg-muted/50 rounded-lg border p-3 text-xs space-y-1">
+                  <p><span className="font-medium">Cliente:</span> {formState.clientName} · <span className="font-medium">Destino:</span> {destino.join(', ') || 'A definir'}</p>
+                  <p><span className="font-medium">Datas:</span> {formState.datesType === 'flexible' ? `${formState.numberOfDays} dias` : `${formState.travelDates}${formState.travelEndDate ? ` → ${formState.travelEndDate}` : ''}`} · <span className="font-medium">Pax:</span> {formState.pax} adt + {formState.paxChildren} chl</p>
+                  <p><span className="font-medium">Estilos:</span> {travelStyles.join(', ') || '—'} · <span className="font-medium">Categoria:</span> {categoria[0] || '—'}</p>
+                </div>
+                <TravelPlannerEditor
+                  days={plannerDays}
+                  onChange={setPlannerDays}
+                  onSave={async (days) => {
+                    await savePlannerData(days);
+                    toast({ title: 'Plano guardado!', description: `${days.length} dias salvos com sucesso.` });
+                  }}
+                  saving={false}
+                />
+              </>
+            )}
+
+            {plannerSubTab === 'proposal' && (
+              <TravelPlanProposal
+                leadId={lead.id}
+                leadCode={lead.lead_code}
+                clientName={formState.clientName}
+                destination={destino.join(', ') || lead.destination || ''}
+                travelDates={formState.travelDates}
+                travelEndDate={formState.travelEndDate}
+                numberOfDays={formState.numberOfDays}
+                datesType={formState.datesType}
+                pax={formState.pax}
+                paxChildren={formState.paxChildren}
+                paxInfants={formState.paxInfants}
+                travelStyles={travelStyles}
+                comfortLevel={categoria[0] || ''}
+                budgetLevel={formState.budgetLevel}
+                magicQuestion={lead.magic_question || undefined}
+                notes={formState.notes}
+              />
+            )}
           </div>
         )}
 
