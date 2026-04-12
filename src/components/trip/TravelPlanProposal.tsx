@@ -496,6 +496,7 @@ const TravelPlanProposal = ({
         title: d.title,
         subtitle: d.subtitle || '',
         cover_image_url: d.images?.[0]?.url || '',
+        images: (d.images || []).map(img => ({ url: img.url, caption: img.caption || '' })),
         items: d.bullets.map(b => typeof b === 'string' ? b : b.text),
         accommodation: d.overnight ? { label: d.overnight, hotel_name: d.overnight, note: '' } : null,
       }));
