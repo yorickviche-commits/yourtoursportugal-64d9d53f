@@ -10,12 +10,18 @@ import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { cn } from '@/lib/utils';
+import ProposalImagePicker from './ProposalImagePicker';
 
 // ─── Types ───────────────────────────────────────────────
+export interface ProposalImage {
+  url: string;
+  caption?: string;
+}
+
 export interface ProposalBullet {
   text: string;
   durationValue?: number;
-  durationUnit?: 'hours' | 'minutes' | 'days';
+  durationUnit?: 'hours' | 'minutes' | 'days' | 'night';
   startTime?: string;
   endTime?: string;
 }
@@ -27,11 +33,13 @@ export interface ProposalDay {
   subtitle: string;
   bullets: (string | ProposalBullet)[];
   overnight: string;
+  images?: ProposalImage[];
 }
 
 export interface TravelPlanData {
   trip_title: string;
   narrative: string;
+  cover_image?: ProposalImage;
   days: ProposalDay[];
 }
 
@@ -319,7 +327,13 @@ const TravelPlanProposal = ({
   if (savedPlan && !plan && !hydratedRef.current) {
     hydratedRef.current = true;
     const days = Array.isArray(savedPlan.days) ? savedPlan.days as unknown as ProposalDay[] : [];
-    setPlan({ trip_title: savedPlan.trip_title || '', narrative: savedPlan.narrative || '', days });
+    // Restore cover_image from extra_instructions metadata
+    let cover_image: ProposalImage | undefined;
+    try {
+      const meta = savedPlan.extra_instructions ? JSON.parse(savedPlan.extra_instructions) : null;
+      if (meta?.cover_image) cover_image = meta.cover_image;
+    } catch { /* not JSON, ignore */ }
+    setPlan({ trip_title: savedPlan.trip_title || '', narrative: savedPlan.narrative || '', cover_image, days });
   }
 
   const missingFields: string[] = [];
@@ -334,6 +348,43 @@ const TravelPlanProposal = ({
     paxInfants, travelStyles, comfortLevel, budgetLevel, magicQuestion, notes,
   };
 
+  // Auto-fetch images for a plan
+  const autoFetchImages = useCallback(async (planData: TravelPlanData) => {
+    try {
+      // 1. Cover image from destination
+      const coverQuery = `${destination} Portugal travel landscape`;
+      const { data: coverData } = await supabase.functions.invoke('search-destination-images', {
+        body: { query: coverQuery, count: 1, mode: 'search' },
+      });
+      const coverImg = coverData?.images?.[0];
+      
+      // 2. Day images (2 per day) — fire in parallel
+      const dayPromises = planData.days.map(async (day) => {
+        const dayContext = `${day.overnight || destination} ${day.subtitle || day.title} Portugal`;
+        const { data: dayData } = await supabase.functions.invoke('search-destination-images', {
+          body: { query: dayContext, count: 2, mode: 'search' },
+        });
+        return (dayData?.images || []).slice(0, 2) as ProposalImage[];
+      });
+
+      const dayImages = await Promise.all(dayPromises);
+
+      setPlan(prev => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          cover_image: coverImg ? { url: coverImg.url, caption: coverImg.caption } : prev.cover_image,
+          days: prev.days.map((d, i) => ({
+            ...d,
+            images: dayImages[i]?.length ? dayImages[i] : d.images,
+          })),
+        };
+      });
+    } catch (e) {
+      console.error('Auto-fetch images failed:', e);
+    }
+  }, [destination]);
+
   // Generate full plan
   const handleGenerate = useCallback(async (extra?: string) => {
     setGenerating(true);
@@ -343,10 +394,13 @@ const TravelPlanProposal = ({
       });
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
-      setPlan(data.result);
+      const result = data.result as TravelPlanData;
+      setPlan(result);
       setViewMode('preview');
       setShowRegenInput(false);
-      toast({ title: '✨ Plano gerado!', description: `${data.result.days?.length || 0} dias criados.` });
+      toast({ title: '✨ Plano gerado!', description: `${result.days?.length || 0} dias criados. A carregar imagens...` });
+      // Auto-fetch images in background
+      autoFetchImages(result);
     } catch (e: any) {
       toast({ title: 'Erro na geração', description: e.message, variant: 'destructive' });
     } finally {
@@ -423,10 +477,13 @@ const TravelPlanProposal = ({
       const endDate = plan.days[plan.days.length - 1]?.date || travelEndDate || null;
       const paxStr = `${pax} adult${pax > 1 ? 's' : ''}${paxChildren ? ` + ${paxChildren} children` : ''}`;
       await supabase.from('travel_plans').delete().eq('lead_id', leadId);
+      // Store cover_image in extra_instructions as JSON metadata
+      const metadata = JSON.stringify({ cover_image: plan.cover_image || null });
       const { error } = await supabase.from('travel_plans').insert({
         lead_id: leadId, file_id: leadCode, trip_title: plan.trip_title,
         client_name: clientName, start_date: startDate, end_date: endDate,
-        pax: paxStr, narrative: plan.narrative, days: plan.days as any, status: 'draft',
+        pax: paxStr, narrative: plan.narrative, days: plan.days as any,
+        extra_instructions: metadata, status: 'draft',
       });
       if (error) throw error;
       queryClient.invalidateQueries({ queryKey: ['travel_plan', leadId] });
@@ -548,10 +605,17 @@ const TravelPlanProposal = ({
     );
   }
 
-  const displayPlan = plan || (savedPlan ? {
-    trip_title: savedPlan.trip_title, narrative: savedPlan.narrative || '',
-    days: (Array.isArray(savedPlan.days) ? savedPlan.days : []) as unknown as ProposalDay[],
-  } : null);
+  const displayPlan = plan || (savedPlan ? (() => {
+    let cover_image: ProposalImage | undefined;
+    try {
+      const meta = savedPlan.extra_instructions ? JSON.parse(savedPlan.extra_instructions) : null;
+      if (meta?.cover_image) cover_image = meta.cover_image;
+    } catch { /* ignore */ }
+    return {
+      trip_title: savedPlan.trip_title, narrative: savedPlan.narrative || '', cover_image,
+      days: (Array.isArray(savedPlan.days) ? savedPlan.days : []) as unknown as ProposalDay[],
+    };
+  })() : null);
 
   if (!displayPlan) return null;
 
@@ -594,6 +658,26 @@ const TravelPlanProposal = ({
 
       {/* ─── PROPOSAL ─── */}
       <div className="bg-white rounded-xl border shadow-sm overflow-hidden print:shadow-none print:border-0">
+        {/* COVER IMAGE */}
+        {viewMode === 'edit' && (
+          <div className="p-4 pb-0 print:hidden">
+            <p className="text-[10px] uppercase font-bold text-muted-foreground mb-2">Imagem de Capa (Landscape)</p>
+            <ProposalImagePicker
+              currentUrl={displayPlan.cover_image?.url}
+              onSelect={url => setPlan(p => p ? { ...p, cover_image: { url, caption: destination } } : p)}
+              onRemove={() => setPlan(p => p ? { ...p, cover_image: undefined } : p)}
+              searchContext={`${destination} Portugal panoramic travel`}
+              className="max-h-48"
+              aspectRatio="landscape"
+            />
+          </div>
+        )}
+        {viewMode === 'preview' && displayPlan.cover_image?.url && (
+          <div className="w-full aspect-[21/9] overflow-hidden">
+            <img src={displayPlan.cover_image.url} alt={destination} className="w-full h-full object-cover" />
+          </div>
+        )}
+
         {/* HERO / COVER */}
         <div className="relative">
           <div className="bg-gradient-to-br from-slate-900 via-slate-800 to-slate-700 text-white p-8 md:p-12">
@@ -764,6 +848,61 @@ const TravelPlanProposal = ({
                       )}
                     </div>
                   )}
+
+                  {/* Day Images (2 per day) */}
+                  <div className="px-6 md:px-8 pb-4">
+                    {viewMode === 'edit' ? (
+                      <div className="space-y-2">
+                        <p className="text-[10px] uppercase font-bold text-muted-foreground">Imagens do Dia {day.day_number}</p>
+                        <div className="grid grid-cols-2 gap-3">
+                          {[0, 1].map(imgIdx => {
+                            const img = day.images?.[imgIdx];
+                            const imgContext = `${day.overnight || destination} ${day.subtitle || day.title} Portugal travel`;
+                            return (
+                              <ProposalImagePicker
+                                key={imgIdx}
+                                currentUrl={img?.url}
+                                onSelect={url => {
+                                  setPlan(p => {
+                                    if (!p) return p;
+                                    const newDays = [...p.days];
+                                    const imgs = [...(newDays[dayIdx].images || [])];
+                                    imgs[imgIdx] = { url, caption: day.subtitle };
+                                    // Ensure array has no gaps
+                                    while (imgs.length < imgIdx + 1) imgs.push({ url: '', caption: '' });
+                                    newDays[dayIdx] = { ...newDays[dayIdx], images: imgs };
+                                    return { ...p, days: newDays };
+                                  });
+                                }}
+                                onRemove={() => {
+                                  setPlan(p => {
+                                    if (!p) return p;
+                                    const newDays = [...p.days];
+                                    const imgs = [...(newDays[dayIdx].images || [])];
+                                    imgs[imgIdx] = { url: '', caption: '' };
+                                    newDays[dayIdx] = { ...newDays[dayIdx], images: imgs.filter(i => i.url) };
+                                    return { ...p, days: newDays };
+                                  });
+                                }}
+                                searchContext={imgContext}
+                                aspectRatio="landscape"
+                              />
+                            );
+                          })}
+                        </div>
+                      </div>
+                    ) : (
+                      day.images && day.images.filter(i => i.url).length > 0 && (
+                        <div className="grid grid-cols-2 gap-3 mt-4">
+                          {day.images.filter(i => i.url).map((img, i) => (
+                            <div key={i} className="rounded-lg overflow-hidden aspect-[16/10]">
+                              <img src={img.url} alt={img.caption || day.title} className="w-full h-full object-cover" />
+                            </div>
+                          ))}
+                        </div>
+                      )
+                    )}
+                  </div>
                 </div>
 
                 {/* AI Chat panel for this day */}
