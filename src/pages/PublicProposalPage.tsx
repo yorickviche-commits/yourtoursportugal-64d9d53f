@@ -264,21 +264,11 @@ const PublicProposalPage = () => {
           <section id="map">
             <h2 className="text-2xl font-serif text-stone-800 mb-4">Carte du voyage</h2>
             <div className="rounded-2xl overflow-hidden border border-stone-200 shadow-sm h-[400px]">
-              <MapContainer
-                center={[proposal.map_stops[0].lat, proposal.map_stops[0].lng]}
-                zoom={7}
-                className="h-full w-full"
-                scrollWheelZoom={false}
-              >
-                <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" attribution="&copy; OSM" />
-                {proposal.map_stops.map((stop, i) => (
-                  <Marker key={i} position={[stop.lat, stop.lng]}>
-                    <Popup>
-                      <strong>{stop.label}</strong><br />{stop.address}
-                    </Popup>
-                  </Marker>
-                ))}
-              </MapContainer>
+              <MapErrorBoundary>
+                <Suspense fallback={<div className="h-full flex items-center justify-center bg-stone-100 text-stone-400">Chargement de la carte...</div>}>
+                  <LazyMap stops={proposal.map_stops} />
+                </Suspense>
+              </MapErrorBoundary>
             </div>
           </section>
         )}
