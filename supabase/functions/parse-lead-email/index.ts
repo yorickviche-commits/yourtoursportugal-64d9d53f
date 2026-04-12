@@ -24,6 +24,11 @@ const toolDef = {
         destination: { type: "string", description: "Desired destination in Portugal" },
         request: { type: "string", description: "Main request or what the client is looking for" },
         preferences: { type: "string", description: "Specific preferences, interests, or requirements" },
+        travelStartDate: { type: "string", description: "Start date of travel in YYYY-MM-DD format if determinable, otherwise null" },
+        travelEndDate: { type: "string", description: "End date of travel in YYYY-MM-DD format if determinable, otherwise null" },
+        numberOfDays: { type: "number", description: "Number of travel days if mentioned or calculable from dates" },
+        travelStyle: { type: "array", items: { type: "string" }, description: "Travel styles detected: e.g. 'Cultural', 'Gastronomy', 'Wine', 'Adventure', 'Nature', 'Romantic', 'Family', 'Luxury', 'Beach', 'History', 'Photography', 'Wellness'" },
+        comfortLevel: { type: "string", enum: ["budget", "standard", "superior", "luxury"], description: "Comfort/accommodation level inferred from budget, preferences or explicit mention" },
       },
       required: ["clientName"],
       additionalProperties: false,
@@ -36,8 +41,11 @@ Extract client and trip information from email conversations.
 Always respond using the extract_lead_data tool.
 If a field cannot be determined from the email, leave it as null.
 For dates, indicate if they are concrete or estimated/flexible.
+When dates are mentioned, also extract travelStartDate and travelEndDate in YYYY-MM-DD format. Calculate numberOfDays from the date range if possible.
 For language, detect from the email language (EN, PT, FR, ES, DE, IT, NL).
-Budget should be extracted if mentioned, otherwise null.`;
+Budget should be extracted if mentioned, otherwise null.
+For travelStyle, infer from context: wine tours → Wine, food mentions → Gastronomy, history/monuments → Cultural/History, hiking/outdoors → Adventure/Nature, honeymoon/couples → Romantic, kids → Family, spa/retreat → Wellness, etc. Multiple styles can apply.
+For comfortLevel, infer from budget level, hotel preferences, or explicit mentions: budget travelers → budget, mid-range → standard, upscale/boutique → superior, 5-star/luxury mentions → luxury.`;
 
 async function callLovableGateway(emailText: string) {
   const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
@@ -76,7 +84,7 @@ async function callGeminiFallback(emailText: string) {
   const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY");
   if (!GEMINI_API_KEY) throw new Error("No fallback API key available");
 
-  const prompt = `${systemPrompt}\n\nExtract the lead data from this email conversation and return ONLY valid JSON with these fields: clientName, email, phone, travelDates, datesType (concrete|estimated), pax (number), language (EN|PT|FR|ES|DE|IT|NL), budget, destination, request, preferences. If unknown, use null.\n\nEmail:\n${emailText.slice(0, 8000)}`;
+  const prompt = `${systemPrompt}\n\nExtract the lead data from this email conversation and return ONLY valid JSON with these fields: clientName, email, phone, travelDates, datesType (concrete|estimated), pax (number), language (EN|PT|FR|ES|DE|IT|NL), budget, destination, request, preferences, travelStartDate (YYYY-MM-DD or null), travelEndDate (YYYY-MM-DD or null), numberOfDays (number or null), travelStyle (array of strings or []), comfortLevel (budget|standard|superior|luxury or null). If unknown, use null.\n\nEmail:\n${emailText.slice(0, 8000)}`;
 
   const response = await fetch(
     `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`,
