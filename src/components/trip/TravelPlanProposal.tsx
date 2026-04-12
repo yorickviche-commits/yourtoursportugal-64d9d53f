@@ -225,9 +225,9 @@ function DurationSelector({
   onValueChange: (v: number) => void;
   onUnitChange: (u: 'hours' | 'minutes' | 'days' | 'night') => void;
 }) {
-  const [localVal, setLocalVal] = React.useState(value?.toString() || '');
+  const [localVal, setLocalVal] = useState(value?.toString() || '');
 
-  React.useEffect(() => {
+  useEffect(() => {
     setLocalVal(value?.toString() || '');
   }, [value]);
 
