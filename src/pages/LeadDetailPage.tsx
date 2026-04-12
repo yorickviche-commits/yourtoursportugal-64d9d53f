@@ -581,7 +581,7 @@ const LeadProposalsTab = ({ leadId, clientName }: { leadId: string; clientName: 
   );
 };
 
-
+const LeadDetailPage = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { data: lead, isLoading } = useLeadQuery(id);
