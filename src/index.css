@@ -176,3 +176,56 @@
     50% { opacity: 0; }
   }
 }
+
+/* ─── Print / PDF styles ─── */
+@media print {
+  /* Hide sidebar, FAB, and all non-print elements */
+  nav, aside, header,
+  .print\\:hidden,
+  [data-sidebar],
+  [class*="AppSidebar"],
+  [class*="NewLeadFAB"],
+  [class*="fixed"] {
+    display: none !important;
+  }
+
+  /* Remove sidebar margin, full width */
+  main {
+    margin-left: 0 !important;
+    padding: 0 !important;
+    max-width: 100% !important;
+    width: 100% !important;
+  }
+
+  body, html {
+    background: white !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+    color-adjust: exact !important;
+  }
+
+  /* Force background colors to print */
+  * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  /* Full width for the proposal card */
+  .bg-white.rounded-xl {
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    border: none !important;
+  }
+
+  /* Ensure gradient hero section prints with background */
+  .bg-gradient-to-br {
+    background: linear-gradient(to bottom right, #0f172a, #1e293b, #334155) !important;
+    color: white !important;
+  }
+
+  /* Page margins */
+  @page {
+    margin: 0;
+    size: A4;
+  }
+}

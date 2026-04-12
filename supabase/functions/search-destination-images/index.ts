@@ -6,7 +6,7 @@ const corsHeaders = {
 };
 
 // Search Unsplash API for real, relevant images
-async function searchUnsplash(query: string, count: number): Promise<{ url: string; caption: string }[]> {
+async function searchUnsplash(query: string, count: number, page: number = 1): Promise<{ url: string; caption: string }[]> {
   const UNSPLASH_KEY = Deno.env.get('UNSPLASH_ACCESS_KEY');
   if (!UNSPLASH_KEY) {
     console.log('No UNSPLASH_ACCESS_KEY configured');
@@ -16,7 +16,8 @@ async function searchUnsplash(query: string, count: number): Promise<{ url: stri
   try {
     const params = new URLSearchParams({
       query: query,
-      per_page: String(Math.min(count, 10)),
+      per_page: String(Math.min(count, 30)),
+      page: String(page),
       orientation: 'landscape',
       content_filter: 'high',
     });
@@ -87,19 +88,16 @@ serve(async (req) => {
   }
 
   try {
-    const { query, count = 3, mode = 'search' } = await req.json();
-    // mode: 'search' = Unsplash + AI fallback, 'generate' = AI only (for single regen)
+    const { query, count = 20, page = 1, mode = 'search' } = await req.json();
 
     if (mode === 'generate') {
-      // Generate a single AI image
       const result = await generateWithAI(query);
       return new Response(JSON.stringify({ images: result ? [result] : [] }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
 
-    // Default: search Unsplash first
-    let images = await searchUnsplash(query, count);
+    let images = await searchUnsplash(query, count, page);
 
     // If Unsplash returned fewer than requested, fill with AI-generated
     if (images.length < count) {
