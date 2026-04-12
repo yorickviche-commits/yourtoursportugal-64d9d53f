@@ -864,7 +864,6 @@ const LeadDetailPage = () => {
               </DropdownMenu>
             </div>
             <div className="flex items-center gap-2">
-              <AgentPipelineButton leadId={lead.id} leadName={formState.clientName} />
               <Button variant="outline" size="sm" className="text-xs">Pagamento</Button>
               <div className="bg-destructive text-destructive-foreground text-xs font-bold px-3 py-1.5 rounded">NOT PAID 0€ - {formState.budgetLevel}</div>
             </div>
