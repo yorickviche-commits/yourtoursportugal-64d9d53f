@@ -605,10 +605,17 @@ const TravelPlanProposal = ({
     );
   }
 
-  const displayPlan = plan || (savedPlan ? {
-    trip_title: savedPlan.trip_title, narrative: savedPlan.narrative || '',
-    days: (Array.isArray(savedPlan.days) ? savedPlan.days : []) as unknown as ProposalDay[],
-  } : null);
+  const displayPlan = plan || (savedPlan ? (() => {
+    let cover_image: ProposalImage | undefined;
+    try {
+      const meta = savedPlan.extra_instructions ? JSON.parse(savedPlan.extra_instructions) : null;
+      if (meta?.cover_image) cover_image = meta.cover_image;
+    } catch { /* ignore */ }
+    return {
+      trip_title: savedPlan.trip_title, narrative: savedPlan.narrative || '', cover_image,
+      days: (Array.isArray(savedPlan.days) ? savedPlan.days : []) as unknown as ProposalDay[],
+    };
+  })() : null);
 
   if (!displayPlan) return null;
 
