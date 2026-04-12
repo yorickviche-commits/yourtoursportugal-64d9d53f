@@ -15,7 +15,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { LeadStatus } from '@/types/leads';
 import TravelPlannerEditor, { PlannerDay, PlannerItem, PeriodKey, emptyPeriods, genId } from '@/components/trip/TravelPlannerEditor';
 import TravelPlanProposal from '@/components/trip/TravelPlanProposal';
-import { useProposalsQuery, useCreateProposal } from '@/hooks/useProposalsQuery';
+import { useProposalsQuery, useCreateProposal, useProposalAnnotations } from '@/hooks/useProposalsQuery';
 import { toast } from 'sonner';
 // ItineraryEditor removed — replaced by Propostas tab
 import EditableCostingTable, { CostingDayData, CostingItem } from '@/components/trip/EditableCostingTable';
@@ -503,6 +503,57 @@ const statusLabels: Record<string, string> = {
   revision_requested: 'Alterações pedidas', confirmed: 'Confirmada',
 };
 
+const ProposalAnnotationsPreview = ({ proposalId }: { proposalId: string }) => {
+  const { data: annotations = [] } = useProposalAnnotations(proposalId);
+  const unresolved = annotations.filter(a => !a.is_resolved && !a.parent_id);
+  const clientNotes = unresolved.filter(a => a.author_type === 'client');
+  const teamNotes = unresolved.filter(a => a.author_type === 'ytp_team');
+
+  if (annotations.length === 0) return <p className="text-xs text-muted-foreground italic">Sem comentários</p>;
+
+  return (
+    <div className="space-y-2 mt-3">
+      <div className="flex items-center gap-3 text-xs">
+        {clientNotes.length > 0 && (
+          <span className="flex items-center gap-1 text-amber-600">
+            <span className="h-2 w-2 rounded-full bg-amber-500" />
+            {clientNotes.length} nota{clientNotes.length > 1 ? 's' : ''} do cliente
+          </span>
+        )}
+        {teamNotes.length > 0 && (
+          <span className="flex items-center gap-1 text-blue-600">
+            <span className="h-2 w-2 rounded-full bg-blue-500" />
+            {teamNotes.length} resposta{teamNotes.length > 1 ? 's' : ''} YTP
+          </span>
+        )}
+        {unresolved.length === 0 && annotations.length > 0 && (
+          <span className="flex items-center gap-1 text-emerald-600">
+            <span className="h-2 w-2 rounded-full bg-emerald-500" />
+            Tudo resolvido
+          </span>
+        )}
+      </div>
+      {clientNotes.slice(0, 3).map(a => (
+        <div key={a.id} className="bg-amber-50 border border-amber-200 rounded-lg p-2.5 text-xs">
+          <div className="flex items-center justify-between mb-1">
+            <span className="font-medium text-amber-800">{a.author_name}</span>
+            <span className="text-amber-500 text-[10px]">{new Date(a.created_at).toLocaleDateString('pt-PT')}</span>
+          </div>
+          <p className="text-amber-900 line-clamp-2">{a.content}</p>
+          {a.level !== 'proposal' && (
+            <span className="text-[10px] mt-1 inline-block bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded">
+              {a.level === 'day' ? `Dia ${(a.target_day_index ?? 0) + 1}` : `Dia ${(a.target_day_index ?? 0) + 1} › Item ${(a.target_item_index ?? 0) + 1}`}
+            </span>
+          )}
+        </div>
+      ))}
+      {clientNotes.length > 3 && (
+        <p className="text-[10px] text-muted-foreground">+{clientNotes.length - 3} mais comentários...</p>
+      )}
+    </div>
+  );
+};
+
 const LeadProposalsTab = ({ leadId, clientName }: { leadId: string; clientName: string }) => {
   const { data: allProposals = [], isLoading } = useProposalsQuery();
   const proposals = allProposals.filter(p => p.lead_id === leadId);
@@ -542,13 +593,10 @@ const LeadProposalsTab = ({ leadId, clientName }: { leadId: string; clientName: 
       ) : proposals.length === 0 ? (
         <div className="text-muted-foreground text-sm py-8 text-center">Nenhuma proposta criada para esta lead</div>
       ) : (
-        <div className="space-y-2">
+        <div className="space-y-3">
           {proposals.map(p => (
-            <div
-              key={p.id}
-              onClick={() => navigate(`/proposals/${p.id}`)}
-              className="bg-card rounded-xl border border-border p-4 cursor-pointer hover:shadow-md transition-shadow"
-            >
+            <div key={p.id} className="bg-card rounded-xl border border-border p-4 hover:shadow-md transition-shadow">
+              {/* Header row */}
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2 mb-1">
@@ -564,14 +612,31 @@ const LeadProposalsTab = ({ leadId, clientName }: { leadId: string; clientName: 
                     <span>• {new Date(p.created_at).toLocaleDateString('pt-PT')}</span>
                   </div>
                 </div>
-                <div className="flex gap-1 shrink-0">
-                  <button onClick={e => { e.stopPropagation(); copyLink(p.public_token); }} className="p-2 hover:bg-muted rounded-lg" title="Copiar link">
-                    <Copy className="h-4 w-4 text-muted-foreground" />
-                  </button>
-                  <a href={`/proposal/${p.public_token}`} target="_blank" rel="noopener" onClick={e => e.stopPropagation()} className="p-2 hover:bg-muted rounded-lg" title="Ver proposta">
-                    <ExternalLink className="h-4 w-4 text-muted-foreground" />
-                  </a>
-                </div>
+              </div>
+
+              {/* Public link */}
+              <div className="mt-3 flex items-center gap-2 bg-muted/50 rounded-lg p-2">
+                <span className="text-[10px] text-muted-foreground shrink-0">Link público:</span>
+                <code className="text-[11px] text-primary truncate flex-1">{window.location.origin}/proposal/{p.public_token}</code>
+                <button onClick={() => copyLink(p.public_token)} className="p-1.5 hover:bg-muted rounded-md shrink-0" title="Copiar link">
+                  <Copy className="h-3.5 w-3.5 text-muted-foreground" />
+                </button>
+                <a href={`/proposal/${p.public_token}`} target="_blank" rel="noopener" className="p-1.5 hover:bg-muted rounded-md shrink-0" title="Abrir proposta">
+                  <ExternalLink className="h-3.5 w-3.5 text-muted-foreground" />
+                </a>
+              </div>
+
+              {/* Annotations preview */}
+              <ProposalAnnotationsPreview proposalId={p.id} />
+
+              {/* Actions */}
+              <div className="mt-3 flex gap-2 border-t border-border pt-3">
+                <Button variant="outline" size="sm" className="text-xs h-7" onClick={() => navigate(`/proposals/${p.id}`)}>
+                  <Eye className="h-3.5 w-3.5 mr-1" /> Ver detalhes & responder
+                </Button>
+                <Button variant="ghost" size="sm" className="text-xs h-7" onClick={() => navigate(`/proposals/${p.id}/edit`)}>
+                  <FileText className="h-3.5 w-3.5 mr-1" /> Editar
+                </Button>
               </div>
             </div>
           ))}
