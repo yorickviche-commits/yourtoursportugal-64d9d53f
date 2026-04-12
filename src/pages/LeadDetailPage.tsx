@@ -15,7 +15,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { LeadStatus } from '@/types/leads';
 import TravelPlannerEditor, { PlannerDay, PlannerItem, PeriodKey, emptyPeriods, genId } from '@/components/trip/TravelPlannerEditor';
 import TravelPlanProposal from '@/components/trip/TravelPlanProposal';
-import { useProposalsQuery, useCreateProposal, useProposalAnnotations } from '@/hooks/useProposalsQuery';
+import { useProposalsQuery, useProposalAnnotations } from '@/hooks/useProposalsQuery';
 import { toast } from 'sonner';
 // ItineraryEditor removed — replaced by Propostas tab
 import EditableCostingTable, { CostingDayData, CostingItem } from '@/components/trip/EditableCostingTable';
@@ -558,22 +558,6 @@ const LeadProposalsTab = ({ leadId, clientName }: { leadId: string; clientName: 
   const { data: allProposals = [], isLoading } = useProposalsQuery();
   const proposals = allProposals.filter(p => p.lead_id === leadId);
   const navigate = useNavigate();
-  const createProposal = useCreateProposal();
-
-  const handleNew = async () => {
-    const token = `ytp-${Date.now().toString(36)}`;
-    const result = await createProposal.mutateAsync({
-      public_token: token,
-      client_name: clientName || 'Cliente',
-      title: 'Nova Proposta',
-      lead_id: leadId,
-      status: 'draft',
-      days: [],
-      map_stops: [],
-      language: 'pt',
-    });
-    if (result?.id) navigate(`/proposals/${result.id}/edit`);
-  };
 
   const copyLink = (token: string) => {
     navigator.clipboard.writeText(`${window.location.origin}/proposal/${token}`);
@@ -582,16 +566,15 @@ const LeadProposalsTab = ({ leadId, clientName }: { leadId: string; clientName: 
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <h2 className="text-sm font-semibold">Propostas desta Lead</h2>
-        <Button onClick={handleNew} size="sm" disabled={createProposal.isPending}>
-          <Plus className="h-4 w-4 mr-1" /> Nova Proposta
-        </Button>
-      </div>
+      <h2 className="text-sm font-semibold">Links & Feedback do Cliente</h2>
       {isLoading ? (
         <div className="text-muted-foreground text-sm py-8 text-center">A carregar...</div>
       ) : proposals.length === 0 ? (
-        <div className="text-muted-foreground text-sm py-8 text-center">Nenhuma proposta criada para esta lead</div>
+        <div className="bg-muted/30 rounded-xl border border-border p-6 text-center space-y-2">
+          <FileText className="h-8 w-8 text-muted-foreground mx-auto" />
+          <p className="text-sm text-muted-foreground">Nenhuma proposta gerada ainda.</p>
+          <p className="text-xs text-muted-foreground">Guarda o Travel Planner para gerar automaticamente o link público da proposta.</p>
+        </div>
       ) : (
         <div className="space-y-3">
           {proposals.map(p => (
@@ -603,26 +586,26 @@ const LeadProposalsTab = ({ leadId, clientName }: { leadId: string; clientName: 
                     <span className={cn("text-[10px] px-2 py-0.5 rounded-full font-medium", statusColors[p.status] || statusColors.draft)}>
                       {statusLabels[p.status] || p.status}
                     </span>
-                    {p.booking_ref && <span className="text-xs text-muted-foreground font-mono">{p.booking_ref}</span>}
+                    {p.sent_at && <span className="text-[10px] text-muted-foreground">Enviada {new Date(p.sent_at).toLocaleDateString('pt-PT')}</span>}
                   </div>
                   <h3 className="text-sm font-semibold truncate">{p.title}</h3>
                   <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground">
                     {p.date_range && <span>{p.date_range}</span>}
                     {p.participants && <span>• {p.participants}</span>}
-                    <span>• {new Date(p.created_at).toLocaleDateString('pt-PT')}</span>
+                    <span>• {p.days.length} dias</span>
                   </div>
                 </div>
               </div>
 
-              {/* Public link */}
-              <div className="mt-3 flex items-center gap-2 bg-muted/50 rounded-lg p-2">
-                <span className="text-[10px] text-muted-foreground shrink-0">Link público:</span>
-                <code className="text-[11px] text-primary truncate flex-1">{window.location.origin}/proposal/{p.public_token}</code>
-                <button onClick={() => copyLink(p.public_token)} className="p-1.5 hover:bg-muted rounded-md shrink-0" title="Copiar link">
-                  <Copy className="h-3.5 w-3.5 text-muted-foreground" />
+              {/* Public link — prominent */}
+              <div className="mt-3 flex items-center gap-2 bg-primary/5 border border-primary/20 rounded-lg p-2.5">
+                <ExternalLink className="h-4 w-4 text-primary shrink-0" />
+                <code className="text-[11px] text-primary truncate flex-1 font-medium">{window.location.origin}/proposal/{p.public_token}</code>
+                <button onClick={() => copyLink(p.public_token)} className="p-1.5 hover:bg-primary/10 rounded-md shrink-0" title="Copiar link">
+                  <Copy className="h-3.5 w-3.5 text-primary" />
                 </button>
-                <a href={`/proposal/${p.public_token}`} target="_blank" rel="noopener" className="p-1.5 hover:bg-muted rounded-md shrink-0" title="Abrir proposta">
-                  <ExternalLink className="h-3.5 w-3.5 text-muted-foreground" />
+                <a href={`/proposal/${p.public_token}`} target="_blank" rel="noopener" className="p-1.5 hover:bg-primary/10 rounded-md shrink-0" title="Abrir proposta">
+                  <Eye className="h-3.5 w-3.5 text-primary" />
                 </a>
               </div>
 
@@ -635,7 +618,7 @@ const LeadProposalsTab = ({ leadId, clientName }: { leadId: string; clientName: 
                   <Eye className="h-3.5 w-3.5 mr-1" /> Ver detalhes & responder
                 </Button>
                 <Button variant="ghost" size="sm" className="text-xs h-7" onClick={() => navigate(`/proposals/${p.id}/edit`)}>
-                  <FileText className="h-3.5 w-3.5 mr-1" /> Editar
+                  <FileText className="h-3.5 w-3.5 mr-1" /> Editar proposta
                 </Button>
               </div>
             </div>
