@@ -1,22 +1,29 @@
 import { useState, useCallback, useRef } from 'react';
-import { Sparkles, RefreshCw, Save, FileText, ArrowRight, Loader2, ChevronDown, ChevronRight, Edit3, Eye, AlertTriangle } from 'lucide-react';
+import { Sparkles, RefreshCw, Save, FileText, ArrowRight, Loader2, Edit3, Eye, AlertTriangle, Clock, Plus, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent } from '@/components/ui/card';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { cn } from '@/lib/utils';
 
 // ─── Types ───────────────────────────────────────────────
+export interface ProposalBullet {
+  text: string;
+  duration?: string;    // e.g. "2h", "45min"
+  startTime?: string;   // e.g. "09:00"
+  endTime?: string;     // e.g. "11:00"
+}
+
 export interface ProposalDay {
   day_number: number;
   title: string;
   date: string;
   subtitle: string;
-  bullets: string[];
+  bullets: (string | ProposalBullet)[];
   overnight: string;
 }
 
@@ -45,6 +52,30 @@ interface TravelPlanProposalProps {
   notes?: string;
 }
 
+// Helper to normalize bullets (support both string and object)
+function getBulletText(b: string | ProposalBullet): string {
+  return typeof b === 'string' ? b : b.text;
+}
+function toBulletObj(b: string | ProposalBullet): ProposalBullet {
+  return typeof b === 'string' ? { text: b } : b;
+}
+
+// ─── AI Section Regeneration ─────────────────────────────
+function SectionAIButton({ label, loading, onClick }: { label: string; loading: boolean; onClick: () => void }) {
+  return (
+    <Button
+      variant="ghost"
+      size="sm"
+      className="text-[10px] gap-1 h-6 px-2 text-[hsl(var(--info))] hover:text-[hsl(var(--info))] hover:bg-[hsl(var(--info))]/10"
+      onClick={onClick}
+      disabled={loading}
+    >
+      {loading ? <Loader2 className="h-3 w-3 animate-spin" /> : <Sparkles className="h-3 w-3" />}
+      {label}
+    </Button>
+  );
+}
+
 // ─── Component ───────────────────────────────────────────
 const TravelPlanProposal = ({
   leadId, leadCode, clientName, destination, travelDates, travelEndDate,
@@ -59,6 +90,7 @@ const TravelPlanProposal = ({
   const [plan, setPlan] = useState<TravelPlanData | null>(null);
   const [extraInstructions, setExtraInstructions] = useState('');
   const [showRegenInput, setShowRegenInput] = useState(false);
+  const [sectionLoading, setSectionLoading] = useState<string | null>(null);
 
   // Load saved plan from DB
   const { data: savedPlan, isLoading: loadingSaved } = useQuery({
@@ -94,28 +126,24 @@ const TravelPlanProposal = ({
   if (!destination) missingFields.push('Destino');
   if (!numberOfDays && !travelEndDate) missingFields.push('Nº de dias ou data fim');
   if (!pax) missingFields.push('Nº de participantes');
-
   const canGenerate = missingFields.length === 0;
 
-  // Generate plan
+  const leadData = {
+    clientName, fileId: leadCode, destination, travelDates,
+    travelEndDate, numberOfDays, datesType, pax, paxChildren,
+    paxInfants, travelStyles, comfortLevel, budgetLevel,
+    magicQuestion, notes,
+  };
+
+  // Generate full plan
   const handleGenerate = useCallback(async (extra?: string) => {
     setGenerating(true);
     try {
       const { data, error } = await supabase.functions.invoke('generate-travel-plan', {
-        body: {
-          leadData: {
-            clientName, fileId: leadCode, destination, travelDates,
-            travelEndDate, numberOfDays, datesType, pax, paxChildren,
-            paxInfants, travelStyles, comfortLevel, budgetLevel,
-            magicQuestion, notes,
-          },
-          extraInstructions: extra || undefined,
-        },
+        body: { leadData, extraInstructions: extra || undefined },
       });
-
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
-
       setPlan(data.result);
       setViewMode('preview');
       setShowRegenInput(false);
@@ -125,7 +153,63 @@ const TravelPlanProposal = ({
     } finally {
       setGenerating(false);
     }
-  }, [clientName, leadCode, destination, travelDates, travelEndDate, numberOfDays, datesType, pax, paxChildren, paxInfants, travelStyles, comfortLevel, budgetLevel, magicQuestion, notes, toast]);
+  }, [leadData, toast]);
+
+  // Regenerate a specific section
+  const handleSectionRegen = useCallback(async (section: string, instruction?: string) => {
+    if (!plan) return;
+    setSectionLoading(section);
+    try {
+      const sectionInstruction = section === 'narrative'
+        ? `Regenerate ONLY the trip_title and narrative. Keep all days exactly as they are. ${instruction || ''}`
+        : section === 'summary'
+          ? `Regenerate ONLY the day titles and subtitles for a better summary index. Keep all bullet content. ${instruction || ''}`
+          : section.startsWith('day_')
+            ? `Regenerate ONLY Day ${section.replace('day_', '')}. Keep all other days exactly as they are. ${instruction || ''}`
+            : instruction || '';
+
+      const { data, error } = await supabase.functions.invoke('generate-travel-plan', {
+        body: {
+          leadData,
+          extraInstructions: sectionInstruction,
+        },
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+
+      const result = data.result as TravelPlanData;
+
+      if (section === 'narrative') {
+        setPlan(p => p ? { ...p, trip_title: result.trip_title, narrative: result.narrative } : p);
+      } else if (section === 'summary') {
+        setPlan(p => {
+          if (!p) return p;
+          const newDays = p.days.map((d, i) => ({
+            ...d,
+            title: result.days[i]?.title || d.title,
+            subtitle: result.days[i]?.subtitle || d.subtitle,
+          }));
+          return { ...p, days: newDays };
+        });
+      } else if (section.startsWith('day_')) {
+        const dayNum = parseInt(section.replace('day_', ''));
+        const newDay = result.days.find(d => d.day_number === dayNum);
+        if (newDay) {
+          setPlan(p => {
+            if (!p) return p;
+            const newDays = p.days.map(d => d.day_number === dayNum ? { ...d, ...newDay } : d);
+            return { ...p, days: newDays };
+          });
+        }
+      }
+
+      toast({ title: '✨ Secção regenerada!' });
+    } catch (e: any) {
+      toast({ title: 'Erro', description: e.message, variant: 'destructive' });
+    } finally {
+      setSectionLoading(null);
+    }
+  }, [plan, leadData, toast]);
 
   // Save plan to DB
   const handleSave = useCallback(async () => {
@@ -135,25 +219,15 @@ const TravelPlanProposal = ({
       const startDate = plan.days[0]?.date || travelDates || null;
       const endDate = plan.days[plan.days.length - 1]?.date || travelEndDate || null;
       const paxStr = `${pax} adult${pax > 1 ? 's' : ''}${paxChildren ? ` + ${paxChildren} children` : ''}`;
-
-      // Upsert — delete old, insert new
       await supabase.from('travel_plans').delete().eq('lead_id', leadId);
       const { error } = await supabase.from('travel_plans').insert({
-        lead_id: leadId,
-        file_id: leadCode,
-        trip_title: plan.trip_title,
-        client_name: clientName,
-        start_date: startDate,
-        end_date: endDate,
-        pax: paxStr,
-        narrative: plan.narrative,
-        days: plan.days as any,
-        status: 'draft',
+        lead_id: leadId, file_id: leadCode, trip_title: plan.trip_title,
+        client_name: clientName, start_date: startDate, end_date: endDate,
+        pax: paxStr, narrative: plan.narrative, days: plan.days as any, status: 'draft',
       });
       if (error) throw error;
-
       queryClient.invalidateQueries({ queryKey: ['travel_plan', leadId] });
-      toast({ title: 'Plano guardado!', description: 'Travel Plan salvo com sucesso.' });
+      toast({ title: 'Plano guardado!' });
     } catch (e: any) {
       toast({ title: 'Erro ao guardar', description: e.message, variant: 'destructive' });
     } finally {
@@ -169,11 +243,12 @@ const TravelPlanProposal = ({
     setPlan({ ...plan, days: newDays });
   };
 
-  const updateBullet = (dayIdx: number, bulletIdx: number, value: string) => {
+  const updateBullet = (dayIdx: number, bulletIdx: number, field: keyof ProposalBullet, value: string) => {
     if (!plan) return;
     const newDays = [...plan.days];
     const bullets = [...newDays[dayIdx].bullets];
-    bullets[bulletIdx] = value;
+    const obj = toBulletObj(bullets[bulletIdx]);
+    bullets[bulletIdx] = { ...obj, [field]: value };
     newDays[dayIdx] = { ...newDays[dayIdx], bullets };
     setPlan({ ...plan, days: newDays });
   };
@@ -181,7 +256,7 @@ const TravelPlanProposal = ({
   const addBullet = (dayIdx: number) => {
     if (!plan) return;
     const newDays = [...plan.days];
-    newDays[dayIdx] = { ...newDays[dayIdx], bullets: [...newDays[dayIdx].bullets, ''] };
+    newDays[dayIdx] = { ...newDays[dayIdx], bullets: [...newDays[dayIdx].bullets, { text: '' }] };
     setPlan({ ...plan, days: newDays });
   };
 
@@ -192,17 +267,12 @@ const TravelPlanProposal = ({
     setPlan({ ...plan, days: newDays });
   };
 
-  // PDF export
-  const handleExportPDF = useCallback(() => {
-    window.print();
-  }, []);
+  const handleExportPDF = useCallback(() => { window.print(); }, []);
 
-  // ─── Render ────────────────────────────────────────────
-  // No plan yet — show generation UI
+  // ─── No plan yet — generation UI ───
   if (!plan && !loadingSaved) {
     return (
       <div className="space-y-6">
-        {/* Lead Profile Summary */}
         <Card>
           <CardContent className="p-4 space-y-3">
             <h4 className="text-xs font-bold uppercase text-muted-foreground">Resumo do Perfil</h4>
@@ -223,13 +293,10 @@ const TravelPlanProposal = ({
                 ))}
               </div>
             )}
-            {magicQuestion && (
-              <p className="text-xs italic text-muted-foreground">✨ "{magicQuestion}"</p>
-            )}
+            {magicQuestion && <p className="text-xs italic text-muted-foreground">✨ "{magicQuestion}"</p>}
           </CardContent>
         </Card>
 
-        {/* Missing fields warning */}
         {!canGenerate && (
           <div className="flex items-start gap-2 p-3 rounded-lg bg-[hsl(var(--warning))]/10 border border-[hsl(var(--warning))]/30">
             <AlertTriangle className="h-4 w-4 text-[hsl(var(--warning))] shrink-0 mt-0.5" />
@@ -240,19 +307,12 @@ const TravelPlanProposal = ({
           </div>
         )}
 
-        {/* Generate button */}
         <div className="flex justify-center">
           <Button
-            size="lg"
-            disabled={!canGenerate || generating}
-            onClick={() => handleGenerate()}
+            size="lg" disabled={!canGenerate || generating} onClick={() => handleGenerate()}
             className="text-sm gap-2 bg-gradient-to-r from-[hsl(var(--info))] to-[hsl(var(--info)/0.7)] text-white px-8 py-3 h-auto shadow-lg hover:shadow-xl transition-shadow"
           >
-            {generating ? (
-              <><Loader2 className="h-4 w-4 animate-spin" /> O nosso travel designer está a criar o seu plano...</>
-            ) : (
-              <><Sparkles className="h-4 w-4" /> Gerar Plano de Viagem</>
-            )}
+            {generating ? <><Loader2 className="h-4 w-4 animate-spin" /> O nosso travel designer está a criar o seu plano...</> : <><Sparkles className="h-4 w-4" /> Gerar Plano de Viagem</>}
           </Button>
         </div>
       </div>
@@ -268,7 +328,6 @@ const TravelPlanProposal = ({
     );
   }
 
-  // Display saved plan if no in-memory plan
   const displayPlan = plan || (savedPlan ? {
     trip_title: savedPlan.trip_title,
     narrative: savedPlan.narrative || '',
@@ -276,6 +335,24 @@ const TravelPlanProposal = ({
   } : null);
 
   if (!displayPlan) return null;
+
+  // Calculate total day duration from bullet durations
+  const getDayDuration = (day: ProposalDay): string => {
+    let totalMinutes = 0;
+    day.bullets.forEach(b => {
+      const obj = toBulletObj(b);
+      if (obj.duration) {
+        const hMatch = obj.duration.match(/(\d+)\s*h/i);
+        const mMatch = obj.duration.match(/(\d+)\s*m/i);
+        if (hMatch) totalMinutes += parseInt(hMatch[1]) * 60;
+        if (mMatch) totalMinutes += parseInt(mMatch[1]);
+      }
+    });
+    if (totalMinutes === 0) return '';
+    const h = Math.floor(totalMinutes / 60);
+    const m = totalMinutes % 60;
+    return m > 0 ? `${h}h${m.toString().padStart(2, '0')}` : `${h}h`;
+  };
 
   return (
     <div className="space-y-4 print:space-y-6">
@@ -289,13 +366,13 @@ const TravelPlanProposal = ({
         </Tabs>
         <div className="flex items-center gap-2">
           <Button variant="outline" size="sm" className="text-xs gap-1" onClick={() => setShowRegenInput(!showRegenInput)}>
-            <RefreshCw className="h-3 w-3" /> Regenerar
+            <RefreshCw className="h-3 w-3" /> Regenerar Tudo
           </Button>
           <Button variant="outline" size="sm" className="text-xs gap-1" onClick={handleSave} disabled={saving}>
-            {saving ? <Loader2 className="h-3 w-3 animate-spin" /> : <Save className="h-3 w-3" />} Guardar Plano
+            {saving ? <Loader2 className="h-3 w-3 animate-spin" /> : <Save className="h-3 w-3" />} Guardar
           </Button>
           <Button variant="outline" size="sm" className="text-xs gap-1" onClick={handleExportPDF}>
-            <FileText className="h-3 w-3" /> Exportar PDF
+            <FileText className="h-3 w-3" /> PDF
           </Button>
           <Button size="sm" className="text-xs gap-1 bg-[hsl(var(--success))] hover:bg-[hsl(var(--success))]/90 text-white">
             <ArrowRight className="h-3 w-3" /> Avançar para Costing
@@ -306,48 +383,48 @@ const TravelPlanProposal = ({
       {/* Regen input */}
       {showRegenInput && (
         <div className="flex gap-2 print:hidden">
-          <Input
-            className="text-xs flex-1"
-            placeholder="Instrução adicional: ex. 'Add one more day in Porto', 'Replace Coimbra with Óbidos'..."
-            value={extraInstructions}
-            onChange={e => setExtraInstructions(e.target.value)}
-          />
+          <Input className="text-xs flex-1" placeholder="Instrução adicional: ex. 'Add one more day in Porto', 'Replace Coimbra with Óbidos'..."
+            value={extraInstructions} onChange={e => setExtraInstructions(e.target.value)} />
           <Button size="sm" className="text-xs gap-1" onClick={() => handleGenerate(extraInstructions)} disabled={generating}>
             {generating ? <Loader2 className="h-3 w-3 animate-spin" /> : <Sparkles className="h-3 w-3" />} Gerar
           </Button>
         </div>
       )}
 
-      {/* ─── PROPOSAL PREVIEW ─── */}
+      {/* ─── PROPOSAL ─── */}
       <div className="bg-white rounded-xl border shadow-sm overflow-hidden print:shadow-none print:border-0">
         {/* HERO / COVER */}
-        <div className="bg-gradient-to-br from-slate-900 via-slate-800 to-slate-700 text-white p-8 md:p-12">
-          {viewMode === 'edit' ? (
-            <div className="space-y-3">
-              <Input className="text-2xl font-serif font-bold bg-white/10 border-white/20 text-white placeholder:text-white/50 h-auto py-2"
-                value={displayPlan.trip_title} onChange={e => setPlan(p => p ? { ...p, trip_title: e.target.value } : p)} placeholder="Trip Title..." />
-              <p className="text-sm text-white/70">{clientName}</p>
-              <Textarea className="text-sm bg-white/10 border-white/20 text-white/90 placeholder:text-white/40 min-h-[60px]"
-                value={displayPlan.narrative} onChange={e => setPlan(p => p ? { ...p, narrative: e.target.value } : p)} placeholder="Narrative description..." />
-            </div>
-          ) : (
-            <>
-              <h1 className="text-2xl md:text-3xl font-serif font-bold tracking-tight">{displayPlan.trip_title}</h1>
-              <p className="text-lg text-white/80 mt-1">{clientName}</p>
-              <div className="flex items-center gap-3 mt-4 text-sm text-white/60">
-                <span>ID: {leadCode}</span>
-                <span>·</span>
-                <span>{displayPlan.days[0]?.date} – {displayPlan.days[displayPlan.days.length - 1]?.date}</span>
-                <span>·</span>
-                <span>{pax} adult{pax > 1 ? 's' : ''}{paxChildren ? ` + ${paxChildren} children` : ''}</span>
+        <div className="relative">
+          <div className="bg-gradient-to-br from-slate-900 via-slate-800 to-slate-700 text-white p-8 md:p-12">
+            {viewMode === 'edit' ? (
+              <div className="space-y-3">
+                <Input className="text-2xl font-serif font-bold bg-white/10 border-white/20 text-white placeholder:text-white/50 h-auto py-2"
+                  value={displayPlan.trip_title} onChange={e => setPlan(p => p ? { ...p, trip_title: e.target.value } : p)} placeholder="Trip Title..." />
+                <p className="text-sm text-white/70">{clientName}</p>
+                <Textarea className="text-sm bg-white/10 border-white/20 text-white/90 placeholder:text-white/40 min-h-[60px]"
+                  value={displayPlan.narrative} onChange={e => setPlan(p => p ? { ...p, narrative: e.target.value } : p)} placeholder="Narrative description..." />
               </div>
-              <p className="text-sm text-white/80 mt-4 leading-relaxed max-w-3xl">{displayPlan.narrative}</p>
-            </>
-          )}
+            ) : (
+              <>
+                <h1 className="text-2xl md:text-3xl font-serif font-bold tracking-tight">{displayPlan.trip_title}</h1>
+                <p className="text-lg text-white/80 mt-1">{clientName}</p>
+                <div className="flex items-center gap-3 mt-4 text-sm text-white/60">
+                  <span>ID: {leadCode}</span><span>·</span>
+                  <span>{displayPlan.days[0]?.date} – {displayPlan.days[displayPlan.days.length - 1]?.date}</span><span>·</span>
+                  <span>{pax} adult{pax > 1 ? 's' : ''}{paxChildren ? ` + ${paxChildren} children` : ''}</span>
+                </div>
+                <p className="text-sm text-white/80 mt-4 leading-relaxed max-w-3xl">{displayPlan.narrative}</p>
+              </>
+            )}
+          </div>
+          {/* AI button for hero/narrative */}
+          <div className="absolute top-2 right-2 print:hidden">
+            <SectionAIButton label="Regenerar Intro" loading={sectionLoading === 'narrative'} onClick={() => handleSectionRegen('narrative')} />
+          </div>
         </div>
 
         {/* SUMMARY INDEX */}
-        <div className="border-b p-6 bg-slate-50">
+        <div className="relative border-b p-6 bg-slate-50">
           <h2 className="text-lg font-serif font-bold text-slate-800 mb-3">Summary & Day-by-Day</h2>
           <div className="space-y-1">
             {displayPlan.days.map(d => (
@@ -356,72 +433,115 @@ const TravelPlanProposal = ({
               </p>
             ))}
           </div>
+          <div className="absolute top-2 right-2 print:hidden">
+            <SectionAIButton label="Regenerar Resumo" loading={sectionLoading === 'summary'} onClick={() => handleSectionRegen('summary')} />
+          </div>
         </div>
 
         {/* FULL DAY-BY-DAY */}
         <div className="divide-y">
-          {displayPlan.days.map((day, dayIdx) => (
-            <div key={day.day_number} className="p-6 md:p-8">
-              {viewMode === 'edit' ? (
-                <div className="space-y-3">
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm font-bold text-[hsl(var(--info))]">Day {day.day_number}</span>
-                    <span className="text-xs text-muted-foreground">—</span>
-                    <Input className="text-sm font-bold flex-1 h-8" value={day.title}
-                      onChange={e => updateDay(dayIdx, { title: e.target.value })} placeholder="Day title..." />
-                  </div>
-                  <div className="flex gap-2">
-                    <Input className="h-7 text-xs w-32" value={day.date}
-                      onChange={e => updateDay(dayIdx, { date: e.target.value })} placeholder="DD-Mon-YYYY" />
-                    <Input className="h-7 text-xs flex-1" value={day.subtitle}
-                      onChange={e => updateDay(dayIdx, { subtitle: e.target.value })} placeholder="Subtitle..." />
-                  </div>
-                  <div className="space-y-1.5">
-                    <p className="text-[10px] font-bold uppercase text-muted-foreground">Itinerary & Included:</p>
-                    {day.bullets.map((bullet, bi) => (
-                      <div key={bi} className="flex items-center gap-1.5">
-                        <span className="text-xs text-muted-foreground w-4 text-center">{bi + 1}.</span>
-                        <Input className="h-7 text-xs flex-1" value={bullet}
-                          onChange={e => updateBullet(dayIdx, bi, e.target.value)} />
-                        <button onClick={() => removeBullet(dayIdx, bi)} className="text-destructive hover:text-destructive/80 text-xs px-1">✕</button>
-                      </div>
-                    ))}
-                    <button onClick={() => addBullet(dayIdx)} className="text-[10px] text-[hsl(var(--info))] hover:underline">+ Adicionar bullet</button>
-                  </div>
-                  <Input className="h-7 text-xs w-48" value={day.overnight}
-                    onChange={e => updateDay(dayIdx, { overnight: e.target.value })} placeholder="Overnight city..." />
+          {displayPlan.days.map((day, dayIdx) => {
+            const dayDuration = getDayDuration(day);
+            return (
+              <div key={day.day_number} className="relative p-6 md:p-8">
+                {/* Per-day AI button */}
+                <div className="absolute top-2 right-2 print:hidden">
+                  <SectionAIButton
+                    label={`Regenerar Dia ${day.day_number}`}
+                    loading={sectionLoading === `day_${day.day_number}`}
+                    onClick={() => handleSectionRegen(`day_${day.day_number}`)}
+                  />
                 </div>
-              ) : (
-                <>
-                  <div className="mb-4">
-                    <h3 className="text-lg font-serif font-bold text-slate-800">
-                      Day {day.day_number} — {day.title}
-                    </h3>
-                    <p className="text-sm text-slate-500 mt-0.5">{day.date}</p>
-                    <p className="text-sm italic text-slate-600 mt-1">{day.subtitle}</p>
+
+                {viewMode === 'edit' ? (
+                  <div className="space-y-3 pr-28">
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm font-bold text-[hsl(var(--info))]">Day {day.day_number}</span>
+                      <span className="text-xs text-muted-foreground">—</span>
+                      <Input className="text-sm font-bold flex-1 h-8" value={day.title}
+                        onChange={e => updateDay(dayIdx, { title: e.target.value })} placeholder="Day title..." />
+                    </div>
+                    <div className="flex gap-2">
+                      <Input className="h-7 text-xs w-32" value={day.date}
+                        onChange={e => updateDay(dayIdx, { date: e.target.value })} placeholder="DD-Mon-YYYY" />
+                      <Input className="h-7 text-xs flex-1" value={day.subtitle}
+                        onChange={e => updateDay(dayIdx, { subtitle: e.target.value })} placeholder="Subtitle..." />
+                      {dayDuration && (
+                        <span className="flex items-center gap-1 text-[10px] text-muted-foreground bg-muted px-2 rounded-full whitespace-nowrap">
+                          <Clock className="h-3 w-3" /> {dayDuration}
+                        </span>
+                      )}
+                    </div>
+                    <div className="space-y-1.5">
+                      <p className="text-[10px] font-bold uppercase text-muted-foreground">Itinerary & Included:</p>
+                      {day.bullets.map((bullet, bi) => {
+                        const obj = toBulletObj(bullet);
+                        return (
+                          <div key={bi} className="flex items-center gap-1.5">
+                            <span className="text-xs text-muted-foreground w-4 text-center shrink-0">{bi + 1}.</span>
+                            <Input className="h-7 text-xs flex-1" value={obj.text}
+                              onChange={e => updateBullet(dayIdx, bi, 'text', e.target.value)} placeholder="Experience..." />
+                            <Input className="h-7 text-xs w-16" value={obj.duration || ''}
+                              onChange={e => updateBullet(dayIdx, bi, 'duration', e.target.value)} placeholder="Dur." title="Duração (ex: 2h, 45min)" />
+                            <Input className="h-7 text-xs w-16" value={obj.startTime || ''} type="time"
+                              onChange={e => updateBullet(dayIdx, bi, 'startTime', e.target.value)} title="Hora início" />
+                            <Input className="h-7 text-xs w-16" value={obj.endTime || ''} type="time"
+                              onChange={e => updateBullet(dayIdx, bi, 'endTime', e.target.value)} title="Hora fim" />
+                            <button onClick={() => removeBullet(dayIdx, bi)} className="text-destructive hover:text-destructive/80 text-xs px-1 shrink-0"><X className="h-3 w-3" /></button>
+                          </div>
+                        );
+                      })}
+                      <button onClick={() => addBullet(dayIdx)} className="text-[10px] text-[hsl(var(--info))] hover:underline flex items-center gap-1">
+                        <Plus className="h-3 w-3" /> Adicionar item
+                      </button>
+                    </div>
+                    <Input className="h-7 text-xs w-48" value={day.overnight}
+                      onChange={e => updateDay(dayIdx, { overnight: e.target.value })} placeholder="Overnight city..." />
                   </div>
-                  <div className="mb-3">
-                    <p className="text-xs font-bold uppercase text-slate-400 mb-2">Itinerary & Included:</p>
-                    <ul className="space-y-1.5">
-                      {day.bullets.map((bullet, bi) => (
-                        <li key={bi} className="text-sm text-slate-700 flex items-start gap-2">
-                          <span className="text-slate-400 mt-0.5">•</span>
-                          <span>{bullet}</span>
-                        </li>
-                      ))}
-                    </ul>
+                ) : (
+                  <div className="pr-28">
+                    <div className="mb-4">
+                      <div className="flex items-center gap-3">
+                        <h3 className="text-lg font-serif font-bold text-slate-800">Day {day.day_number} — {day.title}</h3>
+                        {dayDuration && (
+                          <span className="flex items-center gap-1 text-[10px] text-muted-foreground bg-muted px-2 py-0.5 rounded-full">
+                            <Clock className="h-3 w-3" /> {dayDuration}
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-sm text-slate-500 mt-0.5">{day.date}</p>
+                      <p className="text-sm italic text-slate-600 mt-1">{day.subtitle}</p>
+                    </div>
+                    <div className="mb-3">
+                      <p className="text-xs font-bold uppercase text-slate-400 mb-2">Itinerary & Included:</p>
+                      <ul className="space-y-1.5">
+                        {day.bullets.map((bullet, bi) => {
+                          const obj = toBulletObj(bullet);
+                          return (
+                            <li key={bi} className="text-sm text-slate-700 flex items-start gap-2">
+                              <span className="text-slate-400 mt-0.5">•</span>
+                              <span className="flex-1">{obj.text}</span>
+                              {(obj.duration || obj.startTime) && (
+                                <span className="flex items-center gap-1 text-[10px] text-muted-foreground shrink-0">
+                                  {obj.startTime && <span>{obj.startTime}{obj.endTime ? `–${obj.endTime}` : ''}</span>}
+                                  {obj.duration && <span className="bg-muted px-1.5 py-0.5 rounded">{obj.duration}</span>}
+                                </span>
+                              )}
+                            </li>
+                          );
+                        })}
+                      </ul>
+                    </div>
+                    {day.overnight && (
+                      <p className="text-sm font-medium text-slate-600 mt-4 pt-3 border-t border-dashed border-slate-200">
+                        {day.day_number === displayPlan.days.length ? `Departure from ${day.overnight}` : `Night in ${day.overnight}`}
+                      </p>
+                    )}
                   </div>
-                  {day.overnight && (
-                    <p className="text-sm font-medium text-slate-600 mt-4 pt-3 border-t border-dashed border-slate-200">
-                      {day.day_number === displayPlan.days.length
-                        ? `Departure from ${day.overnight}`
-                        : `Night in ${day.overnight}`}
-                    </p>
-                  )}
-                </>
-              )}
-            </div>
-          ))}
+                )}
+              </div>
+            );
+          })}
         </div>
       </div>
     </div>
