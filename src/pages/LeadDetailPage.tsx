@@ -643,8 +643,6 @@ const LeadProposalsTab = ({ leadId, clientName }: { leadId: string; clientName: 
         </div>
       )}
     </div>
-  );
-  );
 };
 
 const LeadDetailPage = () => {
