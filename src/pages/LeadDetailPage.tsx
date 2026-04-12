@@ -15,7 +15,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { LeadStatus } from '@/types/leads';
 import TravelPlannerEditor, { PlannerDay, PlannerItem, PeriodKey, emptyPeriods, genId } from '@/components/trip/TravelPlannerEditor';
 import TravelPlanProposal from '@/components/trip/TravelPlanProposal';
-import { useProposalsQuery, useCreateProposal } from '@/hooks/useProposalsQuery';
+import { useProposalsQuery, useCreateProposal, useProposalAnnotations } from '@/hooks/useProposalsQuery';
 import { toast } from 'sonner';
 // ItineraryEditor removed — replaced by Propostas tab
 import EditableCostingTable, { CostingDayData, CostingItem } from '@/components/trip/EditableCostingTable';
