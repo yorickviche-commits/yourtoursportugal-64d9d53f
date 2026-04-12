@@ -17,7 +17,7 @@ import TravelPlannerEditor, { PlannerDay, PlannerItem, PeriodKey, emptyPeriods, 
 import TravelPlanProposal from '@/components/trip/TravelPlanProposal';
 import { useProposalsQuery, useCreateProposal } from '@/hooks/useProposalsQuery';
 import { toast } from 'sonner';
-import ItineraryEditor from '@/components/itinerary/ItineraryEditor';
+// ItineraryEditor removed — replaced by Propostas tab
 import EditableCostingTable, { CostingDayData, CostingItem } from '@/components/trip/EditableCostingTable';
 import LeadCostingEditor, { LeadCostingDay, LeadCostItem } from '@/components/trip/LeadCostingEditor';
 import {

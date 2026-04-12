@@ -3,7 +3,7 @@ import {
   LayoutDashboard, Map, CheckCircle, Sun, Users, Globe, CreditCard,
   ClipboardList, Bot, Shield, LogOut, Settings, FileText, ShieldCheck,
   Package, Plug, BarChart3, Handshake, ChevronDown, ChevronRight,
-  Menu, X, FileHeart,
+  Menu, X,
 } from 'lucide-react';
 import { useState } from 'react';
 import { cn } from '@/lib/utils';
