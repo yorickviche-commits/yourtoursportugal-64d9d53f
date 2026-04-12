@@ -10,12 +10,18 @@ import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { cn } from '@/lib/utils';
+import ProposalImagePicker from './ProposalImagePicker';
 
 // ─── Types ───────────────────────────────────────────────
+export interface ProposalImage {
+  url: string;
+  caption?: string;
+}
+
 export interface ProposalBullet {
   text: string;
   durationValue?: number;
-  durationUnit?: 'hours' | 'minutes' | 'days';
+  durationUnit?: 'hours' | 'minutes' | 'days' | 'night';
   startTime?: string;
   endTime?: string;
 }
@@ -27,11 +33,13 @@ export interface ProposalDay {
   subtitle: string;
   bullets: (string | ProposalBullet)[];
   overnight: string;
+  images?: ProposalImage[];
 }
 
 export interface TravelPlanData {
   trip_title: string;
   narrative: string;
+  cover_image?: ProposalImage;
   days: ProposalDay[];
 }
 
