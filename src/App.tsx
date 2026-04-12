@@ -55,6 +55,7 @@ const App = () => (
             <Route path="/forgot-password" element={<ForgotPasswordPage />} />
             <Route path="/reset-password" element={<ResetPasswordPage />} />
             <Route path="/preview/:id" element={<ItineraryPreviewPage />} />
+            <Route path="/proposal/:token" element={<PublicProposalPage />} />
 
             {/* Protected routes */}
             <Route path="/" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
@@ -70,6 +71,10 @@ const App = () => (
             <Route path="/agents" element={<ProtectedRoute><AgentDashboardPage /></ProtectedRoute>} />
             <Route path="/ai-office" element={<ProtectedRoute><AIWorkOfficePage /></ProtectedRoute>} />
             <Route path="/commercial/fse-database" element={<ProtectedRoute><FSEDatabasePage /></ProtectedRoute>} />
+            <Route path="/proposals" element={<ProtectedRoute><ProposalListPage /></ProtectedRoute>} />
+            <Route path="/proposals/new" element={<ProtectedRoute><ProposalBuilderPage /></ProtectedRoute>} />
+            <Route path="/proposals/:id" element={<ProtectedRoute><ProposalDetailPage /></ProtectedRoute>} />
+            <Route path="/proposals/:id/edit" element={<ProtectedRoute><ProposalBuilderPage /></ProtectedRoute>} />
 
             {/* Admin routes */}
             <Route path="/admin/users" element={<ProtectedRoute adminOnly><AdminUsersPage /></ProtectedRoute>} />
