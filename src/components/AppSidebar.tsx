@@ -27,7 +27,6 @@ interface NavGroup {
 const reservasItems: NavItem[] = [
   { to: '/leads', icon: Users, label: 'Leads & Files' },
   { to: '/trips', icon: Map, label: 'Bookings & Reservas' },
-  { to: '/proposals', icon: FileHeart, label: 'Propostas' },
 ];
 
 const comercialItems: NavItem[] = [

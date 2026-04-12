@@ -30,13 +30,13 @@ import BookingRequestDialog from '@/components/trip/BookingRequestDialog';
 import { useLeadOperationsQuery, useUpsertLeadOperation, DbLeadOperation } from '@/hooks/useLeadOperationsQuery';
 import BookingEmailHistory from '@/components/trip/BookingEmailHistory';
 
-type DetailTab = 'dados_gerais' | 'travel_planner' | 'custos' | 'itinerario' | 'operacoes';
+type DetailTab = 'dados_gerais' | 'travel_planner' | 'custos' | 'propostas' | 'operacoes';
 
 const DETAIL_TABS: { key: DetailTab; label: string }[] = [
   { key: 'dados_gerais', label: 'Dados Gerais' },
   { key: 'travel_planner', label: 'Travel Planner' },
   { key: 'custos', label: 'Custos' },
-  { key: 'itinerario', label: 'Itinerário' },
+  { key: 'propostas', label: 'Propostas' },
   { key: 'operacoes', label: 'Operações' },
 ];
 
@@ -1080,10 +1080,8 @@ const LeadDetailPage = () => {
           </div>
         )}
 
-        {/* Itinerário */}
-        {activeTab === 'itinerario' && (
-          <ItineraryEditor leadId={lead.id} clientName={formState.clientName} destination={destino.join(', ') || lead.destination} travelDates={formState.travelDates} travelPlannerDays={plannerDays.length > 0 ? plannerDays.map(d => ({ day: d.day, title: d.title, description: Object.values(d.periods).flatMap(p => p.items.map(it => it.title)).join(', '), images: [] })) : undefined} />
-        )}
+        {/* Propostas */}
+        {activeTab === 'propostas' && lead && <LeadProposalsTab leadId={lead.id} clientName={formState.clientName} />}
 
         {/* Operações */}
         {activeTab === 'operacoes' && lead && <OperacoesTab activeVersion={activeVersion} leadId={lead.id} leadCode={lead.lead_code} />}
