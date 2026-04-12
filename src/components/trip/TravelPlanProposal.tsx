@@ -642,6 +642,26 @@ const TravelPlanProposal = ({
 
       {/* ─── PROPOSAL ─── */}
       <div className="bg-white rounded-xl border shadow-sm overflow-hidden print:shadow-none print:border-0">
+        {/* COVER IMAGE */}
+        {viewMode === 'edit' && (
+          <div className="p-4 pb-0 print:hidden">
+            <p className="text-[10px] uppercase font-bold text-muted-foreground mb-2">Imagem de Capa (Landscape)</p>
+            <ProposalImagePicker
+              currentUrl={displayPlan.cover_image?.url}
+              onSelect={url => setPlan(p => p ? { ...p, cover_image: { url, caption: destination } } : p)}
+              onRemove={() => setPlan(p => p ? { ...p, cover_image: undefined } : p)}
+              searchContext={`${destination} Portugal panoramic travel`}
+              className="max-h-48"
+              aspectRatio="landscape"
+            />
+          </div>
+        )}
+        {viewMode === 'preview' && displayPlan.cover_image?.url && (
+          <div className="w-full aspect-[21/9] overflow-hidden">
+            <img src={displayPlan.cover_image.url} alt={destination} className="w-full h-full object-cover" />
+          </div>
+        )}
+
         {/* HERO / COVER */}
         <div className="relative">
           <div className="bg-gradient-to-br from-slate-900 via-slate-800 to-slate-700 text-white p-8 md:p-12">
