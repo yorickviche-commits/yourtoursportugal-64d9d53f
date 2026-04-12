@@ -342,6 +342,43 @@ const TravelPlanProposal = ({
     paxInfants, travelStyles, comfortLevel, budgetLevel, magicQuestion, notes,
   };
 
+  // Auto-fetch images for a plan
+  const autoFetchImages = useCallback(async (planData: TravelPlanData) => {
+    try {
+      // 1. Cover image from destination
+      const coverQuery = `${destination} Portugal travel landscape`;
+      const { data: coverData } = await supabase.functions.invoke('search-destination-images', {
+        body: { query: coverQuery, count: 1, mode: 'search' },
+      });
+      const coverImg = coverData?.images?.[0];
+      
+      // 2. Day images (2 per day) — fire in parallel
+      const dayPromises = planData.days.map(async (day) => {
+        const dayContext = `${day.overnight || destination} ${day.subtitle || day.title} Portugal`;
+        const { data: dayData } = await supabase.functions.invoke('search-destination-images', {
+          body: { query: dayContext, count: 2, mode: 'search' },
+        });
+        return (dayData?.images || []).slice(0, 2) as ProposalImage[];
+      });
+
+      const dayImages = await Promise.all(dayPromises);
+
+      setPlan(prev => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          cover_image: coverImg ? { url: coverImg.url, caption: coverImg.caption } : prev.cover_image,
+          days: prev.days.map((d, i) => ({
+            ...d,
+            images: dayImages[i]?.length ? dayImages[i] : d.images,
+          })),
+        };
+      });
+    } catch (e) {
+      console.error('Auto-fetch images failed:', e);
+    }
+  }, [destination]);
+
   // Generate full plan
   const handleGenerate = useCallback(async (extra?: string) => {
     setGenerating(true);
@@ -351,10 +388,13 @@ const TravelPlanProposal = ({
       });
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
-      setPlan(data.result);
+      const result = data.result as TravelPlanData;
+      setPlan(result);
       setViewMode('preview');
       setShowRegenInput(false);
-      toast({ title: '✨ Plano gerado!', description: `${data.result.days?.length || 0} dias criados.` });
+      toast({ title: '✨ Plano gerado!', description: `${result.days?.length || 0} dias criados. A carregar imagens...` });
+      // Auto-fetch images in background
+      autoFetchImages(result);
     } catch (e: any) {
       toast({ title: 'Erro na geração', description: e.message, variant: 'destructive' });
     } finally {
