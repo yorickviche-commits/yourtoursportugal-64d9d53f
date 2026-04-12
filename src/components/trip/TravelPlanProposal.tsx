@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback, useRef, useEffect } from 'react';
 import { Sparkles, RefreshCw, Save, FileText, ArrowRight, Loader2, Edit3, Eye, AlertTriangle, Clock, Plus, X, Send, MessageSquare, ChevronDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -221,28 +221,43 @@ function DurationSelector({
   onUnitChange,
 }: {
   value: number | undefined;
-  unit: 'hours' | 'minutes' | 'days';
+  unit: 'hours' | 'minutes' | 'days' | 'night';
   onValueChange: (v: number) => void;
-  onUnitChange: (u: 'hours' | 'minutes' | 'days') => void;
+  onUnitChange: (u: 'hours' | 'minutes' | 'days' | 'night') => void;
 }) {
+  const [localVal, setLocalVal] = useState(value?.toString() || '');
+
+  useEffect(() => {
+    setLocalVal(value?.toString() || '');
+  }, [value]);
+
   return (
     <div className="flex items-center gap-0.5">
       <Input
         className="h-7 text-xs w-12 rounded-r-none text-center"
-        type="number"
-        min={0}
-        value={value || ''}
-        onChange={e => onValueChange(parseInt(e.target.value) || 0)}
+        type="text"
+        inputMode="numeric"
+        value={unit === 'night' ? '1' : localVal}
+        disabled={unit === 'night'}
+        onChange={e => {
+          const raw = e.target.value.replace(/\D/g, '');
+          setLocalVal(raw);
+          if (raw) onValueChange(parseInt(raw));
+        }}
+        onBlur={() => {
+          if (!localVal) { setLocalVal(''); onValueChange(0); }
+        }}
         placeholder="—"
       />
-      <Select value={unit} onValueChange={v => onUnitChange(v as any)}>
-        <SelectTrigger className="h-7 text-[10px] w-14 rounded-l-none border-l-0 px-1">
+      <Select value={unit} onValueChange={v => onUnitChange(v as 'hours' | 'minutes' | 'days' | 'night')}>
+        <SelectTrigger className="h-7 text-[10px] w-16 rounded-l-none border-l-0 px-1">
           <SelectValue />
         </SelectTrigger>
         <SelectContent>
           <SelectItem value="hours" className="text-xs">hrs</SelectItem>
           <SelectItem value="minutes" className="text-xs">min</SelectItem>
           <SelectItem value="days" className="text-xs">dias</SelectItem>
+          <SelectItem value="night" className="text-xs">noite</SelectItem>
         </SelectContent>
       </Select>
     </div>
