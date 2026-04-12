@@ -75,20 +75,45 @@ function calcItem(item: LeadCostItem): LeadCostItem {
   return { ...item, netTotal, pvpTotal: Math.round(pvpTotal * 100) / 100, profit: Math.round(profit * 100) / 100 };
 }
 
+function makeDefaultItem(description: string, pax: number, paxChildren: number, layer: CostLayer, pricingType: 'total' | 'per_person' = 'total'): LeadCostItem {
+  return calcItem({
+    id: genId(), description, supplier: '', pricingType,
+    numAdults: pax, priceAdults: 0, numChildren: paxChildren, priceChildren: 0,
+    netTotal: 0, marginPercent: 30, pvpTotal: 0, profit: 0, status: 'neutro', notes: [], costLayer: layer,
+  });
+}
+
 function plannerToCosting(plannerDays: PlannerDay[], pax: number, paxChildren: number): LeadCostingDay[] {
   return plannerDays.map(day => {
     const items: LeadCostItem[] = [];
+
+    // Standard items per day: Transport, Guide, Transport Costs
+    items.push(makeDefaultItem('Guia — Dia ' + day.day, pax, paxChildren, 'guide'));
+    items.push(makeDefaultItem('Veículo YT — Dia ' + day.day, pax, paxChildren, 'transport'));
+    items.push(makeDefaultItem('Custos Transporte (combustível, portagens, parking)', pax, paxChildren, 'operational'));
+
+    // Planner activities
     const periods: PeriodKey[] = ['morning', 'lunch', 'afternoon', 'night'];
     periods.forEach(pk => {
       const period = day.periods[pk];
       if (!period) return;
       period.items.forEach(pi => {
         if (!pi.title) return;
+        // Detect layer from period
+        let layer: CostLayer = 'experience';
+        if (pk === 'lunch') layer = 'meal';
+        if (pk === 'night') {
+          const t = pi.title.toLowerCase();
+          if (t.includes('hotel') || t.includes('check-in') || t.includes('alojamento') || t.includes('accommodation'))
+            layer = 'accommodation';
+          else if (t.includes('jantar') || t.includes('dinner') || t.includes('restaurante'))
+            layer = 'meal';
+        }
         items.push(calcItem({
           id: genId(),
           description: pi.title,
           supplier: '',
-          pricingType: 'total',
+          pricingType: layer === 'experience' || layer === 'meal' ? 'per_person' : 'total',
           numAdults: pax,
           priceAdults: 0,
           numChildren: paxChildren,
@@ -99,6 +124,7 @@ function plannerToCosting(plannerDays: PlannerDay[], pax: number, paxChildren: n
           profit: 0,
           status: 'neutro',
           notes: [],
+          costLayer: layer,
         }));
       });
     });
