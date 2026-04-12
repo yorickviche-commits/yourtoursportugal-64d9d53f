@@ -832,6 +832,61 @@ const TravelPlanProposal = ({
                       )}
                     </div>
                   )}
+
+                  {/* Day Images (2 per day) */}
+                  <div className="px-6 md:px-8 pb-4">
+                    {viewMode === 'edit' ? (
+                      <div className="space-y-2">
+                        <p className="text-[10px] uppercase font-bold text-muted-foreground">Imagens do Dia {day.day_number}</p>
+                        <div className="grid grid-cols-2 gap-3">
+                          {[0, 1].map(imgIdx => {
+                            const img = day.images?.[imgIdx];
+                            const imgContext = `${day.overnight || destination} ${day.subtitle || day.title} Portugal travel`;
+                            return (
+                              <ProposalImagePicker
+                                key={imgIdx}
+                                currentUrl={img?.url}
+                                onSelect={url => {
+                                  setPlan(p => {
+                                    if (!p) return p;
+                                    const newDays = [...p.days];
+                                    const imgs = [...(newDays[dayIdx].images || [])];
+                                    imgs[imgIdx] = { url, caption: day.subtitle };
+                                    // Ensure array has no gaps
+                                    while (imgs.length < imgIdx + 1) imgs.push({ url: '', caption: '' });
+                                    newDays[dayIdx] = { ...newDays[dayIdx], images: imgs };
+                                    return { ...p, days: newDays };
+                                  });
+                                }}
+                                onRemove={() => {
+                                  setPlan(p => {
+                                    if (!p) return p;
+                                    const newDays = [...p.days];
+                                    const imgs = [...(newDays[dayIdx].images || [])];
+                                    imgs[imgIdx] = { url: '', caption: '' };
+                                    newDays[dayIdx] = { ...newDays[dayIdx], images: imgs.filter(i => i.url) };
+                                    return { ...p, days: newDays };
+                                  });
+                                }}
+                                searchContext={imgContext}
+                                aspectRatio="landscape"
+                              />
+                            );
+                          })}
+                        </div>
+                      </div>
+                    ) : (
+                      day.images && day.images.filter(i => i.url).length > 0 && (
+                        <div className="grid grid-cols-2 gap-3 mt-4">
+                          {day.images.filter(i => i.url).map((img, i) => (
+                            <div key={i} className="rounded-lg overflow-hidden aspect-[16/10]">
+                              <img src={img.url} alt={img.caption || day.title} className="w-full h-full object-cover" />
+                            </div>
+                          ))}
+                        </div>
+                      )
+                    )}
+                  </div>
                 </div>
 
                 {/* AI Chat panel for this day */}
