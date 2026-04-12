@@ -33,6 +33,10 @@ import PartnersPage from "./pages/PartnersPage";
 import PartnerDetailPage from "./pages/PartnerDetailPage";
 import ItineraryPreviewPage from "./pages/ItineraryPreviewPage";
 import FSEDatabasePage from "./pages/FSEDatabasePage";
+import PublicProposalPage from "./pages/PublicProposalPage";
+import ProposalListPage from "./pages/ProposalListPage";
+import ProposalDetailPage from "./pages/ProposalDetailPage";
+import ProposalBuilderPage from "./pages/ProposalBuilderPage";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
