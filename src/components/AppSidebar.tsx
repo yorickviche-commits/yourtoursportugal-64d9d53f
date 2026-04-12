@@ -3,7 +3,7 @@ import {
   LayoutDashboard, Map, CheckCircle, Sun, Users, Globe, CreditCard,
   ClipboardList, Bot, Shield, LogOut, Settings, FileText, ShieldCheck,
   Package, Plug, BarChart3, Handshake, ChevronDown, ChevronRight,
-  Menu, X, FileHeart,
+  Menu, X,
 } from 'lucide-react';
 import { useState } from 'react';
 import { cn } from '@/lib/utils';
@@ -27,7 +27,6 @@ interface NavGroup {
 const reservasItems: NavItem[] = [
   { to: '/leads', icon: Users, label: 'Leads & Files' },
   { to: '/trips', icon: Map, label: 'Bookings & Reservas' },
-  { to: '/proposals', icon: FileHeart, label: 'Propostas' },
 ];
 
 const comercialItems: NavItem[] = [
