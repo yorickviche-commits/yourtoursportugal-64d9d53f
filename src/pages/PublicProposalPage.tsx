@@ -247,6 +247,25 @@ const PublicProposalPage = () => {
                   </div>
                 )}
 
+                {/* Day images (2 per day from Travel Planner) */}
+                {(day as any).images?.length > 0 && (
+                  <div className={cn(
+                    "mt-5 gap-3",
+                    (day as any).images.length === 1 ? "flex" : "grid grid-cols-2"
+                  )}>
+                    {(day as any).images.map((img: { url: string; caption?: string }, imgIdx: number) => (
+                      <div key={imgIdx} className="relative rounded-xl overflow-hidden aspect-[16/10]">
+                        <img src={img.url} alt={img.caption || day.title} className="w-full h-full object-cover" />
+                        {img.caption && (
+                          <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/50 to-transparent p-3">
+                            <span className="text-xs text-white/90">{img.caption}</span>
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+
                 {/* Comment this day link */}
                 <button
                   onClick={() => { setSelectedDay(idx); setNotepadTab('day'); setNotepadOpen(true); }}
