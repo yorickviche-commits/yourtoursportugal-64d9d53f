@@ -1,19 +1,24 @@
 import { useParams } from 'react-router-dom';
 import { useProposalByToken, useProposalAnnotations, useProposalEvents, useCreateAnnotation, useCreateEvent, useUpdateProposal, ProposalDay, Proposal } from '@/hooks/useProposalsQuery';
-import { useState, useEffect, useRef } from 'react';
-import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
+import { useState, useEffect, useRef, lazy, Suspense, Component, ReactNode } from 'react';
 import { MessageSquare, Check, Star, Phone, Mail, Globe, ChevronDown, ChevronUp, Send, X, Clock, MapPin, Hotel } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import 'leaflet/dist/leaflet.css';
-import L from 'leaflet';
 
-// Fix leaflet marker icons
-delete (L.Icon.Default.prototype as any)._getIconUrl;
-L.Icon.Default.mergeOptions({
-  iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon-2x.png',
-  iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon.png',
-  shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png',
-});
+// Lazy load map to avoid react-leaflet context crash
+const LazyMap = lazy(() => import('@/components/proposal/ProposalMap'));
+
+// Error boundary for map
+class MapErrorBoundary extends Component<{ children: ReactNode }, { hasError: boolean }> {
+  constructor(props: { children: ReactNode }) {
+    super(props);
+    this.state = { hasError: false };
+  }
+  static getDerivedStateFromError() { return { hasError: true }; }
+  render() {
+    if (this.state.hasError) return <div className="h-full flex items-center justify-center bg-stone-100 text-stone-400">Carte indisponible</div>;
+    return this.props.children;
+  }
+}
 
 const PublicProposalPage = () => {
   const { token } = useParams<{ token: string }>();
@@ -259,21 +264,11 @@ const PublicProposalPage = () => {
           <section id="map">
             <h2 className="text-2xl font-serif text-stone-800 mb-4">Carte du voyage</h2>
             <div className="rounded-2xl overflow-hidden border border-stone-200 shadow-sm h-[400px]">
-              <MapContainer
-                center={[proposal.map_stops[0].lat, proposal.map_stops[0].lng]}
-                zoom={7}
-                className="h-full w-full"
-                scrollWheelZoom={false}
-              >
-                <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" attribution="&copy; OSM" />
-                {proposal.map_stops.map((stop, i) => (
-                  <Marker key={i} position={[stop.lat, stop.lng]}>
-                    <Popup>
-                      <strong>{stop.label}</strong><br />{stop.address}
-                    </Popup>
-                  </Marker>
-                ))}
-              </MapContainer>
+              <MapErrorBoundary>
+                <Suspense fallback={<div className="h-full flex items-center justify-center bg-stone-100 text-stone-400">Chargement de la carte...</div>}>
+                  <LazyMap stops={proposal.map_stops} />
+                </Suspense>
+              </MapErrorBoundary>
             </div>
           </section>
         )}
