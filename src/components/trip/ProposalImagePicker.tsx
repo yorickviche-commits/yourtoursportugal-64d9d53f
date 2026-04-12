@@ -33,20 +33,34 @@ export default function ProposalImagePicker({
   const fileRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
 
-  const handleUnsplashSearch = async (q?: string) => {
+  const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const PER_PAGE = 20;
+
+  const handleUnsplashSearch = async (q?: string, append = false) => {
     const searchQuery = q || query;
     if (!searchQuery.trim()) return;
-    setSearching(true);
+    const currentPage = append ? page + 1 : 1;
+    append ? setLoadingMore(true) : setSearching(true);
     try {
       const { data, error } = await supabase.functions.invoke('search-destination-images', {
-        body: { query: searchQuery, count: 8, mode: 'search' },
+        body: { query: searchQuery, count: PER_PAGE, page: currentPage, mode: 'search' },
       });
       if (error) throw error;
-      setResults(data?.images || []);
+      const newImages = data?.images || [];
+      if (append) {
+        setResults(prev => [...prev, ...newImages]);
+      } else {
+        setResults(newImages);
+      }
+      setPage(currentPage);
+      setHasMore(newImages.length >= PER_PAGE);
     } catch (e: any) {
       toast({ title: 'Erro na pesquisa', description: e.message, variant: 'destructive' });
     } finally {
       setSearching(false);
+      setLoadingMore(false);
     }
   };
 
@@ -169,16 +183,26 @@ export default function ProposalImagePicker({
               </div>
               <div className="flex-1 overflow-y-auto">
                 {results.length > 0 ? (
-                  <div className="grid grid-cols-2 gap-2">
-                    {results.map((img, i) => (
-                      <button
-                        key={i}
-                        className="rounded-md overflow-hidden border-2 border-transparent hover:border-[hsl(var(--info))] transition-colors aspect-[16/10]"
-                        onClick={() => { onSelect(img.url); setOpen(false); }}
-                      >
-                        <img src={img.url} alt={img.caption} className="w-full h-full object-cover" />
-                      </button>
-                    ))}
+                  <div className="space-y-3">
+                    <div className="grid grid-cols-2 gap-2">
+                      {results.map((img, i) => (
+                        <button
+                          key={i}
+                          className="rounded-md overflow-hidden border-2 border-transparent hover:border-[hsl(var(--info))] transition-colors aspect-[16/10]"
+                          onClick={() => { onSelect(img.url); setOpen(false); }}
+                        >
+                          <img src={img.url} alt={img.caption} className="w-full h-full object-cover" />
+                        </button>
+                      ))}
+                    </div>
+                    {hasMore && (
+                      <div className="flex justify-center pb-2">
+                        <Button variant="outline" size="sm" className="text-xs gap-1" onClick={() => handleUnsplashSearch(undefined, true)} disabled={loadingMore}>
+                          {loadingMore ? <Loader2 className="h-3 w-3 animate-spin" /> : <Search className="h-3 w-3" />}
+                          Carregar mais imagens
+                        </Button>
+                      </div>
+                    )}
                   </div>
                 ) : (
                   <div className="flex flex-col items-center justify-center py-8 text-muted-foreground">
