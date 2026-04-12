@@ -501,7 +501,7 @@ const LeadDetailPage = () => {
   const [aiResults, setAiResults] = useState<Record<string, any>>({});
   const [plannerDays, setPlannerDays] = useState<PlannerDay[]>([]);
   const [costingDays, setCostingDays] = useState<LeadCostingDay[]>([]);
-  const [plannerSubTab, setPlannerSubTab] = useState<'operational' | 'proposal'>('operational');
+  // plannerSubTab removed — unified view
   const [finalPrice, setFinalPrice] = useState(0);
   const { toast } = useToast();
   const queryClient = useQueryClient();
