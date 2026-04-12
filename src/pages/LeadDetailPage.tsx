@@ -491,7 +491,97 @@ const LEAD_STATUSES: { value: LeadStatus; label: string; color: string }[] = [
   { value: 'lost', label: 'Perdido', color: 'bg-destructive/15 text-destructive' },
 ];
 
-const LeadDetailPage = () => {
+const statusColors: Record<string, string> = {
+  draft: 'bg-stone-100 text-stone-600',
+  sent: 'bg-blue-100 text-blue-700',
+  approved: 'bg-emerald-100 text-emerald-700',
+  revision_requested: 'bg-amber-100 text-amber-700',
+  confirmed: 'bg-purple-100 text-purple-700',
+};
+const statusLabels: Record<string, string> = {
+  draft: 'Rascunho', sent: 'Enviada', approved: 'Aprovada',
+  revision_requested: 'Alterações pedidas', confirmed: 'Confirmada',
+};
+
+const LeadProposalsTab = ({ leadId, clientName }: { leadId: string; clientName: string }) => {
+  const { data: allProposals = [], isLoading } = useProposalsQuery();
+  const proposals = allProposals.filter(p => p.lead_id === leadId);
+  const navigate = useNavigate();
+  const createProposal = useCreateProposal();
+
+  const handleNew = async () => {
+    const token = `ytp-${Date.now().toString(36)}`;
+    const result = await createProposal.mutateAsync({
+      public_token: token,
+      client_name: clientName || 'Cliente',
+      title: 'Nova Proposta',
+      lead_id: leadId,
+      status: 'draft',
+      days: [],
+      map_stops: [],
+      language: 'pt',
+    });
+    if (result?.id) navigate(`/proposals/${result.id}/edit`);
+  };
+
+  const copyLink = (token: string) => {
+    navigator.clipboard.writeText(`${window.location.origin}/proposal/${token}`);
+    toast.success('Link copiado!');
+  };
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <h2 className="text-sm font-semibold">Propostas desta Lead</h2>
+        <Button onClick={handleNew} size="sm" disabled={createProposal.isPending}>
+          <Plus className="h-4 w-4 mr-1" /> Nova Proposta
+        </Button>
+      </div>
+      {isLoading ? (
+        <div className="text-muted-foreground text-sm py-8 text-center">A carregar...</div>
+      ) : proposals.length === 0 ? (
+        <div className="text-muted-foreground text-sm py-8 text-center">Nenhuma proposta criada para esta lead</div>
+      ) : (
+        <div className="space-y-2">
+          {proposals.map(p => (
+            <div
+              key={p.id}
+              onClick={() => navigate(`/proposals/${p.id}`)}
+              className="bg-card rounded-xl border border-border p-4 cursor-pointer hover:shadow-md transition-shadow"
+            >
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className={cn("text-[10px] px-2 py-0.5 rounded-full font-medium", statusColors[p.status] || statusColors.draft)}>
+                      {statusLabels[p.status] || p.status}
+                    </span>
+                    {p.booking_ref && <span className="text-xs text-muted-foreground font-mono">{p.booking_ref}</span>}
+                  </div>
+                  <h3 className="text-sm font-semibold truncate">{p.title}</h3>
+                  <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground">
+                    {p.date_range && <span>{p.date_range}</span>}
+                    {p.participants && <span>• {p.participants}</span>}
+                    <span>• {new Date(p.created_at).toLocaleDateString('pt-PT')}</span>
+                  </div>
+                </div>
+                <div className="flex gap-1 shrink-0">
+                  <button onClick={e => { e.stopPropagation(); copyLink(p.public_token); }} className="p-2 hover:bg-muted rounded-lg" title="Copiar link">
+                    <Copy className="h-4 w-4 text-muted-foreground" />
+                  </button>
+                  <a href={`/proposal/${p.public_token}`} target="_blank" rel="noopener" onClick={e => e.stopPropagation()} className="p-2 hover:bg-muted rounded-lg" title="Ver proposta">
+                    <ExternalLink className="h-4 w-4 text-muted-foreground" />
+                  </a>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+};
+
+
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { data: lead, isLoading } = useLeadQuery(id);
