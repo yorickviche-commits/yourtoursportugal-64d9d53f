@@ -23,18 +23,23 @@ interface FormData {
   email: string;
   phone: string;
   travelDates: string;
+  travelEndDate: string;
   datesType: 'concrete' | 'estimated';
+  numberOfDays: number;
   pax: number;
   language: string[];
   budget: string;
   destination: string[];
   request: string;
   preferences: string;
+  travelStyle: string[];
+  comfortLevel: string;
 }
 
 const emptyForm: FormData = {
-  clientName: '', email: '', phone: '', travelDates: '', datesType: 'estimated',
-  pax: 2, language: ['EN'], budget: '', destination: [], request: '', preferences: '',
+  clientName: '', email: '', phone: '', travelDates: '', travelEndDate: '', datesType: 'estimated',
+  numberOfDays: 0, pax: 2, language: ['EN'], budget: '', destination: [], request: '', preferences: '',
+  travelStyle: [], comfortLevel: '',
 };
 
 const NewLeadDialog = ({ open, onOpenChange }: { open: boolean; onOpenChange: (v: boolean) => void }) => {
@@ -63,10 +68,15 @@ const NewLeadDialog = ({ open, onOpenChange }: { open: boolean; onOpenChange: (v
       const e = data.extracted;
       setForm({
         clientName: e.clientName || '', email: e.email || '', phone: e.phone || '',
-        travelDates: e.travelDates || '', datesType: e.datesType || 'estimated',
+        travelDates: e.travelStartDate || e.travelDates || '', 
+        travelEndDate: e.travelEndDate || '',
+        datesType: e.datesType || 'estimated',
+        numberOfDays: e.numberOfDays || 0,
         pax: e.pax || 2, language: e.language ? [e.language] : ['EN'],
         budget: e.budget || '', destination: e.destination ? [e.destination] : [],
         request: e.request || '', preferences: e.preferences || '',
+        travelStyle: Array.isArray(e.travelStyle) ? e.travelStyle : [],
+        comfortLevel: e.comfortLevel || '',
       });
       setMode('manual');
       toast({ title: 'Dados extraídos com sucesso!' });
@@ -89,12 +99,17 @@ const NewLeadDialog = ({ open, onOpenChange }: { open: boolean; onOpenChange: (v
         phone: form.phone,
         destination: form.destination.join(', ') || 'A definir',
         travel_dates: form.travelDates || 'A definir',
+        travel_end_date: form.travelEndDate || '',
+        number_of_days: form.numberOfDays || 0,
+        dates_type: form.datesType,
         pax: form.pax,
         status: 'new',
         source: 'direct',
         budget_level: form.budget || '€€',
         sales_owner: 'Yorick',
         notes: [form.request, form.preferences].filter(Boolean).join('\n') || '',
+        travel_style: form.travelStyle,
+        comfort_level: form.comfortLevel,
       });
       await logActivity('lead_created', 'lead', newLead.id, { client_name: form.clientName });
       toast({ title: `Lead ${newLead.lead_code} criada!`, description: `${form.clientName} registado com sucesso.` });
