@@ -486,8 +486,58 @@ const TravelPlanProposal = ({
         extra_instructions: metadata, status: 'draft',
       });
       if (error) throw error;
+
+      // Auto-create/update proposal from travel plan
+      const token = `ytp-${leadCode.toLowerCase().replace(/[^a-z0-9]/g, '-')}`;
+      const dateRange = startDate && endDate ? `${startDate} — ${endDate}` : startDate || '';
+      const proposalDays = plan.days.map((d, i) => ({
+        day_number: d.day_number,
+        date_label: d.date || `Jour ${d.day_number}`,
+        title: d.title,
+        subtitle: d.subtitle || '',
+        cover_image_url: d.images?.[0]?.url || '',
+        items: d.bullets.map(b => typeof b === 'string' ? b : b.text),
+        accommodation: d.overnight ? { label: d.overnight, hotel_name: d.overnight, note: '' } : null,
+      }));
+
+      // Check if proposal already exists for this lead
+      const { data: existingProposal } = await supabase
+        .from('proposals')
+        .select('id')
+        .eq('lead_id', leadId)
+        .maybeSingle();
+
+      if (existingProposal) {
+        await supabase.from('proposals').update({
+          title: plan.trip_title,
+          client_name: clientName,
+          date_range: dateRange,
+          participants: paxStr,
+          hero_image_url: plan.cover_image?.url || '',
+          summary_text: plan.narrative,
+          days: proposalDays as any,
+        }).eq('id', existingProposal.id);
+      } else {
+        await supabase.from('proposals').insert({
+          public_token: token,
+          lead_id: leadId,
+          title: plan.trip_title,
+          client_name: clientName,
+          date_range: dateRange,
+          participants: paxStr,
+          hero_image_url: plan.cover_image?.url || '',
+          summary_text: plan.narrative,
+          days: proposalDays as any,
+          map_stops: [] as any,
+          language: 'fr',
+          status: 'draft',
+        });
+        console.log(`[YTP] Proposal created — public URL: /proposal/${token}`);
+      }
+
       queryClient.invalidateQueries({ queryKey: ['travel_plan', leadId] });
-      toast({ title: 'Plano guardado!' });
+      queryClient.invalidateQueries({ queryKey: ['proposals'] });
+      toast({ title: 'Plano guardado!', description: 'Proposta cliente atualizada automaticamente.' });
     } catch (e: any) {
       toast({ title: 'Erro ao guardar', description: e.message, variant: 'destructive' });
     } finally {
