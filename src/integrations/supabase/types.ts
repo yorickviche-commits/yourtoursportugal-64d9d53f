@@ -1344,6 +1344,176 @@ export type Database = {
         }
         Relationships: []
       }
+      proposal_annotations: {
+        Row: {
+          author_email: string | null
+          author_name: string
+          author_type: string
+          content: string
+          created_at: string
+          id: string
+          is_resolved: boolean
+          level: string
+          parent_id: string | null
+          proposal_id: string
+          target_day_index: number | null
+          target_item_index: number | null
+        }
+        Insert: {
+          author_email?: string | null
+          author_name?: string
+          author_type?: string
+          content?: string
+          created_at?: string
+          id?: string
+          is_resolved?: boolean
+          level?: string
+          parent_id?: string | null
+          proposal_id: string
+          target_day_index?: number | null
+          target_item_index?: number | null
+        }
+        Update: {
+          author_email?: string | null
+          author_name?: string
+          author_type?: string
+          content?: string
+          created_at?: string
+          id?: string
+          is_resolved?: boolean
+          level?: string
+          parent_id?: string | null
+          proposal_id?: string
+          target_day_index?: number | null
+          target_item_index?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "proposal_annotations_parent_id_fkey"
+            columns: ["parent_id"]
+            isOneToOne: false
+            referencedRelation: "proposal_annotations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "proposal_annotations_proposal_id_fkey"
+            columns: ["proposal_id"]
+            isOneToOne: false
+            referencedRelation: "proposals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      proposal_events: {
+        Row: {
+          actor_email: string | null
+          actor_name: string
+          created_at: string
+          event_type: string
+          id: string
+          note: string | null
+          proposal_id: string
+        }
+        Insert: {
+          actor_email?: string | null
+          actor_name?: string
+          created_at?: string
+          event_type: string
+          id?: string
+          note?: string | null
+          proposal_id: string
+        }
+        Update: {
+          actor_email?: string | null
+          actor_name?: string
+          created_at?: string
+          event_type?: string
+          id?: string
+          note?: string | null
+          proposal_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "proposal_events_proposal_id_fkey"
+            columns: ["proposal_id"]
+            isOneToOne: false
+            referencedRelation: "proposals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      proposals: {
+        Row: {
+          approved_at: string | null
+          booking_id: string | null
+          booking_ref: string | null
+          client_email: string | null
+          client_name: string
+          created_at: string
+          created_by: string | null
+          date_range: string | null
+          days: Json
+          hero_image_url: string | null
+          id: string
+          language: string
+          lead_id: string | null
+          map_stops: Json
+          participants: string | null
+          public_token: string
+          sent_at: string | null
+          status: string
+          summary_text: string | null
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          approved_at?: string | null
+          booking_id?: string | null
+          booking_ref?: string | null
+          client_email?: string | null
+          client_name?: string
+          created_at?: string
+          created_by?: string | null
+          date_range?: string | null
+          days?: Json
+          hero_image_url?: string | null
+          id?: string
+          language?: string
+          lead_id?: string | null
+          map_stops?: Json
+          participants?: string | null
+          public_token: string
+          sent_at?: string | null
+          status?: string
+          summary_text?: string | null
+          title?: string
+          updated_at?: string
+        }
+        Update: {
+          approved_at?: string | null
+          booking_id?: string | null
+          booking_ref?: string | null
+          client_email?: string | null
+          client_name?: string
+          created_at?: string
+          created_by?: string | null
+          date_range?: string | null
+          days?: Json
+          hero_image_url?: string | null
+          id?: string
+          language?: string
+          lead_id?: string | null
+          map_stops?: Json
+          participants?: string | null
+          public_token?: string
+          sent_at?: string | null
+          status?: string
+          summary_text?: string | null
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       supplier_files: {
         Row: {
           created_at: string
