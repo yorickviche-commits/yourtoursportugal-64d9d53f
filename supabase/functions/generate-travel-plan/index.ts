@@ -87,7 +87,9 @@ function calculateDays(ld: RequestBody['leadData']): number {
 }
 
 async function callAI(systemPrompt: string, userPrompt: string): Promise<string> {
-  // Try Lovable AI first
+  const errors: string[] = [];
+
+  // 1) Lovable AI Gateway
   const LOVABLE_KEY = Deno.env.get('LOVABLE_API_KEY');
   if (LOVABLE_KEY) {
     try {
@@ -96,47 +98,110 @@ async function callAI(systemPrompt: string, userPrompt: string): Promise<string>
         headers: { 'Authorization': `Bearer ${LOVABLE_KEY}`, 'Content-Type': 'application/json' },
         body: JSON.stringify({
           model: 'google/gemini-2.5-flash',
-          messages: [
-            { role: 'system', content: systemPrompt },
-            { role: 'user', content: userPrompt },
-          ],
+          messages: [{ role: 'system', content: systemPrompt }, { role: 'user', content: userPrompt }],
           max_tokens: 4096,
         }),
       });
       if (res.ok) {
         const data = await res.json();
-        return data.choices?.[0]?.message?.content || '';
+        const content = data.choices?.[0]?.message?.content;
+        if (content) return content;
       }
-      const status = res.status;
-      console.error('Lovable AI failed:', status);
-      if (status !== 402 && status !== 429) throw new Error(`AI error: ${status}`);
+      errors.push(`Lovable AI: ${res.status}`);
+      console.error('Lovable AI failed:', res.status);
     } catch (e: any) {
-      if (!e.message?.includes('402') && !e.message?.includes('429')) {
-        // Only fall through on credit/rate issues
-        const GEMINI_KEY = Deno.env.get('GEMINI_API_KEY');
-        if (!GEMINI_KEY) throw e;
-      }
+      errors.push(`Lovable AI: ${e.message}`);
+      console.error('Lovable AI error:', e.message);
     }
   }
 
-  // Fallback to Gemini direct
+  // 2) Gemini Direct
   const GEMINI_KEY = Deno.env.get('GEMINI_API_KEY');
-  if (!GEMINI_KEY) throw new Error('No AI provider available');
-
-  const res = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_KEY}`,
-    {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        contents: [{ role: 'user', parts: [{ text: `${systemPrompt}\n\n${userPrompt}` }] }],
-        generationConfig: { maxOutputTokens: 4096, temperature: 0.7 },
-      }),
+  if (GEMINI_KEY) {
+    try {
+      const res = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_KEY}`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            contents: [{ role: 'user', parts: [{ text: `${systemPrompt}\n\n${userPrompt}` }] }],
+            generationConfig: { maxOutputTokens: 4096, temperature: 0.7 },
+          }),
+        }
+      );
+      if (res.ok) {
+        const data = await res.json();
+        const content = data.candidates?.[0]?.content?.parts?.[0]?.text;
+        if (content) return content;
+      }
+      errors.push(`Gemini: ${res.status}`);
+      console.error('Gemini failed:', res.status);
+    } catch (e: any) {
+      errors.push(`Gemini: ${e.message}`);
+      console.error('Gemini error:', e.message);
     }
-  );
-  if (!res.ok) throw new Error(`Gemini error: ${res.status}`);
-  const data = await res.json();
-  return data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+  }
+
+  // 3) OpenAI (ChatGPT)
+  const OPENAI_KEY = Deno.env.get('OPENAI_API_KEY');
+  if (OPENAI_KEY) {
+    try {
+      const res = await fetch('https://api.openai.com/v1/chat/completions', {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${OPENAI_KEY}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          model: 'gpt-4o',
+          messages: [{ role: 'system', content: systemPrompt }, { role: 'user', content: userPrompt }],
+          max_tokens: 4096,
+          temperature: 0.7,
+        }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        const content = data.choices?.[0]?.message?.content;
+        if (content) return content;
+      }
+      errors.push(`OpenAI: ${res.status}`);
+      console.error('OpenAI failed:', res.status);
+    } catch (e: any) {
+      errors.push(`OpenAI: ${e.message}`);
+      console.error('OpenAI error:', e.message);
+    }
+  }
+
+  // 4) Claude (Anthropic)
+  const CLAUDE_KEY = Deno.env.get('CLAUDE_API_KEY');
+  if (CLAUDE_KEY) {
+    try {
+      const res = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: {
+          'x-api-key': CLAUDE_KEY,
+          'Content-Type': 'application/json',
+          'anthropic-version': '2023-06-01',
+        },
+        body: JSON.stringify({
+          model: 'claude-sonnet-4-20250514',
+          max_tokens: 4096,
+          system: systemPrompt,
+          messages: [{ role: 'user', content: userPrompt }],
+        }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        const content = data.content?.[0]?.text;
+        if (content) return content;
+      }
+      errors.push(`Claude: ${res.status}`);
+      console.error('Claude failed:', res.status);
+    } catch (e: any) {
+      errors.push(`Claude: ${e.message}`);
+      console.error('Claude error:', e.message);
+    }
+  }
+
+  throw new Error(`All AI providers failed: ${errors.join(' | ')}`);
 }
 
 serve(async (req) => {
