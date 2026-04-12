@@ -1,11 +1,11 @@
 import { useParams } from 'react-router-dom';
 import { useProposalByToken, useProposalAnnotations, useProposalEvents, useCreateAnnotation, useCreateEvent, useUpdateProposal, ProposalDay, Proposal } from '@/hooks/useProposalsQuery';
-import { useState, useEffect, useRef } from 'react';
-import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
+import { useState, useEffect, useRef, lazy, Suspense, Component, ReactNode } from 'react';
 import { MessageSquare, Check, Star, Phone, Mail, Globe, ChevronDown, ChevronUp, Send, X, Clock, MapPin, Hotel } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import 'leaflet/dist/leaflet.css';
-import L from 'leaflet';
+
+// Lazy load map to avoid react-leaflet context crash
+const LazyMap = lazy(() => import('@/components/proposal/ProposalMap'));
 
 // Fix leaflet marker icons
 delete (L.Icon.Default.prototype as any)._getIconUrl;
