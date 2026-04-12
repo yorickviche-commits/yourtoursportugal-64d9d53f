@@ -8,6 +8,7 @@ export interface ProposalDay {
   title: string;
   subtitle: string;
   cover_image_url: string;
+  images?: { url: string; caption?: string }[];
   items: string[];
   accommodation: { label: string; hotel_name: string; note: string } | null;
 }
