@@ -88,19 +88,16 @@ serve(async (req) => {
   }
 
   try {
-    const { query, count = 3, mode = 'search' } = await req.json();
-    // mode: 'search' = Unsplash + AI fallback, 'generate' = AI only (for single regen)
+    const { query, count = 20, page = 1, mode = 'search' } = await req.json();
 
     if (mode === 'generate') {
-      // Generate a single AI image
       const result = await generateWithAI(query);
       return new Response(JSON.stringify({ images: result ? [result] : [] }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
 
-    // Default: search Unsplash first
-    let images = await searchUnsplash(query, count);
+    let images = await searchUnsplash(query, count, page);
 
     // If Unsplash returned fewer than requested, fill with AI-generated
     if (images.length < count) {
