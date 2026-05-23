@@ -313,8 +313,17 @@ Return ONLY a JSON array:
     });
   } catch (e) {
     console.error("auto-fulfill error:", e);
-    return new Response(JSON.stringify({ error: e instanceof Error ? e.message : "Unknown error" }), {
-      status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    const msg = e instanceof Error ? e.message : "Unknown error";
+    const isQuota = /402|429|quota|All AI providers failed/i.test(msg);
+    return new Response(
+      JSON.stringify({
+        suggestions: [],
+        fallback: true,
+        error: isQuota
+          ? "Créditos de IA esgotados ou rate-limit atingido. Adiciona créditos em Settings → Workspace → Usage ou tenta novamente em alguns minutos."
+          : msg,
+      }),
+      { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
   }
 });
