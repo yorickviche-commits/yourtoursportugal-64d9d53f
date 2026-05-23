@@ -156,6 +156,23 @@ const PublicProposalPage = () => {
               {proposal.booking_ref && <span>• {proposal.booking_ref}</span>}
               {proposal.participants && <span>• {proposal.participants}</span>}
             </div>
+            {proposal.wetravel_checkout_url && (
+              <div className="mt-6">
+                <a
+                  href={proposal.wetravel_checkout_url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-lg font-semibold shadow-lg transition"
+                >
+                  ✈️ Book Now — Reserve Your Spot
+                </a>
+                <p className="mt-2 text-xs text-white/80">
+                  {proposal.deposit_amount_eur
+                    ? `€${proposal.deposit_amount_eur} deposit · ${proposal.deposit_percent ?? 50}% of total · 100% refundable`
+                    : '50% deposit · 100% refundable'}
+                </p>
+              </div>
+            )}
           </div>
         </div>
       </section>
