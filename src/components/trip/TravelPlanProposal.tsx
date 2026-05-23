@@ -738,7 +738,7 @@ const TravelPlanProposal = ({
         <div className="flex flex-col items-center gap-2">
           <div className="flex items-center gap-2">
             <span className="text-[10px] uppercase font-bold text-muted-foreground">Idioma</span>
-            <Select value={language} onValueChange={setLanguage}>
+            <Select value={language} onValueChange={handleLanguageChange}>
               <SelectTrigger className="h-8 w-[90px] text-xs">
                 <SelectValue />
               </SelectTrigger>
