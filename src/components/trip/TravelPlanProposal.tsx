@@ -338,6 +338,37 @@ const TravelPlanProposal = ({
     enabled: !!leadId,
   });
 
+  // Load costing data to compute total PVP for the proposal
+  const { data: costingDaysData } = useQuery({
+    queryKey: ['lead_costing_data_proposal', leadId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('lead_costing_data').select('items, day_number, version')
+        .eq('lead_id', leadId)
+        .order('version', { ascending: false })
+        .order('day_number', { ascending: true });
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: !!leadId,
+  });
+
+  const totalPVP = (() => {
+    if (!costingDaysData || costingDaysData.length === 0) return 0;
+    // Use latest version only
+    const latestVersion = costingDaysData[0]?.version ?? 0;
+    const rows = costingDaysData.filter((d: any) => d.version === latestVersion);
+    let total = 0;
+    rows.forEach((d: any) => {
+      const items = Array.isArray(d.items) ? d.items : [];
+      items.forEach((it: any) => {
+        if (it.status === 'inactive' || it.status === 'rejected') return;
+        total += Number(it.pvpTotal || 0);
+      });
+    });
+    return Math.round(total);
+  })();
+
   const hydratedRef = useRef(false);
   if (savedPlan && !plan && !hydratedRef.current) {
     hydratedRef.current = true;
