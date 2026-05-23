@@ -468,12 +468,13 @@ const TravelPlanProposal = ({
   }, [destination, getUsedPhotoIds, registerPhotos]);
 
   // Generate full plan
-  const handleGenerate = useCallback(async (extra?: string) => {
+  const handleGenerate = useCallback(async (extra?: string, langOverride?: string) => {
     setGenerating(true);
     try {
       if (leadId) await clearUsedPhotos();
+      const effectiveLang = langOverride || language;
       const { data, error } = await supabase.functions.invoke('generate-travel-plan', {
-        body: { leadData, extraInstructions: extra || undefined },
+        body: { leadData: { ...leadData, language: effectiveLang }, extraInstructions: extra || undefined },
       });
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
@@ -481,14 +482,29 @@ const TravelPlanProposal = ({
       setPlan(result);
       setViewMode('preview');
       setShowRegenInput(false);
-      toast({ title: '✨ Plano gerado!', description: `${result.days?.length || 0} dias criados. A carregar imagens...` });
+      toast({ title: '✨ Plano gerado!', description: `${result.days?.length || 0} dias criados em ${effectiveLang}. A carregar imagens...` });
       autoFetchImages(result);
     } catch (e: any) {
       toast({ title: 'Erro na geração', description: e.message, variant: 'destructive' });
     } finally {
       setGenerating(false);
     }
-  }, [leadData, leadId, toast, clearUsedPhotos, autoFetchImages]);
+  }, [leadData, leadId, language, toast, clearUsedPhotos, autoFetchImages]);
+
+  // Language change with confirmation + auto-regenerate
+  const handleLanguageChange = useCallback((newLang: string) => {
+    if (newLang === language) return;
+    const hasPlan = !!(plan || savedPlan);
+    if (!hasPlan) {
+      setLanguage(newLang);
+      return;
+    }
+    const labelMap: Record<string, string> = { PT: 'Português', EN: 'Inglês', ES: 'Espanhol', FR: 'Francês' };
+    const ok = window.confirm(`Mudar idioma para ${labelMap[newLang] || newLang}?\n\nTodo o conteúdo do plano (e do PDF) será regenerado neste idioma.`);
+    if (!ok) return;
+    setLanguage(newLang);
+    handleGenerate(undefined, newLang);
+  }, [language, plan, savedPlan, handleGenerate]);
 
   // Section regen via chat
   const handleSectionChat = useCallback(async (section: string, userMessage: string) => {
@@ -722,7 +738,7 @@ const TravelPlanProposal = ({
         <div className="flex flex-col items-center gap-2">
           <div className="flex items-center gap-2">
             <span className="text-[10px] uppercase font-bold text-muted-foreground">Idioma</span>
-            <Select value={language} onValueChange={setLanguage}>
+            <Select value={language} onValueChange={handleLanguageChange}>
               <SelectTrigger className="h-8 w-[90px] text-xs">
                 <SelectValue />
               </SelectTrigger>
@@ -776,7 +792,7 @@ const TravelPlanProposal = ({
           </TabsList>
         </Tabs>
         <div className="flex items-center gap-2">
-          <Select value={language} onValueChange={setLanguage}>
+          <Select value={language} onValueChange={handleLanguageChange}>
             <SelectTrigger className="h-8 w-[80px] text-xs" title="Idioma do plano">
               <SelectValue />
             </SelectTrigger>
