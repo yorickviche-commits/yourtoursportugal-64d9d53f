@@ -6,95 +6,52 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Progress } from "@/components/ui/progress";
 import { ArrowLeft, Zap, CheckCircle, XCircle } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 
-const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:8000";
+async function callOrchestrator(action: string, leadId?: string, extra?: Record<string, any>) {
+  const { data, error } = await supabase.functions.invoke('agent-orchestrator', {
+    body: { action, leadId, ...(extra || {}) },
+  });
+  if (error) throw error;
+  if (data?.error) throw new Error(data.error);
+  return data;
+}
 
-const api = {
-  async post(path: string, body: any) {
-    const res = await fetch(`${API_BASE}${path}`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body),
-    });
-    if (!res.ok) throw new Error(`API error ${res.status}`);
-    return res.json();
-  },
-  async get(path: string) {
-    const res = await fetch(`${API_BASE}${path}`);
-    if (!res.ok) throw new Error(`API error ${res.status}`);
-    return res.json();
-  },
-};
+async function fetchPendingApprovals() {
+  const { data, error } = await supabase
+    .from('ceo_approval_queue')
+    .select('*')
+    .eq('status', 'pending')
+    .order('created_at', { ascending: false });
+  if (error) throw error;
+  return { approvals: data || [] };
+}
 
+function comingSoon(label: string) {
+  toast(`${label} — agent not yet connected`, { description: 'This agent command is queued for activation.' });
+  return { note: `${label} queued for activation`, status: 'coming_soon' };
+}
+
+// Real command bindings — only commands that have a real backend route are wired.
+// All others return a "coming soon" placeholder.
 const COMMAND_ENDPOINTS: Record<string, Record<string, (d: any) => Promise<any>>> = {
   "sales-tm": {
-    "Process New Lead": (d) => api.post("/orchestrator/event", { event_type: "new_lead", data: d }),
-    "Push to Proposal": (d) => api.post("/orchestrator/event", { event_type: "lead_qualified", data: d }),
-    "Send Follow-up": (d) => api.post("/sales/followup", d),
-  },
-  "sales-b2b": {
-    "Send Net Rates": (d) => api.post("/orchestrator/event", { event_type: "new_b2b_inquiry", data: d }),
-    "Confirm Booking": (d) => api.post("/sales/convert", d),
-  },
-  "proposal": {
-    "Build Proposal": (d) => api.post("/orchestrator/event", { event_type: "pricing_approved", data: d }),
-    "Attach to CRM": (d) => api.post("/crm/sync", { action: "attach_proposal", ...d }),
+    "Process New Lead": (d) => d.lead_id ? callOrchestrator('plan', d.lead_id) : Promise.resolve(comingSoon("Process New Lead")),
+    "Push to Proposal": (d) => d.lead_id ? callOrchestrator('full_pipeline', d.lead_id) : Promise.resolve(comingSoon("Push to Proposal")),
   },
   "itinerary": {
-    "Generate Itinerary": (d) => api.post("/itinerary/generate", d),
-    "Send to Pricing": (d) => api.post("/orchestrator/event", { event_type: "itinerary_complete", data: d }),
-    "Revise Day": (d) => api.post("/itinerary/revise", d),
+    "Generate Itinerary": (d) => d.lead_id ? callOrchestrator('itinerary', d.lead_id) : Promise.resolve(comingSoon("Generate Itinerary")),
   },
   "pricing": {
-    "Calculate Trip": (d) => api.post("/pricing/calculate", d),
-    "Approve & Lock Price": (d) => api.post("/pricing/approve", d),
-  },
-  "operations": {
-    "Book Supplier": (d) => api.post("/operations/book", d),
-    "Generate Docs": (d) => api.post("/operations/generate-docs", d),
-    "Send Reminders": (d) => api.post("/operations/send-reminders", d),
-    "Confirm All & Close": (d) => api.post("/orchestrator/event", { event_type: "deposit_confirmed", data: d }),
-  },
-  "supplier": {
-    "Draft Email": (d) => api.post("/supplier/email", { action: "inquiry", ...d }),
-    "Send Batch": (d) => api.post("/supplier/email", { action: "booking", ...d }),
-    "Chase Pending": (d) => api.post("/supplier/email", { action: "chase", ...d }),
-    "Sync to CRM": (d) => api.post("/crm/sync", { action: "log_supplier", ...d }),
-  },
-  "crm": {
-    "Sync CRM": (d) => api.post("/crm/sync", { action: "sync", ...d }),
-    "Auto-tag Leads": (d) => api.post("/crm/sync", { action: "auto_tag", ...d }),
-    "Clean Stale Records": () => api.get("/crm/clean-stale"),
-    "Stage Report": () => api.get("/ceo/kpi"),
-  },
-  "payment": {
-    "Send Pay Link": (d) => api.post("/payment/send-link", d),
-    "Check Webhooks": (d) => api.get("/payment/status/" + (d.trip_id || "latest")),
-    "Chase Overdue": () => api.post("/payment/chase-overdue", {}),
-    "Mark as Paid & Trigger Ops": (d) => api.post("/orchestrator/event", { event_type: "payment_received", data: d }),
-  },
-  "support": {
-    "View Tickets": () => api.get("/orchestrator/agents"),
-    "Send Info Pack": (d) => api.post("/support/pretrip", d),
-    "Mark Resolved": (d) => api.post("/support/pretrip", { ...d, resolved: true }),
-  },
-  "review": {
-    "Send Review Request": (d) => api.post("/review/request", d),
-    "Draft Response": (d) => api.post("/review/respond", d),
-    "Reputation Report": () => api.get("/ceo/kpi"),
-  },
-  "marketing": {
-    "Write Social Post": (d) => api.post("/marketing/generate", { type: "instagram", topic: d.topic || "Portugal travel" }),
-    "Email Campaign": (d) => api.post("/marketing/generate", { type: "email", topic: d.topic || "Seasonal promo" }),
-    "Blog Post": (d) => api.post("/marketing/generate", { type: "blog", topic: d.topic || "Hidden Portugal" }),
-    "Schedule & Publish": (d) => api.post("/marketing/generate", { type: "instagram", topic: d.topic || "Portugal", schedule: true }),
+    "Calculate Trip": (d) => d.lead_id ? callOrchestrator('cost', d.lead_id) : Promise.resolve(comingSoon("Calculate Trip")),
   },
   "ceo": {
-    "KPI Dashboard": () => api.get("/ceo/kpi"),
-    "Weekly Digest": () => api.get("/ceo/kpi"),
-    "Risk Alerts": () => api.get("/ceo/approvals/pending"),
+    "Risk Alerts": () => fetchPendingApprovals(),
   },
 };
+
 
 interface AgentMetric { k: string; v: string }
 interface AgentPipeline { label: string; count: number; state: string }
