@@ -43,9 +43,17 @@ const BASE_DETAIL_TABS: { key: DetailTab; label: string }[] = [
   { key: 'comunicacoes', label: 'Comunicações' },
 ];
 
-const getDetailTabs = (status: string): { key: DetailTab; label: string }[] => {
+const getDetailTabs = (status: string, mode: 'lead' | 'booking' = 'lead'): { key: DetailTab; label: string }[] => {
+  if (mode === 'booking') {
+    return [
+      { key: 'dados_gerais', label: 'Dados Gerais' },
+      { key: 'travel_planner', label: 'Travel Plan' },
+      { key: 'custos', label: 'Custos' },
+      { key: 'operacoes', label: 'Operações' },
+      { key: 'comunicacoes', label: 'Comunicações' },
+    ];
+  }
   if (status === 'won') {
-    // Bookings & Reservas Confirmadas — insert Operações before Comunicações
     return [
       ...BASE_DETAIL_TABS.slice(0, 4),
       { key: 'operacoes', label: 'Operações' },
