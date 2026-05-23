@@ -363,9 +363,9 @@ function AgentPage({ agent, onBack }: { agent: Agent; onBack: () => void }) {
                 ))}
               </div>
               <div className="mt-4 p-3 rounded-md bg-muted/10 border">
-                <p className="text-[10px] uppercase tracking-widest text-muted-foreground font-semibold mb-1">API Endpoint</p>
-                <p className="font-mono text-xs text-primary">POST {API_BASE}/orchestrator/event</p>
-                <p className="font-mono text-[10px] text-muted-foreground mt-0.5">{`{ "agent_id": "${agent.id}", "command": "..." }`}</p>
+                <p className="text-[10px] uppercase tracking-widest text-muted-foreground font-semibold mb-1">Backend</p>
+                <p className="font-mono text-xs text-primary">supabase.functions.invoke('agent-orchestrator')</p>
+                <p className="font-mono text-[10px] text-muted-foreground mt-0.5">{`{ "action": "plan|cost|itinerary|full_pipeline", "leadId": "..." }`}</p>
               </div>
             </CardContent>
           </Card>
@@ -456,7 +456,7 @@ export default function AgentDashboardPage() {
   const activeAgent = AGENTS.find(a => a.id === activeId);
 
   useEffect(() => {
-    api.get("/ceo/kpi").then(d => setLiveKpi(d.kpis)).catch(() => {});
+    // Live KPIs not yet wired to a backend route
   }, []);
 
   return (
@@ -471,7 +471,7 @@ export default function AgentDashboardPage() {
               <h1 className="text-2xl font-semibold text-foreground flex items-center gap-2">
                 <Zap className="h-5 w-5 text-primary" />AI Agent Ecosystem
               </h1>
-              <p className="text-xs text-muted-foreground font-mono mt-1">Orchestrator — 13 Agents · {API_BASE}</p>
+              <p className="text-xs text-muted-foreground font-mono mt-1">Orchestrator — 13 Agents · Supabase Edge Functions</p>
             </div>
             <div className="flex gap-2">
               <Badge variant="outline" className="text-[10px] font-mono">
