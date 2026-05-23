@@ -1252,6 +1252,13 @@ const LeadDetailPage = () => {
         {/* Propostas */}
         {activeTab === 'propostas' && lead && <LeadProposalsTab leadId={lead.id} clientName={formState.clientName} />}
 
+        {/* Operações — apenas para reservas confirmadas (status = won) */}
+        {activeTab === 'operacoes' && lead && (
+          <OperacoesTab activeVersion={activeVersion} leadId={lead.id} leadCode={lead.lead_code} />
+        )}
+
+
+
         {/* Comunicações */}
         {activeTab === 'comunicacoes' && lead && (
           <CommunicationsTab
