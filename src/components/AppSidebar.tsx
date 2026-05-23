@@ -267,7 +267,7 @@ const MobileMenu = ({ open, onClose }: { open: boolean; onClose: () => void }) =
 
       {/* Navigation */}
       <nav className="flex-1 overflow-y-auto py-4 px-2 space-y-2">
-        {renderItem({ to: '/', icon: LayoutDashboard, label: 'Dashboard' })}
+        {/* Home = Dep. Reservas */}
         {renderGroup('Dep. Reservas', reservasItems, reservasOpen, setReservasOpen)}
         {renderGroup('Dep. Comercial', comercialItems, comercialOpen, setComercialOpen)}
         {isAdmin && renderGroup('Admin', adminItems, adminOpen, setAdminOpen)}
