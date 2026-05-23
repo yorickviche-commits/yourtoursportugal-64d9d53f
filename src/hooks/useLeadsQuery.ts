@@ -5,6 +5,7 @@ import { useToast } from '@/hooks/use-toast';
 export interface DbLead {
   id: string;
   lead_code: string;
+  yt_id: string | null;
   client_name: string;
   email: string;
   phone: string;
