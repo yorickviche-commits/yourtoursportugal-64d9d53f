@@ -104,16 +104,22 @@ reservas@yourtours.pt`;
     }
     setSending(true);
     try {
+      // 1. Send the email via Gmail API (reservas@yourtours.pt)
+      const { data: sendData, error: sendError } = await supabase.functions.invoke('send-booking-email', {
+        body: { to, subject, body },
+      });
+      if (sendError || (sendData as any)?.error) {
+        throw new Error((sendData as any)?.error || sendError?.message || 'Falha ao enviar email');
+      }
+
+      // 2. Update operational status + log
       if (isLeadContext) {
-        // Lead context: upsert lead operation and get back the UUID id
         const result = await upsertLeadOp.mutateAsync({
           lead_id: tripId,
           item_key: costItemId,
           day_number: dayNumber,
           booking_status: 'requested',
         });
-
-        // Log the email using lead_operation_id (the real UUID)
         const leadOpId = (result as any)?.id;
         if (leadOpId) {
           await createEmailLog.mutateAsync({
@@ -124,14 +130,11 @@ reservas@yourtours.pt`;
           });
         }
       } else {
-        // Trip context: use trip_operations table
         const op = await upsertTripOp.mutateAsync({
           cost_item_id: costItemId,
           trip_id: tripId,
           booking_status: 'requested',
         });
-
-        // Log the email with operation_id
         await createEmailLog.mutateAsync({
           operation_id: op.id,
           supplier_email: to,
@@ -140,14 +143,15 @@ reservas@yourtours.pt`;
         });
       }
 
-      toast({ title: 'Pedido de reserva registado', description: 'Status atualizado para "Pedido"' });
+      toast({ title: 'Email enviado', description: `Pedido enviado para ${to} via reservas@yourtours.pt` });
       setOpen(false);
     } catch (err: any) {
-      toast({ title: 'Erro', description: err.message, variant: 'destructive' });
+      toast({ title: 'Erro ao enviar', description: err.message, variant: 'destructive' });
     } finally {
       setSending(false);
     }
   };
+
 
   return (
     <Dialog open={open} onOpenChange={handleOpen}>
