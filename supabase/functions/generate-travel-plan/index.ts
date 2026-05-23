@@ -20,7 +20,8 @@ You must follow these strict rules:
 9. Language: English, premium tone, confident and evocative
 10. Trip title: poetic and specific to the itinerary (never generic)
 11. Opening narrative: 2–3 sentences, mentions all destinations, premium DMC tone
-12. Day subtitles: evocative, 3–6 words (e.g. "Exploring the Northern Capital")
+12. Day TITLE: MUST be an explicit, descriptive experience label in the style of tour catalogues — clear about WHAT, WHERE and HOW. Examples: "Douro Valley Private Day Tour from Porto", "Private Morning Tour Porto City Center", "Transfer Porto–Lisbon with Aveiro and Coimbra", "Self-Guided Alentejo Day Tour". Never romantic, never abstract (forbidden: "Welcome, Portugal!", "Northern Soul", "A Day of Wonders"). Always include city/region + tour type (Private/Shared/Self-Guided/Transfer/Full Day/Morning/Multi-Day/etc.).
+13. Day SUBTITLE: this is where the evocative/commercial/romantic descriptive line goes (5–10 words, premium tone).
 13. Bullet style: "Entrance and guided visit of..." (not "we will visit")
 14. "Regional lunch (drinks included)" — always mention drinks included
 15. "Pick-up & Drop-off at your accommodation in [City] city centre"
