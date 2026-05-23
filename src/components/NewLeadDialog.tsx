@@ -166,19 +166,24 @@ const NewLeadDialog = ({ open, onOpenChange }: { open: boolean; onOpenChange: (v
           <div className="space-y-4">
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <Label className="text-[10px] text-muted-foreground uppercase">Nome *</Label>
-                <Input className="h-8 text-xs mt-1" value={form.clientName} onChange={e => updateField('clientName', e.target.value)} placeholder="Nome do cliente" />
+                <Label className="text-[10px] text-muted-foreground uppercase">ID YT *</Label>
+                <Input className="h-8 text-xs mt-1 font-mono" value={form.ytId} onChange={e => updateField('ytId', e.target.value)} placeholder="Ex: YT-2026-0123" />
               </div>
               <div>
-                <Label className="text-[10px] text-muted-foreground uppercase">Email</Label>
-                <Input className="h-8 text-xs mt-1" type="email" value={form.email} onChange={e => updateField('email', e.target.value)} placeholder="email@example.com" />
+                <Label className="text-[10px] text-muted-foreground uppercase">Nome *</Label>
+                <Input className="h-8 text-xs mt-1" value={form.clientName} onChange={e => updateField('clientName', e.target.value)} placeholder="Nome do cliente" />
               </div>
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div>
+                <Label className="text-[10px] text-muted-foreground uppercase">Email</Label>
+                <Input className="h-8 text-xs mt-1" type="email" value={form.email} onChange={e => updateField('email', e.target.value)} placeholder="email@example.com" />
+              </div>
+              <div>
                 <Label className="text-[10px] text-muted-foreground uppercase">Telefone</Label>
                 <Input className="h-8 text-xs mt-1" value={form.phone} onChange={e => updateField('phone', e.target.value)} placeholder="+351 ..." />
               </div>
+            </div>
               <div>
                 <Label className="text-[10px] text-muted-foreground uppercase">Nº Pax</Label>
                 <Input className="h-8 text-xs mt-1" type="number" min={1} value={form.pax} onChange={e => updateField('pax', parseInt(e.target.value) || 1)} />
