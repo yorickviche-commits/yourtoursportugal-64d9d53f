@@ -240,33 +240,42 @@ export type Database = {
       booking_emails_log: {
         Row: {
           body: string
+          email_category: string | null
           id: string
+          lead_id: string | null
           lead_operation_id: string | null
           operation_id: string | null
           sent_at: string
           sent_by: string | null
           subject: string
           supplier_email: string | null
+          trip_id: string | null
         }
         Insert: {
           body: string
+          email_category?: string | null
           id?: string
+          lead_id?: string | null
           lead_operation_id?: string | null
           operation_id?: string | null
           sent_at?: string
           sent_by?: string | null
           subject: string
           supplier_email?: string | null
+          trip_id?: string | null
         }
         Update: {
           body?: string
+          email_category?: string | null
           id?: string
+          lead_id?: string | null
           lead_operation_id?: string | null
           operation_id?: string | null
           sent_at?: string
           sent_by?: string | null
           subject?: string
           supplier_email?: string | null
+          trip_id?: string | null
         }
         Relationships: [
           {
