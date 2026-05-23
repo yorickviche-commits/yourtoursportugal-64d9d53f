@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Mail, Loader2, Copy, Check, ChevronRight, Sparkles } from 'lucide-react';
+import { Mail, Loader2, Copy, Check, ChevronRight, Sparkles, ExternalLink } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
