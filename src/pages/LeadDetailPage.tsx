@@ -743,6 +743,7 @@ const LeadDetailPage = () => {
   }, [savedCostingDays]);
 
   const [formState, setFormState] = useState({
+    ytId: '',
     clientName: '', email: '', phone: '', travelDates: '', travelEndDate: '',
     numberOfDays: 0, datesType: 'estimated' as 'concrete' | 'estimated' | 'flexible',
     pax: 2, paxChildren: 0, paxInfants: 0, budgetLevel: '', notes: '', salesOwner: '',
@@ -805,6 +806,7 @@ const LeadDetailPage = () => {
   useEffect(() => {
     if (!lead) return;
     setFormState({
+      ytId: (lead as any).yt_id || '',
       clientName: lead.client_name || '',
       email: lead.email || '',
       phone: lead.phone || '',
@@ -838,6 +840,7 @@ const LeadDetailPage = () => {
         id: lead.id,
         updates: {
           client_name: formState.clientName,
+          yt_id: formState.ytId || null,
           email: formState.email,
           phone: formState.phone,
           travel_dates: formState.travelDates,
@@ -1044,10 +1047,19 @@ const LeadDetailPage = () => {
 
             <div>
               <h3 className="text-sm font-bold text-foreground mb-3">Informação geral</h3>
-              <div className="grid grid-cols-3 gap-4">
+              <div className="grid grid-cols-4 gap-4">
+                <div>
+                  <label className="text-[10px] text-muted-foreground uppercase font-bold">ID YT *</label>
+                  <Input
+                    className="h-8 text-xs mt-1 font-mono"
+                    value={formState.ytId}
+                    onChange={e => updateFormField('ytId', e.target.value)}
+                    placeholder="YT-2026-0123"
+                  />
+                </div>
                 <div>
                   <label className="text-[10px] text-muted-foreground uppercase">Nº VI</label>
-                  <Input className="h-8 text-xs mt-1" defaultValue={lead.lead_code} readOnly />
+                  <Input className="h-8 text-xs mt-1 bg-muted/50" defaultValue={lead.lead_code} readOnly />
                 </div>
                 <div>
                   <label className="text-[10px] text-muted-foreground uppercase">Criador da Simulação</label>
@@ -1177,6 +1189,7 @@ const LeadDetailPage = () => {
           <TravelPlanProposal
             leadId={lead.id}
             leadCode={lead.lead_code}
+            ytId={formState.ytId || (lead as any).yt_id || ''}
             clientName={formState.clientName}
             destination={destino.join(', ') || lead.destination || ''}
             travelDates={formState.travelDates}

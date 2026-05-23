@@ -920,6 +920,7 @@ export type Database = {
           travel_end_date: string | null
           travel_style: Json | null
           updated_at: string
+          yt_id: string | null
         }
         Insert: {
           active_version?: number | null
@@ -947,6 +948,7 @@ export type Database = {
           travel_end_date?: string | null
           travel_style?: Json | null
           updated_at?: string
+          yt_id?: string | null
         }
         Update: {
           active_version?: number | null
@@ -974,6 +976,7 @@ export type Database = {
           travel_end_date?: string | null
           travel_style?: Json | null
           updated_at?: string
+          yt_id?: string | null
         }
         Relationships: [
           {

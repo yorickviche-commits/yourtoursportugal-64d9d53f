@@ -47,6 +47,7 @@ export interface TravelPlanData {
 interface TravelPlanProposalProps {
   leadId: string;
   leadCode: string;
+  ytId?: string;
   clientName: string;
   destination: string;
   travelDates: string;
@@ -64,6 +65,22 @@ interface TravelPlanProposalProps {
   defaultLanguage?: string;
   onGoToCosting?: () => void;
 }
+
+interface ClosingTerms {
+  inclusionsOverride?: string;
+  payment: string;
+  cancellation: string;
+  importantNotes: string;
+  closingMessage: string;
+}
+
+const DEFAULT_CLOSING: ClosingTerms = {
+  inclusionsOverride: '',
+  payment: '• Deposit: 25% of the total amount to formalize the booking.\n• Final Payment: The remaining 75% must be settled up to 30 days before the tour date.',
+  cancellation: '• Free cancellation with 100% refund up to 7 days prior to the tour date.\n• For cancellations made less than 30 days before the tour date, the total amount is non-refundable.',
+  importantNotes: '• The rates presented include all the itinerary and experiences mentioned in the proposition.\n• The presented rates are valid on the date this proposal is sent. Up until your final confirmation, there\'s the possibility of price/availability/conditions changes beyond our process.\n• The rates include all taxes and personal accident insurance.\n• Terms and Conditions referring to all our products/services are available publicly on our website.',
+  closingMessage: 'That said, we await your feedback and your thoughts on the program and proposal.\n\nIf helpful, we suggest scheduling a short video call with our team to walk through the experience together, clarify any details, and fine-tune the plan according to your vision.\n\nPlease let us know if the proposal aligns with your expectations so we can move confidently to the next steps.',
+};
 
 const LANGUAGE_OPTIONS: { value: string; label: string }[] = [
   { value: 'PT', label: 'PT' },
@@ -305,7 +322,7 @@ function SectionAIButton({ label, active, loading, onClick }: { label: string; a
 
 // ─── Main Component ─────────────────────────────────────
 const TravelPlanProposal = ({
-  leadId, leadCode, clientName, destination, travelDates, travelEndDate,
+  leadId, leadCode, ytId, clientName, destination, travelDates, travelEndDate,
   numberOfDays, datesType, pax, paxChildren, paxInfants,
   travelStyles, comfortLevel, budgetLevel, magicQuestion, notes,
   defaultLanguage,
@@ -317,6 +334,7 @@ const TravelPlanProposal = ({
   const [saving, setSaving] = useState(false);
   const [viewMode, setViewMode] = useState<'preview' | 'edit'>('preview');
   const [plan, setPlan] = useState<TravelPlanData | null>(null);
+  const [closing, setClosing] = useState<ClosingTerms>(DEFAULT_CLOSING);
   const [extraInstructions, setExtraInstructions] = useState('');
   const [showRegenInput, setShowRegenInput] = useState(false);
   const [sectionLoading, setSectionLoading] = useState<string | null>(null);
@@ -393,11 +411,12 @@ const TravelPlanProposal = ({
   if (savedPlan && !plan && !hydratedRef.current) {
     hydratedRef.current = true;
     const days = Array.isArray(savedPlan.days) ? savedPlan.days as unknown as ProposalDay[] : [];
-    // Restore cover_image from extra_instructions metadata
+    // Restore cover_image + closing terms from extra_instructions metadata
     let cover_image: ProposalImage | undefined;
     try {
       const meta = savedPlan.extra_instructions ? JSON.parse(savedPlan.extra_instructions) : null;
       if (meta?.cover_image) cover_image = meta.cover_image;
+      if (meta?.closing) setClosing({ ...DEFAULT_CLOSING, ...meta.closing });
     } catch { /* not JSON, ignore */ }
     setPlan({ trip_title: savedPlan.trip_title || '', narrative: savedPlan.narrative || '', cover_image, days });
   }
@@ -596,7 +615,7 @@ const TravelPlanProposal = ({
       const paxStr = `${pax} adult${pax > 1 ? 's' : ''}${paxChildren ? ` + ${paxChildren} children` : ''}`;
       await supabase.from('travel_plans').delete().eq('lead_id', leadId);
       // Store cover_image in extra_instructions as JSON metadata
-      const metadata = JSON.stringify({ cover_image: plan.cover_image || null });
+      const metadata = JSON.stringify({ cover_image: plan.cover_image || null, closing });
       const { error } = await supabase.from('travel_plans').insert({
         lead_id: leadId, file_id: leadCode, trip_title: plan.trip_title,
         client_name: clientName, start_date: startDate, end_date: endDate,
@@ -704,7 +723,7 @@ const TravelPlanProposal = ({
     } finally {
       setSaving(false);
     }
-  }, [plan, leadId, leadCode, clientName, pax, paxChildren, travelDates, travelEndDate, toast, queryClient]);
+  }, [plan, closing, leadId, leadCode, clientName, pax, paxChildren, travelDates, travelEndDate, toast, queryClient]);
 
   // Edit helpers
   const updateDay = (dayIdx: number, updates: Partial<ProposalDay>) => {
@@ -870,7 +889,18 @@ const TravelPlanProposal = ({
           <Button variant="outline" size="sm" className="text-xs gap-1" onClick={handleSave} disabled={saving}>
             {saving ? <Loader2 className="h-3 w-3 animate-spin" /> : <Save className="h-3 w-3" />} Guardar
           </Button>
-          <Button variant="outline" size="sm" className="text-xs gap-1" onClick={() => window.print()}>
+          <Button variant="outline" size="sm" className="text-xs gap-1" onClick={() => {
+            const startD = plan?.days[0]?.date || travelDates || '';
+            const endD = plan?.days[plan.days.length - 1]?.date || travelEndDate || '';
+            const dates = [startD, endD].filter(Boolean).join('_');
+            const sanitize = (s: string) => (s || '').replace(/[\\/:*?"<>|]/g, '').replace(/\s+/g, '_').trim();
+            const idPart = sanitize(ytId || leadCode || 'YT');
+            const name = [idPart, sanitize(clientName), sanitize(plan?.trip_title || destination), sanitize(dates)].filter(Boolean).join('_');
+            const prevTitle = document.title;
+            document.title = name || prevTitle;
+            window.print();
+            setTimeout(() => { document.title = prevTitle; }, 1000);
+          }}>
             <FileText className="h-3 w-3" /> PDF
           </Button>
           <Button size="sm" className="text-xs gap-1 bg-[hsl(var(--success))] hover:bg-[hsl(var(--success))]/90 text-white" onClick={onGoToCosting}>
@@ -1179,59 +1209,98 @@ const TravelPlanProposal = ({
             </div>
           </div>
 
-          {/* What's Included — Day by Day Summary */}
+          {/* What's Included — Day by Day Summary or override */}
           <div>
-            <h3 className="text-base font-serif font-bold text-slate-800 mb-3">What's Included</h3>
-            <div className="space-y-2.5">
-              {displayPlan.days.map(d => (
-                <div key={d.day_number} className="text-xs text-slate-700">
-                  <p className="font-semibold text-slate-800">Day {d.day_number} — {d.title}</p>
-                  <ul className="mt-1 ml-3 space-y-0.5">
-                    {d.bullets.slice(0, 6).map((b, i) => {
-                      const obj = toBulletObj(b);
-                      return <li key={i} className="text-slate-600">• {obj.text}</li>;
-                    })}
-                  </ul>
-                </div>
-              ))}
+            <div className="flex items-center justify-between mb-2">
+              <h3 className="text-base font-serif font-bold text-slate-800">What's Included</h3>
+              {viewMode === 'edit' && (
+                <button
+                  type="button"
+                  className="text-[10px] text-[hsl(var(--info))] underline print:hidden"
+                  onClick={() => setClosing(c => ({ ...c, inclusionsOverride: c.inclusionsOverride ? '' : displayPlan.days.map(d => `Day ${d.day_number} — ${d.title}\n${d.bullets.slice(0, 6).map(b => `• ${toBulletObj(b).text}`).join('\n')}`).join('\n\n') }))}
+                >
+                  {closing.inclusionsOverride ? 'Voltar ao auto (dias)' : 'Editar manualmente'}
+                </button>
+              )}
             </div>
+            {viewMode === 'edit' && closing.inclusionsOverride !== undefined && closing.inclusionsOverride !== '' ? (
+              <Textarea
+                className="text-xs font-mono min-h-[180px]"
+                value={closing.inclusionsOverride}
+                onChange={e => setClosing(c => ({ ...c, inclusionsOverride: e.target.value }))}
+              />
+            ) : closing.inclusionsOverride ? (
+              <div className="text-xs text-slate-700 whitespace-pre-wrap">{closing.inclusionsOverride}</div>
+            ) : (
+              <div className="space-y-2.5">
+                {displayPlan.days.map(d => (
+                  <div key={d.day_number} className="text-xs text-slate-700">
+                    <p className="font-semibold text-slate-800">Day {d.day_number} — {d.title}</p>
+                    <ul className="mt-1 ml-3 space-y-0.5">
+                      {d.bullets.slice(0, 6).map((b, i) => {
+                        const obj = toBulletObj(b);
+                        return <li key={i} className="text-slate-600">• {obj.text}</li>;
+                      })}
+                    </ul>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
 
           {/* Reservation & Payment */}
           <div>
             <h3 className="text-base font-serif font-bold text-slate-800 mb-2">Reservation & Payment Conditions</h3>
-            <ul className="text-xs text-slate-700 space-y-1 ml-3">
-              <li>• <strong>Deposit:</strong> 25% of the total amount to formalize the booking.</li>
-              <li>• <strong>Final Payment:</strong> The remaining 75% must be settled up to 30 days before the tour date.</li>
-            </ul>
+            {viewMode === 'edit' ? (
+              <Textarea
+                className="text-xs min-h-[90px]"
+                value={closing.payment}
+                onChange={e => setClosing(c => ({ ...c, payment: e.target.value }))}
+              />
+            ) : (
+              <div className="text-xs text-slate-700 whitespace-pre-wrap ml-3">{closing.payment}</div>
+            )}
           </div>
 
           {/* Cancellations */}
           <div>
             <h3 className="text-base font-serif font-bold text-slate-800 mb-2">Cancellations & Refund Conditions</h3>
-            <ul className="text-xs text-slate-700 space-y-1 ml-3">
-              <li>• Free cancellation with 100% refund up to 7 days prior to the tour date.</li>
-              <li>• For cancellations made less than 30 days before the tour date, the total amount is non-refundable.</li>
-            </ul>
+            {viewMode === 'edit' ? (
+              <Textarea
+                className="text-xs min-h-[90px]"
+                value={closing.cancellation}
+                onChange={e => setClosing(c => ({ ...c, cancellation: e.target.value }))}
+              />
+            ) : (
+              <div className="text-xs text-slate-700 whitespace-pre-wrap ml-3">{closing.cancellation}</div>
+            )}
           </div>
 
           {/* Important Notes */}
           <div>
             <h3 className="text-base font-serif font-bold text-slate-800 mb-2">Important Notes</h3>
-            <ul className="text-xs text-slate-600 space-y-1 ml-3">
-              <li>• The rates presented include all the itinerary and experiences mentioned in the proposition.</li>
-              <li>• The rates presented have been calculated and are valid for a group of <strong>{pax}{paxChildren ? ` + ${paxChildren}` : ''}</strong> guests, respectively.</li>
-              <li>• The presented rates are valid on the date this proposal is sent. Up until your final confirmation, there's the possibility of price/availability/conditions changes beyond our process. Therefore, we suggest you may confirm as soon as possible.</li>
-              <li>• The rates include all taxes and personal accident insurance.</li>
-              <li>• Terms and Conditions referring to all our products/services are available publicly on our website.</li>
-            </ul>
+            {viewMode === 'edit' ? (
+              <Textarea
+                className="text-xs min-h-[120px]"
+                value={closing.importantNotes}
+                onChange={e => setClosing(c => ({ ...c, importantNotes: e.target.value }))}
+              />
+            ) : (
+              <div className="text-xs text-slate-600 whitespace-pre-wrap ml-3">{closing.importantNotes}</div>
+            )}
           </div>
 
           {/* Closing Message */}
           <div className="pt-4 border-t border-slate-200 text-xs text-slate-700 space-y-3 leading-relaxed">
-            <p>That said, we await your feedback and your thoughts on the program and proposal.</p>
-            <p>If helpful, we suggest scheduling a short video call with our team to walk through the experience together, clarify any details, and fine-tune the plan according to your vision. We can book directly in our agenda at your best convenience: <a href="https://url-shortener.me/BT2R" className="text-[hsl(var(--info))] underline">https://url-shortener.me/BT2R</a></p>
-            <p>Please let us know if the proposal aligns with your expectations so we can move confidently to the next steps.</p>
+            {viewMode === 'edit' ? (
+              <Textarea
+                className="text-xs min-h-[140px]"
+                value={closing.closingMessage}
+                onChange={e => setClosing(c => ({ ...c, closingMessage: e.target.value }))}
+              />
+            ) : (
+              <div className="whitespace-pre-wrap">{closing.closingMessage}</div>
+            )}
             <p className="italic text-slate-500">*No reservation has been made at this time.</p>
             <p className="font-serif font-semibold text-slate-800 pt-2">Best regards from Portugal,<br/>Your Tours Portugal</p>
           </div>

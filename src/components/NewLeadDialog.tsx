@@ -19,6 +19,7 @@ const DESTINOS = ['Porto & Douro Valley', 'Lisbon & Sintra', 'Algarve', 'Azores'
 type Mode = 'manual' | 'ai';
 
 interface FormData {
+  ytId: string;
   clientName: string;
   email: string;
   phone: string;
@@ -37,7 +38,7 @@ interface FormData {
 }
 
 const emptyForm: FormData = {
-  clientName: '', email: '', phone: '', travelDates: '', travelEndDate: '', datesType: 'estimated',
+  ytId: '', clientName: '', email: '', phone: '', travelDates: '', travelEndDate: '', datesType: 'estimated',
   numberOfDays: 0, pax: 2, language: ['EN'], budget: '', destination: [], request: '', preferences: '',
   travelStyle: [], comfortLevel: '',
 };
@@ -67,6 +68,7 @@ const NewLeadDialog = ({ open, onOpenChange }: { open: boolean; onOpenChange: (v
       if (data?.error) throw new Error(data.error);
       const e = data.extracted;
       setForm({
+        ytId: form.ytId,
         clientName: e.clientName || '', email: e.email || '', phone: e.phone || '',
         travelDates: e.travelStartDate || e.travelDates || '', 
         travelEndDate: e.travelEndDate || '',
@@ -88,12 +90,17 @@ const NewLeadDialog = ({ open, onOpenChange }: { open: boolean; onOpenChange: (v
   };
 
   const handleCreate = async () => {
+    if (!form.ytId.trim()) {
+      toast({ title: 'ID YT obrigatório', description: 'Introduz o ID matriz da viagem.', variant: 'destructive' });
+      return;
+    }
     if (!form.clientName.trim()) {
       toast({ title: 'Nome obrigatório', variant: 'destructive' });
       return;
     }
     try {
       const newLead = await createLead.mutateAsync({
+        yt_id: form.ytId.trim(),
         client_name: form.clientName,
         email: form.email,
         phone: form.phone,
@@ -159,25 +166,29 @@ const NewLeadDialog = ({ open, onOpenChange }: { open: boolean; onOpenChange: (v
           <div className="space-y-4">
             <div className="grid grid-cols-2 gap-3">
               <div>
+                <Label className="text-[10px] text-muted-foreground uppercase">ID YT *</Label>
+                <Input className="h-8 text-xs mt-1 font-mono" value={form.ytId} onChange={e => updateField('ytId', e.target.value)} placeholder="Ex: YT-2026-0123" />
+              </div>
+              <div>
                 <Label className="text-[10px] text-muted-foreground uppercase">Nome *</Label>
                 <Input className="h-8 text-xs mt-1" value={form.clientName} onChange={e => updateField('clientName', e.target.value)} placeholder="Nome do cliente" />
               </div>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
               <div>
                 <Label className="text-[10px] text-muted-foreground uppercase">Email</Label>
                 <Input className="h-8 text-xs mt-1" type="email" value={form.email} onChange={e => updateField('email', e.target.value)} placeholder="email@example.com" />
               </div>
-            </div>
-            <div className="grid grid-cols-2 gap-3">
               <div>
                 <Label className="text-[10px] text-muted-foreground uppercase">Telefone</Label>
                 <Input className="h-8 text-xs mt-1" value={form.phone} onChange={e => updateField('phone', e.target.value)} placeholder="+351 ..." />
               </div>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
               <div>
                 <Label className="text-[10px] text-muted-foreground uppercase">Nº Pax</Label>
                 <Input className="h-8 text-xs mt-1" type="number" min={1} value={form.pax} onChange={e => updateField('pax', parseInt(e.target.value) || 1)} />
               </div>
-            </div>
-            <div className="grid grid-cols-2 gap-3">
               <div>
                 <Label className="text-[10px] text-muted-foreground uppercase">Datas de Viagem</Label>
                 <Input className="h-8 text-xs mt-1" value={form.travelDates} onChange={e => updateField('travelDates', e.target.value)} placeholder="Ex: 15-22 Maio 2026" />
