@@ -840,6 +840,7 @@ const LeadDetailPage = () => {
         id: lead.id,
         updates: {
           client_name: formState.clientName,
+          yt_id: formState.ytId || null,
           email: formState.email,
           phone: formState.phone,
           travel_dates: formState.travelDates,
