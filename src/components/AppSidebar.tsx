@@ -1,16 +1,13 @@
 import { NavLink, useLocation } from 'react-router-dom';
 import {
-  LayoutDashboard, Map, CheckCircle, Sun, Users, Globe, CreditCard,
-  ClipboardList, Bot, Shield, LogOut, Settings, FileText, ShieldCheck,
-  Package, Plug, BarChart3, Handshake, ChevronDown, ChevronRight,
+  Map, Sun, Users, CreditCard,
+  LogOut, ChevronDown, ChevronRight,
   Menu, X,
 } from 'lucide-react';
 import { useState } from 'react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/hooks/useAuth';
 import { useIsMobile } from '@/hooks/use-mobile';
-import { useApprovalsQuery } from '@/hooks/useApprovalsQuery';
-import { useTasksQuery } from '@/hooks/useTasksQuery';
 
 interface NavItem {
   to: string;
@@ -18,54 +15,18 @@ interface NavItem {
   label: string;
 }
 
-interface NavGroup {
-  label: string;
-  items: NavItem[];
-  defaultOpen?: boolean;
-}
-
 const reservasItems: NavItem[] = [
   { to: '/leads', icon: Users, label: 'Leads & Files' },
-  { to: '/trips', icon: Map, label: 'Bookings & Reservas Confirmadas' },
+  { to: '/trips', icon: Map, label: 'Bookings & Reservas' },
+  { to: '/payments', icon: CreditCard, label: 'Pagamentos' },
 ];
-
-const comercialItems: NavItem[] = [
-  { to: '/admin/suppliers', icon: Package, label: 'FSEs' },
-  { to: '/admin/partners', icon: Handshake, label: 'Resellers' },
-  { to: '/admin/kpis', icon: BarChart3, label: 'KPIs' },
-  { to: '/commercial/fse-database', icon: FileText, label: 'Base FSE' },
-];
-
-const adminItems: NavItem[] = [
-  { to: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
-  { to: '/agents', icon: Bot, label: 'AI Agents' },
-  { to: '/ai-office', icon: Bot, label: 'AI Work Office' },
-  { to: '/crm', icon: Globe, label: 'CRM (NetHunt)' },
-  { to: '/payments', icon: CreditCard, label: 'WeTravel' },
-  { to: '/admin/users', icon: Shield, label: 'Utilizadores' },
-  { to: '/admin/permissions', icon: ShieldCheck, label: 'Permissões' },
-  { to: '/admin/settings', icon: Settings, label: 'Definições' },
-  { to: '/admin/integrations', icon: Plug, label: 'Integrações' },
-  { to: '/admin/logs', icon: FileText, label: 'Activity Logs' },
-];
-
 
 // ─── Desktop Sidebar (hover-expand) ───
 const DesktopSidebar = () => {
   const location = useLocation();
-  const { profile, isAdmin, signOut } = useAuth();
+  const { profile, signOut } = useAuth();
   const [hovered, setHovered] = useState(false);
   const [reservasOpen, setReservasOpen] = useState(true);
-  const [comercialOpen, setComercialOpen] = useState(false);
-  const [adminOpen, setAdminOpen] = useState(false);
-
-  const { data: approvals = [] } = useApprovalsQuery();
-  const { data: tasks = [] } = useTasksQuery();
-  const pendingApprovals = approvals.filter(a => a.status === 'pending').length;
-  const overdueTasks = tasks.filter(t => {
-    if (t.status === 'done' || !t.due_date) return false;
-    return new Date(t.due_date) < new Date();
-  }).length;
 
   const expanded = hovered;
 
@@ -78,9 +39,6 @@ const DesktopSidebar = () => {
 
   const renderNavItem = (item: NavItem) => {
     const active = isActive(item.to);
-    const showApprovalBadge = item.to === '/approvals' && pendingApprovals > 0;
-    const showTaskBadge = item.to === '/tasks' && overdueTasks > 0;
-
     return (
       <NavLink
         key={item.to}
@@ -96,23 +54,9 @@ const DesktopSidebar = () => {
       >
         <div className="relative shrink-0">
           <item.icon className="h-4 w-4" />
-          {!expanded && showApprovalBadge && (
-            <span className="absolute -top-1 -right-1 h-2 w-2 rounded-full bg-destructive" />
-          )}
-          {!expanded && showTaskBadge && (
-            <span className="absolute -top-1 -right-1 h-2 w-2 rounded-full bg-[hsl(var(--urgent))]" />
-          )}
         </div>
         {expanded && (
-          <>
-            <span className="truncate text-xs">{item.label}</span>
-            {showApprovalBadge && (
-              <span className="ml-auto text-[10px] bg-destructive text-destructive-foreground px-1.5 py-0.5 rounded-full font-bold">{pendingApprovals}</span>
-            )}
-            {showTaskBadge && (
-              <span className="ml-auto text-[10px] bg-[hsl(var(--urgent))] text-white px-1.5 py-0.5 rounded-full font-bold">{overdueTasks}</span>
-            )}
-          </>
+          <span className="truncate text-xs">{item.label}</span>
         )}
       </NavLink>
     );
@@ -161,17 +105,7 @@ const DesktopSidebar = () => {
 
       {/* Nav */}
       <nav className="flex-1 py-3 px-2 space-y-1 overflow-y-auto">
-        {/* Dep. Reservas (Home) */}
-
-
-        {/* Dep. Reservas */}
         {renderGroup('Dep. Reservas', reservasItems, reservasOpen, setReservasOpen)}
-
-        {/* Dep. Comercial */}
-        {renderGroup('Dep. Comercial', comercialItems, comercialOpen, setComercialOpen)}
-
-        {/* Admin */}
-        {isAdmin && renderGroup('Admin', adminItems, adminOpen, setAdminOpen)}
       </nav>
 
       {/* User */}
@@ -208,10 +142,8 @@ const DesktopSidebar = () => {
 // ─── Mobile Menu (full-screen overlay) ───
 const MobileMenu = ({ open, onClose }: { open: boolean; onClose: () => void }) => {
   const location = useLocation();
-  const { profile, isAdmin, signOut } = useAuth();
+  const { profile, signOut } = useAuth();
   const [reservasOpen, setReservasOpen] = useState(true);
-  const [comercialOpen, setComercialOpen] = useState(false);
-  const [adminOpen, setAdminOpen] = useState(false);
 
   const initials = profile?.full_name
     ? profile.full_name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()
@@ -267,10 +199,7 @@ const MobileMenu = ({ open, onClose }: { open: boolean; onClose: () => void }) =
 
       {/* Navigation */}
       <nav className="flex-1 overflow-y-auto py-4 px-2 space-y-2">
-        {/* Home = Dep. Reservas */}
         {renderGroup('Dep. Reservas', reservasItems, reservasOpen, setReservasOpen)}
-        {renderGroup('Dep. Comercial', comercialItems, comercialOpen, setComercialOpen)}
-        {isAdmin && renderGroup('Admin', adminItems, adminOpen, setAdminOpen)}
       </nav>
 
       {/* User */}
