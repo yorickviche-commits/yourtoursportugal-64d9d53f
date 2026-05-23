@@ -322,7 +322,7 @@ function SectionAIButton({ label, active, loading, onClick }: { label: string; a
 
 // ─── Main Component ─────────────────────────────────────
 const TravelPlanProposal = ({
-  leadId, leadCode, clientName, destination, travelDates, travelEndDate,
+  leadId, leadCode, ytId, clientName, destination, travelDates, travelEndDate,
   numberOfDays, datesType, pax, paxChildren, paxInfants,
   travelStyles, comfortLevel, budgetLevel, magicQuestion, notes,
   defaultLanguage,
@@ -334,6 +334,7 @@ const TravelPlanProposal = ({
   const [saving, setSaving] = useState(false);
   const [viewMode, setViewMode] = useState<'preview' | 'edit'>('preview');
   const [plan, setPlan] = useState<TravelPlanData | null>(null);
+  const [closing, setClosing] = useState<ClosingTerms>(DEFAULT_CLOSING);
   const [extraInstructions, setExtraInstructions] = useState('');
   const [showRegenInput, setShowRegenInput] = useState(false);
   const [sectionLoading, setSectionLoading] = useState<string | null>(null);
