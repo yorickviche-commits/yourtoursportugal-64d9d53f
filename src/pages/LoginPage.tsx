@@ -2,7 +2,6 @@ import { useEffect, useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
-import { signInWithLovableOAuthPopup } from '@/lib/lovableCloudOAuth';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -20,7 +19,7 @@ const LoginPage = () => {
 
   useEffect(() => {
     if (!authLoading && user) {
-      navigate('/trips', { replace: true });
+      navigate('/leads', { replace: true });
     }
   }, [authLoading, navigate, user]);
 
@@ -39,14 +38,14 @@ const LoginPage = () => {
 
   const handleGoogleLogin = async () => {
     setLoading(true);
-    const { error } = await signInWithLovableOAuthPopup('google');
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: { redirectTo: window.location.origin },
+    });
     if (error) {
-      toast({ title: 'Erro Google OAuth', description: String(error), variant: 'destructive' });
+      toast({ title: 'Erro Google OAuth', description: error.message, variant: 'destructive' });
       setLoading(false);
-      return;
     }
-
-    navigate('/trips', { replace: true });
   };
 
   return (
