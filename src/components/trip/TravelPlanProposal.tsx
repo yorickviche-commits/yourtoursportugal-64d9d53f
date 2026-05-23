@@ -61,7 +61,15 @@ interface TravelPlanProposalProps {
   budgetLevel: string;
   magicQuestion?: string;
   notes?: string;
+  defaultLanguage?: string;
 }
+
+const LANGUAGE_OPTIONS: { value: string; label: string }[] = [
+  { value: 'PT', label: 'PT' },
+  { value: 'EN', label: 'EN' },
+  { value: 'ES', label: 'ESP' },
+  { value: 'FR', label: 'FR' },
+];
 
 interface ChatMessage {
   role: 'user' | 'assistant';
@@ -299,6 +307,7 @@ const TravelPlanProposal = ({
   leadId, leadCode, clientName, destination, travelDates, travelEndDate,
   numberOfDays, datesType, pax, paxChildren, paxInfants,
   travelStyles, comfortLevel, budgetLevel, magicQuestion, notes,
+  defaultLanguage,
 }: TravelPlanProposalProps) => {
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -310,6 +319,9 @@ const TravelPlanProposal = ({
   const [showRegenInput, setShowRegenInput] = useState(false);
   const [sectionLoading, setSectionLoading] = useState<string | null>(null);
   const [activeChat, setActiveChat] = useState<string | null>(null);
+  const normalizedDefaultLang = (defaultLanguage || 'EN').toUpperCase();
+  const initialLang = LANGUAGE_OPTIONS.some(o => o.value === normalizedDefaultLang) ? normalizedDefaultLang : 'EN';
+  const [language, setLanguage] = useState<string>(initialLang);
 
   // Load saved plan from DB
   const { data: savedPlan, isLoading: loadingSaved } = useQuery({
@@ -347,6 +359,7 @@ const TravelPlanProposal = ({
     clientName, fileId: leadCode, destination, travelDates,
     travelEndDate, numberOfDays, datesType, pax, paxChildren,
     paxInfants, travelStyles, comfortLevel, budgetLevel, magicQuestion, notes,
+    language,
   };
 
   // Dedup registry scope (lead-based)
@@ -673,7 +686,20 @@ const TravelPlanProposal = ({
           </div>
         )}
 
-        <div className="flex justify-center">
+        <div className="flex flex-col items-center gap-2">
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] uppercase font-bold text-muted-foreground">Idioma</span>
+            <Select value={language} onValueChange={setLanguage}>
+              <SelectTrigger className="h-8 w-[90px] text-xs">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {LANGUAGE_OPTIONS.map(o => (
+                  <SelectItem key={o.value} value={o.value} className="text-xs">{o.label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
           <Button size="lg" disabled={!canGenerate || generating} onClick={() => handleGenerate()}
             className="text-sm gap-2 bg-gradient-to-r from-[hsl(var(--info))] to-[hsl(var(--info)/0.7)] text-white px-8 py-3 h-auto shadow-lg hover:shadow-xl transition-shadow">
             {generating ? <><Loader2 className="h-4 w-4 animate-spin" /> O nosso travel designer está a criar o seu plano...</> : <><Sparkles className="h-4 w-4" /> Gerar Plano de Viagem</>}
@@ -717,6 +743,16 @@ const TravelPlanProposal = ({
           </TabsList>
         </Tabs>
         <div className="flex items-center gap-2">
+          <Select value={language} onValueChange={setLanguage}>
+            <SelectTrigger className="h-8 w-[80px] text-xs" title="Idioma do plano">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {LANGUAGE_OPTIONS.map(o => (
+                <SelectItem key={o.value} value={o.value} className="text-xs">{o.label}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
           <Button variant="outline" size="sm" className="text-xs gap-1" onClick={() => setShowRegenInput(!showRegenInput)}>
             <RefreshCw className="h-3 w-3" /> Regenerar Tudo
           </Button>

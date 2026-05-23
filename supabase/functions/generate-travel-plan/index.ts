@@ -66,9 +66,17 @@ interface RequestBody {
     budgetLevel: string;
     magicQuestion?: string;
     notes?: string;
+    language?: string;
   };
   extraInstructions?: string;
 }
+
+const LANGUAGE_MAP: Record<string, string> = {
+  EN: 'English (premium DMC tone)',
+  PT: 'Portuguese (Portugal — premium, fluent)',
+  ES: 'Spanish (premium, fluent)',
+  FR: 'French (premium, fluent)',
+};
 
 function formatDateRange(leadData: RequestBody['leadData'], numDays: number): string {
   if (leadData.travelDates && leadData.travelEndDate) {
@@ -232,9 +240,13 @@ ${extraInstructions ? `\nADDITIONAL INSTRUCTIONS FROM TEAM: ${extraInstructions}
 
 Format dates as DD-Mon-YYYY (e.g. 02-Aug-2026). If exact dates aren't provided, use placeholder dates starting from a reasonable near-future date.`;
 
-    const systemWithExtra = extraInstructions
+    const langCode = (leadData.language || 'EN').toUpperCase();
+    const langInstruction = LANGUAGE_MAP[langCode] || LANGUAGE_MAP.EN;
+    const languageDirective = `\n\nOUTPUT LANGUAGE: Generate ALL text fields (trip_title, narrative, day title, subtitle, bullets, overnight) in ${langInstruction}. Keep JSON keys in English. Keep proper nouns (city names, hotel names) untranslated.`;
+
+    const systemWithExtra = (extraInstructions
       ? `${SYSTEM_PROMPT}\n\nIMPORTANT ADDITIONAL INSTRUCTIONS: ${extraInstructions}`
-      : SYSTEM_PROMPT;
+      : SYSTEM_PROMPT) + languageDirective;
 
     const raw = await callAI(systemWithExtra, userPrompt);
 
