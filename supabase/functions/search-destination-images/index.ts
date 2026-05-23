@@ -199,13 +199,17 @@ serve(async (req) => {
 
     if (mode === 'generate') {
       const result = await generateWithAI(query);
-      if (!result) {
+      if (!result.image) {
+        const quotaFailure = result.failures.find(f => f.status === 402 || f.status === 429 || /quota|billing|credit|limit/i.test(f.message));
+        const message = quotaFailure
+          ? `A geração AI falhou por quota/billing em ${quotaFailure.provider}: ${quotaFailure.message}`
+          : 'Não foi possível gerar imagem com os fornecedores configurados.';
         return new Response(
-          JSON.stringify({ error: 'Não foi possível gerar imagem com os fornecedores configurados.', images: [] }),
+          JSON.stringify({ error: message, images: [], failures: result.failures }),
           { status: 502, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
-      return new Response(JSON.stringify({ images: result ? [result] : [] }), {
+      return new Response(JSON.stringify({ images: [result.image] }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
