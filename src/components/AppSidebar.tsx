@@ -161,8 +161,8 @@ const DesktopSidebar = () => {
 
       {/* Nav */}
       <nav className="flex-1 py-3 px-2 space-y-1 overflow-y-auto">
-        {/* Dashboard - standalone */}
-        {renderNavItem({ to: '/', icon: LayoutDashboard, label: 'Dashboard' })}
+        {/* Dep. Reservas (Home) */}
+
 
         {/* Dep. Reservas */}
         {renderGroup('Dep. Reservas', reservasItems, reservasOpen, setReservasOpen)}
