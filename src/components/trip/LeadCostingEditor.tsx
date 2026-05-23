@@ -423,6 +423,12 @@ const LeadCostingEditor = ({ costingDays, onChange, onSave, saving, plannerDays,
               <Plus className="h-3 w-3" /> Importar do Planner
             </Button>
           )}
+          {leadId && (
+            <Button variant="outline" size="sm" className="text-xs gap-1 border-[hsl(var(--info))]/50 text-[hsl(var(--info))] hover:bg-[hsl(var(--info))]/10" onClick={importFromTravelPlanner} disabled={importingTP}>
+              {importingTP ? <Loader2 className="h-3 w-3 animate-spin" /> : <Sparkles className="h-3 w-3" />}
+              Importar Travel Planner
+            </Button>
+          )}
           <Button size="sm" className="text-xs gap-1" onClick={() => onSave(costingDays)} disabled={saving}>
             {saving ? <Loader2 className="h-3 w-3 animate-spin" /> : <Save className="h-3 w-3" />}
             Guardar Custos
@@ -434,12 +440,21 @@ const LeadCostingEditor = ({ costingDays, onChange, onSave, saving, plannerDays,
       {costingDays.length === 0 && (
         <div className="bg-card rounded-lg border p-8 text-center space-y-3">
           <p className="text-sm text-muted-foreground">Sem dados de custos.</p>
-          {plannerDays.length > 0 ? (
-            <Button size="sm" className="text-xs gap-1" onClick={populateFromPlanner}>
-              <Plus className="h-3 w-3" /> Criar custos a partir do Travel Planner
-            </Button>
-          ) : (
-            <p className="text-xs text-muted-foreground">Gere primeiro o Travel Planner para popular os custos automaticamente.</p>
+          <div className="flex items-center justify-center gap-2 flex-wrap">
+            {plannerDays.length > 0 && (
+              <Button size="sm" variant="outline" className="text-xs gap-1" onClick={populateFromPlanner}>
+                <Plus className="h-3 w-3" /> Criar do Planner antigo
+              </Button>
+            )}
+            {leadId && (
+              <Button size="sm" className="text-xs gap-1" onClick={importFromTravelPlanner} disabled={importingTP}>
+                {importingTP ? <Loader2 className="h-3 w-3 animate-spin" /> : <Sparkles className="h-3 w-3" />}
+                Importar do Travel Planner
+              </Button>
+            )}
+          </div>
+          {!leadId && plannerDays.length === 0 && (
+            <p className="text-xs text-muted-foreground">Gera primeiro o Travel Planner para popular os custos automaticamente.</p>
           )}
         </div>
       )}
