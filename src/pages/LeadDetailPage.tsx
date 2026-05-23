@@ -1270,12 +1270,13 @@ const LeadDetailPage = ({ mode = 'lead' }: { mode?: 'lead' | 'booking' } = {}) =
         {/* Comunicações */}
         {activeTab === 'comunicacoes' && lead && (
           <CommunicationsTab
-            scope="lead"
+            scope={mode === 'booking' ? 'trip' : 'lead'}
             entityId={lead.id}
             recipientEmail={formState.email || lead.email || ''}
             context={{
               client_name: formState.clientName || lead.client_name,
               lead_code: lead.lead_code,
+              trip_code: lead.lead_code,
               destination: lead.destination || '',
               travel_dates: formState.travelDates || lead.travel_dates || '',
               pax: formState.pax ?? lead.pax,
