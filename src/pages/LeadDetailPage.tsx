@@ -1192,6 +1192,7 @@ const LeadDetailPage = () => {
             magicQuestion={lead.magic_question || undefined}
             notes={formState.notes}
             defaultLanguage={idioma[0]}
+            onGoToCosting={() => setActiveTab('custos')}
           />
         )}
 

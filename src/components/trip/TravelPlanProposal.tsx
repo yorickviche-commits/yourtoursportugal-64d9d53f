@@ -62,6 +62,7 @@ interface TravelPlanProposalProps {
   magicQuestion?: string;
   notes?: string;
   defaultLanguage?: string;
+  onGoToCosting?: () => void;
 }
 
 const LANGUAGE_OPTIONS: { value: string; label: string }[] = [
@@ -308,6 +309,7 @@ const TravelPlanProposal = ({
   numberOfDays, datesType, pax, paxChildren, paxInfants,
   travelStyles, comfortLevel, budgetLevel, magicQuestion, notes,
   defaultLanguage,
+  onGoToCosting,
 }: TravelPlanProposalProps) => {
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -762,7 +764,7 @@ const TravelPlanProposal = ({
           <Button variant="outline" size="sm" className="text-xs gap-1" onClick={() => window.print()}>
             <FileText className="h-3 w-3" /> PDF
           </Button>
-          <Button size="sm" className="text-xs gap-1 bg-[hsl(var(--success))] hover:bg-[hsl(var(--success))]/90 text-white">
+          <Button size="sm" className="text-xs gap-1 bg-[hsl(var(--success))] hover:bg-[hsl(var(--success))]/90 text-white" onClick={onGoToCosting}>
             <ArrowRight className="h-3 w-3" /> Costing
           </Button>
         </div>
