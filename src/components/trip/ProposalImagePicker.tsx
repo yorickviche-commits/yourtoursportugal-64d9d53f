@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { Image, Upload, Search, Sparkles, X, Loader2, Monitor } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -6,15 +6,19 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { useUsedPhotos, extractPhotoId, type PhotoScope } from '@/hooks/useUsedPhotos';
 
 interface ProposalImagePickerProps {
   currentUrl?: string;
   onSelect: (url: string) => void;
   onRemove: () => void;
-  searchContext: string; // e.g. "Porto historical center" for smart Unsplash queries
+  searchContext: string;
   className?: string;
   aspectRatio?: 'landscape' | 'square';
+  dedupScope?: PhotoScope;
 }
+
+type UnsplashResult = { url: string; caption: string; photo_id?: string };
 
 export default function ProposalImagePicker({
   currentUrl,
@@ -23,13 +27,15 @@ export default function ProposalImagePicker({
   searchContext,
   className = '',
   aspectRatio = 'landscape',
+  dedupScope,
 }: ProposalImagePickerProps) {
   const [open, setOpen] = useState(false);
   const [tab, setTab] = useState<string>('unsplash');
   const [query, setQuery] = useState(searchContext);
-  const [results, setResults] = useState<{ url: string; caption: string }[]>([]);
+  const [results, setResults] = useState<UnsplashResult[]>([]);
   const [searching, setSearching] = useState(false);
   const [generating, setGenerating] = useState(false);
+  const [excludePhotoIds, setExcludePhotoIds] = useState<string[]>([]);
   const fileRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
 
@@ -38,17 +44,35 @@ export default function ProposalImagePicker({
   const [loadingMore, setLoadingMore] = useState(false);
   const PER_PAGE = 20;
 
+  const { getUsedPhotoIds, registerPhotos } = useUsedPhotos(
+    dedupScope || { type: 'lead', id: '' }
+  );
+
+  useEffect(() => {
+    if (open && dedupScope?.id) {
+      getUsedPhotoIds().then(setExcludePhotoIds);
+    }
+  }, [open, dedupScope?.id, getUsedPhotoIds]);
+
   const handleUnsplashSearch = async (q?: string, append = false) => {
     const searchQuery = q || query;
     if (!searchQuery.trim()) return;
     const currentPage = append ? page + 1 : 1;
     append ? setLoadingMore(true) : setSearching(true);
     try {
+      const excludeIds = dedupScope?.id ? await getUsedPhotoIds() : [];
+      setExcludePhotoIds(excludeIds);
       const { data, error } = await supabase.functions.invoke('search-destination-images', {
-        body: { query: searchQuery, count: PER_PAGE, page: currentPage, mode: 'search' },
+        body: {
+          query: searchQuery,
+          count: PER_PAGE,
+          page: currentPage,
+          mode: 'search',
+          excludePhotoIds: excludeIds,
+        },
       });
       if (error) throw error;
-      const newImages = data?.images || [];
+      const newImages: UnsplashResult[] = data?.images || [];
       if (append) {
         setResults(prev => [...prev, ...newImages]);
       } else {
@@ -64,6 +88,15 @@ export default function ProposalImagePicker({
     }
   };
 
+  const handleSelectImage = async (img: UnsplashResult) => {
+    onSelect(img.url);
+    setOpen(false);
+    if (dedupScope?.id) {
+      const pid = img.photo_id || extractPhotoId(img.url);
+      await registerPhotos([{ photo_id: pid, photo_url: img.url, used_in: searchContext }]);
+    }
+  };
+
   const handleAIGenerate = async () => {
     setGenerating(true);
     try {
@@ -73,8 +106,7 @@ export default function ProposalImagePicker({
       if (error) throw error;
       const img = data?.images?.[0];
       if (img) {
-        onSelect(img.url);
-        setOpen(false);
+        await handleSelectImage(img);
         toast({ title: '🎨 Imagem AI gerada!' });
       } else {
         toast({ title: 'Erro', description: 'Não foi possível gerar imagem', variant: 'destructive' });
@@ -89,7 +121,6 @@ export default function ProposalImagePicker({
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    // Convert to base64 data URL for simplicity
     const reader = new FileReader();
     reader.onload = (ev) => {
       const dataUrl = ev.target?.result as string;
@@ -105,7 +136,6 @@ export default function ProposalImagePicker({
 
   return (
     <>
-      {/* Image Display / Placeholder */}
       <div
         className={`relative group cursor-pointer rounded-lg overflow-hidden border border-dashed border-slate-300 hover:border-[hsl(var(--info))] transition-colors ${arCls} ${className}`}
         onClick={() => setOpen(true)}
@@ -133,7 +163,6 @@ export default function ProposalImagePicker({
         )}
       </div>
 
-      {/* Picker Dialog */}
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="max-w-lg max-h-[80vh] overflow-hidden flex flex-col">
           <DialogHeader>
@@ -153,7 +182,6 @@ export default function ProposalImagePicker({
               </TabsTrigger>
             </TabsList>
 
-            {/* Upload */}
             <TabsContent value="upload" className="flex-1 flex flex-col items-center justify-center py-8">
               <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={handleFileUpload} />
               <div
@@ -166,7 +194,6 @@ export default function ProposalImagePicker({
               </div>
             </TabsContent>
 
-            {/* Unsplash */}
             <TabsContent value="unsplash" className="flex-1 flex flex-col overflow-hidden gap-3">
               <div className="flex gap-2">
                 <Input
@@ -185,15 +212,24 @@ export default function ProposalImagePicker({
                 {results.length > 0 ? (
                   <div className="space-y-3">
                     <div className="grid grid-cols-2 gap-2">
-                      {results.map((img, i) => (
-                        <button
-                          key={i}
-                          className="rounded-md overflow-hidden border-2 border-transparent hover:border-[hsl(var(--info))] transition-colors aspect-[16/10]"
-                          onClick={() => { onSelect(img.url); setOpen(false); }}
-                        >
-                          <img src={img.url} alt={img.caption} className="w-full h-full object-cover" />
-                        </button>
-                      ))}
+                      {results.map((img, i) => {
+                        const pid = img.photo_id || extractPhotoId(img.url);
+                        const isAlreadyUsed = excludePhotoIds.includes(pid);
+                        return (
+                          <button
+                            key={i}
+                            className="relative rounded-md overflow-hidden border-2 border-transparent hover:border-[hsl(var(--info))] transition-colors aspect-[16/10]"
+                            onClick={() => handleSelectImage(img)}
+                          >
+                            <img src={img.url} alt={img.caption} className="w-full h-full object-cover" />
+                            {isAlreadyUsed && (
+                              <div className="absolute top-1 left-1 bg-amber-500/90 text-white text-[9px] font-bold px-1.5 py-0.5 rounded">
+                                JÁ USADA
+                              </div>
+                            )}
+                          </button>
+                        );
+                      })}
                     </div>
                     {hasMore && (
                       <div className="flex justify-center pb-2">
@@ -213,7 +249,6 @@ export default function ProposalImagePicker({
               </div>
             </TabsContent>
 
-            {/* AI Generate */}
             <TabsContent value="ai" className="flex-1 flex flex-col items-center justify-center py-8 gap-4">
               <Sparkles className="h-10 w-10 text-[hsl(var(--info))] opacity-60" />
               <div className="text-center space-y-1">

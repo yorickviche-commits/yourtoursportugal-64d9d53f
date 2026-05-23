@@ -2202,6 +2202,51 @@ export type Database = {
           },
         ]
       }
+      used_photos: {
+        Row: {
+          created_at: string
+          id: string
+          lead_id: string | null
+          photo_id: string
+          photo_url: string
+          proposal_id: string | null
+          used_in: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          lead_id?: string | null
+          photo_id: string
+          photo_url: string
+          proposal_id?: string | null
+          used_in?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          lead_id?: string | null
+          photo_id?: string
+          photo_url?: string
+          proposal_id?: string | null
+          used_in?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "used_photos_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "used_photos_proposal_id_fkey"
+            columns: ["proposal_id"]
+            isOneToOne: false
+            referencedRelation: "proposals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_roles: {
         Row: {
           created_at: string
