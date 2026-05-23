@@ -140,7 +140,7 @@ async function callOpenAIFallback(emailText: string) {
   const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
   if (!OPENAI_API_KEY) throw new Error("No OpenAI API key");
 
-  const response = await fetch("https://api.openai.com/v1/chat/completions", {
+  const response = await fetchWithRetry("https://api.openai.com/v1/chat/completions", {
     method: "POST",
     headers: { Authorization: `Bearer ${OPENAI_API_KEY}`, "Content-Type": "application/json" },
     body: JSON.stringify({
@@ -152,7 +152,7 @@ async function callOpenAIFallback(emailText: string) {
       tools: [toolDef],
       tool_choice: { type: "function", function: { name: "extract_lead_data" } },
     }),
-  });
+  }, "openai");
 
   if (!response.ok) {
     const t = await response.text();
