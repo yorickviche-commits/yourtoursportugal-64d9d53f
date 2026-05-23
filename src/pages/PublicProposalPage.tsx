@@ -156,6 +156,23 @@ const PublicProposalPage = () => {
               {proposal.booking_ref && <span>• {proposal.booking_ref}</span>}
               {proposal.participants && <span>• {proposal.participants}</span>}
             </div>
+            {(proposal as any).wetravel_checkout_url && (
+              <div className="mt-6">
+                <a
+                  href={(proposal as any).wetravel_checkout_url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-lg font-semibold shadow-lg transition"
+                >
+                  ✈️ Book Now — Reserve Your Spot
+                </a>
+                <p className="mt-2 text-xs text-white/80">
+                  {(proposal as any).deposit_amount_eur
+                    ? `€${(proposal as any).deposit_amount_eur} deposit · ${(proposal as any).deposit_percent ?? 50}% of total · 100% refundable`
+                    : '50% deposit · 100% refundable'}
+                </p>
+              </div>
+            )}
           </div>
         </div>
       </section>
@@ -486,6 +503,20 @@ const PublicProposalPage = () => {
               )}
             </div>
           </div>
+        </div>
+      )}
+
+      {(proposal as any).wetravel_checkout_url && (
+        <div className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-white border-t border-slate-200 shadow-2xl p-3">
+          <a
+            href={(proposal as any).wetravel_checkout_url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="block w-full text-center bg-green-600 hover:bg-green-700 text-white font-semibold py-3 rounded-lg"
+          >
+            ✈️ Book Now — €{(proposal as any).deposit_amount_eur ?? '—'} Deposit
+          </a>
+          <p className="mt-1 text-[10px] text-center text-slate-500">100% refundable · secure your spot today</p>
         </div>
       )}
     </div>

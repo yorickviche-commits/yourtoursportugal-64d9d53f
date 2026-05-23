@@ -1,9 +1,21 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
+
+function injectBookNowButton(body: string, checkoutUrl?: string | null, depositEur?: number | null): string {
+  if (!checkoutUrl) return body;
+  const buttonHtml = `\n\n<div style="text-align:center;margin:24px 0;"><a href="${checkoutUrl}" style="display:inline-block;background:#16a34a;color:#fff;padding:14px 28px;border-radius:8px;text-decoration:none;font-weight:600;font-family:Arial,sans-serif;">✈️ Book Now — Reserve Your Spot</a><p style="margin:8px 0 0;font-size:12px;color:#64748b;">${depositEur ? `€${depositEur} deposit · ` : ''}50% of total · 100% refundable</p></div>\n\n`;
+  const sigPattern = /\n(Best regards|Kind regards|Warmly|Warm regards|À bientôt|Cordialement|Mit freundlichen|Atenciosamente|Com os melhores)/i;
+  const idx = body.search(sigPattern);
+  if (idx !== -1) return body.slice(0, idx) + buttonHtml + body.slice(idx);
+  return body + buttonHtml;
+}
+
+
 
 const SALES_TEMPLATES: Record<string, { subject: string; body: string }> = {
   "new_inquiry": {
@@ -217,12 +229,33 @@ serve(async (req) => {
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
 
+    // Enrich leadContext with WeTravel checkout URL from proposals table
+    try {
+      const supabaseUrl = Deno.env.get("SUPABASE_URL");
+      const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+      if (supabaseUrl && serviceKey && leadContext?.id) {
+        const sb = createClient(supabaseUrl, serviceKey);
+        const { data: proposalWT } = await sb
+          .from('proposals')
+          .select('wetravel_checkout_url, deposit_amount_eur, deposit_percent')
+          .eq('lead_id', leadContext.id)
+          .maybeSingle();
+        if (proposalWT?.wetravel_checkout_url) {
+          (leadContext as any).wetravel_checkout_url = proposalWT.wetravel_checkout_url;
+          (leadContext as any).deposit_amount_eur = proposalWT.deposit_amount_eur;
+        }
+      }
+    } catch (e) {
+      console.error('WeTravel context fetch failed (non-fatal):', e);
+    }
+
     const template = SALES_TEMPLATES[templateKey];
     if (!template) {
       return new Response(JSON.stringify({ error: "Template not found" }), {
         status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
+
 
     const systemPrompt = `You are the Sales & Operations AI Manager for Your Tours Portugal (YTP) — a premium private tour operator and DMC specializing in tailor-made experiences across Portugal.
 
@@ -367,16 +400,17 @@ Use the extract_email tool to return the result.`;
       rawText = rawText.replace(/```json\s*/g, "").replace(/```\s*/g, "").trim();
 
       const result = JSON.parse(rawText);
+      result.body = injectBookNowButton(result.body, (leadContext as any).wetravel_checkout_url, (leadContext as any).deposit_amount_eur);
       return new Response(JSON.stringify({ email: result }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    const data = await response.json();
     const toolCall = data.choices?.[0]?.message?.tool_calls?.[0];
     if (!toolCall) throw new Error("No tool call in response");
 
     const result = JSON.parse(toolCall.function.arguments);
+    result.body = injectBookNowButton(result.body, (leadContext as any).wetravel_checkout_url, (leadContext as any).deposit_amount_eur);
 
     return new Response(JSON.stringify({ email: result }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },

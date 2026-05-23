@@ -1453,6 +1453,8 @@ export type Database = {
           created_by: string | null
           date_range: string | null
           days: Json
+          deposit_amount_eur: number | null
+          deposit_percent: number
           hero_image_url: string | null
           id: string
           language: string
@@ -1464,7 +1466,11 @@ export type Database = {
           status: string
           summary_text: string | null
           title: string
+          total_value_eur: number | null
           updated_at: string
+          wetravel_checkout_url: string | null
+          wetravel_trip_url: string | null
+          wetravel_trip_uuid: string | null
         }
         Insert: {
           approved_at?: string | null
@@ -1476,6 +1482,8 @@ export type Database = {
           created_by?: string | null
           date_range?: string | null
           days?: Json
+          deposit_amount_eur?: number | null
+          deposit_percent?: number
           hero_image_url?: string | null
           id?: string
           language?: string
@@ -1487,7 +1495,11 @@ export type Database = {
           status?: string
           summary_text?: string | null
           title?: string
+          total_value_eur?: number | null
           updated_at?: string
+          wetravel_checkout_url?: string | null
+          wetravel_trip_url?: string | null
+          wetravel_trip_uuid?: string | null
         }
         Update: {
           approved_at?: string | null
@@ -1499,6 +1511,8 @@ export type Database = {
           created_by?: string | null
           date_range?: string | null
           days?: Json
+          deposit_amount_eur?: number | null
+          deposit_percent?: number
           hero_image_url?: string | null
           id?: string
           language?: string
@@ -1510,7 +1524,11 @@ export type Database = {
           status?: string
           summary_text?: string | null
           title?: string
+          total_value_eur?: number | null
           updated_at?: string
+          wetravel_checkout_url?: string | null
+          wetravel_trip_url?: string | null
+          wetravel_trip_uuid?: string | null
         }
         Relationships: []
       }
