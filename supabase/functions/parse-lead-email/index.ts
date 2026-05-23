@@ -82,7 +82,7 @@ async function callLovableGateway(emailText: string) {
 
 async function callGeminiFallback(emailText: string) {
   const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY");
-  if (!GEMINI_API_KEY) throw new Error("No fallback API key available");
+  if (!GEMINI_API_KEY) throw new Error("No Gemini API key");
 
   const prompt = `${systemPrompt}\n\nExtract the lead data from this email conversation and return ONLY valid JSON with these fields: clientName, email, phone, travelDates, datesType (concrete|estimated), pax (number), language (EN|PT|FR|ES|DE|IT|NL), budget, destination, request, preferences, travelStartDate (YYYY-MM-DD or null), travelEndDate (YYYY-MM-DD or null), numberOfDays (number or null), travelStyle (array of strings or []), comfortLevel (budget|standard|superior|luxury or null). If unknown, use null.\n\nEmail:\n${emailText.slice(0, 8000)}`;
 
@@ -101,13 +101,95 @@ async function callGeminiFallback(emailText: string) {
   if (!response.ok) {
     const t = await response.text();
     console.error("Gemini fallback error:", response.status, t);
-    throw new Error("Gemini fallback failed");
+    throw new Error(`Gemini ${response.status}`);
   }
 
   const data = await response.json();
   const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
   if (!text) throw new Error("No content from Gemini");
   return JSON.parse(text);
+}
+
+async function callOpenAIFallback(emailText: string) {
+  const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
+  if (!OPENAI_API_KEY) throw new Error("No OpenAI API key");
+
+  const response = await fetch("https://api.openai.com/v1/chat/completions", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${OPENAI_API_KEY}`, "Content-Type": "application/json" },
+    body: JSON.stringify({
+      model: "gpt-4o-mini",
+      messages: [
+        { role: "system", content: systemPrompt },
+        { role: "user", content: `Extract the lead data from this email conversation:\n\n${emailText.slice(0, 8000)}` },
+      ],
+      tools: [toolDef],
+      tool_choice: { type: "function", function: { name: "extract_lead_data" } },
+    }),
+  });
+
+  if (!response.ok) {
+    const t = await response.text();
+    console.error("OpenAI fallback error:", response.status, t);
+    throw new Error(`OpenAI ${response.status}`);
+  }
+
+  const data = await response.json();
+  const toolCall = data.choices?.[0]?.message?.tool_calls?.[0];
+  if (!toolCall) throw new Error("No tool call from OpenAI");
+  return JSON.parse(toolCall.function.arguments);
+}
+
+async function callAnthropicFallback(emailText: string) {
+  const ANTHROPIC_API_KEY = Deno.env.get("ANTHROPIC_API_KEY");
+  if (!ANTHROPIC_API_KEY) throw new Error("No Anthropic API key");
+
+  const response = await fetch("https://api.anthropic.com/v1/messages", {
+    method: "POST",
+    headers: {
+      "x-api-key": ANTHROPIC_API_KEY,
+      "anthropic-version": "2023-06-01",
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      model: "claude-3-5-haiku-20241022",
+      max_tokens: 2048,
+      system: systemPrompt,
+      tools: [{
+        name: "extract_lead_data",
+        description: toolDef.function.description,
+        input_schema: toolDef.function.parameters,
+      }],
+      tool_choice: { type: "tool", name: "extract_lead_data" },
+      messages: [
+        { role: "user", content: `Extract the lead data from this email conversation:\n\n${emailText.slice(0, 8000)}` },
+      ],
+    }),
+  });
+
+  if (!response.ok) {
+    const t = await response.text();
+    console.error("Anthropic fallback error:", response.status, t);
+    throw new Error(`Anthropic ${response.status}`);
+  }
+
+  const data = await response.json();
+  const toolUse = data.content?.find((c: any) => c.type === "tool_use");
+  if (!toolUse) throw new Error("No tool use from Anthropic");
+  return toolUse.input;
+}
+
+async function extractWithFailover(emailText: string) {
+  const errors: string[] = [];
+  try { return await callLovableGateway(emailText); }
+  catch (e: any) { console.warn("Gateway failed:", e.status || e.message); errors.push(`gateway:${e.status || e.message}`); }
+  try { return await callGeminiFallback(emailText); }
+  catch (e: any) { console.warn("Gemini failed:", e.message); errors.push(`gemini:${e.message}`); }
+  try { return await callOpenAIFallback(emailText); }
+  catch (e: any) { console.warn("OpenAI failed:", e.message); errors.push(`openai:${e.message}`); }
+  try { return await callAnthropicFallback(emailText); }
+  catch (e: any) { console.warn("Anthropic failed:", e.message); errors.push(`anthropic:${e.message}`); }
+  throw new Error(`All AI providers failed: ${errors.join(" | ")}`);
 }
 
 serve(async (req) => {
@@ -122,17 +204,7 @@ serve(async (req) => {
       });
     }
 
-    let extracted;
-    try {
-      extracted = await callLovableGateway(emailText);
-    } catch (err: any) {
-      if (err.status === 402 || err.status === 429) {
-        console.warn(`Gateway returned ${err.status}, falling back to Gemini`);
-        extracted = await callGeminiFallback(emailText);
-      } else {
-        throw err;
-      }
-    }
+    const extracted = await extractWithFailover(emailText);
 
     return new Response(JSON.stringify({ extracted }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
