@@ -33,15 +33,27 @@ import { useLeadOperationsQuery, useUpsertLeadOperation, DbLeadOperation } from 
 import BookingEmailHistory from '@/components/trip/BookingEmailHistory';
 import CommunicationsTab from '@/components/communications/CommunicationsTab';
 
-type DetailTab = 'dados_gerais' | 'travel_planner' | 'custos' | 'propostas' | 'comunicacoes';
+type DetailTab = 'dados_gerais' | 'travel_planner' | 'custos' | 'propostas' | 'operacoes' | 'comunicacoes';
 
-const DETAIL_TABS: { key: DetailTab; label: string }[] = [
+const BASE_DETAIL_TABS: { key: DetailTab; label: string }[] = [
   { key: 'dados_gerais', label: 'Dados Gerais' },
   { key: 'travel_planner', label: 'Travel Planner' },
   { key: 'custos', label: 'Custos' },
   { key: 'propostas', label: 'Propostas' },
   { key: 'comunicacoes', label: 'Comunicações' },
 ];
+
+const getDetailTabs = (status: string): { key: DetailTab; label: string }[] => {
+  if (status === 'won') {
+    // Bookings & Reservas Confirmadas — insert Operações before Comunicações
+    return [
+      ...BASE_DETAIL_TABS.slice(0, 4),
+      { key: 'operacoes', label: 'Operações' },
+      ...BASE_DETAIL_TABS.slice(4),
+    ];
+  }
+  return BASE_DETAIL_TABS;
+};
 
 const CATEGORIAS = ['Premium & Boutique', 'Standard', 'Luxury', 'Budget', 'Adventure'];
 const DESTINOS = ['Porto & Douro Valley', 'Lisbon & Sintra', 'Algarve', 'Azores', 'Madeira', 'Minho', 'Alentejo', 'Silver Coast'];
