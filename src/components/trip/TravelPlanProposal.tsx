@@ -686,7 +686,20 @@ const TravelPlanProposal = ({
           </div>
         )}
 
-        <div className="flex justify-center">
+        <div className="flex flex-col items-center gap-2">
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] uppercase font-bold text-muted-foreground">Idioma</span>
+            <Select value={language} onValueChange={setLanguage}>
+              <SelectTrigger className="h-8 w-[90px] text-xs">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {LANGUAGE_OPTIONS.map(o => (
+                  <SelectItem key={o.value} value={o.value} className="text-xs">{o.label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
           <Button size="lg" disabled={!canGenerate || generating} onClick={() => handleGenerate()}
             className="text-sm gap-2 bg-gradient-to-r from-[hsl(var(--info))] to-[hsl(var(--info)/0.7)] text-white px-8 py-3 h-auto shadow-lg hover:shadow-xl transition-shadow">
             {generating ? <><Loader2 className="h-4 w-4 animate-spin" /> O nosso travel designer está a criar o seu plano...</> : <><Sparkles className="h-4 w-4" /> Gerar Plano de Viagem</>}
