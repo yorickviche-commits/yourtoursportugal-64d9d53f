@@ -306,6 +306,7 @@ async function tryGeminiDirect(systemPrompt: string, userPrompt: string): Promis
         generationConfig: {
           maxOutputTokens: 8192,
           temperature: 0.7,
+          responseMimeType: 'application/json',
         },
       }),
     }
@@ -318,6 +319,29 @@ async function tryGeminiDirect(systemPrompt: string, userPrompt: string): Promis
 
   const data = await response.json();
   return data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+}
+
+function extractJSON(text: string): any {
+  try { return JSON.parse(text.trim()); } catch {}
+  const stripped = text
+    .replace(/^```(?:json)?\s*/m, '')
+    .replace(/\s*```\s*$/m, '')
+    .trim();
+  try { return JSON.parse(stripped); } catch {}
+  let depth = 0;
+  let start = -1;
+  for (let i = 0; i < stripped.length; i++) {
+    if (stripped[i] === '{') {
+      if (depth === 0) start = i;
+      depth++;
+    } else if (stripped[i] === '}') {
+      depth--;
+      if (depth === 0 && start !== -1) {
+        try { return JSON.parse(stripped.slice(start, i + 1)); } catch {}
+      }
+    }
+  }
+  return { raw: text, parse_error: true };
 }
 
 serve(async (req) => {
@@ -355,13 +379,7 @@ serve(async (req) => {
       }
     }
 
-    let parsed;
-    try {
-      const jsonMatch = resultText.match(/\{[\s\S]*\}/);
-      parsed = jsonMatch ? JSON.parse(jsonMatch[0]) : { raw: resultText };
-    } catch {
-      parsed = { raw: resultText };
-    }
+    const parsed = extractJSON(resultText);
 
     return new Response(JSON.stringify({ result: parsed, modelUsed }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
