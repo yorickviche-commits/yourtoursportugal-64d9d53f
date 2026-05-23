@@ -1037,7 +1037,7 @@ const LeadDetailPage = ({ mode = 'lead' }: { mode?: 'lead' | 'booking' } = {}) =
         {/* Tabs */}
         <div className="flex items-center justify-between border-b border-border">
           <div className="flex items-center gap-0">
-            {getDetailTabs(leadStatus).map(tab => (
+            {getDetailTabs(leadStatus, mode).map(tab => (
               <button key={tab.key} onClick={() => setActiveTab(tab.key)} className={cn("px-4 py-2 text-xs font-medium border-b-2 transition-colors -mb-px", activeTab === tab.key ? "border-[hsl(var(--info))] text-[hsl(var(--info))]" : "border-transparent text-muted-foreground hover:text-foreground")}>{tab.label}</button>
             ))}
           </div>
