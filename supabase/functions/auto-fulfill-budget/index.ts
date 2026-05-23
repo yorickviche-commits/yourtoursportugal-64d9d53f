@@ -54,7 +54,7 @@ async function callGateway(messages: any[], apiKey: string) {
 
 async function callGeminiFallback(messages: any[]) {
   const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY");
-  if (!GEMINI_API_KEY) throw new Error("No fallback API key available");
+  if (!GEMINI_API_KEY) throw new Error("No Gemini API key");
   const prompt = messages.map((m: any) => m.content).join("\n\n");
   const res = await fetch(
     `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`,
@@ -70,6 +70,75 @@ async function callGeminiFallback(messages: any[]) {
   if (!res.ok) { const t = await res.text(); console.error("Gemini fallback error:", res.status, t); throw new Error("Gemini fallback failed"); }
   const data = await res.json();
   return data.candidates?.[0]?.content?.parts?.[0]?.text || "[]";
+}
+
+async function callOpenAIFallback(messages: any[]) {
+  const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
+  if (!OPENAI_API_KEY) throw new Error("No OpenAI API key");
+  const res = await fetch("https://api.openai.com/v1/chat/completions", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${OPENAI_API_KEY}`, "Content-Type": "application/json" },
+    body: JSON.stringify({
+      model: "gpt-4o-mini",
+      messages,
+      response_format: { type: "json_object" },
+    }),
+  });
+  if (!res.ok) { const t = await res.text(); console.error("OpenAI fallback error:", res.status, t); throw new Error("OpenAI fallback failed"); }
+  const data = await res.json();
+  const content = data.choices?.[0]?.message?.content || "[]";
+  // OpenAI returns JSON object; may wrap array as {suggestions:[...]} or {data:[...]}
+  try {
+    const parsed = JSON.parse(content);
+    if (Array.isArray(parsed)) return content;
+    const arr = parsed.suggestions || parsed.data || parsed.items || parsed.results;
+    if (Array.isArray(arr)) return JSON.stringify(arr);
+    return content;
+  } catch { return content; }
+}
+
+async function callAnthropicFallback(messages: any[]) {
+  const ANTHROPIC_API_KEY = Deno.env.get("ANTHROPIC_API_KEY");
+  if (!ANTHROPIC_API_KEY) throw new Error("No Anthropic API key");
+  const system = messages.find((m: any) => m.role === "system")?.content || "";
+  const userMsgs = messages.filter((m: any) => m.role !== "system").map((m: any) => ({ role: m.role, content: m.content }));
+  const res = await fetch("https://api.anthropic.com/v1/messages", {
+    method: "POST",
+    headers: {
+      "x-api-key": ANTHROPIC_API_KEY,
+      "anthropic-version": "2023-06-01",
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      model: "claude-3-5-haiku-20241022",
+      max_tokens: 4096,
+      system,
+      messages: userMsgs,
+    }),
+  });
+  if (!res.ok) { const t = await res.text(); console.error("Anthropic fallback error:", res.status, t); throw new Error("Anthropic fallback failed"); }
+  const data = await res.json();
+  return data.content?.[0]?.text || "[]";
+}
+
+async function callAIWithFailover(messages: any[]) {
+  const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
+  const errors: string[] = [];
+  // 1. Lovable Gateway
+  if (LOVABLE_API_KEY) {
+    try { return await callGateway(messages, LOVABLE_API_KEY); }
+    catch (e: any) { console.warn("Gateway failed:", e.status || e.message); errors.push(`gateway:${e.status || e.message}`); }
+  }
+  // 2. Gemini direct
+  try { return await callGeminiFallback(messages); }
+  catch (e: any) { console.warn("Gemini failed:", e.message); errors.push(`gemini:${e.message}`); }
+  // 3. OpenAI
+  try { return await callOpenAIFallback(messages); }
+  catch (e: any) { console.warn("OpenAI failed:", e.message); errors.push(`openai:${e.message}`); }
+  // 4. Anthropic
+  try { return await callAnthropicFallback(messages); }
+  catch (e: any) { console.warn("Anthropic failed:", e.message); errors.push(`anthropic:${e.message}`); }
+  throw new Error(`All AI providers failed: ${errors.join(" | ")}`);
 }
 
 serve(async (req) => {
