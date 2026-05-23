@@ -306,11 +306,18 @@ async function runBudgetFulfill(supabase: any, lead: any, fseContext: string) {
     }));
     await supabase.from('lead_costing_data').insert(costingRows);
 
-    const totalPVP = totalNet * 1.3;
+    // Real PVP = sum of itemized pvpTotal (not flat ×1.3)
+    let totalPVP = 0;
+    for (const dayData of costingByDay.values()) {
+      for (const item of dayData.items) {
+        totalPVP += item.pvpTotal || 0;
+      }
+    }
+    if (totalPVP === 0) totalPVP = totalNet * 1.3;
 
     await logAgentEvent(supabase, agentId, 'task_completed', `✅ Budget: €${totalNet.toFixed(0)} NET / €${totalPVP.toFixed(0)} PVP for ${lead.client_name} (${protocolItems}/${costItems.length} protocol suppliers)`, false, { lead_id: lead.id, total_net: totalNet, total_pvp: totalPVP, items_count: costItems.length, protocol_items: protocolItems }, lead.id);
 
-    if (totalPVP > 8000) {
+    if (totalPVP > CEO_APPROVAL_THRESHOLD) {
       await updateAgentStatus(supabase, agentId, 'waiting', `Waiting for CEO approval: €${totalPVP.toFixed(0)}`, lead.id, 'CEO_APPROVAL');
       await supabase.from('ceo_approval_queue').insert({
         agent_id: agentId,
