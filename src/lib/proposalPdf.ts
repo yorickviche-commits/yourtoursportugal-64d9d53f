@@ -15,6 +15,7 @@ interface ProposalDay {
 }
 
 export interface ProposalLite {
+  id?: string;
   title?: string;
   client_name?: string;
   date_range?: string | null;
