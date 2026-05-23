@@ -104,7 +104,15 @@ export default function ProposalImagePicker({
         body: { query: `Beautiful travel photograph: ${searchContext}`, count: 1, mode: 'generate' },
       });
       if (error) {
-        const contextMessage = (error as any)?.context?.error || (error as any)?.context?.message;
+        let contextMessage = (error as any)?.context?.error || (error as any)?.context?.message;
+        if (!contextMessage && typeof (error as any)?.context?.clone === 'function') {
+          try {
+            const payload = await (error as any).context.clone().json();
+            contextMessage = payload?.error || payload?.message;
+          } catch {
+            contextMessage = undefined;
+          }
+        }
         throw new Error(contextMessage || error.message);
       }
       const img = data?.images?.[0];
