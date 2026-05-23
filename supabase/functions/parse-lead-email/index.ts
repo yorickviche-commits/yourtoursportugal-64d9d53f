@@ -47,6 +47,31 @@ Budget should be extracted if mentioned, otherwise null.
 For travelStyle, infer from context: wine tours → Wine, food mentions → Gastronomy, history/monuments → Cultural/History, hiking/outdoors → Adventure/Nature, honeymoon/couples → Romantic, kids → Family, spa/retreat → Wellness, etc. Multiple styles can apply.
 For comfortLevel, infer from budget level, hotel preferences, or explicit mentions: budget travelers → budget, mid-range → standard, upscale/boutique → superior, 5-star/luxury mentions → luxury.`;
 
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+async function fetchWithRetry(url: string, init: RequestInit, label: string, maxAttempts = 4): Promise<Response> {
+  let lastStatus = 0;
+  let lastText = "";
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    const res = await fetch(url, init);
+    if (res.ok) return res;
+    lastStatus = res.status;
+    // Only retry transient errors
+    if (res.status !== 429 && res.status < 500) {
+      return res;
+    }
+    lastText = await res.text().catch(() => "");
+    console.warn(`[${label}] attempt ${attempt} failed ${res.status}: ${lastText.slice(0, 200)}`);
+    if (attempt < maxAttempts) {
+      // exp backoff with jitter: 800ms, 1.8s, 3.5s
+      const delay = Math.min(800 * Math.pow(2, attempt - 1), 4000) + Math.random() * 300;
+      await sleep(delay);
+    }
+  }
+  // Reconstruct a Response-like with the last error to keep flow uniform
+  return new Response(lastText || `Retry exhausted ${lastStatus}`, { status: lastStatus || 500 });
+}
+
 async function callLovableGateway(emailText: string) {
   const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
   if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY not configured");
