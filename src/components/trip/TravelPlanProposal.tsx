@@ -1209,59 +1209,98 @@ const TravelPlanProposal = ({
             </div>
           </div>
 
-          {/* What's Included — Day by Day Summary */}
+          {/* What's Included — Day by Day Summary or override */}
           <div>
-            <h3 className="text-base font-serif font-bold text-slate-800 mb-3">What's Included</h3>
-            <div className="space-y-2.5">
-              {displayPlan.days.map(d => (
-                <div key={d.day_number} className="text-xs text-slate-700">
-                  <p className="font-semibold text-slate-800">Day {d.day_number} — {d.title}</p>
-                  <ul className="mt-1 ml-3 space-y-0.5">
-                    {d.bullets.slice(0, 6).map((b, i) => {
-                      const obj = toBulletObj(b);
-                      return <li key={i} className="text-slate-600">• {obj.text}</li>;
-                    })}
-                  </ul>
-                </div>
-              ))}
+            <div className="flex items-center justify-between mb-2">
+              <h3 className="text-base font-serif font-bold text-slate-800">What's Included</h3>
+              {viewMode === 'edit' && (
+                <button
+                  type="button"
+                  className="text-[10px] text-[hsl(var(--info))] underline print:hidden"
+                  onClick={() => setClosing(c => ({ ...c, inclusionsOverride: c.inclusionsOverride ? '' : displayPlan.days.map(d => `Day ${d.day_number} — ${d.title}\n${d.bullets.slice(0, 6).map(b => `• ${toBulletObj(b).text}`).join('\n')}`).join('\n\n') }))}
+                >
+                  {closing.inclusionsOverride ? 'Voltar ao auto (dias)' : 'Editar manualmente'}
+                </button>
+              )}
             </div>
+            {viewMode === 'edit' && closing.inclusionsOverride !== undefined && closing.inclusionsOverride !== '' ? (
+              <Textarea
+                className="text-xs font-mono min-h-[180px]"
+                value={closing.inclusionsOverride}
+                onChange={e => setClosing(c => ({ ...c, inclusionsOverride: e.target.value }))}
+              />
+            ) : closing.inclusionsOverride ? (
+              <div className="text-xs text-slate-700 whitespace-pre-wrap">{closing.inclusionsOverride}</div>
+            ) : (
+              <div className="space-y-2.5">
+                {displayPlan.days.map(d => (
+                  <div key={d.day_number} className="text-xs text-slate-700">
+                    <p className="font-semibold text-slate-800">Day {d.day_number} — {d.title}</p>
+                    <ul className="mt-1 ml-3 space-y-0.5">
+                      {d.bullets.slice(0, 6).map((b, i) => {
+                        const obj = toBulletObj(b);
+                        return <li key={i} className="text-slate-600">• {obj.text}</li>;
+                      })}
+                    </ul>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
 
           {/* Reservation & Payment */}
           <div>
             <h3 className="text-base font-serif font-bold text-slate-800 mb-2">Reservation & Payment Conditions</h3>
-            <ul className="text-xs text-slate-700 space-y-1 ml-3">
-              <li>• <strong>Deposit:</strong> 25% of the total amount to formalize the booking.</li>
-              <li>• <strong>Final Payment:</strong> The remaining 75% must be settled up to 30 days before the tour date.</li>
-            </ul>
+            {viewMode === 'edit' ? (
+              <Textarea
+                className="text-xs min-h-[90px]"
+                value={closing.payment}
+                onChange={e => setClosing(c => ({ ...c, payment: e.target.value }))}
+              />
+            ) : (
+              <div className="text-xs text-slate-700 whitespace-pre-wrap ml-3">{closing.payment}</div>
+            )}
           </div>
 
           {/* Cancellations */}
           <div>
             <h3 className="text-base font-serif font-bold text-slate-800 mb-2">Cancellations & Refund Conditions</h3>
-            <ul className="text-xs text-slate-700 space-y-1 ml-3">
-              <li>• Free cancellation with 100% refund up to 7 days prior to the tour date.</li>
-              <li>• For cancellations made less than 30 days before the tour date, the total amount is non-refundable.</li>
-            </ul>
+            {viewMode === 'edit' ? (
+              <Textarea
+                className="text-xs min-h-[90px]"
+                value={closing.cancellation}
+                onChange={e => setClosing(c => ({ ...c, cancellation: e.target.value }))}
+              />
+            ) : (
+              <div className="text-xs text-slate-700 whitespace-pre-wrap ml-3">{closing.cancellation}</div>
+            )}
           </div>
 
           {/* Important Notes */}
           <div>
             <h3 className="text-base font-serif font-bold text-slate-800 mb-2">Important Notes</h3>
-            <ul className="text-xs text-slate-600 space-y-1 ml-3">
-              <li>• The rates presented include all the itinerary and experiences mentioned in the proposition.</li>
-              <li>• The rates presented have been calculated and are valid for a group of <strong>{pax}{paxChildren ? ` + ${paxChildren}` : ''}</strong> guests, respectively.</li>
-              <li>• The presented rates are valid on the date this proposal is sent. Up until your final confirmation, there's the possibility of price/availability/conditions changes beyond our process. Therefore, we suggest you may confirm as soon as possible.</li>
-              <li>• The rates include all taxes and personal accident insurance.</li>
-              <li>• Terms and Conditions referring to all our products/services are available publicly on our website.</li>
-            </ul>
+            {viewMode === 'edit' ? (
+              <Textarea
+                className="text-xs min-h-[120px]"
+                value={closing.importantNotes}
+                onChange={e => setClosing(c => ({ ...c, importantNotes: e.target.value }))}
+              />
+            ) : (
+              <div className="text-xs text-slate-600 whitespace-pre-wrap ml-3">{closing.importantNotes}</div>
+            )}
           </div>
 
           {/* Closing Message */}
           <div className="pt-4 border-t border-slate-200 text-xs text-slate-700 space-y-3 leading-relaxed">
-            <p>That said, we await your feedback and your thoughts on the program and proposal.</p>
-            <p>If helpful, we suggest scheduling a short video call with our team to walk through the experience together, clarify any details, and fine-tune the plan according to your vision. We can book directly in our agenda at your best convenience: <a href="https://url-shortener.me/BT2R" className="text-[hsl(var(--info))] underline">https://url-shortener.me/BT2R</a></p>
-            <p>Please let us know if the proposal aligns with your expectations so we can move confidently to the next steps.</p>
+            {viewMode === 'edit' ? (
+              <Textarea
+                className="text-xs min-h-[140px]"
+                value={closing.closingMessage}
+                onChange={e => setClosing(c => ({ ...c, closingMessage: e.target.value }))}
+              />
+            ) : (
+              <div className="whitespace-pre-wrap">{closing.closingMessage}</div>
+            )}
             <p className="italic text-slate-500">*No reservation has been made at this time.</p>
             <p className="font-serif font-semibold text-slate-800 pt-2">Best regards from Portugal,<br/>Your Tours Portugal</p>
           </div>
