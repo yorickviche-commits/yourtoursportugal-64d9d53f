@@ -35,8 +35,31 @@ const CommunicationsTab = ({ scope, entityId, recipientEmail, context }: Props) 
   const [subject, setSubject] = useState('');
   const [body, setBody] = useState('');
   const [sending, setSending] = useState(false);
+  const [attachPdf, setAttachPdf] = useState(true);
 
   const filterField = scope === 'lead' ? 'lead_id' : 'trip_id';
+
+  // Latest proposal for this lead/trip — used to auto-attach Travel Plan & weblink
+  const { data: latestProposal } = useQuery({
+    queryKey: ['latest_proposal', scope, entityId],
+    queryFn: async () => {
+      if (!entityId) return null;
+      const col = scope === 'lead' ? 'lead_id' : 'booking_id';
+      const { data } = await supabase
+        .from('proposals')
+        .select('id, title, client_name, date_range, participants, summary_text, total_value_eur, public_token, days')
+        .eq(col, entityId)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      return (data as ProposalLite | null) || null;
+    },
+    enabled: !!entityId,
+  });
+
+  const proposalWeblink = latestProposal?.public_token
+    ? `${window.location.origin}/proposal/${latestProposal.public_token}`
+    : '';
 
   const { data: history = [], isLoading } = useQuery({
     queryKey: ['comms_log', scope, entityId],
@@ -58,12 +81,26 @@ const CommunicationsTab = ({ scope, entityId, recipientEmail, context }: Props) 
     [scope],
   );
 
+  const isProposalTemplate = selected?.key === 'sales_proposal';
+
   const openTemplate = (t: EmailTemplate) => {
     const rendered = renderTemplate(t, context);
+    let finalBody = rendered.body;
+    // Auto-inject interactive weblink for proposal sends
+    if (t.key === 'sales_proposal' && proposalWeblink) {
+      const linkBlock = `\n\n— Interactive Travel Plan (mobile-friendly):\n${proposalWeblink}\n\nThe full PDF version is attached for your records.`;
+      // Insert before the signature ("Warmly,")
+      if (finalBody.includes('Warmly,')) {
+        finalBody = finalBody.replace('Warmly,', `${linkBlock}\n\nWarmly,`);
+      } else {
+        finalBody = `${finalBody}${linkBlock}`;
+      }
+    }
     setSelected(t);
     setTo(recipientEmail || '');
     setSubject(rendered.subject);
-    setBody(rendered.body);
+    setBody(finalBody);
+    setAttachPdf(t.key === 'sales_proposal' && !!latestProposal);
   };
 
   const handleSend = async () => {
@@ -73,8 +110,14 @@ const CommunicationsTab = ({ scope, entityId, recipientEmail, context }: Props) 
     }
     setSending(true);
     try {
+      const attachments: Array<{ filename: string; mimeType: string; contentBase64: string }> = [];
+      if (isProposalTemplate && attachPdf && latestProposal) {
+        const { base64, filename } = buildProposalPdfBase64(latestProposal, proposalWeblink);
+        attachments.push({ filename, mimeType: 'application/pdf', contentBase64: base64 });
+      }
+
       const { data: sendData, error: sendError } = await supabase.functions.invoke('send-booking-email', {
-        body: { to, subject, body },
+        body: { to, subject, body, attachments },
       });
       if (sendError || (sendData as any)?.error) {
         throw new Error((sendData as any)?.error || sendError?.message || 'Falha ao enviar');
@@ -90,7 +133,10 @@ const CommunicationsTab = ({ scope, entityId, recipientEmail, context }: Props) 
         sent_by: user?.id || null,
       } as any);
 
-      toast({ title: 'Email enviado', description: `${to} via reservas@yourtours.pt` });
+      toast({
+        title: 'Email enviado',
+        description: `${to}${attachments.length ? ' · Travel Plan PDF anexo' : ''}`,
+      });
       qc.invalidateQueries({ queryKey: ['comms_log', scope, entityId] });
       setSelected(null);
     } catch (err: any) {
