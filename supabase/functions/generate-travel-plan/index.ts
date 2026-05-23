@@ -66,9 +66,17 @@ interface RequestBody {
     budgetLevel: string;
     magicQuestion?: string;
     notes?: string;
+    language?: string;
   };
   extraInstructions?: string;
 }
+
+const LANGUAGE_MAP: Record<string, string> = {
+  EN: 'English (premium DMC tone)',
+  PT: 'Portuguese (Portugal — premium, fluent)',
+  ES: 'Spanish (premium, fluent)',
+  FR: 'French (premium, fluent)',
+};
 
 function formatDateRange(leadData: RequestBody['leadData'], numDays: number): string {
   if (leadData.travelDates && leadData.travelEndDate) {
