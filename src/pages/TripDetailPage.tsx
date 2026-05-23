@@ -102,6 +102,7 @@ const TripDetailPage = () => {
     { key: 'itinerary', label: `Itinerário (${itineraryItems.length})` },
     { key: 'costing', label: `Custos (${costItems.length})` },
     { key: 'operations', label: 'Operações' },
+    { key: 'communications', label: 'Comunicações' },
     { key: 'contacts', label: `Contactos (${contacts.length})` },
     { key: 'activity', label: `Atividade (${activityLogs.length})` },
     { key: 'documents', label: `Docs (${documents.length})` },
