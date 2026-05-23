@@ -61,7 +61,15 @@ interface TravelPlanProposalProps {
   budgetLevel: string;
   magicQuestion?: string;
   notes?: string;
+  defaultLanguage?: string;
 }
+
+const LANGUAGE_OPTIONS: { value: string; label: string }[] = [
+  { value: 'PT', label: 'PT' },
+  { value: 'EN', label: 'EN' },
+  { value: 'ES', label: 'ESP' },
+  { value: 'FR', label: 'FR' },
+];
 
 interface ChatMessage {
   role: 'user' | 'assistant';
