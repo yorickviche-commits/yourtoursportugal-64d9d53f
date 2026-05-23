@@ -218,14 +218,15 @@ export interface TemplateContext {
 }
 
 export function renderTemplate(template: EmailTemplate, ctx: TemplateContext): { subject: string; body: string } {
-  const replace = (s: string) =>
-    s
-      .replaceAll('{{client_name}}', ctx.client_name || '[Client]')
-      .replaceAll('{{lead_code}}', ctx.lead_code || '[Ref]')
-      .replaceAll('{{trip_code}}', ctx.trip_code || ctx.lead_code || '[Ref]')
-      .replaceAll('{{destination}}', ctx.destination || 'Portugal')
-      .replaceAll('{{travel_dates}}', ctx.travel_dates || '[Dates]')
-      .replaceAll('{{pax}}', String(ctx.pax ?? ''))
-      .replaceAll('{{sales_owner}}', ctx.sales_owner || 'Your Tours Portugal');
+  const map: Record<string, string> = {
+    '{{client_name}}': ctx.client_name || '[Client]',
+    '{{lead_code}}': ctx.lead_code || '[Ref]',
+    '{{trip_code}}': ctx.trip_code || ctx.lead_code || '[Ref]',
+    '{{destination}}': ctx.destination || 'Portugal',
+    '{{travel_dates}}': ctx.travel_dates || '[Dates]',
+    '{{pax}}': String(ctx.pax ?? ''),
+    '{{sales_owner}}': ctx.sales_owner || 'Your Tours Portugal',
+  };
+  const replace = (s: string) => s.replace(/\{\{[a-z_]+\}\}/g, (m) => map[m] ?? m);
   return { subject: replace(template.subject), body: replace(template.body) };
 }
