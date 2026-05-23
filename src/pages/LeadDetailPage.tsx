@@ -31,15 +31,16 @@ import ItemNotesDialog from '@/components/trip/ItemNotesDialog';
 import BookingRequestDialog from '@/components/trip/BookingRequestDialog';
 import { useLeadOperationsQuery, useUpsertLeadOperation, DbLeadOperation } from '@/hooks/useLeadOperationsQuery';
 import BookingEmailHistory from '@/components/trip/BookingEmailHistory';
+import CommunicationsTab from '@/components/communications/CommunicationsTab';
 
-type DetailTab = 'dados_gerais' | 'travel_planner' | 'custos' | 'propostas' | 'operacoes';
+type DetailTab = 'dados_gerais' | 'travel_planner' | 'custos' | 'propostas' | 'comunicacoes';
 
 const DETAIL_TABS: { key: DetailTab; label: string }[] = [
   { key: 'dados_gerais', label: 'Dados Gerais' },
   { key: 'travel_planner', label: 'Travel Planner' },
   { key: 'custos', label: 'Custos' },
   { key: 'propostas', label: 'Propostas' },
-  { key: 'operacoes', label: 'Operações' },
+  { key: 'comunicacoes', label: 'Comunicações' },
 ];
 
 const CATEGORIAS = ['Premium & Boutique', 'Standard', 'Luxury', 'Budget', 'Adventure'];
