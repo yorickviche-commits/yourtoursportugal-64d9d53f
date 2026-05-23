@@ -1,93 +1,65 @@
+# Fix Geração de Imagem AI no Travel Planner
 
+## Problema
+O botão "Gerar Imagem AI" no `ProposalImagePicker` chama a edge function `search-destination-images` com `mode: 'generate'`, que hoje só tenta o **Lovable AI Gateway** (`gemini-3.1-flash-image-preview`). Quando esse gateway falha (sem créditos, rate-limit, modelo indisponível) → erro silencioso e nenhuma imagem.
 
-# Audit: What Works vs What Doesn't — Full Gap Analysis
+## Solução
+Substituir `generateWithAI()` por uma cadeia de fallback robusta usando as nossas próprias chaves já configuradas como secrets:
 
-## CONNECTED TO DATABASE (Real Data)
+```
+1º — Google Gemini direto (GEMINI_API_KEY)
+       modelo: gemini-2.5-flash-image-preview
+2º — OpenAI direto (OPENAI_API_KEY)
+       modelo: gpt-image-1 (b64_json)
+3º — (manter) Lovable AI Gateway como último recurso
+```
 
-| Feature | Page | Status | Details |
-|---------|------|--------|---------|
-| **Leads List** | `LeadsFilesPage` | **WORKS** | Reads from `leads` table (5 records). Filters, search, stats all use real data |
-| **Lead Detail — Dados Gerais** | `LeadDetailPage` | **WORKS** | Save, duplicate, new version, delete, status change — all write to DB |
-| **Lead Creation (Nova Lead)** | `NewLeadDialog` | **WORKS** | Inserts into `leads` table with auto-generated `YT-YYYY-####` code |
-| **AI Import (email parse)** | `NewLeadDialog` | **WORKS** | Calls `parse-lead-email` edge function |
-| **Dashboard stats** | `Dashboard` | **WORKS** | Counts trips, leads, approvals from real DB data |
-| **Trips List** | `TripsPage` | **WORKS** | Reads from `trips` table (6 records) with urgency filters |
-| **Approvals List + Approve/Reject** | `ApprovalsPage` | **WORKS** | Full CRUD on `approvals` table, activity logging |
-| **Itinerary Editor** | `LeadDetailPage > Itinerário` | **WORKS** | Reads/writes `itineraries` + `itinerary_days` tables |
-| **Public Preview** | `/preview/:id` | **WORKS** | Public route reads published itineraries |
-| **Auth (Login/Signup)** | `LoginPage` | **WORKS** | Real Supabase auth with email/password |
+Em qualquer caso → devolver `data:image/png;base64,...` para o frontend mostrar imediatamente, sem dependência de storage.
 
-## NOT CONNECTED — Still Using Mock/Static Data
+## Alterações
 
-| Feature | Page | Problem | Fix Required |
-|---------|------|---------|--------------|
-| **Trip Detail** | `TripDetailPage` | Uses `mockTrips.find()` + hardcoded itinerary, costing, operations, checklist, files, notifications | Rewrite to use `useTripQuery()` + DB for all sub-data |
-| **Tasks Page** | `TasksPage` | Uses `MOCK_TASKS` from `TasksBoard.tsx` (hardcoded array). "Nova Task" button does nothing | Connect to `tasks` table, add create/update/toggle mutations |
-| **Dashboard TasksBoard** | `TasksBoard` component | Same `MOCK_TASKS` hardcoded array, calendar view uses static data | Connect to `tasks` table |
-| **Travel Planner data** | `LeadDetailPage` | AI generates itinerary but result is stored in React state only — lost on refresh | Persist `itineraryDays` to a `lead_versions` or `lead_planner_data` table |
-| **Costing data** | `LeadDetailPage` | AI generates budget but result is stored in React state only — lost on refresh | Persist `costingDays` to a `lead_costing` table |
-| **Operations tab** | `LeadDetailPage` | Hardcoded `MOCK_OPS_DAYS` — no real data | Should pull from approved costing data |
-| **Files tab (Leads)** | `LeadsFilesPage` | Uses `mockFiles` from `mockLeads.ts` | Connect to storage or a `lead_files` table |
-| **CRM Page** | `CRMPage` | Unknown state | Likely placeholder/mock |
-| **Partners Page** | `PartnersPage` | Has DB tables but need to verify connection | Check if using real queries |
-| **Suppliers Pages** | `AdminSuppliersPage` | Has DB tables | Verify connection |
-| **Activity Logs** | `AdminActivityLogsPage` | Table exists, `logActivity()` hook exists, but 0 records — likely RLS blocking inserts | Fix RLS: current policy requires `auth.uid() = user_id` but `user_id` might be null |
+### 1. `supabase/functions/search-destination-images/index.ts`
+Reescrever a função `generateWithAI(query)`:
 
-## CRITICAL ISSUES
+- **Tentar Gemini primeiro** via REST:
+  - `POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-image-preview:generateContent?key=${GEMINI_API_KEY}`
+  - Body: `{ contents: [{ parts: [{ text: prompt }] }], generationConfig: { responseModalities: ["IMAGE"] } }`
+  - Extrair `candidates[0].content.parts[].inlineData.data` (base64) + `mimeType`
+  - Construir `data:${mimeType};base64,${data}`
 
-1. **Activity Logs RLS**: Policy requires `user_id = auth.uid()` but `logActivity()` sets `user_id` from `getUser()` which may not match in all cases. 0 records in DB confirms inserts are failing silently.
+- **Se Gemini falhar/não tiver imagem** → OpenAI:
+  - `POST https://api.openai.com/v1/images/generations` com `Authorization: Bearer ${OPENAI_API_KEY}`
+  - Body: `{ model: "gpt-image-1", prompt, size: "1536x1024", n: 1 }` (landscape)
+  - Extrair `data[0].b64_json` → construir data URL
 
-2. **Travel Planner + Costing data loss**: The most important workflow (AI generates plan → approve → generate costing → operations) loses ALL data on page refresh because it's stored in `useState` only.
+- **Se OpenAI falhar** → manter chamada atual ao Lovable Gateway como último fallback.
 
-3. **TripDetailPage completely static**: Uses `mockTrips.find(t => t.id === id)` — any trip created via DB will show "Trip not found".
+- Cada tentativa envolvida em `try/catch` com `console.error` detalhado (status + body) para futuro debug via Edge Function Logs.
 
-4. **Tasks completely static**: The entire Kanban board and task management is hardcoded mock data.
+- Retornar sempre `{ url, caption: query, photo_id: 'ai-<timestamp>-<random>' }` — formato já consumido pelo `ProposalImagePicker` e pelo registo `used_photos`.
 
----
+### 2. Tratamento de erros visível no frontend
+Em `ProposalImagePicker.tsx`, o `handleAIGenerate` já apanha erros via toast. Adicionar mensagem mais clara quando a edge function devolve `{ images: [] }` (atualmente diz "Não foi possível gerar imagem" — manter mas com hint sobre verificar logs).
 
-## Implementation Plan
+## Detalhes Técnicos
 
-### Phase 1: Fix Critical Data Persistence (Travel Planner + Costing)
+**Por que data URLs e não storage?**
+- Imagens AI usadas nas propostas já são editáveis (o utilizador pode substituir). Persistir num bucket adicionava complexidade sem ganho — o frontend guarda o URL no `plan.cover_image.url` ou `day.images[].url` e quando o plano é gravado, fica no payload da proposta.
+- Se mais tarde quisermos persistir, fazemos upload diferido para `supplier-files` ou novo bucket.
 
-Create two new tables:
-- **`lead_planner_data`** — stores AI-generated travel planner days per lead/version
-- **`lead_costing_data`** — stores AI-generated costing days per lead/version
+**Limites:**
+- Gemini `gemini-2.5-flash-image-preview` devolve PNG ~1MB tipicamente.
+- OpenAI `gpt-image-1` a 1536x1024 ~2MB base64. Aceitável para data URL inline.
 
-This ensures the core workflow (Dados Gerais → Travel Planner → Custos → Operações) persists across sessions.
+**Secrets já configurados** (verificado): `GEMINI_API_KEY`, `OPENAI_API_KEY`, `LOVABLE_API_KEY` ✅ — nada a adicionar.
 
-### Phase 2: Connect TripDetailPage to Database
+## Verificação após implementação
+1. Deploy edge function.
+2. No frontend, abrir Travel Planner → Editor de Imagem → tab "AI Generate" → clicar "Gerar Imagem AI".
+3. Confirmar que imagem aparece em < 10s.
+4. Verificar Edge Function logs para confirmar qual provider serviu o pedido.
 
-Replace `mockTrips.find()` with `useTripQuery(id)`. Move checklist, files, notifications to DB-backed state or at minimum to the `trips` table JSONB fields.
-
-### Phase 3: Connect Tasks to Database
-
-Rewrite `TasksPage` and `TasksBoard` to use `useTasksQuery` hook (already exists). Add create task dialog, toggle mutations, and Kanban drag-and-drop persistence.
-
-### Phase 4: Fix Activity Logs
-
-Fix the RLS policy or the insert logic so activity logs actually persist. Currently 0 records despite the hook being called.
-
-### Phase 5: Connect Operations Tab
-
-Wire the Operations tab in LeadDetailPage to pull from approved costing data instead of `MOCK_OPS_DAYS`.
-
-### Phase 6: Connect Files
-
-Replace `mockFiles` in LeadsFilesPage with real file references (either from storage bucket or a `lead_files` table).
-
----
-
-## Execution Priority
-
-1. **Travel Planner + Costing persistence** — without this, the core product workflow breaks on every refresh
-2. **TripDetailPage** — trips exist in DB but detail page can't show them
-3. **Tasks** — hooks exist, just need to connect pages
-4. **Activity Logs fix** — quick RLS fix
-5. **Operations tab + Files** — lower priority, can use interim solutions
-
-## Files to Create/Modify
-
-**New DB tables:** `lead_planner_data`, `lead_costing_data`
-**Modified pages:** `TripDetailPage`, `TasksPage`, `TasksBoard`, `LeadDetailPage` (persist planner/costing), `LeadsFilesPage` (remove mockFiles)
-**Fix:** `useActivityLog.ts` or RLS policy on `activity_logs`
-
+## Fora de scope
+- Não toco em `autoFetchImages` (que usa Unsplash + dedup já implementado).
+- Não toco no resto da pipeline de propostas, planner ou outras edge functions.
+- Não persisto fotos AI em storage — fica para iteração futura se necessário.
