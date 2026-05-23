@@ -1189,6 +1189,7 @@ const LeadDetailPage = () => {
           <TravelPlanProposal
             leadId={lead.id}
             leadCode={lead.lead_code}
+            ytId={formState.ytId || (lead as any).yt_id || ''}
             clientName={formState.clientName}
             destination={destino.join(', ') || lead.destination || ''}
             travelDates={formState.travelDates}
