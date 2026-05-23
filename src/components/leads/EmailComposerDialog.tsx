@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Mail, Loader2, Copy, Check, ChevronRight, Sparkles } from 'lucide-react';
+import { Mail, Loader2, Copy, Check, ChevronRight, Sparkles, ExternalLink } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -31,6 +31,7 @@ interface EmailComposerDialogProps {
 
 const EMAIL_TEMPLATES = [
   { key: 'new_inquiry', label: '1. Nova Consulta', stage: 'Sales', description: 'Resposta inicial + discovery questions' },
+  { key: 'send_proposal', label: '★ Enviar Proposta', stage: 'Sales', description: 'Email curto a apresentar a proposta (anexar PDF no Gmail)' },
   { key: 'proposal_followup', label: '2. Follow-up Proposta (24h)', stage: 'Sales', description: 'Verificar se recebeu a proposta' },
   { key: 'followup_3days', label: '3. Follow-up 3 dias', stage: 'Sales', description: 'Sugestão extra de valor' },
   { key: 'followup_7days', label: '4. Follow-up 7 dias', stage: 'Sales', description: 'Manter datas reservadas?' },
@@ -128,6 +129,12 @@ const EmailComposerDialog = ({ lead, children }: EmailComposerDialogProps) => {
   const handleCopySubject = async () => {
     await navigator.clipboard.writeText(editedSubject);
     toast({ title: 'Subject copiado!' });
+  };
+
+  const handleOpenGmail = () => {
+    const url = `https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(lead.email || '')}&su=${encodeURIComponent(editedSubject)}&body=${encodeURIComponent(editedBody)}`;
+    window.open(url, '_blank', 'noopener,noreferrer');
+    toast({ title: 'Gmail aberto', description: 'Anexa o PDF da proposta antes de enviar.' });
   };
 
   const selectedTemplateInfo = EMAIL_TEMPLATES.find(t => t.key === selectedTemplate);
@@ -287,6 +294,9 @@ const EmailComposerDialog = ({ lead, children }: EmailComposerDialogProps) => {
               <div className="flex items-center gap-2">
                 <Button variant="outline" size="sm" className="text-xs" onClick={handleGenerate} disabled={loading}>
                   {loading ? <Loader2 className="h-3 w-3 animate-spin" /> : '🔄 Regenerar'}
+                </Button>
+                <Button size="sm" variant="outline" className="text-xs gap-1" onClick={handleOpenGmail}>
+                  <ExternalLink className="h-3 w-3" /> Abrir no Gmail
                 </Button>
                 <Button size="sm" className={cn("text-xs gap-1 min-w-[140px]",
                   copied ? "bg-[hsl(var(--stable))] text-white" : "bg-[hsl(var(--info))] text-white")}
