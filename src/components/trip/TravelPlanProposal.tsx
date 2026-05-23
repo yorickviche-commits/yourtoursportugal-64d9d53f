@@ -307,6 +307,7 @@ const TravelPlanProposal = ({
   leadId, leadCode, clientName, destination, travelDates, travelEndDate,
   numberOfDays, datesType, pax, paxChildren, paxInfants,
   travelStyles, comfortLevel, budgetLevel, magicQuestion, notes,
+  defaultLanguage,
 }: TravelPlanProposalProps) => {
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -318,6 +319,9 @@ const TravelPlanProposal = ({
   const [showRegenInput, setShowRegenInput] = useState(false);
   const [sectionLoading, setSectionLoading] = useState<string | null>(null);
   const [activeChat, setActiveChat] = useState<string | null>(null);
+  const normalizedDefaultLang = (defaultLanguage || 'EN').toUpperCase();
+  const initialLang = LANGUAGE_OPTIONS.some(o => o.value === normalizedDefaultLang) ? normalizedDefaultLang : 'EN';
+  const [language, setLanguage] = useState<string>(initialLang);
 
   // Load saved plan from DB
   const { data: savedPlan, isLoading: loadingSaved } = useQuery({
