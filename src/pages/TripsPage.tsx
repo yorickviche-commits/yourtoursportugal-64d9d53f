@@ -52,7 +52,7 @@ const TripsPage = () => {
   const isMobile = useIsMobile();
 
   const { data: leads = [], isLoading } = useQuery({
-    queryKey: ['won-leads'],
+    queryKey: ['leads', 'won'],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('leads')
