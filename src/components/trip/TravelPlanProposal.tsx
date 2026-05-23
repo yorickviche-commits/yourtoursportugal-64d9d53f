@@ -889,7 +889,18 @@ const TravelPlanProposal = ({
           <Button variant="outline" size="sm" className="text-xs gap-1" onClick={handleSave} disabled={saving}>
             {saving ? <Loader2 className="h-3 w-3 animate-spin" /> : <Save className="h-3 w-3" />} Guardar
           </Button>
-          <Button variant="outline" size="sm" className="text-xs gap-1" onClick={() => window.print()}>
+          <Button variant="outline" size="sm" className="text-xs gap-1" onClick={() => {
+            const startD = plan?.days[0]?.date || travelDates || '';
+            const endD = plan?.days[plan.days.length - 1]?.date || travelEndDate || '';
+            const dates = [startD, endD].filter(Boolean).join('_');
+            const sanitize = (s: string) => (s || '').replace(/[\\/:*?"<>|]/g, '').replace(/\s+/g, '_').trim();
+            const idPart = sanitize(ytId || leadCode || 'YT');
+            const name = [idPart, sanitize(clientName), sanitize(plan?.trip_title || destination), sanitize(dates)].filter(Boolean).join('_');
+            const prevTitle = document.title;
+            document.title = name || prevTitle;
+            window.print();
+            setTimeout(() => { document.title = prevTitle; }, 1000);
+          }}>
             <FileText className="h-3 w-3" /> PDF
           </Button>
           <Button size="sm" className="text-xs gap-1 bg-[hsl(var(--success))] hover:bg-[hsl(var(--success))]/90 text-white" onClick={onGoToCosting}>
