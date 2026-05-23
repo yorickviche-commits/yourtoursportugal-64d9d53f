@@ -19,6 +19,7 @@ const DESTINOS = ['Porto & Douro Valley', 'Lisbon & Sintra', 'Algarve', 'Azores'
 type Mode = 'manual' | 'ai';
 
 interface FormData {
+  ytId: string;
   clientName: string;
   email: string;
   phone: string;
@@ -37,7 +38,7 @@ interface FormData {
 }
 
 const emptyForm: FormData = {
-  clientName: '', email: '', phone: '', travelDates: '', travelEndDate: '', datesType: 'estimated',
+  ytId: '', clientName: '', email: '', phone: '', travelDates: '', travelEndDate: '', datesType: 'estimated',
   numberOfDays: 0, pax: 2, language: ['EN'], budget: '', destination: [], request: '', preferences: '',
   travelStyle: [], comfortLevel: '',
 };
