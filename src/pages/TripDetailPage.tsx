@@ -23,10 +23,11 @@ import { useToast } from '@/hooks/use-toast';
 import { logActivity } from '@/hooks/useActivityLog';
 import EditableCostingTable from '@/components/trip/EditableCostingTable';
 import OperationsTable from '@/components/trip/OperationsTable';
+import CommunicationsTab from '@/components/communications/CommunicationsTab';
 import { formatDistanceToNow } from 'date-fns';
 import { pt } from 'date-fns/locale';
 
-type TripTab = 'details' | 'itinerary' | 'costing' | 'operations' | 'contacts' | 'activity' | 'documents';
+type TripTab = 'details' | 'itinerary' | 'costing' | 'operations' | 'communications' | 'contacts' | 'activity' | 'documents';
 
 const TripDetailPage = () => {
   const { id } = useParams<{ id: string }>();
