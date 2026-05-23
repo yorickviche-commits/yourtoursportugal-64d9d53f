@@ -974,6 +974,7 @@ const TravelPlanProposal = ({
                                 }}
                                 searchContext={imgContext}
                                 aspectRatio="landscape"
+                                dedupScope={leadId ? { type: 'lead', id: leadId } : undefined}
                               />
                             );
                           })}
