@@ -396,7 +396,9 @@ const LeadCostingEditor = ({ costingDays, onChange, onSave, saving, plannerDays,
   const grandNet = activeItems.reduce((s, i) => s + i.netTotal, 0);
   const grandPVP = activeItems.reduce((s, i) => s + i.pvpTotal, 0);
   const grandProfit = grandPVP - grandNet;
-  const grandMargin = grandPVP > 0 ? (grandProfit / grandPVP) * 100 : 0;
+  const grandMargin = grandNet > 0 ? (grandProfit / grandNet) * 100 : 0;
+  const totalPax = (pax || 0) + (paxChildren || 0);
+  const pvpPerPax = totalPax > 0 ? grandPVP / totalPax : 0;
 
   const hasItems = costingDays.some(d => d.items.length > 0);
 
