@@ -210,7 +210,7 @@
     width: 100% !important;
     max-width: 100% !important;
     margin: 0 !important;
-    padding: 0 !important;
+    padding: 10mm !important;
     border: 0 !important;
     border-radius: 0 !important;
     box-shadow: none !important;
@@ -221,8 +221,10 @@
   /* Anything explicitly marked print:hidden stays hidden */
   .print\:hidden { display: none !important; }
 
+  /* margin: 0 removes the browser-added header/footer (URL, date, filename, page number).
+     Inner padding on [data-print-root] keeps content away from page edges. */
   @page {
-    margin: 10mm;
+    margin: 0;
     size: A4;
   }
 }
