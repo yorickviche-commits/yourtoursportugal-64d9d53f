@@ -131,6 +131,12 @@ const EmailComposerDialog = ({ lead, children }: EmailComposerDialogProps) => {
     toast({ title: 'Subject copiado!' });
   };
 
+  const handleOpenGmail = () => {
+    const url = `https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(lead.email || '')}&su=${encodeURIComponent(editedSubject)}&body=${encodeURIComponent(editedBody)}`;
+    window.open(url, '_blank', 'noopener,noreferrer');
+    toast({ title: 'Gmail aberto', description: 'Anexa o PDF da proposta antes de enviar.' });
+  };
+
   const selectedTemplateInfo = EMAIL_TEMPLATES.find(t => t.key === selectedTemplate);
 
   return (
