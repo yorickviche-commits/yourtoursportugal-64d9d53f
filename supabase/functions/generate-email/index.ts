@@ -29,6 +29,28 @@ Looking forward to designing something exceptional for you.
 [Signature]
 Your Tours Portugal`,
   },
+  "send_proposal": {
+    subject: "Your tailor-made Portugal proposal — [Destination], [TravelDates]",
+    body: `Hi [FirstName],
+
+As promised, please find attached your personalised proposal for [TravelDates] in [Destination] — designed around your interests and travel style.
+
+Highlights of the experience:
+- [Highlight 1]
+- [Highlight 2]
+- [Highlight 3]
+
+Total: [TotalPrice] for [Pax] travellers — includes private guiding, transport, curated experiences and 24/7 local support.
+
+Take your time to review it. If you'd like to fine-tune anything (pace, experiences, accommodations) just reply and we'll adjust.
+
+Happy to jump on a quick call if helpful: https://url-shortener.me/BT2R
+
+Looking forward to your thoughts.
+
+[Signature]
+Your Tours Portugal`,
+  },
   "proposal_followup": {
     subject: "Did you receive your personalised Portugal proposal?",
     body: `Hi [FirstName],
