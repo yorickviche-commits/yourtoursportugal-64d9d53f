@@ -3,10 +3,15 @@ import jsPDF from 'jspdf';
 interface ProposalDay {
   day_number?: number;
   title?: string;
+  subtitle?: string;
   date?: string;
+  date_label?: string;
   narrative?: string;
+  // legacy
   highlights?: string[];
-  accommodation?: string;
+  // current shape
+  items?: string[];
+  accommodation?: string | { label?: string; hotel_name?: string; note?: string } | null;
 }
 
 export interface ProposalLite {
@@ -17,7 +22,72 @@ export interface ProposalLite {
   summary_text?: string | null;
   total_value_eur?: number | null;
   public_token?: string;
+  booking_ref?: string | null;
   days?: ProposalDay[] | unknown;
+}
+
+const dayItems = (d: ProposalDay): string[] => {
+  if (Array.isArray(d.items) && d.items.length) return d.items.map(String);
+  if (Array.isArray(d.highlights) && d.highlights.length) return d.highlights.map(String);
+  return [];
+};
+
+const dayDateLabel = (d: ProposalDay) => d.date_label || d.date || '';
+
+const accommodationLabel = (d: ProposalDay): string | null => {
+  const a = d.accommodation;
+  if (!a) return null;
+  if (typeof a === 'string') return a;
+  return a.hotel_name || a.label || null;
+};
+
+export function buildProposalEmailText(p: ProposalLite, weblink: string): string {
+  const days = Array.isArray(p.days) ? (p.days as ProposalDay[]) : [];
+  const headerBits = [
+    p.client_name && `${p.client_name}`,
+    (p.booking_ref || '') && `ID: ${p.booking_ref}`,
+    p.date_range || '',
+    p.participants || '',
+  ].filter(Boolean);
+
+  const lines: string[] = [];
+  lines.push(p.title || 'Your Travel Plan');
+  if (headerBits.length) lines.push(headerBits.join(' · '));
+  lines.push('');
+  if (p.summary_text) {
+    lines.push(p.summary_text.trim());
+    lines.push('');
+  }
+
+  if (days.length) {
+    lines.push('Summary & Day-by-Day');
+    days.forEach((d, i) => {
+      lines.push(`Day ${d.day_number ?? i + 1} — ${d.title || ''}`.trim());
+    });
+    lines.push('');
+    days.forEach((d, i) => {
+      lines.push(`Day ${d.day_number ?? i + 1} — ${d.title || ''}`.trim());
+      const dl = dayDateLabel(d);
+      if (dl) lines.push(dl);
+      if (d.subtitle) lines.push(d.subtitle);
+      const items = dayItems(d);
+      if (items.length) {
+        lines.push('ITINERARY & INCLUDED:');
+        items.forEach(it => lines.push(`  • ${it}`));
+      }
+      const acc = accommodationLabel(d);
+      if (acc) lines.push(`Night: ${acc}`);
+      lines.push('');
+    });
+  }
+
+  if (weblink) {
+    lines.push('— Interactive Travel Plan (mobile-friendly):');
+    lines.push(weblink);
+    lines.push('');
+    lines.push('The full PDF version is attached for your records.');
+  }
+  return lines.join('\n');
 }
 
 export function buildProposalPdfBase64(p: ProposalLite, weblink: string): { base64: string; filename: string } {
@@ -35,7 +105,7 @@ export function buildProposalPdfBase64(p: ProposalLite, weblink: string): { base
   };
 
   // Header band
-  doc.setFillColor(10, 37, 64); // YT Blue
+  doc.setFillColor(10, 37, 64);
   doc.rect(0, 0, pageW, 90, 'F');
   doc.setTextColor(255, 255, 255);
   doc.setFont('helvetica', 'bold');
@@ -58,23 +128,23 @@ export function buildProposalPdfBase64(p: ProposalLite, weblink: string): { base
   doc.setFontSize(11);
   doc.setTextColor(80, 80, 80);
   const meta: string[] = [];
-  if (p.client_name) meta.push(`Guest: ${p.client_name}`);
-  if (p.date_range) meta.push(`Dates: ${p.date_range}`);
-  if (p.participants) meta.push(`Travellers: ${p.participants}`);
-  if (p.total_value_eur != null) meta.push(`Total: €${Number(p.total_value_eur).toLocaleString('en-GB')}`);
-  doc.text(meta.join('   ·   '), margin, y);
+  if (p.client_name) meta.push(p.client_name);
+  if (p.booking_ref) meta.push(`ID: ${p.booking_ref}`);
+  if (p.date_range) meta.push(p.date_range);
+  if (p.participants) meta.push(p.participants);
+  doc.text(meta.join('  ·  '), margin, y);
   y += 22;
 
-  // Weblink
-  doc.setTextColor(10, 37, 64);
-  doc.setFont('helvetica', 'bold');
-  doc.text('Interactive version:', margin, y);
-  doc.setFont('helvetica', 'normal');
-  doc.setTextColor(0, 102, 204);
-  doc.textWithLink(weblink, margin + 110, y, { url: weblink });
-  y += 24;
+  if (weblink) {
+    doc.setTextColor(10, 37, 64);
+    doc.setFont('helvetica', 'bold');
+    doc.text('Interactive version:', margin, y);
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(0, 102, 204);
+    doc.textWithLink(weblink, margin + 110, y, { url: weblink });
+    y += 24;
+  }
 
-  // Summary
   if (p.summary_text) {
     doc.setTextColor(40, 40, 40);
     doc.setFont('helvetica', 'italic');
@@ -85,8 +155,28 @@ export function buildProposalPdfBase64(p: ProposalLite, weblink: string): { base
     y += lines.length * 14 + 10;
   }
 
-  // Days
   const days = Array.isArray(p.days) ? (p.days as ProposalDay[]) : [];
+
+  if (days.length) {
+    ensureSpace(24);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(13);
+    doc.setTextColor(10, 37, 64);
+    doc.text('Summary & Day-by-Day', margin, y);
+    y += 18;
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(10);
+    doc.setTextColor(60, 60, 60);
+    days.forEach((d, i) => {
+      const line = `Day ${d.day_number ?? i + 1} — ${d.title || ''}`;
+      const wrapped = doc.splitTextToSize(line, pageW - margin * 2);
+      ensureSpace(wrapped.length * 12 + 2);
+      doc.text(wrapped, margin, y);
+      y += wrapped.length * 12 + 2;
+    });
+    y += 10;
+  }
+
   days.forEach((d, idx) => {
     ensureSpace(60);
     doc.setDrawColor(220, 220, 220);
@@ -98,13 +188,24 @@ export function buildProposalPdfBase64(p: ProposalLite, weblink: string): { base
     doc.setFontSize(13);
     const dayTitle = `Day ${d.day_number ?? idx + 1}${d.title ? ` — ${d.title}` : ''}`;
     doc.text(dayTitle, margin, y);
-    if (d.date) {
+    const dl = dayDateLabel(d);
+    if (dl) {
       doc.setFont('helvetica', 'normal');
       doc.setFontSize(9);
       doc.setTextColor(120, 120, 120);
-      doc.text(String(d.date), pageW - margin, y, { align: 'right' });
+      doc.text(String(dl), pageW - margin, y, { align: 'right' });
     }
     y += 18;
+
+    if (d.subtitle) {
+      doc.setTextColor(80, 80, 80);
+      doc.setFont('helvetica', 'italic');
+      doc.setFontSize(10);
+      const lines = doc.splitTextToSize(d.subtitle, pageW - margin * 2);
+      ensureSpace(lines.length * 12 + 6);
+      doc.text(lines, margin, y);
+      y += lines.length * 12 + 6;
+    }
 
     if (d.narrative) {
       doc.setTextColor(50, 50, 50);
@@ -116,16 +217,17 @@ export function buildProposalPdfBase64(p: ProposalLite, weblink: string): { base
       y += lines.length * 12 + 6;
     }
 
-    if (Array.isArray(d.highlights) && d.highlights.length) {
+    const items = dayItems(d);
+    if (items.length) {
       doc.setFont('helvetica', 'bold');
       doc.setFontSize(10);
       doc.setTextColor(10, 37, 64);
       ensureSpace(16);
-      doc.text('Highlights', margin, y);
+      doc.text('ITINERARY & INCLUDED:', margin, y);
       y += 14;
       doc.setFont('helvetica', 'normal');
       doc.setTextColor(50, 50, 50);
-      d.highlights.forEach((h) => {
+      items.forEach(h => {
         const lines = doc.splitTextToSize(`• ${h}`, pageW - margin * 2 - 10);
         ensureSpace(lines.length * 12 + 2);
         doc.text(lines, margin + 6, y);
@@ -134,17 +236,18 @@ export function buildProposalPdfBase64(p: ProposalLite, weblink: string): { base
       y += 4;
     }
 
-    if (d.accommodation) {
+    const acc = accommodationLabel(d);
+    if (acc) {
       doc.setFont('helvetica', 'italic');
       doc.setFontSize(9);
       doc.setTextColor(120, 120, 120);
       ensureSpace(14);
-      doc.text(`Accommodation: ${d.accommodation}`, margin, y);
+      doc.text(`Night: ${acc}`, margin, y);
       y += 16;
     }
   });
 
-  // Footer on each page
+  // Footer
   const pageCount = doc.getNumberOfPages();
   for (let i = 1; i <= pageCount; i++) {
     doc.setPage(i);
@@ -158,7 +261,6 @@ export function buildProposalPdfBase64(p: ProposalLite, weblink: string): { base
     );
   }
 
-  // jsPDF returns dataURI string; strip prefix
   const dataUri = doc.output('datauristring');
   const base64 = dataUri.split(',')[1] || '';
   const safeTitle = (p.title || 'travel-plan').replace(/[^a-z0-9-_]+/gi, '-').slice(0, 60);
