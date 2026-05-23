@@ -743,6 +743,7 @@ const LeadDetailPage = () => {
   }, [savedCostingDays]);
 
   const [formState, setFormState] = useState({
+    ytId: '',
     clientName: '', email: '', phone: '', travelDates: '', travelEndDate: '',
     numberOfDays: 0, datesType: 'estimated' as 'concrete' | 'estimated' | 'flexible',
     pax: 2, paxChildren: 0, paxInfants: 0, budgetLevel: '', notes: '', salesOwner: '',
