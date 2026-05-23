@@ -31,6 +31,7 @@ interface EmailComposerDialogProps {
 
 const EMAIL_TEMPLATES = [
   { key: 'new_inquiry', label: '1. Nova Consulta', stage: 'Sales', description: 'Resposta inicial + discovery questions' },
+  { key: 'send_proposal', label: '★ Enviar Proposta', stage: 'Sales', description: 'Email curto a apresentar a proposta (anexar PDF no Gmail)' },
   { key: 'proposal_followup', label: '2. Follow-up Proposta (24h)', stage: 'Sales', description: 'Verificar se recebeu a proposta' },
   { key: 'followup_3days', label: '3. Follow-up 3 dias', stage: 'Sales', description: 'Sugestão extra de valor' },
   { key: 'followup_7days', label: '4. Follow-up 7 dias', stage: 'Sales', description: 'Manter datas reservadas?' },
