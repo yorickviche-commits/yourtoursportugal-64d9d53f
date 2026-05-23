@@ -85,20 +85,24 @@ const CommunicationsTab = ({ scope, entityId, recipientEmail, context }: Props) 
 
   const openTemplate = (t: EmailTemplate) => {
     const rendered = renderTemplate(t, context);
+    let finalSubject = rendered.subject;
     let finalBody = rendered.body;
-    // Auto-inject interactive weblink for proposal sends
-    if (t.key === 'sales_proposal' && proposalWeblink) {
-      const linkBlock = `\n\n— Interactive Travel Plan (mobile-friendly):\n${proposalWeblink}\n\nThe full PDF version is attached for your records.`;
-      // Insert before the signature ("Warmly,")
-      if (finalBody.includes('Warmly,')) {
-        finalBody = finalBody.replace('Warmly,', `${linkBlock}\n\nWarmly,`);
-      } else {
-        finalBody = `${finalBody}${linkBlock}`;
+
+    if (t.key === 'sales_proposal' && latestProposal) {
+      // Build the email body to mirror the Travel Plan structure (same as the PDF).
+      const greeting = `Dear ${latestProposal.client_name || context.client_name || 'traveller'},`;
+      const intro = `It's been a pleasure putting this together. Please find your tailored Travel Plan below — every day has been hand-designed to balance signature experiences with quiet local moments. We can of course refine anything: pacing, accommodation style, or activity mix.`;
+      const plan = buildProposalEmailText(latestProposal, proposalWeblink);
+      const signature = `Warmly,\n${context.sales_owner || 'Your Tours Portugal'}\nYour Tours Portugal\nreservas@yourtours.pt`;
+      finalBody = `${greeting}\n\n${intro}\n\n────────────────────────────────────\n${plan}\n────────────────────────────────────\n\n${signature}`;
+      if (latestProposal.title) {
+        finalSubject = `Your tailored Travel Plan — ${latestProposal.title}`;
       }
     }
+
     setSelected(t);
     setTo(recipientEmail || '');
-    setSubject(rendered.subject);
+    setSubject(finalSubject);
     setBody(finalBody);
     setAttachPdf(t.key === 'sales_proposal' && !!latestProposal);
   };
