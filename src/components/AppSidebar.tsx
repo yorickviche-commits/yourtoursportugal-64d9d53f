@@ -26,7 +26,7 @@ interface NavGroup {
 
 const reservasItems: NavItem[] = [
   { to: '/leads', icon: Users, label: 'Leads & Files' },
-  { to: '/trips', icon: Map, label: 'Bookings & Reservas' },
+  { to: '/trips', icon: Map, label: 'Bookings & Reservas Confirmadas' },
 ];
 
 const comercialItems: NavItem[] = [
@@ -37,6 +37,7 @@ const comercialItems: NavItem[] = [
 ];
 
 const adminItems: NavItem[] = [
+  { to: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
   { to: '/agents', icon: Bot, label: 'AI Agents' },
   { to: '/ai-office', icon: Bot, label: 'AI Work Office' },
   { to: '/crm', icon: Globe, label: 'CRM (NetHunt)' },
@@ -47,6 +48,7 @@ const adminItems: NavItem[] = [
   { to: '/admin/integrations', icon: Plug, label: 'Integrações' },
   { to: '/admin/logs', icon: FileText, label: 'Activity Logs' },
 ];
+
 
 // ─── Desktop Sidebar (hover-expand) ───
 const DesktopSidebar = () => {
