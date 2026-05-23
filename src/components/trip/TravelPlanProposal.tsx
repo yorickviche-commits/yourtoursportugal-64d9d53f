@@ -744,7 +744,7 @@ const TravelPlanProposal = ({
       )}
 
       {/* ─── PROPOSAL ─── */}
-      <div className="bg-white rounded-xl border shadow-sm overflow-hidden print:shadow-none print:border-0">
+      <div data-print-root className="bg-white rounded-xl border shadow-sm overflow-hidden print:shadow-none print:border-0 print:rounded-none">
         {/* COVER IMAGE */}
         {viewMode === 'edit' && (
           <div className="p-4 pb-0 print:hidden">
