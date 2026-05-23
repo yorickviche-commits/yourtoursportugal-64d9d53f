@@ -137,6 +137,17 @@ const CommunicationsTab = ({ scope, entityId, recipientEmail, context }: Props) 
         sent_by: user?.id || null,
       } as any);
 
+      // Mark proposal as 'sent' so the public link becomes accessible
+      if (isProposalTemplate && latestProposal?.id) {
+        await supabase
+          .from('proposals')
+          .update({ status: 'sent', sent_at: new Date().toISOString() })
+          .eq('id', latestProposal.id)
+          .in('status', ['draft']);
+        qc.invalidateQueries({ queryKey: ['latest_proposal', scope, entityId] });
+        qc.invalidateQueries({ queryKey: ['proposals'] });
+      }
+
       toast({
         title: 'Email enviado',
         description: `${to}${attachments.length ? ' · Travel Plan PDF anexo' : ''}`,
