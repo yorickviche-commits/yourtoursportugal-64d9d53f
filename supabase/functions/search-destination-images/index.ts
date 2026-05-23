@@ -5,8 +5,17 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
 };
 
-// Search Unsplash API for real, relevant images
-async function searchUnsplash(query: string, count: number, page: number = 1): Promise<{ url: string; caption: string }[]> {
+function extractPhotoIdFromUrl(url: string): string {
+  const match = url.match(/photo-([a-zA-Z0-9_-]+)/);
+  return match ? match[1] : url.slice(-16);
+}
+
+async function searchUnsplash(
+  query: string,
+  count: number,
+  page: number = 1,
+  _excludeIds: string[] = []
+): Promise<{ url: string; caption: string; photo_id: string }[]> {
   const UNSPLASH_KEY = Deno.env.get('UNSPLASH_ACCESS_KEY');
   if (!UNSPLASH_KEY) {
     console.log('No UNSPLASH_ACCESS_KEY configured');
@@ -32,9 +41,10 @@ async function searchUnsplash(query: string, count: number, page: number = 1): P
     }
 
     const data = await res.json();
-    return (data.results || []).slice(0, count).map((photo: any) => ({
-      url: `${photo.urls?.regular || photo.urls?.small}`,
+    return (data.results || []).map((photo: any) => ({
+      url: photo.urls?.regular || photo.urls?.small || '',
       caption: photo.alt_description || photo.description || query,
+      photo_id: photo.id || extractPhotoIdFromUrl(photo.urls?.regular || ''),
     }));
   } catch (e) {
     console.error('Unsplash search failed:', e);
@@ -42,8 +52,7 @@ async function searchUnsplash(query: string, count: number, page: number = 1): P
   }
 }
 
-// Generate image with AI as fallback
-async function generateWithAI(query: string): Promise<{ url: string; caption: string } | null> {
+async function generateWithAI(query: string): Promise<{ url: string; caption: string; photo_id: string } | null> {
   const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
   if (!LOVABLE_API_KEY) return null;
 
@@ -74,7 +83,7 @@ async function generateWithAI(query: string): Promise<{ url: string; caption: st
     const data = await response.json();
     const imageData = data.choices?.[0]?.message?.images?.[0]?.image_url?.url;
     if (imageData) {
-      return { url: imageData, caption: query };
+      return { url: imageData, caption: query, photo_id: `ai-${Date.now()}-${Math.random().toString(36).slice(2, 8)}` };
     }
   } catch (e) {
     console.error('AI image generation failed:', e);
@@ -88,7 +97,13 @@ serve(async (req) => {
   }
 
   try {
-    const { query, count = 20, page = 1, mode = 'search' } = await req.json();
+    const {
+      query,
+      count = 20,
+      page = 1,
+      mode = 'search',
+      excludePhotoIds = [],
+    } = await req.json();
 
     if (mode === 'generate') {
       const result = await generateWithAI(query);
@@ -97,25 +112,32 @@ serve(async (req) => {
       });
     }
 
-    let images = await searchUnsplash(query, count, page);
+    const excluded = new Set<string>(excludePhotoIds);
+    const unique: { url: string; caption: string; photo_id: string }[] = [];
+    let currentPage = page;
+    const MAX_PAGES = 5;
 
-    // If Unsplash returned fewer than requested, fill with AI-generated
-    if (images.length < count) {
-      const needed = count - images.length;
-      for (let i = 0; i < needed; i++) {
-        const aiImg = await generateWithAI(`${query} - view ${i + 1}`);
-        if (aiImg) images.push(aiImg);
+    while (unique.length < count && currentPage <= MAX_PAGES) {
+      const batch = await searchUnsplash(query, 30, currentPage, []);
+      for (const img of batch) {
+        if (!excluded.has(img.photo_id) && img.url) {
+          unique.push(img);
+          excluded.add(img.photo_id);
+          if (unique.length >= count) break;
+        }
       }
+      if (batch.length < 30) break;
+      currentPage++;
     }
 
-    return new Response(JSON.stringify({ images }), {
+    return new Response(JSON.stringify({ images: unique.slice(0, count) }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   } catch (e) {
     console.error('search-destination-images error:', e);
-    return new Response(JSON.stringify({ error: e instanceof Error ? e.message : 'Unknown error', images: [] }), {
-      status: 500,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    });
+    return new Response(
+      JSON.stringify({ error: e instanceof Error ? e.message : 'Unknown error', images: [] }),
+      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
   }
 });
