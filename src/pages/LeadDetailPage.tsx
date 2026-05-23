@@ -1249,7 +1249,7 @@ const LeadDetailPage = () => {
             context={{
               client_name: formState.clientName || lead.client_name,
               lead_code: lead.lead_code,
-              destination: formState.destination || lead.destination || '',
+              destination: lead.destination || '',
               travel_dates: formState.travelDates || lead.travel_dates || '',
               pax: formState.pax ?? lead.pax,
               sales_owner: formState.salesOwner || lead.sales_owner || '',
