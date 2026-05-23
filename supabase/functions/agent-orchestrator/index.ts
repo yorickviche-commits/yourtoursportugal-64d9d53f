@@ -15,7 +15,7 @@ function getServiceClient(): SupabaseClient {
 }
 
 async function updateAgentStatus(
-  supabase: any, agentId: string, status: string,
+  supabase: SupabaseClient, agentId: string, status: string,
   currentTask?: string, currentEntity?: string, waitingFor?: string,
 ) {
   await supabase.from('agent_status').upsert({
@@ -28,7 +28,7 @@ async function updateAgentStatus(
 }
 
 async function logAgentEvent(
-  supabase: any, agentId: string, eventType: string, eventSummary: string,
+  supabase: SupabaseClient, agentId: string, eventType: string, eventSummary: string,
   requiresAction = false, eventDetail?: Record<string, any>, relatedEntity?: string,
 ) {
   await supabase.from('agent_activity_log').insert({
@@ -39,12 +39,12 @@ async function logAgentEvent(
   });
 }
 
-async function resetAgent(supabase: any, agentId: string) {
+async function resetAgent(supabase: SupabaseClient, agentId: string) {
   await updateAgentStatus(supabase, agentId, 'idle', 'Standing by');
 }
 
 // ─── BUILD FSE CONTEXT FROM DATABASE ───
-async function buildFSEContext(supabase: any, destination?: string): Promise<string> {
+async function buildFSEContext(supabase: SupabaseClient, destination?: string): Promise<string> {
   try {
     // Fetch suppliers + services + partners + partner_services in parallel
     const [suppRes, svcRes, partRes, pSvcRes] = await Promise.all([
@@ -98,7 +98,7 @@ async function buildFSEContext(supabase: any, destination?: string): Promise<str
 }
 
 // ─── PIPELINE: GENERATE TRAVEL PLAN ───
-async function runTravelPlanner(supabase: any, lead: any, fseContext: string) {
+async function runTravelPlanner(supabase: SupabaseClient, lead: any, fseContext: string) {
   const agentId = 'itinerary_architect';
   try {
     await updateAgentStatus(supabase, agentId, 'working', `Designing itinerary for ${lead.client_name}`, lead.id);
@@ -181,7 +181,7 @@ async function runTravelPlanner(supabase: any, lead: any, fseContext: string) {
 }
 
 // ─── PIPELINE: AUTO-FULFILL BUDGET ───
-async function runBudgetFulfill(supabase: any, lead: any, fseContext: string) {
+async function runBudgetFulfill(supabase: SupabaseClient, lead: any, fseContext: string) {
   const agentId = 'pricing_margin';
   try {
     await updateAgentStatus(supabase, agentId, 'working', `Calculating budget for ${lead.client_name}`, lead.id);
@@ -344,7 +344,7 @@ async function runBudgetFulfill(supabase: any, lead: any, fseContext: string) {
 }
 
 // ─── PIPELINE: GENERATE DIGITAL ITINERARY ───
-async function runDigitalItinerary(supabase: any, lead: any, fseContext: string) {
+async function runDigitalItinerary(supabase: SupabaseClient, lead: any, fseContext: string) {
   const agentId = 'itinerary_architect';
   try {
     await updateAgentStatus(supabase, agentId, 'working', `Creating digital itinerary for ${lead.client_name}`, lead.id);
@@ -415,7 +415,7 @@ async function runDigitalItinerary(supabase: any, lead: any, fseContext: string)
 }
 
 // ─── FULL PIPELINE ───
-async function runFullPipeline(supabase: any, lead: any, fseContext: string) {
+async function runFullPipeline(supabase: SupabaseClient, lead: any, fseContext: string) {
   const results: any = { plan: null, budget: null, itinerary: null };
 
   try {
