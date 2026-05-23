@@ -23,10 +23,11 @@ import { useToast } from '@/hooks/use-toast';
 import { logActivity } from '@/hooks/useActivityLog';
 import EditableCostingTable from '@/components/trip/EditableCostingTable';
 import OperationsTable from '@/components/trip/OperationsTable';
+import CommunicationsTab from '@/components/communications/CommunicationsTab';
 import { formatDistanceToNow } from 'date-fns';
 import { pt } from 'date-fns/locale';
 
-type TripTab = 'details' | 'itinerary' | 'costing' | 'operations' | 'contacts' | 'activity' | 'documents';
+type TripTab = 'details' | 'itinerary' | 'costing' | 'operations' | 'communications' | 'contacts' | 'activity' | 'documents';
 
 const TripDetailPage = () => {
   const { id } = useParams<{ id: string }>();
@@ -101,6 +102,7 @@ const TripDetailPage = () => {
     { key: 'itinerary', label: `Itinerário (${itineraryItems.length})` },
     { key: 'costing', label: `Custos (${costItems.length})` },
     { key: 'operations', label: 'Operações' },
+    { key: 'communications', label: 'Comunicações' },
     { key: 'contacts', label: `Contactos (${contacts.length})` },
     { key: 'activity', label: `Atividade (${activityLogs.length})` },
     { key: 'documents', label: `Docs (${documents.length})` },
@@ -348,6 +350,23 @@ const TripDetailPage = () => {
                   startDate={trip.start_date}
                 />
               </div>
+            )}
+
+            {/* Communications Tab */}
+            {activeTab === 'communications' && (
+              <CommunicationsTab
+                scope="trip"
+                entityId={trip.id}
+                recipientEmail={contacts[0]?.email || ''}
+                context={{
+                  client_name: trip.client_name,
+                  trip_code: trip.trip_code,
+                  destination: trip.destination || '',
+                  travel_dates: `${trip.start_date || ''} → ${trip.end_date || ''}`,
+                  pax: trip.pax,
+                  sales_owner: trip.sales_owner || '',
+                }}
+              />
             )}
 
             {/* Contacts Tab */}

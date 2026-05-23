@@ -31,15 +31,16 @@ import ItemNotesDialog from '@/components/trip/ItemNotesDialog';
 import BookingRequestDialog from '@/components/trip/BookingRequestDialog';
 import { useLeadOperationsQuery, useUpsertLeadOperation, DbLeadOperation } from '@/hooks/useLeadOperationsQuery';
 import BookingEmailHistory from '@/components/trip/BookingEmailHistory';
+import CommunicationsTab from '@/components/communications/CommunicationsTab';
 
-type DetailTab = 'dados_gerais' | 'travel_planner' | 'custos' | 'propostas' | 'operacoes';
+type DetailTab = 'dados_gerais' | 'travel_planner' | 'custos' | 'propostas' | 'comunicacoes';
 
 const DETAIL_TABS: { key: DetailTab; label: string }[] = [
   { key: 'dados_gerais', label: 'Dados Gerais' },
   { key: 'travel_planner', label: 'Travel Planner' },
   { key: 'custos', label: 'Custos' },
   { key: 'propostas', label: 'Propostas' },
-  { key: 'operacoes', label: 'Operações' },
+  { key: 'comunicacoes', label: 'Comunicações' },
 ];
 
 const CATEGORIAS = ['Premium & Boutique', 'Standard', 'Luxury', 'Budget', 'Adventure'];
@@ -1239,8 +1240,22 @@ const LeadDetailPage = () => {
         {/* Propostas */}
         {activeTab === 'propostas' && lead && <LeadProposalsTab leadId={lead.id} clientName={formState.clientName} />}
 
-        {/* Operações */}
-        {activeTab === 'operacoes' && lead && <OperacoesTab activeVersion={activeVersion} leadId={lead.id} leadCode={lead.lead_code} />}
+        {/* Comunicações */}
+        {activeTab === 'comunicacoes' && lead && (
+          <CommunicationsTab
+            scope="lead"
+            entityId={lead.id}
+            recipientEmail={formState.email || lead.email || ''}
+            context={{
+              client_name: formState.clientName || lead.client_name,
+              lead_code: lead.lead_code,
+              destination: lead.destination || '',
+              travel_dates: formState.travelDates || lead.travel_dates || '',
+              pax: formState.pax ?? lead.pax,
+              sales_owner: formState.salesOwner || lead.sales_owner || '',
+            }}
+          />
+        )}
       </div>
     </AppLayout>
   );

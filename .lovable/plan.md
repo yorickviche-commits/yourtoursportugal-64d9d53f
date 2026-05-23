@@ -1,65 +1,81 @@
-# Fix Geração de Imagem AI no Travel Planner
+## Objetivo
 
-## Problema
-O botão "Gerar Imagem AI" no `ProposalImagePicker` chama a edge function `search-destination-images` com `mode: 'generate'`, que hoje só tenta o **Lovable AI Gateway** (`gemini-3.1-flash-image-preview`). Quando esse gateway falha (sem créditos, rate-limit, modelo indisponível) → erro silencioso e nenhuma imagem.
+Separar claramente as duas áreas e remover sobreposição:
 
-## Solução
-Substituir `generateWithAI()` por uma cadeia de fallback robusta usando as nossas próprias chaves já configuradas como secrets:
+- **Leads & Files** = ciclo comercial (vendas, propostas, follow-up cliente)
+- **Bookings & Reservas Confirmadas** = ciclo operacional (execução do trip)
 
-```
-1º — Google Gemini direto (GEMINI_API_KEY)
-       modelo: gemini-2.5-flash-image-preview
-2º — OpenAI direto (OPENAI_API_KEY)
-       modelo: gpt-image-1 (b64_json)
-3º — (manter) Lovable AI Gateway como último recurso
-```
+Cada área mantém a sua lista e histórico próprios.
 
-Em qualquer caso → devolver `data:image/png;base64,...` para o frontend mostrar imediatamente, sem dependência de storage.
+---
 
-## Alterações
+## 1. Lead Detail (Leads & Files) — remover Operações
 
-### 1. `supabase/functions/search-destination-images/index.ts`
-Reescrever a função `generateWithAI(query)`:
+Hoje a Lead tem 5 tabs (Dados Gerais, Planner, Custos, **Operações**, etc.).
 
-- **Tentar Gemini primeiro** via REST:
-  - `POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-image-preview:generateContent?key=${GEMINI_API_KEY}`
-  - Body: `{ contents: [{ parts: [{ text: prompt }] }], generationConfig: { responseModalities: ["IMAGE"] } }`
-  - Extrair `candidates[0].content.parts[].inlineData.data` (base64) + `mimeType`
-  - Construir `data:${mimeType};base64,${data}`
+**Mudança:**
+- Remover a tab **Operações** da Lead.
+- Manter: Dados Gerais, Planner/Itinerário, Custos, Propostas.
+- Adicionar tab/secção **"Comunicações"** com botões de email pré-configurados:
+  - Primeiro contacto / Qualificação
+  - Envio de proposta
+  - Follow-up cliente (D+2, D+5, D+10)
+  - Pedido de feedback / fecho de lead
 
-- **Se Gemini falhar/não tiver imagem** → OpenAI:
-  - `POST https://api.openai.com/v1/images/generations` com `Authorization: Bearer ${OPENAI_API_KEY}`
-  - Body: `{ model: "gpt-image-1", prompt, size: "1536x1024", n: 1 }` (landscape)
-  - Extrair `data[0].b64_json` → construir data URL
+Cada botão abre o AI Email Composer já existente, com template pré-selecionado e envia via Gmail (`reservas@yourtours.pt`), regista em `booking_emails_log` (vamos generalizar — ver §4).
 
-- **Se OpenAI falhar** → manter chamada atual ao Lovable Gateway como último fallback.
+---
 
-- Cada tentativa envolvida em `try/catch` com `console.error` detalhado (status + body) para futuro debug via Edge Function Logs.
+## 2. Booking/Trip Detail (Bookings & Reservas) — absorver Operações
 
-- Retornar sempre `{ url, caption: query, photo_id: 'ai-<timestamp>-<random>' }` — formato já consumido pelo `ProposalImagePicker` e pelo registo `used_photos`.
+Quando uma Lead é confirmada e passa a Booking, o workspace do Trip passa a ter:
 
-### 2. Tratamento de erros visível no frontend
-Em `ProposalImagePicker.tsx`, o `handleAIGenerate` já apanha erros via toast. Adicionar mensagem mais clara quando a edge function devolve `{ images: [] }` (atualmente diz "Não foi possível gerar imagem" — manter mas com hint sobre verificar logs).
+1. **Dados Gerais** — cliente, datas, pax, valor (read-only herdado da Lead)
+2. **Itinerário** — exatamente o que está hoje no Travel Planner / PDF da proposta aprovada (read-only ou editável conforme já existe)
+3. **Custos** — importados da Lead (cost_items / lead_costing_data já existentes, copiados ou referenciados pelo trip_id)
+4. **Operações** — o quadro de funções que hoje está dentro da Lead (booking_status, payment_status, invoice_status por item — vem de `lead_operations`, será espelhado/movido para chave por `trip_id`)
+5. **Comunicações Ops** — emails operacionais pré-configurados:
+   - Pré-trip: Briefing cliente / welcome
+   - Briefing do guia
+   - Briefing final FSE (fornecedor)
+   - Pedido de reserva ao fornecedor (já existe — `BookingRequestDialog`)
+   - Pós-trip: Review cliente / pedido de testemunho
 
-## Detalhes Técnicos
+---
 
-**Por que data URLs e não storage?**
-- Imagens AI usadas nas propostas já são editáveis (o utilizador pode substituir). Persistir num bucket adicionava complexidade sem ganho — o frontend guarda o URL no `plan.cover_image.url` ou `day.images[].url` e quando o plano é gravado, fica no payload da proposta.
-- Se mais tarde quisermos persistir, fazemos upload diferido para `supplier-files` ou novo bucket.
+## 3. Migração de dados Lead → Booking
 
-**Limites:**
-- Gemini `gemini-2.5-flash-image-preview` devolve PNG ~1MB tipicamente.
-- OpenAI `gpt-image-1` a 1536x1024 ~2MB base64. Aceitável para data URL inline.
+Para garantir que o histórico se mantém em cada lado:
 
-**Secrets já configurados** (verificado): `GEMINI_API_KEY`, `OPENAI_API_KEY`, `LOVABLE_API_KEY` ✅ — nada a adicionar.
+- `lead_operations` continua a existir para leads históricas, mas para Trips confirmadas a UI passa a ler/escrever via `trip_id`. Adicionar coluna `trip_id` opcional em `lead_operations` (já existe `lead_id`) OU criar `trip_operations` espelho. **Decisão recomendada:** adicionar `trip_id` a `lead_operations` e filtrar a tab de Operações do Trip por `trip_id` (mais simples, mantém histórico unificado).
+- Custos: a tab Custos do Trip lê `lead_costing_data` da lead original (link via `proposals.lead_id` ou `proposals.booking_id`).
+- Itinerário do Trip: lê a `proposal` aprovada (status `approved`) ligada à booking — é exatamente o PDF.
 
-## Verificação após implementação
-1. Deploy edge function.
-2. No frontend, abrir Travel Planner → Editor de Imagem → tab "AI Generate" → clicar "Gerar Imagem AI".
-3. Confirmar que imagem aparece em < 10s.
-4. Verificar Edge Function logs para confirmar qual provider serviu o pedido.
+---
 
-## Fora de scope
-- Não toco em `autoFetchImages` (que usa Unsplash + dedup já implementado).
-- Não toco no resto da pipeline de propostas, planner ou outras edge functions.
-- Não persisto fotos AI em storage — fica para iteração futura se necessário.
+## 4. Templates de email e log
+
+- Generalizar `booking_emails_log` para servir os dois lados:
+  - já tem `lead_operation_id` e `operation_id` — adicionar `email_category` (`sales_first_contact`, `sales_proposal`, `sales_followup`, `ops_client_briefing`, `ops_guide_briefing`, `ops_fse_briefing`, `ops_post_trip`)
+  - na Lead: timeline filtra por `lead_id` + categorias sales
+  - na Booking: timeline filtra por `trip_id` + categorias ops
+- Templates ficam definidos em `src/data/emailTemplates.ts` (novo) e usam variáveis do Master Prompt.
+
+---
+
+## Detalhes técnicos
+
+**Ficheiros a alterar (estimativa):**
+- `src/components/lead/LeadDetailTabs.tsx` (ou equivalente) — remover tab Operações, adicionar tab Comunicações
+- `src/components/trip/TripWorkspace.tsx` (ou equivalente) — garantir 5 tabs: Dados / Itinerário / Custos / Operações / Comunicações Ops
+- Mover `OperationsBoard` / `LeadOperationsTable` para componente partilhado parametrizado por `lead_id` OU `trip_id`
+- Novo `src/components/communications/EmailQuickActions.tsx` — botões com categorias
+- Novo `src/data/emailTemplates.ts` — templates PT/EN por categoria
+- Reutilizar `send-booking-email` edge function (renomear conceptualmente para `send-workflow-email`) — aceita `category` no payload
+- Migração SQL: `ALTER TABLE lead_operations ADD COLUMN trip_id uuid` + `ALTER TABLE booking_emails_log ADD COLUMN email_category text, trip_id uuid`
+
+**Confirmações necessárias antes de implementar:**
+
+1. **Operações na Lead:** confirmas que queremos REMOVER completamente a tab Operações da Lead (ninguém vai mais lá), OU manter como read-only enquanto a lead não é convertida?
+2. **Lista única vs separada:** "Bookings & Reservas Confirmadas" só mostra trips com status confirmado/pago (origem = proposal aprovada). Lead deixa de aparecer aí. Correto?
+3. **Templates de email:** queres que eu escreva já os textos completos PT/EN para os 8 templates (sales + ops), ou só a estrutura e tu preenches depois no Admin?
