@@ -219,7 +219,8 @@ MANDATORY EMAIL STRUCTURE (FYXER PROTOCOL):
 4. Clear CTA — one action, one next step
 
 RULES:
-- Write in English by default (adapt if client writes in another language)
+- CRITICAL: Always write in the client's language. The lead context includes a 'language' field (e.g. EN, PT, FR, DE, ES). Use that language for the ENTIRE email — subject and body. If language is not specified, default to EN.
+- Match Yorick's voice: direct, warm, expert, never salesy. Short sentences. No filler phrases.
 - Use short, clear sentences
 - Show local expertise without exaggeration
 - Sound human — not AI-generated
@@ -228,7 +229,10 @@ RULES:
 - NEVER write long blocks without structure
 - NEVER make vague promises`;
 
-    const userPrompt = `Personalize this email template using the lead context provided. Replace ALL placeholders with real data. If data is missing, make a smart contextual choice or omit that section gracefully.
+    const clientLanguage = (leadContext as any)?.language || 'EN';
+    const userPrompt = `MANDATORY: Write this entire email in ${clientLanguage} language (subject and body).
+
+Personalize this email template using the lead context provided. Replace ALL placeholders with real data. If data is missing, make a smart contextual choice or omit that section gracefully.
 
 TEMPLATE:
 Subject: ${template.subject}
