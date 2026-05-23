@@ -58,8 +58,10 @@ const App = () => (
             <Route path="/proposal/:token" element={<PublicProposalPage />} />
 
             {/* Protected routes */}
-            <Route path="/" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+            <Route path="/" element={<Navigate to="/trips" replace />} />
+            <Route path="/dashboard" element={<ProtectedRoute adminOnly><Dashboard /></ProtectedRoute>} />
             <Route path="/trips" element={<ProtectedRoute><TripsPage /></ProtectedRoute>} />
+
             <Route path="/trips/:id" element={<ProtectedRoute><TripDetailPage /></ProtectedRoute>} />
             <Route path="/leads" element={<ProtectedRoute><LeadsFilesPage /></ProtectedRoute>} />
             <Route path="/leads/:id" element={<ProtectedRoute><LeadDetailPage /></ProtectedRoute>} />
