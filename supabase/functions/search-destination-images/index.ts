@@ -52,44 +52,112 @@ async function searchUnsplash(
   }
 }
 
-async function generateWithAI(query: string): Promise<{ url: string; caption: string; photo_id: string } | null> {
-  const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
-  if (!LOVABLE_API_KEY) return null;
+function makePhotoId() {
+  return `ai-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+}
 
+async function tryGeminiDirect(query: string, prompt: string) {
+  const key = Deno.env.get('GEMINI_API_KEY');
+  if (!key) return null;
   try {
-    const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+    const res = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-image-preview:generateContent?key=${key}`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [{ parts: [{ text: prompt }] }],
+          generationConfig: { responseModalities: ['IMAGE'] },
+        }),
+      }
+    );
+    if (!res.ok) {
+      console.error('Gemini direct error:', res.status, await res.text());
+      return null;
+    }
+    const data = await res.json();
+    const parts = data?.candidates?.[0]?.content?.parts || [];
+    for (const p of parts) {
+      const inline = p.inlineData || p.inline_data;
+      if (inline?.data) {
+        const mime = inline.mimeType || inline.mime_type || 'image/png';
+        return { url: `data:${mime};base64,${inline.data}`, caption: query, photo_id: makePhotoId() };
+      }
+    }
+    console.error('Gemini direct: no image in response');
+    return null;
+  } catch (e) {
+    console.error('Gemini direct exception:', e);
+    return null;
+  }
+}
+
+async function tryOpenAI(query: string, prompt: string) {
+  const key = Deno.env.get('OPENAI_API_KEY');
+  if (!key) return null;
+  try {
+    const res = await fetch('https://api.openai.com/v1/images/generations', {
       method: 'POST',
-      headers: {
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
-        'Content-Type': 'application/json',
-      },
+      headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ model: 'gpt-image-1', prompt, size: '1536x1024', n: 1 }),
+    });
+    if (!res.ok) {
+      console.error('OpenAI image error:', res.status, await res.text());
+      return null;
+    }
+    const data = await res.json();
+    const b64 = data?.data?.[0]?.b64_json;
+    if (b64) return { url: `data:image/png;base64,${b64}`, caption: query, photo_id: makePhotoId() };
+    return null;
+  } catch (e) {
+    console.error('OpenAI image exception:', e);
+    return null;
+  }
+}
+
+async function tryLovableGateway(query: string, prompt: string) {
+  const key = Deno.env.get('LOVABLE_API_KEY');
+  if (!key) return null;
+  try {
+    const res = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        model: 'google/gemini-3.1-flash-image-preview',
-        messages: [
-          {
-            role: 'user',
-            content: `Generate a beautiful, photorealistic travel photograph of: ${query}. Make it look like a professional travel magazine photo with warm lighting, vivid colors, and a sense of place. Landscape orientation.`,
-          },
-        ],
+        model: 'google/gemini-2.5-flash-image',
+        messages: [{ role: 'user', content: prompt }],
         modalities: ['image', 'text'],
       }),
     });
-
-    if (!response.ok) {
-      console.error('AI image gen error:', response.status);
+    if (!res.ok) {
+      console.error('Lovable gateway image error:', res.status, await res.text());
       return null;
     }
-
-    const data = await response.json();
-    const imageData = data.choices?.[0]?.message?.images?.[0]?.image_url?.url;
-    if (imageData) {
-      return { url: imageData, caption: query, photo_id: `ai-${Date.now()}-${Math.random().toString(36).slice(2, 8)}` };
-    }
+    const data = await res.json();
+    const url = data.choices?.[0]?.message?.images?.[0]?.image_url?.url;
+    if (url) return { url, caption: query, photo_id: makePhotoId() };
+    return null;
   } catch (e) {
-    console.error('AI image generation failed:', e);
+    console.error('Lovable gateway exception:', e);
+    return null;
   }
+}
+
+async function generateWithAI(query: string): Promise<{ url: string; caption: string; photo_id: string } | null> {
+  const prompt = `Generate a beautiful, photorealistic travel photograph of: ${query}. Professional travel magazine quality, warm cinematic lighting, vivid colors, strong sense of place. Landscape orientation, no text, no watermark.`;
+
+  const gemini = await tryGeminiDirect(query, prompt);
+  if (gemini) { console.log('Image served by: Gemini direct'); return gemini; }
+
+  const openai = await tryOpenAI(query, prompt);
+  if (openai) { console.log('Image served by: OpenAI'); return openai; }
+
+  const gateway = await tryLovableGateway(query, prompt);
+  if (gateway) { console.log('Image served by: Lovable gateway'); return gateway; }
+
+  console.error('All image providers failed for query:', query);
   return null;
 }
+
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
