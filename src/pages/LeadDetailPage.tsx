@@ -806,6 +806,7 @@ const LeadDetailPage = () => {
   useEffect(() => {
     if (!lead) return;
     setFormState({
+      ytId: (lead as any).yt_id || '',
       clientName: lead.client_name || '',
       email: lead.email || '',
       phone: lead.phone || '',
