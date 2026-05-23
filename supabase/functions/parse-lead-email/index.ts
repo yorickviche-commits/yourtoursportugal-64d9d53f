@@ -47,11 +47,36 @@ Budget should be extracted if mentioned, otherwise null.
 For travelStyle, infer from context: wine tours → Wine, food mentions → Gastronomy, history/monuments → Cultural/History, hiking/outdoors → Adventure/Nature, honeymoon/couples → Romantic, kids → Family, spa/retreat → Wellness, etc. Multiple styles can apply.
 For comfortLevel, infer from budget level, hotel preferences, or explicit mentions: budget travelers → budget, mid-range → standard, upscale/boutique → superior, 5-star/luxury mentions → luxury.`;
 
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+async function fetchWithRetry(url: string, init: RequestInit, label: string, maxAttempts = 4): Promise<Response> {
+  let lastStatus = 0;
+  let lastText = "";
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    const res = await fetch(url, init);
+    if (res.ok) return res;
+    lastStatus = res.status;
+    // Only retry transient errors
+    if (res.status !== 429 && res.status < 500) {
+      return res;
+    }
+    lastText = await res.text().catch(() => "");
+    console.warn(`[${label}] attempt ${attempt} failed ${res.status}: ${lastText.slice(0, 200)}`);
+    if (attempt < maxAttempts) {
+      // exp backoff with jitter: 800ms, 1.8s, 3.5s
+      const delay = Math.min(800 * Math.pow(2, attempt - 1), 4000) + Math.random() * 300;
+      await sleep(delay);
+    }
+  }
+  // Reconstruct a Response-like with the last error to keep flow uniform
+  return new Response(lastText || `Retry exhausted ${lastStatus}`, { status: lastStatus || 500 });
+}
+
 async function callLovableGateway(emailText: string) {
   const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
   if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY not configured");
 
-  const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+  const response = await fetchWithRetry("https://ai.gateway.lovable.dev/v1/chat/completions", {
     method: "POST",
     headers: {
       Authorization: `Bearer ${LOVABLE_API_KEY}`,
@@ -66,7 +91,7 @@ async function callLovableGateway(emailText: string) {
       tools: [toolDef],
       tool_choice: { type: "function", function: { name: "extract_lead_data" } },
     }),
-  });
+  }, "gateway");
 
   if (!response.ok) {
     const err: any = new Error(`Gateway error ${response.status}`);
@@ -86,7 +111,7 @@ async function callGeminiFallback(emailText: string) {
 
   const prompt = `${systemPrompt}\n\nExtract the lead data from this email conversation and return ONLY valid JSON with these fields: clientName, email, phone, travelDates, datesType (concrete|estimated), pax (number), language (EN|PT|FR|ES|DE|IT|NL), budget, destination, request, preferences, travelStartDate (YYYY-MM-DD or null), travelEndDate (YYYY-MM-DD or null), numberOfDays (number or null), travelStyle (array of strings or []), comfortLevel (budget|standard|superior|luxury or null). If unknown, use null.\n\nEmail:\n${emailText.slice(0, 8000)}`;
 
-  const response = await fetch(
+  const response = await fetchWithRetry(
     `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`,
     {
       method: "POST",
@@ -95,7 +120,8 @@ async function callGeminiFallback(emailText: string) {
         contents: [{ parts: [{ text: prompt }] }],
         generationConfig: { responseMimeType: "application/json" },
       }),
-    }
+    },
+    "gemini"
   );
 
   if (!response.ok) {
@@ -114,7 +140,7 @@ async function callOpenAIFallback(emailText: string) {
   const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
   if (!OPENAI_API_KEY) throw new Error("No OpenAI API key");
 
-  const response = await fetch("https://api.openai.com/v1/chat/completions", {
+  const response = await fetchWithRetry("https://api.openai.com/v1/chat/completions", {
     method: "POST",
     headers: { Authorization: `Bearer ${OPENAI_API_KEY}`, "Content-Type": "application/json" },
     body: JSON.stringify({
@@ -126,7 +152,7 @@ async function callOpenAIFallback(emailText: string) {
       tools: [toolDef],
       tool_choice: { type: "function", function: { name: "extract_lead_data" } },
     }),
-  });
+  }, "openai");
 
   if (!response.ok) {
     const t = await response.text();
@@ -144,7 +170,7 @@ async function callAnthropicFallback(emailText: string) {
   const ANTHROPIC_API_KEY = Deno.env.get("ANTHROPIC_API_KEY");
   if (!ANTHROPIC_API_KEY) throw new Error("No Anthropic API key");
 
-  const response = await fetch("https://api.anthropic.com/v1/messages", {
+  const response = await fetchWithRetry("https://api.anthropic.com/v1/messages", {
     method: "POST",
     headers: {
       "x-api-key": ANTHROPIC_API_KEY,
@@ -165,7 +191,7 @@ async function callAnthropicFallback(emailText: string) {
         { role: "user", content: `Extract the lead data from this email conversation:\n\n${emailText.slice(0, 8000)}` },
       ],
     }),
-  });
+  }, "anthropic");
 
   if (!response.ok) {
     const t = await response.text();
