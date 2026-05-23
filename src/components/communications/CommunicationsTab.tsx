@@ -47,7 +47,7 @@ const CommunicationsTab = ({ scope, entityId, recipientEmail, context }: Props) 
       const col = scope === 'lead' ? 'lead_id' : 'booking_id';
       const { data } = await supabase
         .from('proposals')
-        .select('id, title, client_name, date_range, participants, summary_text, total_value_eur, public_token, days')
+        .select('id, title, client_name, date_range, participants, summary_text, total_value_eur, public_token, booking_ref, days, status')
         .eq(col, entityId)
         .order('created_at', { ascending: false })
         .limit(1)
