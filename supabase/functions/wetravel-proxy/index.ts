@@ -54,7 +54,8 @@ serve(async (req) => {
 
   try {
     const accessToken = await getAccessToken(REFRESH_TOKEN);
-    const { action, page, per_page, filters } = await req.json();
+    const body_in = await req.json();
+    const { action, page, per_page, filters } = body_in;
 
     let url = '';
     let method = 'GET';
@@ -76,9 +77,70 @@ serve(async (req) => {
           ...(filters ? { filters } : {}),
         });
         break;
+      case 'create-trip': {
+        const {
+          title, description, start_date, end_date,
+          total_price, deposit_price, currency = 'EUR',
+          cover_image_url, client_name,
+        } = body_in;
+
+        const tripRes = await fetch(`${WETRAVEL_BASE}/draft_trips`, {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json', Accept: 'application/json' },
+          body: JSON.stringify({
+            name: title,
+            description: description || `Private tour for ${client_name} — Your Tours Portugal`,
+            ...(start_date ? { start_date } : {}),
+            ...(end_date ? { end_date } : {}),
+            currency,
+            ...(cover_image_url ? { photo_url: cover_image_url } : {}),
+          }),
+        });
+        if (!tripRes.ok) throw new Error(`WeTravel create trip [${tripRes.status}]: ${await tripRes.text()}`);
+        const tripData = await tripRes.json();
+        const tripUuid = tripData.uuid ?? tripData.id ?? tripData.draft_trip?.uuid;
+        if (!tripUuid) throw new Error(`No UUID returned: ${JSON.stringify(tripData)}`);
+
+        const pkgRes = await fetch(`${WETRAVEL_BASE}/draft_trips/${tripUuid}/packages`, {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json', Accept: 'application/json' },
+          body: JSON.stringify({
+            name: 'Private Programme — Full Tour',
+            price: total_price,
+            description: `Complete private programme as per proposal. A refundable deposit of ${currency} ${deposit_price} is due now to confirm your booking. This deposit is 100% refundable.`,
+            quantity: 1,
+          }),
+        });
+        if (!pkgRes.ok) throw new Error(`WeTravel create package [${pkgRes.status}]: ${await pkgRes.text()}`);
+        const pkgData = await pkgRes.json();
+        const packageId = pkgData.id ?? pkgData.package?.id;
+        if (!packageId) throw new Error(`No package ID: ${JSON.stringify(pkgData)}`);
+
+        try {
+          await fetch(`${WETRAVEL_BASE}/draft_trips/${tripUuid}/packages/${packageId}/payment_plans`, {
+            method: 'POST',
+            headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json', Accept: 'application/json' },
+            body: JSON.stringify({
+              price: deposit_price,
+              days_before_departure: 1,
+              description: '100% Refundable Deposit — secure your spot',
+            }),
+          });
+        } catch (e) {
+          console.error('Payment plan creation failed (non-fatal):', e);
+        }
+
+        const checkoutUrl = tripData.checkout_url ?? tripData.booking_url ?? `https://www.wetravel.com/trips/${tripUuid}/checkout`;
+        const tripUrl = tripData.trip_url ?? tripData.url ?? `https://www.wetravel.com/trips/${tripUuid}`;
+
+        return new Response(JSON.stringify({ trip_uuid: tripUuid, trip_url: tripUrl, checkout_url: checkoutUrl, package_id: packageId }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
       default:
         throw new Error(`Unknown action: ${action}`);
     }
+
 
     const headers: Record<string, string> = {
       'Authorization': `Bearer ${accessToken}`,
