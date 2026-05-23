@@ -411,11 +411,12 @@ const TravelPlanProposal = ({
   if (savedPlan && !plan && !hydratedRef.current) {
     hydratedRef.current = true;
     const days = Array.isArray(savedPlan.days) ? savedPlan.days as unknown as ProposalDay[] : [];
-    // Restore cover_image from extra_instructions metadata
+    // Restore cover_image + closing terms from extra_instructions metadata
     let cover_image: ProposalImage | undefined;
     try {
       const meta = savedPlan.extra_instructions ? JSON.parse(savedPlan.extra_instructions) : null;
       if (meta?.cover_image) cover_image = meta.cover_image;
+      if (meta?.closing) setClosing({ ...DEFAULT_CLOSING, ...meta.closing });
     } catch { /* not JSON, ignore */ }
     setPlan({ trip_title: savedPlan.trip_title || '', narrative: savedPlan.narrative || '', cover_image, days });
   }
