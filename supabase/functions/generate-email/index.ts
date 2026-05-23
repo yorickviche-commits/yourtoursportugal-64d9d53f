@@ -1,9 +1,21 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
+
+function injectBookNowButton(body: string, checkoutUrl?: string | null, depositEur?: number | null): string {
+  if (!checkoutUrl) return body;
+  const buttonHtml = `\n\n<div style="text-align:center;margin:24px 0;"><a href="${checkoutUrl}" style="display:inline-block;background:#16a34a;color:#fff;padding:14px 28px;border-radius:8px;text-decoration:none;font-weight:600;font-family:Arial,sans-serif;">✈️ Book Now — Reserve Your Spot</a><p style="margin:8px 0 0;font-size:12px;color:#64748b;">${depositEur ? `€${depositEur} deposit · ` : ''}50% of total · 100% refundable</p></div>\n\n`;
+  const sigPattern = /\n(Best regards|Kind regards|Warmly|Warm regards|À bientôt|Cordialement|Mit freundlichen|Atenciosamente|Com os melhores)/i;
+  const idx = body.search(sigPattern);
+  if (idx !== -1) return body.slice(0, idx) + buttonHtml + body.slice(idx);
+  return body + buttonHtml;
+}
+
+
 
 const SALES_TEMPLATES: Record<string, { subject: string; body: string }> = {
   "new_inquiry": {
