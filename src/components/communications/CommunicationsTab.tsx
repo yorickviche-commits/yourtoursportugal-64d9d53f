@@ -9,7 +9,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { EMAIL_TEMPLATES, renderTemplate, type EmailTemplate, type TemplateContext } from '@/data/emailTemplates';
-import { buildProposalPdfBase64, type ProposalLite } from '@/lib/proposalPdf';
+import { buildProposalPdfBase64, buildProposalEmailText, type ProposalLite } from '@/lib/proposalPdf';
 
 interface Props {
   scope: 'lead' | 'trip';
@@ -47,7 +47,7 @@ const CommunicationsTab = ({ scope, entityId, recipientEmail, context }: Props) 
       const col = scope === 'lead' ? 'lead_id' : 'booking_id';
       const { data } = await supabase
         .from('proposals')
-        .select('id, title, client_name, date_range, participants, summary_text, total_value_eur, public_token, days')
+        .select('id, title, client_name, date_range, participants, summary_text, total_value_eur, public_token, booking_ref, days, status')
         .eq(col, entityId)
         .order('created_at', { ascending: false })
         .limit(1)
@@ -85,20 +85,24 @@ const CommunicationsTab = ({ scope, entityId, recipientEmail, context }: Props) 
 
   const openTemplate = (t: EmailTemplate) => {
     const rendered = renderTemplate(t, context);
+    let finalSubject = rendered.subject;
     let finalBody = rendered.body;
-    // Auto-inject interactive weblink for proposal sends
-    if (t.key === 'sales_proposal' && proposalWeblink) {
-      const linkBlock = `\n\n— Interactive Travel Plan (mobile-friendly):\n${proposalWeblink}\n\nThe full PDF version is attached for your records.`;
-      // Insert before the signature ("Warmly,")
-      if (finalBody.includes('Warmly,')) {
-        finalBody = finalBody.replace('Warmly,', `${linkBlock}\n\nWarmly,`);
-      } else {
-        finalBody = `${finalBody}${linkBlock}`;
+
+    if (t.key === 'sales_proposal' && latestProposal) {
+      // Build the email body to mirror the Travel Plan structure (same as the PDF).
+      const greeting = `Dear ${latestProposal.client_name || context.client_name || 'traveller'},`;
+      const intro = `It's been a pleasure putting this together. Please find your tailored Travel Plan below — every day has been hand-designed to balance signature experiences with quiet local moments. We can of course refine anything: pacing, accommodation style, or activity mix.`;
+      const plan = buildProposalEmailText(latestProposal, proposalWeblink);
+      const signature = `Warmly,\n${context.sales_owner || 'Your Tours Portugal'}\nYour Tours Portugal\nreservas@yourtours.pt`;
+      finalBody = `${greeting}\n\n${intro}\n\n────────────────────────────────────\n${plan}\n────────────────────────────────────\n\n${signature}`;
+      if (latestProposal.title) {
+        finalSubject = `Your tailored Travel Plan — ${latestProposal.title}`;
       }
     }
+
     setSelected(t);
     setTo(recipientEmail || '');
-    setSubject(rendered.subject);
+    setSubject(finalSubject);
     setBody(finalBody);
     setAttachPdf(t.key === 'sales_proposal' && !!latestProposal);
   };
@@ -132,6 +136,17 @@ const CommunicationsTab = ({ scope, entityId, recipientEmail, context }: Props) 
         email_category: selected?.key,
         sent_by: user?.id || null,
       } as any);
+
+      // Mark proposal as 'sent' so the public link becomes accessible
+      if (isProposalTemplate && latestProposal?.id) {
+        await supabase
+          .from('proposals')
+          .update({ status: 'sent', sent_at: new Date().toISOString() })
+          .eq('id', latestProposal.id)
+          .in('status', ['draft']);
+        qc.invalidateQueries({ queryKey: ['latest_proposal', scope, entityId] });
+        qc.invalidateQueries({ queryKey: ['proposals'] });
+      }
 
       toast({
         title: 'Email enviado',
