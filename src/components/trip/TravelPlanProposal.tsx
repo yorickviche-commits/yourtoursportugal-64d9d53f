@@ -47,6 +47,7 @@ export interface TravelPlanData {
 interface TravelPlanProposalProps {
   leadId: string;
   leadCode: string;
+  ytId?: string;
   clientName: string;
   destination: string;
   travelDates: string;
@@ -64,6 +65,22 @@ interface TravelPlanProposalProps {
   defaultLanguage?: string;
   onGoToCosting?: () => void;
 }
+
+interface ClosingTerms {
+  inclusionsOverride?: string;
+  payment: string;
+  cancellation: string;
+  importantNotes: string;
+  closingMessage: string;
+}
+
+const DEFAULT_CLOSING: ClosingTerms = {
+  inclusionsOverride: '',
+  payment: '• Deposit: 25% of the total amount to formalize the booking.\n• Final Payment: The remaining 75% must be settled up to 30 days before the tour date.',
+  cancellation: '• Free cancellation with 100% refund up to 7 days prior to the tour date.\n• For cancellations made less than 30 days before the tour date, the total amount is non-refundable.',
+  importantNotes: '• The rates presented include all the itinerary and experiences mentioned in the proposition.\n• The presented rates are valid on the date this proposal is sent. Up until your final confirmation, there\'s the possibility of price/availability/conditions changes beyond our process.\n• The rates include all taxes and personal accident insurance.\n• Terms and Conditions referring to all our products/services are available publicly on our website.',
+  closingMessage: 'That said, we await your feedback and your thoughts on the program and proposal.\n\nIf helpful, we suggest scheduling a short video call with our team to walk through the experience together, clarify any details, and fine-tune the plan according to your vision.\n\nPlease let us know if the proposal aligns with your expectations so we can move confidently to the next steps.',
+};
 
 const LANGUAGE_OPTIONS: { value: string; label: string }[] = [
   { value: 'PT', label: 'PT' },
