@@ -359,6 +359,7 @@ const TravelPlanProposal = ({
     clientName, fileId: leadCode, destination, travelDates,
     travelEndDate, numberOfDays, datesType, pax, paxChildren,
     paxInfants, travelStyles, comfortLevel, budgetLevel, magicQuestion, notes,
+    language,
   };
 
   // Dedup registry scope (lead-based)
