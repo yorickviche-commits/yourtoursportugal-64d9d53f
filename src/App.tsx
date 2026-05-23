@@ -17,6 +17,7 @@ import ResetPasswordPage from "./pages/ResetPasswordPage";
 import ItineraryPreviewPage from "./pages/ItineraryPreviewPage";
 import PublicProposalPage from "./pages/PublicProposalPage";
 import ProposalDetailPage from "./pages/ProposalDetailPage";
+import AgentControlPage from "./pages/AgentControlPage";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -44,6 +45,7 @@ const App = () => (
             <Route path="/bookings/:id" element={<ProtectedRoute><LeadDetailPage mode="booking" /></ProtectedRoute>} />
             <Route path="/payments" element={<ProtectedRoute><PaymentsPage /></ProtectedRoute>} />
             <Route path="/proposals/:id" element={<ProtectedRoute><ProposalDetailPage /></ProtectedRoute>} />
+            <Route path="/agents" element={<ProtectedRoute><AgentControlPage /></ProtectedRoute>} />
 
             <Route path="*" element={<NotFound />} />
           </Routes>
