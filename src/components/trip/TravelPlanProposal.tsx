@@ -615,7 +615,7 @@ const TravelPlanProposal = ({
       const paxStr = `${pax} adult${pax > 1 ? 's' : ''}${paxChildren ? ` + ${paxChildren} children` : ''}`;
       await supabase.from('travel_plans').delete().eq('lead_id', leadId);
       // Store cover_image in extra_instructions as JSON metadata
-      const metadata = JSON.stringify({ cover_image: plan.cover_image || null });
+      const metadata = JSON.stringify({ cover_image: plan.cover_image || null, closing });
       const { error } = await supabase.from('travel_plans').insert({
         lead_id: leadId, file_id: leadCode, trip_title: plan.trip_title,
         client_name: clientName, start_date: startDate, end_date: endDate,
