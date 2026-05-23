@@ -61,13 +61,13 @@ async function tryGeminiDirect(query: string, prompt: string) {
   if (!key) return null;
   try {
     const res = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-image-preview:generateContent?key=${key}`,
+      'https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-image-preview:generateContent',
       {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', 'x-goog-api-key': key },
         body: JSON.stringify({
           contents: [{ parts: [{ text: prompt }] }],
-          generationConfig: { responseModalities: ['IMAGE'] },
+          generationConfig: { responseModalities: ['TEXT', 'IMAGE'] },
         }),
       }
     );
@@ -175,6 +175,12 @@ serve(async (req) => {
 
     if (mode === 'generate') {
       const result = await generateWithAI(query);
+      if (!result) {
+        return new Response(
+          JSON.stringify({ error: 'Não foi possível gerar imagem com os fornecedores configurados.', images: [] }),
+          { status: 502, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
       return new Response(JSON.stringify({ images: result ? [result] : [] }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
