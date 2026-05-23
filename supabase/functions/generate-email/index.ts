@@ -400,16 +400,17 @@ Use the extract_email tool to return the result.`;
       rawText = rawText.replace(/```json\s*/g, "").replace(/```\s*/g, "").trim();
 
       const result = JSON.parse(rawText);
+      result.body = injectBookNowButton(result.body, (leadContext as any).wetravel_checkout_url, (leadContext as any).deposit_amount_eur);
       return new Response(JSON.stringify({ email: result }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    const data = await response.json();
     const toolCall = data.choices?.[0]?.message?.tool_calls?.[0];
     if (!toolCall) throw new Error("No tool call in response");
 
     const result = JSON.parse(toolCall.function.arguments);
+    result.body = injectBookNowButton(result.body, (leadContext as any).wetravel_checkout_url, (leadContext as any).deposit_amount_eur);
 
     return new Response(JSON.stringify({ email: result }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
