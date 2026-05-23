@@ -68,6 +68,7 @@ const NewLeadDialog = ({ open, onOpenChange }: { open: boolean; onOpenChange: (v
       if (data?.error) throw new Error(data.error);
       const e = data.extracted;
       setForm({
+        ytId: form.ytId,
         clientName: e.clientName || '', email: e.email || '', phone: e.phone || '',
         travelDates: e.travelStartDate || e.travelDates || '', 
         travelEndDate: e.travelEndDate || '',
