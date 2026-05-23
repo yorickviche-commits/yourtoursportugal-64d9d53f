@@ -469,7 +469,7 @@ const LeadCostingEditor = ({ costingDays, onChange, onSave, saving, plannerDays,
           const dayNet = dayActiveItems.reduce((s, i) => s + i.netTotal, 0);
           const dayPVP = dayActiveItems.reduce((s, i) => s + i.pvpTotal, 0);
           const dayProfit = dayPVP - dayNet;
-          const dayMargin = dayPVP > 0 ? (dayProfit / dayPVP) * 100 : 0;
+          const dayMargin = dayNet > 0 ? (dayProfit / dayNet) * 100 : 0;
 
           return (
             <Collapsible key={day.day} open={expanded} onOpenChange={() => toggleDay(day.day)}>
