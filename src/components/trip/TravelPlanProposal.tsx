@@ -756,6 +756,7 @@ const TravelPlanProposal = ({
               searchContext={`${destination} Portugal panoramic travel`}
               className="max-h-48"
               aspectRatio="landscape"
+              dedupScope={leadId ? { type: 'lead', id: leadId } : undefined}
             />
           </div>
         )}
