@@ -650,7 +650,7 @@ const LeadProposalsTab = ({ leadId, clientName }: { leadId: string; clientName: 
   );
 };
 
-const LeadDetailPage = () => {
+const LeadDetailPage = ({ mode = 'lead' }: { mode?: 'lead' | 'booking' } = {}) => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { data: lead, isLoading } = useLeadQuery(id);
