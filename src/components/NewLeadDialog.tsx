@@ -184,12 +184,11 @@ const NewLeadDialog = ({ open, onOpenChange }: { open: boolean; onOpenChange: (v
                 <Input className="h-8 text-xs mt-1" value={form.phone} onChange={e => updateField('phone', e.target.value)} placeholder="+351 ..." />
               </div>
             </div>
+            <div className="grid grid-cols-2 gap-3">
               <div>
                 <Label className="text-[10px] text-muted-foreground uppercase">Nº Pax</Label>
                 <Input className="h-8 text-xs mt-1" type="number" min={1} value={form.pax} onChange={e => updateField('pax', parseInt(e.target.value) || 1)} />
               </div>
-            </div>
-            <div className="grid grid-cols-2 gap-3">
               <div>
                 <Label className="text-[10px] text-muted-foreground uppercase">Datas de Viagem</Label>
                 <Input className="h-8 text-xs mt-1" value={form.travelDates} onChange={e => updateField('travelDates', e.target.value)} placeholder="Ex: 15-22 Maio 2026" />
