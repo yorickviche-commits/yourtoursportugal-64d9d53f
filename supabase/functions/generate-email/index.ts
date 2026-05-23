@@ -229,12 +229,33 @@ serve(async (req) => {
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
 
+    // Enrich leadContext with WeTravel checkout URL from proposals table
+    try {
+      const supabaseUrl = Deno.env.get("SUPABASE_URL");
+      const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+      if (supabaseUrl && serviceKey && leadContext?.id) {
+        const sb = createClient(supabaseUrl, serviceKey);
+        const { data: proposalWT } = await sb
+          .from('proposals')
+          .select('wetravel_checkout_url, deposit_amount_eur, deposit_percent')
+          .eq('lead_id', leadContext.id)
+          .maybeSingle();
+        if (proposalWT?.wetravel_checkout_url) {
+          (leadContext as any).wetravel_checkout_url = proposalWT.wetravel_checkout_url;
+          (leadContext as any).deposit_amount_eur = proposalWT.deposit_amount_eur;
+        }
+      }
+    } catch (e) {
+      console.error('WeTravel context fetch failed (non-fatal):', e);
+    }
+
     const template = SALES_TEMPLATES[templateKey];
     if (!template) {
       return new Response(JSON.stringify({ error: "Template not found" }), {
         status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
+
 
     const systemPrompt = `You are the Sales & Operations AI Manager for Your Tours Portugal (YTP) — a premium private tour operator and DMC specializing in tailor-made experiences across Portugal.
 
