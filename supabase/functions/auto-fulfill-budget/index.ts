@@ -270,10 +270,13 @@ Return ONLY a JSON array:
     const content0 = await callAIWithFailover(messages);
     let content = content0.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
 
-    let suggestions;
-    try { suggestions = JSON.parse(content); } catch {
+    let suggestions: any[] = [];
+    try {
+      const parsed = JSON.parse(content);
+      if (Array.isArray(parsed)) suggestions = parsed;
+      else suggestions = parsed.suggestions || parsed.data || parsed.items || parsed.results || [];
+    } catch {
       console.error("Failed to parse AI response:", content);
-      suggestions = [];
     }
 
     // Post-process: inject fixed guide rates if AI didn't respect them
