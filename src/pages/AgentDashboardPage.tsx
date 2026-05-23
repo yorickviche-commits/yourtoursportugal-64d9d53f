@@ -197,7 +197,7 @@ function AgentPage({ agent, onBack }: { agent: Agent; onBack: () => void }) {
 
   useEffect(() => {
     if (agent.id === "ceo") {
-      api.get("/ceo/approvals/pending")
+      fetchPendingApprovals()
         .then(d => setPendingApprovals(d.approvals || []))
         .catch(() => {});
     }
@@ -207,7 +207,8 @@ function AgentPage({ agent, onBack }: { agent: Agent; onBack: () => void }) {
     const endpoints = COMMAND_ENDPOINTS[agent.id] || {};
     const fn = endpoints[cmdLabel];
     if (!fn) {
-      setResult({ note: `Command "${cmdLabel}" — wire up endpoint` });
+      comingSoon(cmdLabel);
+      setResult({ note: `Command "${cmdLabel}" not yet connected`, status: 'coming_soon' });
       return;
     }
     setLoading(cmdLabel); setResult(null); setError(null);
@@ -220,7 +221,7 @@ function AgentPage({ agent, onBack }: { agent: Agent; onBack: () => void }) {
 
   const decideApproval = useCallback(async (id: string, decision: string) => {
     try {
-      await api.post(`/ceo/approvals/${id}/decide`, { decision });
+      await callOrchestrator('approve_decision', undefined, { approvalId: id, decision: decision === 'approve' ? 'approved' : 'rejected' });
       setPendingApprovals(p => p.filter(a => a.id !== id));
     } catch (e: any) { setError(e.message); }
   }, []);
