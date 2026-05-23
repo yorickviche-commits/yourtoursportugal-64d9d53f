@@ -43,9 +43,17 @@ const BASE_DETAIL_TABS: { key: DetailTab; label: string }[] = [
   { key: 'comunicacoes', label: 'Comunicações' },
 ];
 
-const getDetailTabs = (status: string): { key: DetailTab; label: string }[] => {
+const getDetailTabs = (status: string, mode: 'lead' | 'booking' = 'lead'): { key: DetailTab; label: string }[] => {
+  if (mode === 'booking') {
+    return [
+      { key: 'dados_gerais', label: 'Dados Gerais' },
+      { key: 'travel_planner', label: 'Travel Plan' },
+      { key: 'custos', label: 'Custos' },
+      { key: 'operacoes', label: 'Operações' },
+      { key: 'comunicacoes', label: 'Comunicações' },
+    ];
+  }
   if (status === 'won') {
-    // Bookings & Reservas Confirmadas — insert Operações before Comunicações
     return [
       ...BASE_DETAIL_TABS.slice(0, 4),
       { key: 'operacoes', label: 'Operações' },
@@ -642,7 +650,7 @@ const LeadProposalsTab = ({ leadId, clientName }: { leadId: string; clientName: 
   );
 };
 
-const LeadDetailPage = () => {
+const LeadDetailPage = ({ mode = 'lead' }: { mode?: 'lead' | 'booking' } = {}) => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { data: lead, isLoading } = useLeadQuery(id);
@@ -1029,7 +1037,7 @@ const LeadDetailPage = () => {
         {/* Tabs */}
         <div className="flex items-center justify-between border-b border-border">
           <div className="flex items-center gap-0">
-            {getDetailTabs(leadStatus).map(tab => (
+            {getDetailTabs(leadStatus, mode).map(tab => (
               <button key={tab.key} onClick={() => setActiveTab(tab.key)} className={cn("px-4 py-2 text-xs font-medium border-b-2 transition-colors -mb-px", activeTab === tab.key ? "border-[hsl(var(--info))] text-[hsl(var(--info))]" : "border-transparent text-muted-foreground hover:text-foreground")}>{tab.label}</button>
             ))}
           </div>
@@ -1262,12 +1270,13 @@ const LeadDetailPage = () => {
         {/* Comunicações */}
         {activeTab === 'comunicacoes' && lead && (
           <CommunicationsTab
-            scope="lead"
+            scope={mode === 'booking' ? 'trip' : 'lead'}
             entityId={lead.id}
             recipientEmail={formState.email || lead.email || ''}
             context={{
               client_name: formState.clientName || lead.client_name,
               lead_code: lead.lead_code,
+              trip_code: lead.lead_code,
               destination: lead.destination || '',
               travel_dates: formState.travelDates || lead.travel_dates || '',
               pax: formState.pax ?? lead.pax,
