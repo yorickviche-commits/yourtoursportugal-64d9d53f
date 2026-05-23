@@ -26,7 +26,7 @@ interface NavGroup {
 
 const reservasItems: NavItem[] = [
   { to: '/leads', icon: Users, label: 'Leads & Files' },
-  { to: '/trips', icon: Map, label: 'Bookings & Reservas' },
+  { to: '/trips', icon: Map, label: 'Bookings & Reservas Confirmadas' },
 ];
 
 const comercialItems: NavItem[] = [
@@ -37,6 +37,7 @@ const comercialItems: NavItem[] = [
 ];
 
 const adminItems: NavItem[] = [
+  { to: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
   { to: '/agents', icon: Bot, label: 'AI Agents' },
   { to: '/ai-office', icon: Bot, label: 'AI Work Office' },
   { to: '/crm', icon: Globe, label: 'CRM (NetHunt)' },
@@ -47,6 +48,7 @@ const adminItems: NavItem[] = [
   { to: '/admin/integrations', icon: Plug, label: 'Integrações' },
   { to: '/admin/logs', icon: FileText, label: 'Activity Logs' },
 ];
+
 
 // ─── Desktop Sidebar (hover-expand) ───
 const DesktopSidebar = () => {
@@ -159,8 +161,8 @@ const DesktopSidebar = () => {
 
       {/* Nav */}
       <nav className="flex-1 py-3 px-2 space-y-1 overflow-y-auto">
-        {/* Dashboard - standalone */}
-        {renderNavItem({ to: '/', icon: LayoutDashboard, label: 'Dashboard' })}
+        {/* Dep. Reservas (Home) */}
+
 
         {/* Dep. Reservas */}
         {renderGroup('Dep. Reservas', reservasItems, reservasOpen, setReservasOpen)}
@@ -265,7 +267,7 @@ const MobileMenu = ({ open, onClose }: { open: boolean; onClose: () => void }) =
 
       {/* Navigation */}
       <nav className="flex-1 overflow-y-auto py-4 px-2 space-y-2">
-        {renderItem({ to: '/', icon: LayoutDashboard, label: 'Dashboard' })}
+        {/* Home = Dep. Reservas */}
         {renderGroup('Dep. Reservas', reservasItems, reservasOpen, setReservasOpen)}
         {renderGroup('Dep. Comercial', comercialItems, comercialOpen, setComercialOpen)}
         {isAdmin && renderGroup('Admin', adminItems, adminOpen, setAdminOpen)}
