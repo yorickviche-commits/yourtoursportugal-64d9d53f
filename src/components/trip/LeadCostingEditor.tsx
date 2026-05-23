@@ -396,7 +396,9 @@ const LeadCostingEditor = ({ costingDays, onChange, onSave, saving, plannerDays,
   const grandNet = activeItems.reduce((s, i) => s + i.netTotal, 0);
   const grandPVP = activeItems.reduce((s, i) => s + i.pvpTotal, 0);
   const grandProfit = grandPVP - grandNet;
-  const grandMargin = grandPVP > 0 ? (grandProfit / grandPVP) * 100 : 0;
+  const grandMargin = grandNet > 0 ? (grandProfit / grandNet) * 100 : 0;
+  const totalPax = (pax || 0) + (paxChildren || 0);
+  const pvpPerPax = totalPax > 0 ? grandPVP / totalPax : 0;
 
   const hasItems = costingDays.some(d => d.items.length > 0);
 
@@ -467,7 +469,7 @@ const LeadCostingEditor = ({ costingDays, onChange, onSave, saving, plannerDays,
           const dayNet = dayActiveItems.reduce((s, i) => s + i.netTotal, 0);
           const dayPVP = dayActiveItems.reduce((s, i) => s + i.pvpTotal, 0);
           const dayProfit = dayPVP - dayNet;
-          const dayMargin = dayPVP > 0 ? (dayProfit / dayPVP) * 100 : 0;
+          const dayMargin = dayNet > 0 ? (dayProfit / dayNet) * 100 : 0;
 
           return (
             <Collapsible key={day.day} open={expanded} onOpenChange={() => toggleDay(day.day)}>
@@ -625,7 +627,7 @@ const LeadCostingEditor = ({ costingDays, onChange, onSave, saving, plannerDays,
       {/* Grand Totals */}
       {activeItems.length > 0 && (
         <div className="bg-card rounded-lg border p-4">
-          <div className="grid grid-cols-4 gap-6 text-center">
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-6 text-center">
             <div>
               <p className="text-[10px] text-muted-foreground uppercase font-semibold">Total NET</p>
               <p className="text-lg font-bold">€{grandNet.toFixed(2)}</p>
@@ -641,6 +643,11 @@ const LeadCostingEditor = ({ costingDays, onChange, onSave, saving, plannerDays,
             <div>
               <p className="text-[10px] text-muted-foreground uppercase font-semibold">TOTAL PVP</p>
               <p className="text-lg font-bold text-[hsl(var(--info))]">€{grandPVP.toFixed(2)}</p>
+            </div>
+            <div>
+              <p className="text-[10px] text-muted-foreground uppercase font-semibold">PVP / Pessoa</p>
+              <p className="text-lg font-bold text-[hsl(var(--info))]">€{pvpPerPax.toFixed(2)}</p>
+              <p className="text-[9px] text-muted-foreground">{totalPax} pax</p>
             </div>
           </div>
         </div>
