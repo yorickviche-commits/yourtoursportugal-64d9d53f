@@ -103,16 +103,19 @@ export default function ProposalImagePicker({
       const { data, error } = await supabase.functions.invoke('search-destination-images', {
         body: { query: `Beautiful travel photograph: ${searchContext}`, count: 1, mode: 'generate' },
       });
-      if (error) throw error;
+      if (error) {
+        const contextMessage = (error as any)?.context?.error || (error as any)?.context?.message;
+        throw new Error(contextMessage || error.message);
+      }
       const img = data?.images?.[0];
       if (img) {
         await handleSelectImage(img);
         toast({ title: '🎨 Imagem AI gerada!' });
       } else {
-        toast({ title: 'Erro', description: 'Não foi possível gerar imagem', variant: 'destructive' });
+        toast({ title: 'Erro', description: data?.error || 'Não foi possível gerar imagem', variant: 'destructive' });
       }
     } catch (e: any) {
-      toast({ title: 'Erro na geração AI', description: e.message, variant: 'destructive' });
+      toast({ title: 'Erro na geração AI', description: e.message || 'Não foi possível gerar imagem', variant: 'destructive' });
     } finally {
       setGenerating(false);
     }
