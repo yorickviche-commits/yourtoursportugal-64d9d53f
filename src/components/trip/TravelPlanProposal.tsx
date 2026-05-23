@@ -723,7 +723,7 @@ const TravelPlanProposal = ({
     } finally {
       setSaving(false);
     }
-  }, [plan, leadId, leadCode, clientName, pax, paxChildren, travelDates, travelEndDate, toast, queryClient]);
+  }, [plan, closing, leadId, leadCode, clientName, pax, paxChildren, travelDates, travelEndDate, toast, queryClient]);
 
   // Edit helpers
   const updateDay = (dayIdx: number, updates: Partial<ProposalDay>) => {
