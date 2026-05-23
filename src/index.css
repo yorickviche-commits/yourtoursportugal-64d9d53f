@@ -191,26 +191,32 @@
     padding: 0 !important;
   }
 
-  /* When a print root is present, hide everything else by default */
-  body:has([data-print-root]) > *:not(script):not(style) {
-    display: none !important;
+  /* Hide everything by default when a print root exists, then re-show the
+     print root and its descendants. Using visibility keeps ancestors in the
+     render tree so the print root remains visible. */
+  body:has([data-print-root]) * {
+    visibility: hidden !important;
   }
 
-  /* Re-show only the print root, lifted out of the layout */
+  body:has([data-print-root]) [data-print-root],
+  body:has([data-print-root]) [data-print-root] * {
+    visibility: visible !important;
+  }
+
   [data-print-root] {
-    display: block !important;
     position: absolute !important;
-    inset: 0 !important;
-    margin: 0 !important;
-    padding: 0 !important;
+    top: 0 !important;
+    left: 0 !important;
     width: 100% !important;
     max-width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
     border: 0 !important;
     border-radius: 0 !important;
     box-shadow: none !important;
     background: white !important;
-    z-index: 999999 !important;
   }
+
 
   /* Anything explicitly marked print:hidden stays hidden */
   .print\:hidden { display: none !important; }
