@@ -9,7 +9,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { EMAIL_TEMPLATES, renderTemplate, type EmailTemplate, type TemplateContext } from '@/data/emailTemplates';
-import { buildProposalPdfBase64, type ProposalLite } from '@/lib/proposalPdf';
+import { buildProposalPdfBase64, buildProposalEmailText, type ProposalLite } from '@/lib/proposalPdf';
 
 interface Props {
   scope: 'lead' | 'trip';
