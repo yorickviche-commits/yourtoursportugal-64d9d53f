@@ -37,9 +37,9 @@ Output this exact JSON structure:
   "days": [
     {
       "day_number": 1,
-      "title": "Welcome, Portugal!",
+      "title": "Arrival Transfer Porto Airport to City Center",
       "date": "02-Aug-2026",
-      "subtitle": "Arrival in Porto & Transfer-in",
+      "subtitle": "A warm welcome to Portugal's northern capital",
       "bullets": [
         "Private transfer from Porto Airport to your accommodation in Porto city centre (without guide)",
         "Night in Porto"
