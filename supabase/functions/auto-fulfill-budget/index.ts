@@ -267,20 +267,8 @@ Return ONLY a JSON array:
       { role: "user", content: prompt },
     ];
 
-    let content: string;
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-
-    try {
-      if (!LOVABLE_API_KEY) throw Object.assign(new Error("No gateway key"), { status: 402 });
-      content = await callGateway(messages, LOVABLE_API_KEY);
-    } catch (err: any) {
-      if (err.status === 402 || err.status === 429) {
-        console.warn(`Gateway ${err.status}, falling back to Gemini`);
-        content = await callGeminiFallback(messages);
-      } else { throw err; }
-    }
-
-    content = content.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+    const content0 = await callAIWithFailover(messages);
+    let content = content0.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
 
     let suggestions;
     try { suggestions = JSON.parse(content); } catch {
