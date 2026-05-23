@@ -170,7 +170,7 @@ async function callAnthropicFallback(emailText: string) {
   const ANTHROPIC_API_KEY = Deno.env.get("ANTHROPIC_API_KEY");
   if (!ANTHROPIC_API_KEY) throw new Error("No Anthropic API key");
 
-  const response = await fetch("https://api.anthropic.com/v1/messages", {
+  const response = await fetchWithRetry("https://api.anthropic.com/v1/messages", {
     method: "POST",
     headers: {
       "x-api-key": ANTHROPIC_API_KEY,
@@ -191,7 +191,7 @@ async function callAnthropicFallback(emailText: string) {
         { role: "user", content: `Extract the lead data from this email conversation:\n\n${emailText.slice(0, 8000)}` },
       ],
     }),
-  });
+  }, "anthropic");
 
   if (!response.ok) {
     const t = await response.text();
