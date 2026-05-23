@@ -2122,6 +2122,7 @@ export type Database = {
         Row: {
           blocker_note: string | null
           budget_level: string | null
+          checklist_items: Json | null
           client_name: string
           created_at: string
           created_by: string | null
@@ -2143,6 +2144,7 @@ export type Database = {
         Insert: {
           blocker_note?: string | null
           budget_level?: string | null
+          checklist_items?: Json | null
           client_name?: string
           created_at?: string
           created_by?: string | null
@@ -2164,6 +2166,7 @@ export type Database = {
         Update: {
           blocker_note?: string | null
           budget_level?: string | null
+          checklist_items?: Json | null
           client_name?: string
           created_at?: string
           created_by?: string | null

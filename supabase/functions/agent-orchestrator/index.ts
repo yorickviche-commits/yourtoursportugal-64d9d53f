@@ -1,19 +1,21 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
+import { createClient, SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
 };
 
-function getServiceClient() {
+const CEO_APPROVAL_THRESHOLD = Number(Deno.env.get('CEO_APPROVAL_THRESHOLD_EUR') || '8000');
+
+function getServiceClient(): SupabaseClient {
   const url = Deno.env.get('SUPABASE_URL')!;
   const key = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
   return createClient(url, key);
 }
 
 async function updateAgentStatus(
-  supabase: any, agentId: string, status: string,
+  supabase: SupabaseClient, agentId: string, status: string,
   currentTask?: string, currentEntity?: string, waitingFor?: string,
 ) {
   await supabase.from('agent_status').upsert({
@@ -26,7 +28,7 @@ async function updateAgentStatus(
 }
 
 async function logAgentEvent(
-  supabase: any, agentId: string, eventType: string, eventSummary: string,
+  supabase: SupabaseClient, agentId: string, eventType: string, eventSummary: string,
   requiresAction = false, eventDetail?: Record<string, any>, relatedEntity?: string,
 ) {
   await supabase.from('agent_activity_log').insert({
@@ -37,12 +39,12 @@ async function logAgentEvent(
   });
 }
 
-async function resetAgent(supabase: any, agentId: string) {
+async function resetAgent(supabase: SupabaseClient, agentId: string) {
   await updateAgentStatus(supabase, agentId, 'idle', 'Standing by');
 }
 
 // ─── BUILD FSE CONTEXT FROM DATABASE ───
-async function buildFSEContext(supabase: any, destination?: string): Promise<string> {
+async function buildFSEContext(supabase: SupabaseClient, destination?: string): Promise<string> {
   try {
     // Fetch suppliers + services + partners + partner_services in parallel
     const [suppRes, svcRes, partRes, pSvcRes] = await Promise.all([
@@ -96,7 +98,7 @@ async function buildFSEContext(supabase: any, destination?: string): Promise<str
 }
 
 // ─── PIPELINE: GENERATE TRAVEL PLAN ───
-async function runTravelPlanner(supabase: any, lead: any, fseContext: string) {
+async function runTravelPlanner(supabase: SupabaseClient, lead: any, fseContext: string) {
   const agentId = 'itinerary_architect';
   try {
     await updateAgentStatus(supabase, agentId, 'working', `Designing itinerary for ${lead.client_name}`, lead.id);
@@ -179,7 +181,7 @@ async function runTravelPlanner(supabase: any, lead: any, fseContext: string) {
 }
 
 // ─── PIPELINE: AUTO-FULFILL BUDGET ───
-async function runBudgetFulfill(supabase: any, lead: any, fseContext: string) {
+async function runBudgetFulfill(supabase: SupabaseClient, lead: any, fseContext: string) {
   const agentId = 'pricing_margin';
   try {
     await updateAgentStatus(supabase, agentId, 'working', `Calculating budget for ${lead.client_name}`, lead.id);
@@ -304,11 +306,18 @@ async function runBudgetFulfill(supabase: any, lead: any, fseContext: string) {
     }));
     await supabase.from('lead_costing_data').insert(costingRows);
 
-    const totalPVP = totalNet * 1.3;
+    // Real PVP = sum of itemized pvpTotal (not flat ×1.3)
+    let totalPVP = 0;
+    for (const dayData of costingByDay.values()) {
+      for (const item of dayData.items) {
+        totalPVP += item.pvpTotal || 0;
+      }
+    }
+    if (totalPVP === 0) totalPVP = totalNet * 1.3;
 
     await logAgentEvent(supabase, agentId, 'task_completed', `✅ Budget: €${totalNet.toFixed(0)} NET / €${totalPVP.toFixed(0)} PVP for ${lead.client_name} (${protocolItems}/${costItems.length} protocol suppliers)`, false, { lead_id: lead.id, total_net: totalNet, total_pvp: totalPVP, items_count: costItems.length, protocol_items: protocolItems }, lead.id);
 
-    if (totalPVP > 8000) {
+    if (totalPVP > CEO_APPROVAL_THRESHOLD) {
       await updateAgentStatus(supabase, agentId, 'waiting', `Waiting for CEO approval: €${totalPVP.toFixed(0)}`, lead.id, 'CEO_APPROVAL');
       await supabase.from('ceo_approval_queue').insert({
         agent_id: agentId,
@@ -335,7 +344,7 @@ async function runBudgetFulfill(supabase: any, lead: any, fseContext: string) {
 }
 
 // ─── PIPELINE: GENERATE DIGITAL ITINERARY ───
-async function runDigitalItinerary(supabase: any, lead: any, fseContext: string) {
+async function runDigitalItinerary(supabase: SupabaseClient, lead: any, fseContext: string) {
   const agentId = 'itinerary_architect';
   try {
     await updateAgentStatus(supabase, agentId, 'working', `Creating digital itinerary for ${lead.client_name}`, lead.id);
@@ -406,7 +415,7 @@ async function runDigitalItinerary(supabase: any, lead: any, fseContext: string)
 }
 
 // ─── FULL PIPELINE ───
-async function runFullPipeline(supabase: any, lead: any, fseContext: string) {
+async function runFullPipeline(supabase: SupabaseClient, lead: any, fseContext: string) {
   const results: any = { plan: null, budget: null, itinerary: null };
 
   try {
