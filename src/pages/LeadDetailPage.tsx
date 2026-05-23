@@ -1191,6 +1191,7 @@ const LeadDetailPage = () => {
             budgetLevel={formState.budgetLevel}
             magicQuestion={lead.magic_question || undefined}
             notes={formState.notes}
+            defaultLanguage={idioma[0]}
           />
         )}
 
