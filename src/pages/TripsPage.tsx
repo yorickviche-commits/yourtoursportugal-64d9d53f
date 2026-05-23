@@ -135,7 +135,7 @@ const TripsPage = () => {
             {filtered.map(lead => {
               const urgency = computeUrgency(lead.travel_dates);
               return (
-                <Link key={lead.id} to={`/leads/${lead.id}`} className="block bg-card rounded-lg border p-4 hover:bg-muted/30 transition-colors active:bg-muted/50">
+                <Link key={lead.id} to={`/bookings/${lead.id}`} className="block bg-card rounded-lg border p-4 hover:bg-muted/30 transition-colors active:bg-muted/50">
                   <div className="flex items-start justify-between">
                     <div className="min-w-0 flex-1">
                       <p className="text-sm font-semibold truncate">{lead.client_name}</p>
@@ -174,7 +174,7 @@ const TripsPage = () => {
                     <tr key={lead.id} className="border-b last:border-0 hover:bg-muted/30 transition-colors">
                       <td className="py-3 px-4 text-xs text-muted-foreground font-mono">{lead.lead_code}</td>
                       <td className="py-3 px-4">
-                        <Link to={`/leads/${lead.id}`} className="font-medium text-foreground hover:text-[hsl(var(--info))] transition-colors">{lead.client_name}</Link>
+                        <Link to={`/bookings/${lead.id}`} className="font-medium text-foreground hover:text-[hsl(var(--info))] transition-colors">{lead.client_name}</Link>
                       </td>
                       <td className="py-3 px-4 text-muted-foreground">{lead.destination}</td>
                       <td className="py-3 px-4 text-muted-foreground text-xs">{lead.travel_dates || '—'}{lead.travel_end_date ? ` → ${lead.travel_end_date}` : ''}</td>
