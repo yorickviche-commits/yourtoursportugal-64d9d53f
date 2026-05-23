@@ -657,6 +657,48 @@ const TravelPlanProposal = ({
       queryClient.invalidateQueries({ queryKey: ['travel_plan', leadId] });
       queryClient.invalidateQueries({ queryKey: ['proposals'] });
       toast({ title: 'Plano guardado!', description: 'Proposta cliente atualizada automaticamente.' });
+
+      // ── WeTravel deposit link (non-blocking) ──
+      try {
+        const [{ data: savedProposal }, { data: tripData }] = await Promise.all([
+          supabase.from('proposals').select('id, wetravel_checkout_url, deposit_amount_eur')
+            .eq('lead_id', leadId).maybeSingle(),
+          supabase.from('trips').select('total_value')
+            .eq('lead_id', leadId).order('updated_at', { ascending: false }).limit(1).maybeSingle(),
+        ]);
+        const totalValue = (tripData as any)?.total_value ?? totalPVP ?? 0;
+        if (savedProposal && totalValue > 0) {
+          if (savedProposal.wetravel_checkout_url) {
+            setWetravelCheckoutUrl(savedProposal.wetravel_checkout_url);
+            setWetravelDepositEur(savedProposal.deposit_amount_eur ?? null);
+          } else {
+            supabase.functions.invoke('create-wetravel-deposit', {
+              body: {
+                proposal_id: savedProposal.id,
+                total_value_eur: totalValue,
+                deposit_percent: 50,
+                title: plan.trip_title,
+                description: plan.narrative?.slice(0, 500) ?? '',
+                start_date: plan.days[0]?.date ?? travelDates ?? null,
+                end_date: plan.days[plan.days.length - 1]?.date ?? travelEndDate ?? null,
+                cover_image_url: plan.cover_image?.url ?? null,
+                client_name: clientName,
+              },
+            }).then(({ data: wt }: any) => {
+              if (wt?.checkout_url) {
+                setWetravelCheckoutUrl(wt.checkout_url);
+                setWetravelDepositEur(wt.deposit_amount_eur ?? null);
+                toast({
+                  title: '💳 Book Now link criado',
+                  description: `Depósito de €${wt.deposit_amount_eur} · 100% reembolsável`,
+                });
+              }
+            }).catch((err: any) => console.error('WeTravel (non-blocking):', err));
+          }
+        }
+      } catch (err) {
+        console.error('WeTravel setup error (non-blocking):', err);
+      }
     } catch (e: any) {
       toast({ title: 'Erro ao guardar', description: e.message, variant: 'destructive' });
     } finally {
