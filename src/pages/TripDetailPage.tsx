@@ -352,6 +352,23 @@ const TripDetailPage = () => {
               </div>
             )}
 
+            {/* Communications Tab */}
+            {activeTab === 'communications' && (
+              <CommunicationsTab
+                scope="trip"
+                entityId={trip.id}
+                recipientEmail={contacts[0]?.email || ''}
+                context={{
+                  client_name: trip.client_name,
+                  trip_code: trip.trip_code,
+                  destination: trip.destination || '',
+                  travel_dates: `${trip.start_date || ''} → ${trip.end_date || ''}`,
+                  pax: trip.pax,
+                  sales_owner: trip.sales_owner || '',
+                }}
+              />
+            )}
+
             {/* Contacts Tab */}
             {activeTab === 'contacts' && (
               <div className="bg-card rounded-lg border">
