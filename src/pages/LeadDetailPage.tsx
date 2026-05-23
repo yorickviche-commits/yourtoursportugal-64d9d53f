@@ -1240,8 +1240,22 @@ const LeadDetailPage = () => {
         {/* Propostas */}
         {activeTab === 'propostas' && lead && <LeadProposalsTab leadId={lead.id} clientName={formState.clientName} />}
 
-        {/* Operações */}
-        {activeTab === 'operacoes' && lead && <OperacoesTab activeVersion={activeVersion} leadId={lead.id} leadCode={lead.lead_code} />}
+        {/* Comunicações */}
+        {activeTab === 'comunicacoes' && lead && (
+          <CommunicationsTab
+            scope="lead"
+            entityId={lead.id}
+            recipientEmail={formState.email || lead.email || ''}
+            context={{
+              client_name: formState.clientName || lead.client_name,
+              lead_code: lead.lead_code,
+              destination: formState.destination || lead.destination || '',
+              travel_dates: formState.travelDates || lead.travel_dates || '',
+              pax: formState.pax ?? lead.pax,
+              sales_owner: formState.salesOwner || lead.sales_owner || '',
+            }}
+          />
+        )}
       </div>
     </AppLayout>
   );
