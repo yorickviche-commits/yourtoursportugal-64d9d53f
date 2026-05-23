@@ -33,15 +33,27 @@ import { useLeadOperationsQuery, useUpsertLeadOperation, DbLeadOperation } from 
 import BookingEmailHistory from '@/components/trip/BookingEmailHistory';
 import CommunicationsTab from '@/components/communications/CommunicationsTab';
 
-type DetailTab = 'dados_gerais' | 'travel_planner' | 'custos' | 'propostas' | 'comunicacoes';
+type DetailTab = 'dados_gerais' | 'travel_planner' | 'custos' | 'propostas' | 'operacoes' | 'comunicacoes';
 
-const DETAIL_TABS: { key: DetailTab; label: string }[] = [
+const BASE_DETAIL_TABS: { key: DetailTab; label: string }[] = [
   { key: 'dados_gerais', label: 'Dados Gerais' },
   { key: 'travel_planner', label: 'Travel Planner' },
   { key: 'custos', label: 'Custos' },
   { key: 'propostas', label: 'Propostas' },
   { key: 'comunicacoes', label: 'Comunicações' },
 ];
+
+const getDetailTabs = (status: string): { key: DetailTab; label: string }[] => {
+  if (status === 'won') {
+    // Bookings & Reservas Confirmadas — insert Operações before Comunicações
+    return [
+      ...BASE_DETAIL_TABS.slice(0, 4),
+      { key: 'operacoes', label: 'Operações' },
+      ...BASE_DETAIL_TABS.slice(4),
+    ];
+  }
+  return BASE_DETAIL_TABS;
+};
 
 const CATEGORIAS = ['Premium & Boutique', 'Standard', 'Luxury', 'Budget', 'Adventure'];
 const DESTINOS = ['Porto & Douro Valley', 'Lisbon & Sintra', 'Algarve', 'Azores', 'Madeira', 'Minho', 'Alentejo', 'Silver Coast'];
@@ -1017,7 +1029,7 @@ const LeadDetailPage = () => {
         {/* Tabs */}
         <div className="flex items-center justify-between border-b border-border">
           <div className="flex items-center gap-0">
-            {DETAIL_TABS.map(tab => (
+            {getDetailTabs(leadStatus).map(tab => (
               <button key={tab.key} onClick={() => setActiveTab(tab.key)} className={cn("px-4 py-2 text-xs font-medium border-b-2 transition-colors -mb-px", activeTab === tab.key ? "border-[hsl(var(--info))] text-[hsl(var(--info))]" : "border-transparent text-muted-foreground hover:text-foreground")}>{tab.label}</button>
             ))}
           </div>
@@ -1239,6 +1251,13 @@ const LeadDetailPage = () => {
 
         {/* Propostas */}
         {activeTab === 'propostas' && lead && <LeadProposalsTab leadId={lead.id} clientName={formState.clientName} />}
+
+        {/* Operações — apenas para reservas confirmadas (status = won) */}
+        {activeTab === 'operacoes' && lead && (
+          <OperacoesTab activeVersion={activeVersion} leadId={lead.id} leadCode={lead.lead_code} />
+        )}
+
+
 
         {/* Comunicações */}
         {activeTab === 'comunicacoes' && lead && (
