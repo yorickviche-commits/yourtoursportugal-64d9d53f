@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect, useCallback } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import {
   ArrowLeft, FileText, MessageSquare,
@@ -57,15 +57,28 @@ const TripDetailPage = () => {
   const [newItDay, setNewItDay] = useState(1);
   const [newItTitle, setNewItTitle] = useState('');
 
-  // Checklist local state
-  const [checklistItems, setChecklistItems] = useState([
+  // Checklist — persisted to trips.checklist_items JSONB
+  const DEFAULT_CHECKLIST = [
     { id: 1, label: 'Hotel reservations confirmed', done: false },
     { id: 2, label: 'Airport transfers booked', done: false },
     { id: 3, label: 'Restaurant reservations made', done: false },
     { id: 4, label: 'Activity tickets purchased', done: false },
     { id: 5, label: 'Travel insurance verified', done: false },
     { id: 6, label: 'Welcome pack prepared', done: false },
-  ]);
+  ];
+  const [checklistItems, setChecklistItems] = useState(DEFAULT_CHECKLIST);
+
+  useEffect(() => {
+    const dbChecklist = (trip as any)?.checklist_items;
+    if (dbChecklist && Array.isArray(dbChecklist) && dbChecklist.length > 0) {
+      setChecklistItems(dbChecklist as typeof DEFAULT_CHECKLIST);
+    }
+  }, [trip?.id]);
+
+  const persistChecklist = useCallback((next: typeof DEFAULT_CHECKLIST) => {
+    if (!trip?.id) return;
+    updateTripMutation.mutate({ id: trip.id, updates: { checklist_items: next } as any });
+  }, [trip?.id, updateTripMutation]);
   const [newCheckItem, setNewCheckItem] = useState('');
 
   // Derived data
@@ -115,9 +128,25 @@ const TripDetailPage = () => {
     );
   }
 
-  const toggleCheckItem = (checkId: number) => setChecklistItems(prev => prev.map(i => i.id === checkId ? { ...i, done: !i.done } : i));
-  const addCheckItem = () => { if (!newCheckItem.trim()) return; setChecklistItems(prev => [...prev, { id: Date.now(), label: newCheckItem.trim(), done: false }]); setNewCheckItem(''); };
-  const removeCheckItem = (checkId: number) => setChecklistItems(prev => prev.filter(i => i.id !== checkId));
+  const toggleCheckItem = (checkId: number) => setChecklistItems(prev => {
+    const next = prev.map(i => i.id === checkId ? { ...i, done: !i.done } : i);
+    persistChecklist(next);
+    return next;
+  });
+  const addCheckItem = () => {
+    if (!newCheckItem.trim()) return;
+    setChecklistItems(prev => {
+      const next = [...prev, { id: Date.now(), label: newCheckItem.trim(), done: false }];
+      persistChecklist(next);
+      return next;
+    });
+    setNewCheckItem('');
+  };
+  const removeCheckItem = (checkId: number) => setChecklistItems(prev => {
+    const next = prev.filter(i => i.id !== checkId);
+    persistChecklist(next);
+    return next;
+  });
 
   const handleSaveNotes = async (notes: string) => {
     try {

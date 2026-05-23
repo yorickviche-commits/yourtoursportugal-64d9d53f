@@ -8,13 +8,14 @@ export const logActivity = async (
 ) => {
   try {
     const { data: { user } } = await supabase.auth.getUser();
-    await supabase.from('activity_logs').insert({
+    const { error } = await supabase.from('activity_logs').insert({
       action_type: actionType,
-      entity_type: entityType || null,
-      entity_id: entityId || null,
-      details: details || {},
-      user_id: user?.id || null,
+      entity_type: entityType ?? null,
+      entity_id: entityId ?? null,
+      details: details ?? {},
+      user_id: user?.id ?? null,
     });
+    if (error) console.error('Activity log insert failed:', error.message);
   } catch (e) {
     console.error('Failed to log activity:', e);
   }
