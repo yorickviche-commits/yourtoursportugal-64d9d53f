@@ -309,6 +309,7 @@ const TravelPlanProposal = ({
   numberOfDays, datesType, pax, paxChildren, paxInfants,
   travelStyles, comfortLevel, budgetLevel, magicQuestion, notes,
   defaultLanguage,
+  onGoToCosting,
 }: TravelPlanProposalProps) => {
   const { toast } = useToast();
   const queryClient = useQueryClient();
