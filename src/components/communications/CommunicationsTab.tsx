@@ -243,6 +243,33 @@ const CommunicationsTab = ({ scope, entityId, recipientEmail, context }: Props) 
               <label className="text-[10px] text-muted-foreground uppercase font-medium">Corpo</label>
               <Textarea value={body} onChange={e => setBody(e.target.value)} className="text-xs min-h-[260px] font-mono" />
             </div>
+
+            {isProposalTemplate && (
+              <div className="rounded-md border border-primary/30 bg-primary/5 p-2.5 space-y-2">
+                {proposalWeblink ? (
+                  <div className="flex items-center gap-2 text-[11px]">
+                    <Link2 className="h-3.5 w-3.5 text-primary shrink-0" />
+                    <span className="font-medium">Weblink interativo:</span>
+                    <a href={proposalWeblink} target="_blank" rel="noopener" className="text-primary truncate hover:underline">
+                      {proposalWeblink}
+                    </a>
+                  </div>
+                ) : (
+                  <div className="text-[11px] text-amber-700">
+                    Sem proposta gerada para esta lead — cria uma proposta primeiro para incluir weblink + PDF.
+                  </div>
+                )}
+                <label className="flex items-center gap-2 text-[11px] cursor-pointer">
+                  <Checkbox
+                    checked={attachPdf}
+                    onCheckedChange={(v) => setAttachPdf(!!v)}
+                    disabled={!latestProposal}
+                  />
+                  <Paperclip className="h-3.5 w-3.5" />
+                  <span>Anexar PDF do Travel Plan automaticamente</span>
+                </label>
+              </div>
+            )}
           </div>
           <DialogFooter>
             <Button variant="outline" size="sm" onClick={() => setSelected(null)} className="text-xs">Cancelar</Button>
