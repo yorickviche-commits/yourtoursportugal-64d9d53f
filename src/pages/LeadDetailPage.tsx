@@ -1047,10 +1047,19 @@ const LeadDetailPage = () => {
 
             <div>
               <h3 className="text-sm font-bold text-foreground mb-3">Informação geral</h3>
-              <div className="grid grid-cols-3 gap-4">
+              <div className="grid grid-cols-4 gap-4">
+                <div>
+                  <label className="text-[10px] text-muted-foreground uppercase font-bold">ID YT *</label>
+                  <Input
+                    className="h-8 text-xs mt-1 font-mono"
+                    value={formState.ytId}
+                    onChange={e => updateFormField('ytId', e.target.value)}
+                    placeholder="YT-2026-0123"
+                  />
+                </div>
                 <div>
                   <label className="text-[10px] text-muted-foreground uppercase">Nº VI</label>
-                  <Input className="h-8 text-xs mt-1" defaultValue={lead.lead_code} readOnly />
+                  <Input className="h-8 text-xs mt-1 bg-muted/50" defaultValue={lead.lead_code} readOnly />
                 </div>
                 <div>
                   <label className="text-[10px] text-muted-foreground uppercase">Criador da Simulação</label>
