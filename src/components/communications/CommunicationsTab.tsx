@@ -1,13 +1,15 @@
-import { useState, useMemo } from 'react';
-import { Mail, Send, Loader2, Clock, ChevronRight } from 'lucide-react';
+import { useState, useMemo, useEffect } from 'react';
+import { Mail, Send, Loader2, Clock, ChevronRight, Paperclip, Link2 } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
+import { Checkbox } from '@/components/ui/checkbox';
 import { useToast } from '@/hooks/use-toast';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { EMAIL_TEMPLATES, renderTemplate, type EmailTemplate, type TemplateContext } from '@/data/emailTemplates';
+import { buildProposalPdfBase64, type ProposalLite } from '@/lib/proposalPdf';
 
 interface Props {
   scope: 'lead' | 'trip';
