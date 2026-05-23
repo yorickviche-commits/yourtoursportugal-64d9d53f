@@ -111,7 +111,7 @@ async function callGeminiFallback(emailText: string) {
 
   const prompt = `${systemPrompt}\n\nExtract the lead data from this email conversation and return ONLY valid JSON with these fields: clientName, email, phone, travelDates, datesType (concrete|estimated), pax (number), language (EN|PT|FR|ES|DE|IT|NL), budget, destination, request, preferences, travelStartDate (YYYY-MM-DD or null), travelEndDate (YYYY-MM-DD or null), numberOfDays (number or null), travelStyle (array of strings or []), comfortLevel (budget|standard|superior|luxury or null). If unknown, use null.\n\nEmail:\n${emailText.slice(0, 8000)}`;
 
-  const response = await fetch(
+  const response = await fetchWithRetry(
     `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`,
     {
       method: "POST",
@@ -120,7 +120,8 @@ async function callGeminiFallback(emailText: string) {
         contents: [{ parts: [{ text: prompt }] }],
         generationConfig: { responseMimeType: "application/json" },
       }),
-    }
+    },
+    "gemini"
   );
 
   if (!response.ok) {
