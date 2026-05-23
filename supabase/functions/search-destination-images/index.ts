@@ -59,9 +59,12 @@ function makePhotoId() {
 async function tryGeminiDirect(query: string, prompt: string) {
   const key = Deno.env.get('GEMINI_API_KEY');
   if (!key) return null;
-  try {
+  const models = ['gemini-3.1-flash-image-preview', 'gemini-2.5-flash-image'];
+
+  for (const model of models) {
+    try {
     const res = await fetch(
-      'https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-image-preview:generateContent',
+      `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'x-goog-api-key': key },
@@ -72,8 +75,8 @@ async function tryGeminiDirect(query: string, prompt: string) {
       }
     );
     if (!res.ok) {
-      console.error('Gemini direct error:', res.status, await res.text());
-      return null;
+      console.error(`Gemini direct error (${model}):`, res.status, await res.text());
+      continue;
     }
     const data = await res.json();
     const parts = data?.candidates?.[0]?.content?.parts || [];
@@ -84,12 +87,13 @@ async function tryGeminiDirect(query: string, prompt: string) {
         return { url: `data:${mime};base64,${inline.data}`, caption: query, photo_id: makePhotoId() };
       }
     }
-    console.error('Gemini direct: no image in response');
-    return null;
+    console.error(`Gemini direct (${model}): no image in response`);
   } catch (e) {
-    console.error('Gemini direct exception:', e);
-    return null;
+    console.error(`Gemini direct exception (${model}):`, e);
   }
+  }
+
+  return null;
 }
 
 async function tryOpenAI(query: string, prompt: string) {
