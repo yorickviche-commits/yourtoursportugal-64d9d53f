@@ -1218,6 +1218,7 @@ const LeadDetailPage = () => {
               pax={formState.pax}
               paxChildren={formState.paxChildren}
               destination={destino.join(', ') || lead?.destination || ''}
+              leadId={lead?.id}
             />
           </div>
         )}
