@@ -792,7 +792,7 @@ const TravelPlanProposal = ({
           </TabsList>
         </Tabs>
         <div className="flex items-center gap-2">
-          <Select value={language} onValueChange={setLanguage}>
+          <Select value={language} onValueChange={handleLanguageChange}>
             <SelectTrigger className="h-8 w-[80px] text-xs" title="Idioma do plano">
               <SelectValue />
             </SelectTrigger>
