@@ -324,6 +324,26 @@ const TravelPlanProposal = ({
   const normalizedDefaultLang = (defaultLanguage || 'EN').toUpperCase();
   const initialLang = LANGUAGE_OPTIONS.some(o => o.value === normalizedDefaultLang) ? normalizedDefaultLang : 'EN';
   const [language, setLanguage] = useState<string>(initialLang);
+  const [wetravelCheckoutUrl, setWetravelCheckoutUrl] = useState<string | null>(null);
+  const [wetravelDepositEur, setWetravelDepositEur] = useState<number | null>(null);
+
+  // Load WeTravel checkout if already set on the proposal
+  useQuery({
+    queryKey: ['proposal_wetravel', leadId],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('proposals')
+        .select('wetravel_checkout_url, deposit_amount_eur')
+        .eq('lead_id', leadId)
+        .maybeSingle();
+      if (data?.wetravel_checkout_url) {
+        setWetravelCheckoutUrl(data.wetravel_checkout_url);
+        setWetravelDepositEur(data.deposit_amount_eur ?? null);
+      }
+      return data ?? null;
+    },
+    enabled: !!leadId,
+  });
 
   // Load saved plan from DB
   const { data: savedPlan, isLoading: loadingSaved } = useQuery({
