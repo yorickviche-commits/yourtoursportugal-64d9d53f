@@ -505,6 +505,20 @@ const PublicProposalPage = () => {
           </div>
         </div>
       )}
+
+      {(proposal as any).wetravel_checkout_url && (
+        <div className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-white border-t border-slate-200 shadow-2xl p-3">
+          <a
+            href={(proposal as any).wetravel_checkout_url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="block w-full text-center bg-green-600 hover:bg-green-700 text-white font-semibold py-3 rounded-lg"
+          >
+            ✈️ Book Now — €{(proposal as any).deposit_amount_eur ?? '—'} Deposit
+          </a>
+          <p className="mt-1 text-[10px] text-center text-slate-500">100% refundable · secure your spot today</p>
+        </div>
+      )}
     </div>
   );
 };
