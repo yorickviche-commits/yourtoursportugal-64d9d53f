@@ -295,6 +295,9 @@ const EmailComposerDialog = ({ lead, children }: EmailComposerDialogProps) => {
                 <Button variant="outline" size="sm" className="text-xs" onClick={handleGenerate} disabled={loading}>
                   {loading ? <Loader2 className="h-3 w-3 animate-spin" /> : '🔄 Regenerar'}
                 </Button>
+                <Button size="sm" variant="outline" className="text-xs gap-1" onClick={handleOpenGmail}>
+                  <ExternalLink className="h-3 w-3" /> Abrir no Gmail
+                </Button>
                 <Button size="sm" className={cn("text-xs gap-1 min-w-[140px]",
                   copied ? "bg-[hsl(var(--stable))] text-white" : "bg-[hsl(var(--info))] text-white")}
                   onClick={handleCopy}>
