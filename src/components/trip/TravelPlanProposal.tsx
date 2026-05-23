@@ -11,6 +11,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { cn } from '@/lib/utils';
 import ProposalImagePicker from './ProposalImagePicker';
+import { useUsedPhotos, extractPhotoId } from '@/hooks/useUsedPhotos';
 
 // ─── Types ───────────────────────────────────────────────
 export interface ProposalImage {
