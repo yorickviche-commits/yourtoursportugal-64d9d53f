@@ -349,26 +349,61 @@ const TravelPlanProposal = ({
     paxInfants, travelStyles, comfortLevel, budgetLevel, magicQuestion, notes,
   };
 
-  // Auto-fetch images for a plan
+  // Dedup registry scope (lead-based)
+  const { getUsedPhotoIds, registerPhotos, clearUsedPhotos } = useUsedPhotos(
+    { type: 'lead', id: leadId || '' }
+  );
+
+  // Auto-fetch images for a plan with dedup
   const autoFetchImages = useCallback(async (planData: TravelPlanData) => {
     try {
-      // 1. Cover image from destination
-      const coverQuery = `${destination} Portugal travel landscape`;
-      const { data: coverData } = await supabase.functions.invoke('search-destination-images', {
-        body: { query: coverQuery, count: 1, mode: 'search' },
-      });
-      const coverImg = coverData?.images?.[0];
-      
-      // 2. Day images (2 per day) — fire in parallel
-      const dayPromises = planData.days.map(async (day) => {
-        const dayContext = `${day.overnight || destination} ${day.subtitle || day.title} Portugal`;
-        const { data: dayData } = await supabase.functions.invoke('search-destination-images', {
-          body: { query: dayContext, count: 2, mode: 'search' },
-        });
-        return (dayData?.images || []).slice(0, 2) as ProposalImage[];
-      });
+      const usedIds = await getUsedPhotoIds();
+      const excludeSet = new Set<string>(usedIds);
+      const toRegister: { photo_id: string; photo_url: string; used_in: string }[] = [];
 
-      const dayImages = await Promise.all(dayPromises);
+      async function fetchUnique(
+        query: string,
+        count: number,
+        usedIn: string
+      ): Promise<{ url: string; caption: string }[]> {
+        const { data, error } = await supabase.functions.invoke('search-destination-images', {
+          body: {
+            query,
+            count,
+            mode: 'search',
+            excludePhotoIds: [...excludeSet],
+          },
+        });
+        if (error || !data?.images?.length) return [];
+        const images = data.images as { url: string; caption: string; photo_id: string }[];
+        for (const img of images) {
+          const pid = img.photo_id || extractPhotoId(img.url);
+          excludeSet.add(pid);
+          toRegister.push({ photo_id: pid, photo_url: img.url, used_in: usedIn });
+        }
+        return images.map(i => ({ url: i.url, caption: i.caption }));
+      }
+
+      // 1. Cover image
+      const coverImages = await fetchUnique(
+        `${destination} Portugal travel landscape scenic`,
+        1,
+        'cover'
+      );
+      const coverImg = coverImages[0];
+
+      // 2. Day images (sequential to maintain exclusion integrity)
+      const dayImages: { url: string; caption: string }[][] = [];
+      for (let i = 0; i < planData.days.length; i++) {
+        const day = planData.days[i];
+        const dayContext = `${day.overnight || destination} ${day.subtitle || day.title} Portugal travel`;
+        const imgs = await fetchUnique(dayContext, 2, `day_${i + 1}`);
+        dayImages.push(imgs);
+      }
+
+      if (toRegister.length > 0) {
+        await registerPhotos(toRegister);
+      }
 
       setPlan(prev => {
         if (!prev) return prev;
@@ -382,14 +417,15 @@ const TravelPlanProposal = ({
         };
       });
     } catch (e) {
-      console.error('Auto-fetch images failed:', e);
+      console.error('Auto-fetch images (dedup) failed:', e);
     }
-  }, [destination]);
+  }, [destination, getUsedPhotoIds, registerPhotos]);
 
   // Generate full plan
   const handleGenerate = useCallback(async (extra?: string) => {
     setGenerating(true);
     try {
+      if (leadId) await clearUsedPhotos();
       const { data, error } = await supabase.functions.invoke('generate-travel-plan', {
         body: { leadData, extraInstructions: extra || undefined },
       });
@@ -400,14 +436,13 @@ const TravelPlanProposal = ({
       setViewMode('preview');
       setShowRegenInput(false);
       toast({ title: '✨ Plano gerado!', description: `${result.days?.length || 0} dias criados. A carregar imagens...` });
-      // Auto-fetch images in background
       autoFetchImages(result);
     } catch (e: any) {
       toast({ title: 'Erro na geração', description: e.message, variant: 'destructive' });
     } finally {
       setGenerating(false);
     }
-  }, [leadData, toast]);
+  }, [leadData, leadId, toast, clearUsedPhotos, autoFetchImages]);
 
   // Section regen via chat
   const handleSectionChat = useCallback(async (section: string, userMessage: string) => {
