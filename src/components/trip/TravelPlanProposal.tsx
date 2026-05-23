@@ -730,6 +730,16 @@ const TravelPlanProposal = ({
           </TabsList>
         </Tabs>
         <div className="flex items-center gap-2">
+          <Select value={language} onValueChange={setLanguage}>
+            <SelectTrigger className="h-8 w-[80px] text-xs" title="Idioma do plano">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {LANGUAGE_OPTIONS.map(o => (
+                <SelectItem key={o.value} value={o.value} className="text-xs">{o.label}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
           <Button variant="outline" size="sm" className="text-xs gap-1" onClick={() => setShowRegenInput(!showRegenInput)}>
             <RefreshCw className="h-3 w-3" /> Regenerar Tudo
           </Button>
