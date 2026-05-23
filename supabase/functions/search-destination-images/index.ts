@@ -56,24 +56,42 @@ function makePhotoId() {
   return `ai-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 }
 
-async function tryGeminiDirect(query: string, prompt: string) {
+type ProviderFailure = { provider: string; status: number; message: string };
+
+function parseProviderError(provider: string, status: number, body: string): ProviderFailure {
+  let message = body;
+  try {
+    const parsed = JSON.parse(body);
+    message = parsed?.error?.message || parsed?.message || body;
+  } catch {
+    message = body;
+  }
+  return { provider, status, message: message.slice(0, 500) };
+}
+
+async function tryGeminiDirect(query: string, prompt: string, failures: ProviderFailure[]) {
   const key = Deno.env.get('GEMINI_API_KEY');
   if (!key) return null;
-  try {
+  const models = ['gemini-3.1-flash-image-preview', 'gemini-2.5-flash-image'];
+
+  for (const model of models) {
+    try {
     const res = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-image-preview:generateContent?key=${key}`,
+      `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
       {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', 'x-goog-api-key': key },
         body: JSON.stringify({
           contents: [{ parts: [{ text: prompt }] }],
-          generationConfig: { responseModalities: ['IMAGE'] },
+          generationConfig: { responseModalities: ['TEXT', 'IMAGE'] },
         }),
       }
     );
     if (!res.ok) {
-      console.error('Gemini direct error:', res.status, await res.text());
-      return null;
+      const body = await res.text();
+      console.error(`Gemini direct error (${model}):`, res.status, body);
+      failures.push(parseProviderError(`Gemini ${model}`, res.status, body));
+      continue;
     }
     const data = await res.json();
     const parts = data?.candidates?.[0]?.content?.parts || [];
@@ -84,15 +102,16 @@ async function tryGeminiDirect(query: string, prompt: string) {
         return { url: `data:${mime};base64,${inline.data}`, caption: query, photo_id: makePhotoId() };
       }
     }
-    console.error('Gemini direct: no image in response');
-    return null;
+    console.error(`Gemini direct (${model}): no image in response`);
   } catch (e) {
-    console.error('Gemini direct exception:', e);
-    return null;
+    console.error(`Gemini direct exception (${model}):`, e);
   }
+  }
+
+  return null;
 }
 
-async function tryOpenAI(query: string, prompt: string) {
+async function tryOpenAI(query: string, prompt: string, failures: ProviderFailure[]) {
   const key = Deno.env.get('OPENAI_API_KEY');
   if (!key) return null;
   try {
@@ -102,7 +121,9 @@ async function tryOpenAI(query: string, prompt: string) {
       body: JSON.stringify({ model: 'gpt-image-1', prompt, size: '1536x1024', n: 1 }),
     });
     if (!res.ok) {
-      console.error('OpenAI image error:', res.status, await res.text());
+      const body = await res.text();
+      console.error('OpenAI image error:', res.status, body);
+      failures.push(parseProviderError('OpenAI', res.status, body));
       return null;
     }
     const data = await res.json();
@@ -115,7 +136,7 @@ async function tryOpenAI(query: string, prompt: string) {
   }
 }
 
-async function tryLovableGateway(query: string, prompt: string) {
+async function tryLovableGateway(query: string, prompt: string, failures: ProviderFailure[]) {
   const key = Deno.env.get('LOVABLE_API_KEY');
   if (!key) return null;
   try {
@@ -129,7 +150,9 @@ async function tryLovableGateway(query: string, prompt: string) {
       }),
     });
     if (!res.ok) {
-      console.error('Lovable gateway image error:', res.status, await res.text());
+      const body = await res.text();
+      console.error('Lovable gateway image error:', res.status, body);
+      failures.push(parseProviderError('Lovable AI', res.status, body));
       return null;
     }
     const data = await res.json();
@@ -142,20 +165,21 @@ async function tryLovableGateway(query: string, prompt: string) {
   }
 }
 
-async function generateWithAI(query: string): Promise<{ url: string; caption: string; photo_id: string } | null> {
+async function generateWithAI(query: string): Promise<{ image: { url: string; caption: string; photo_id: string } | null; failures: ProviderFailure[] }> {
   const prompt = `Generate a beautiful, photorealistic travel photograph of: ${query}. Professional travel magazine quality, warm cinematic lighting, vivid colors, strong sense of place. Landscape orientation, no text, no watermark.`;
+  const failures: ProviderFailure[] = [];
 
-  const gemini = await tryGeminiDirect(query, prompt);
-  if (gemini) { console.log('Image served by: Gemini direct'); return gemini; }
+  const gemini = await tryGeminiDirect(query, prompt, failures);
+  if (gemini) { console.log('Image served by: Gemini direct'); return { image: gemini, failures }; }
 
-  const openai = await tryOpenAI(query, prompt);
-  if (openai) { console.log('Image served by: OpenAI'); return openai; }
+  const openai = await tryOpenAI(query, prompt, failures);
+  if (openai) { console.log('Image served by: OpenAI'); return { image: openai, failures }; }
 
-  const gateway = await tryLovableGateway(query, prompt);
-  if (gateway) { console.log('Image served by: Lovable gateway'); return gateway; }
+  const gateway = await tryLovableGateway(query, prompt, failures);
+  if (gateway) { console.log('Image served by: Lovable gateway'); return { image: gateway, failures }; }
 
   console.error('All image providers failed for query:', query);
-  return null;
+  return { image: null, failures };
 }
 
 
@@ -175,7 +199,17 @@ serve(async (req) => {
 
     if (mode === 'generate') {
       const result = await generateWithAI(query);
-      return new Response(JSON.stringify({ images: result ? [result] : [] }), {
+      if (!result.image) {
+        const quotaFailure = result.failures.find(f => f.status === 402 || f.status === 429 || /quota|billing|credit|limit/i.test(f.message));
+        const message = quotaFailure
+          ? `A geração AI falhou por quota/billing em ${quotaFailure.provider}: ${quotaFailure.message}`
+          : 'Não foi possível gerar imagem com os fornecedores configurados.';
+        return new Response(
+          JSON.stringify({ error: message, images: [], failures: result.failures }),
+          { status: 502, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+      return new Response(JSON.stringify({ images: [result.image] }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
