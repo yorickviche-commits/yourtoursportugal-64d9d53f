@@ -233,12 +233,14 @@ interface LeadCostingEditorProps {
   pax: number;
   paxChildren: number;
   destination?: string;
+  leadId?: string;
 }
 
 // ─── Component ───────────────────────────────────────
-const LeadCostingEditor = ({ costingDays, onChange, onSave, saving, plannerDays, pax, paxChildren, destination }: LeadCostingEditorProps) => {
+const LeadCostingEditor = ({ costingDays, onChange, onSave, saving, plannerDays, pax, paxChildren, destination, leadId }: LeadCostingEditorProps) => {
   const [expandedDays, setExpandedDays] = useState<number[]>(costingDays.length > 0 ? costingDays.map(d => d.day) : []);
   const [autoFilling, setAutoFilling] = useState(false);
+  const [importingTP, setImportingTP] = useState(false);
 
   const toggleDay = (day: number) => {
     setExpandedDays(prev => prev.includes(day) ? prev.filter(d => d !== day) : [...prev, day]);
@@ -251,6 +253,75 @@ const LeadCostingEditor = ({ costingDays, onChange, onSave, saving, plannerDays,
     const newDays = plannerToCosting(plannerDays, pax, paxChildren);
     onChange(newDays);
     setExpandedDays(newDays.map(d => d.day));
+  };
+
+  // Detect cost layer from bullet text (PT/EN keywords)
+  const detectLayerFromText = (text: string): CostLayer => {
+    const t = text.toLowerCase();
+    if (/(hotel|check-in|check in|alojamento|accommodation|overnight|pousada|quinta)/.test(t)) return 'accommodation';
+    if (/(almoço|almoco|jantar|lunch|dinner|restaurant|restaurante|meal|refeição|refeicao|tasting|prova|wine pairing)/.test(t)) return 'meal';
+    if (/(transfer|transport|pickup|drop|drive|vehicle|veículo|veiculo|driver|motorista)/.test(t)) return 'transport';
+    if (/(guide|guia)/.test(t)) return 'guide';
+    return 'experience';
+  };
+
+  const importFromTravelPlanner = async () => {
+    if (!leadId) { toast.error('Lead ID em falta.'); return; }
+    setImportingTP(true);
+    try {
+      const { data, error } = await supabase
+        .from('travel_plans').select('days').eq('lead_id', leadId)
+        .order('created_at', { ascending: false }).limit(1).maybeSingle();
+      if (error) throw error;
+      const tpDays: any[] = Array.isArray((data as any)?.days) ? ((data as any).days as any[]) : [];
+      if (tpDays.length === 0) { toast.error('Sem Travel Planner gerado ainda. Gera primeiro o plano.'); return; }
+
+      const newDays: LeadCostingDay[] = tpDays.map((d: any) => {
+        const dayNum = d.day_number || d.day || 1;
+        const items: LeadCostItem[] = [];
+        items.push(makeDefaultItem('Guia — Dia ' + dayNum, pax, paxChildren, 'guide'));
+        items.push(makeDefaultItem('Veículo YT — Dia ' + dayNum, pax, paxChildren, 'transport'));
+        items.push(makeDefaultItem('Custos Transporte (combustível, portagens, parking)', pax, paxChildren, 'operational'));
+
+        const bullets: any[] = Array.isArray(d.bullets) ? d.bullets : [];
+        bullets.forEach(b => {
+          const text = typeof b === 'string' ? b : (b?.text || '');
+          if (!text.trim()) return;
+          const layer = detectLayerFromText(text);
+          items.push(calcItem({
+            id: genId(),
+            description: text.trim(),
+            supplier: '',
+            pricingType: layer === 'experience' || layer === 'meal' ? 'per_person' : 'total',
+            numAdults: pax, priceAdults: 0, numChildren: paxChildren, priceChildren: 0,
+            netTotal: 0, marginPercent: 30, pvpTotal: 0, profit: 0,
+            status: 'neutro', notes: [], costLayer: layer,
+          }));
+        });
+
+        if (d.overnight && String(d.overnight).trim()) {
+          items.push(calcItem({
+            id: genId(),
+            description: `Overnight — ${String(d.overnight).trim()}`,
+            supplier: '',
+            pricingType: 'total',
+            numAdults: pax, priceAdults: 0, numChildren: paxChildren, priceChildren: 0,
+            netTotal: 0, marginPercent: 30, pvpTotal: 0, profit: 0,
+            status: 'neutro', notes: [], costLayer: 'accommodation',
+          }));
+        }
+        return { day: dayNum, title: d.title || `Dia ${dayNum}`, date: d.date || '', items };
+      });
+
+      onChange(newDays);
+      setExpandedDays(newDays.map(d => d.day));
+      toast.success(`${newDays.length} dias importados (${newDays.reduce((s, x) => s + x.items.length, 0)} rubricas).`);
+    } catch (e: any) {
+      console.error('Import TP error:', e);
+      toast.error(e.message || 'Erro ao importar do Travel Planner.');
+    } finally {
+      setImportingTP(false);
+    }
   };
 
   const updateItem = useCallback((dayIdx: number, itemIdx: number, updates: Partial<LeadCostItem>) => {
