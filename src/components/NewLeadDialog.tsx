@@ -90,12 +90,17 @@ const NewLeadDialog = ({ open, onOpenChange }: { open: boolean; onOpenChange: (v
   };
 
   const handleCreate = async () => {
+    if (!form.ytId.trim()) {
+      toast({ title: 'ID YT obrigatório', description: 'Introduz o ID matriz da viagem.', variant: 'destructive' });
+      return;
+    }
     if (!form.clientName.trim()) {
       toast({ title: 'Nome obrigatório', variant: 'destructive' });
       return;
     }
     try {
       const newLead = await createLead.mutateAsync({
+        yt_id: form.ytId.trim(),
         client_name: form.clientName,
         email: form.email,
         phone: form.phone,
