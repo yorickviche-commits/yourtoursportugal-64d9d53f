@@ -62,6 +62,7 @@ interface TravelPlanProposalProps {
   magicQuestion?: string;
   notes?: string;
   defaultLanguage?: string;
+  onGoToCosting?: () => void;
 }
 
 const LANGUAGE_OPTIONS: { value: string; label: string }[] = [
