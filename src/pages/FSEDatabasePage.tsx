@@ -299,10 +299,13 @@ const FSEDatabasePage = () => {
             </div>
             <p className="text-sm text-muted-foreground mt-0.5">Parceiros & Protocolos de Fornecedores</p>
           </div>
-          <Button size="sm" className="gap-1.5" onClick={() => openModal()}>
-            <Plus className="h-4 w-4" />
-            Adicionar FSE
-          </Button>
+          <div className="flex gap-2">
+            <SyncDriveButton />
+            <Button size="sm" className="gap-1.5" onClick={() => openModal()}>
+              <Plus className="h-4 w-4" />
+              Adicionar FSE
+            </Button>
+          </div>
         </div>
 
         <StatsHeader />
