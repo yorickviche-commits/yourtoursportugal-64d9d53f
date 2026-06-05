@@ -156,12 +156,21 @@ serve(async (req) => {
       fetch(`${supabaseUrl}/rest/v1/supplier_services?status=eq.active&select=name,category,price,price_child,price_unit,supplier_id,currency,description,duration,booking_conditions,payment_conditions`, { headers }),
       fetch(`${supabaseUrl}/rest/v1/partners?status=eq.active&select=id,name,category,currency,territory,commission_percent,notes`, { headers }),
       fetch(`${supabaseUrl}/rest/v1/partner_services?status=eq.active&select=name,category,price,price_child,price_unit,partner_id,currency,description,duration,booking_conditions,payment_conditions`, { headers }),
+      fetch(`${supabaseUrl}/rest/v1/fse_drive_index?supplier_name=not.is.null&select=category,region,supplier_name,web_view_link&limit=2000`, { headers }),
     ]);
 
     const suppliers = await suppRes.json();
     const services = await svcRes.json();
     const partners = await partRes.json();
     const partnerServices = await pSvcRes.json();
+    const driveIndex = await driveRes.json().catch(() => []);
+
+    const destLower = (destination || '').toLowerCase();
+    const driveRelevant = (Array.isArray(driveIndex) ? driveIndex : [])
+      .filter((d: any) => !destLower || !d.region || d.region.toLowerCase().includes(destLower) || destLower.includes(d.region.toLowerCase()));
+    const driveContext = driveRelevant.slice(0, 300).map((d: any) =>
+      `[PROTOCOLO DRIVE] ${d.supplier_name} | cat:${d.category || '?'} | região:${d.region || '?'}`
+    ).join('\n');
 
     // Build supplier context
     const supplierNames = (suppliers || []).map((s: any) =>
