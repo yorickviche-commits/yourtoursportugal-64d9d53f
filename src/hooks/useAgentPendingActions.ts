@@ -25,7 +25,7 @@ export const useAgentPendingActions = () => {
   return useQuery({
     queryKey: ['agent_pending_actions'],
     queryFn: async () => {
-      const { data, error } = await supabase
+      const { data, error } = await (supabase as any)
         .from('agent_pending_actions')
         .select('*')
         .order('created_at', { ascending: false });
@@ -41,7 +41,7 @@ export const useApproveAction = () => {
   return useMutation({
     mutationFn: async (id: string) => {
       const { data: { user } } = await supabase.auth.getUser();
-      await supabase.from('agent_pending_actions').update({
+      await (supabase as any).from('agent_pending_actions').update({
         status: 'approved',
         approved_by: user?.id,
         approved_at: new Date().toISOString(),
@@ -55,7 +55,7 @@ export const useRejectAction = () => {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async ({ id, reason }: { id: string; reason?: string }) => {
-      await supabase.from('agent_pending_actions').update({
+      await (supabase as any).from('agent_pending_actions').update({
         status: 'rejected',
         rejected_at: new Date().toISOString(),
         rejection_reason: reason || null,

@@ -150,18 +150,27 @@ serve(async (req) => {
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const headers = { apikey: supabaseKey, Authorization: `Bearer ${supabaseKey}` };
 
-    // Fetch suppliers, services, partners, partner_services in parallel
-    const [suppRes, svcRes, partRes, pSvcRes] = await Promise.all([
+    // Fetch suppliers, services, partners, partner_services, drive_index in parallel
+    const [suppRes, svcRes, partRes, pSvcRes, driveRes] = await Promise.all([
       fetch(`${supabaseUrl}/rest/v1/suppliers?status=eq.active&select=id,name,category,currency,net_rates,commission_structure,notes`, { headers }),
       fetch(`${supabaseUrl}/rest/v1/supplier_services?status=eq.active&select=name,category,price,price_child,price_unit,supplier_id,currency,description,duration,booking_conditions,payment_conditions`, { headers }),
       fetch(`${supabaseUrl}/rest/v1/partners?status=eq.active&select=id,name,category,currency,territory,commission_percent,notes`, { headers }),
       fetch(`${supabaseUrl}/rest/v1/partner_services?status=eq.active&select=name,category,price,price_child,price_unit,partner_id,currency,description,duration,booking_conditions,payment_conditions`, { headers }),
+      fetch(`${supabaseUrl}/rest/v1/fse_drive_index?supplier_name=not.is.null&select=category,region,supplier_name,web_view_link&limit=2000`, { headers }),
     ]);
 
     const suppliers = await suppRes.json();
     const services = await svcRes.json();
     const partners = await partRes.json();
     const partnerServices = await pSvcRes.json();
+    const driveIndex = await driveRes.json().catch(() => []);
+
+    const destLower = (destination || '').toLowerCase();
+    const driveRelevant = (Array.isArray(driveIndex) ? driveIndex : [])
+      .filter((d: any) => !destLower || !d.region || d.region.toLowerCase().includes(destLower) || destLower.includes(d.region.toLowerCase()));
+    const driveContext = driveRelevant.slice(0, 300).map((d: any) =>
+      `[PROTOCOLO DRIVE] ${d.supplier_name} | cat:${d.category || '?'} | região:${d.region || '?'}`
+    ).join('\n');
 
     // Build supplier context
     const supplierNames = (suppliers || []).map((s: any) =>
@@ -246,6 +255,7 @@ ${partnerNames || 'No partners registered yet.'}
 === OUR PARTNER SERVICES WITH NET PRICES ===
 ${partnerServiceList || 'No partner services yet.'}
 
+${driveContext ? `=== FSE PROTOCOLS INDEXED FROM GOOGLE DRIVE (use EXACT supplier_name when matching) ===\n${driveContext}\n` : ''}
 ${fseContext ? `=== ADDITIONAL FSE CONTEXT ===\n${fseContext}\n` : ''}
 Also reference our full FSE protocol archive: https://drive.google.com/drive/folders/1HAjGSOKdgPQU3F3QPK6945OyeZMCJORN
 

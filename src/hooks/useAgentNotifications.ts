@@ -21,7 +21,7 @@ export const useAgentNotifications = () => {
   return useQuery({
     queryKey: ['agent_notifications'],
     queryFn: async () => {
-      const { data, error } = await supabase
+      const { data, error } = await (supabase as any)
         .from('agent_notifications')
         .select('*')
         .is('dismissed_at', null)
@@ -42,7 +42,7 @@ export const useMarkNotificationRead = () => {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (id: string) => {
-      await supabase.from('agent_notifications').update({ read_at: new Date().toISOString() }).eq('id', id);
+      await (supabase as any).from('agent_notifications').update({ read_at: new Date().toISOString() }).eq('id', id);
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ['agent_notifications'] }),
   });
@@ -52,7 +52,7 @@ export const useDismissNotification = () => {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (id: string) => {
-      await supabase.from('agent_notifications').update({ dismissed_at: new Date().toISOString() }).eq('id', id);
+      await (supabase as any).from('agent_notifications').update({ dismissed_at: new Date().toISOString() }).eq('id', id);
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ['agent_notifications'] }),
   });
