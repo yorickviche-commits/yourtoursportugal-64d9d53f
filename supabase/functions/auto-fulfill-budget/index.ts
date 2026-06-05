@@ -150,8 +150,8 @@ serve(async (req) => {
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const headers = { apikey: supabaseKey, Authorization: `Bearer ${supabaseKey}` };
 
-    // Fetch suppliers, services, partners, partner_services in parallel
-    const [suppRes, svcRes, partRes, pSvcRes] = await Promise.all([
+    // Fetch suppliers, services, partners, partner_services, drive_index in parallel
+    const [suppRes, svcRes, partRes, pSvcRes, driveRes] = await Promise.all([
       fetch(`${supabaseUrl}/rest/v1/suppliers?status=eq.active&select=id,name,category,currency,net_rates,commission_structure,notes`, { headers }),
       fetch(`${supabaseUrl}/rest/v1/supplier_services?status=eq.active&select=name,category,price,price_child,price_unit,supplier_id,currency,description,duration,booking_conditions,payment_conditions`, { headers }),
       fetch(`${supabaseUrl}/rest/v1/partners?status=eq.active&select=id,name,category,currency,territory,commission_percent,notes`, { headers }),
