@@ -591,6 +591,51 @@ export type Database = {
         }
         Relationships: []
       }
+      fse_drive_index: {
+        Row: {
+          category: string | null
+          depth: number
+          drive_id: string
+          id: string
+          indexed_at: string
+          mime_type: string
+          name: string
+          parent_drive_id: string | null
+          path: string | null
+          region: string | null
+          supplier_name: string | null
+          web_view_link: string | null
+        }
+        Insert: {
+          category?: string | null
+          depth?: number
+          drive_id: string
+          id?: string
+          indexed_at?: string
+          mime_type: string
+          name: string
+          parent_drive_id?: string | null
+          path?: string | null
+          region?: string | null
+          supplier_name?: string | null
+          web_view_link?: string | null
+        }
+        Update: {
+          category?: string | null
+          depth?: number
+          drive_id?: string
+          id?: string
+          indexed_at?: string
+          mime_type?: string
+          name?: string
+          parent_drive_id?: string | null
+          path?: string | null
+          region?: string | null
+          supplier_name?: string | null
+          web_view_link?: string | null
+        }
+        Relationships: []
+      }
       integration_settings: {
         Row: {
           api_key_ref: string | null
