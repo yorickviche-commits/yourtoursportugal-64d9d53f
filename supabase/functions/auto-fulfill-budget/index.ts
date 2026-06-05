@@ -255,6 +255,7 @@ ${partnerNames || 'No partners registered yet.'}
 === OUR PARTNER SERVICES WITH NET PRICES ===
 ${partnerServiceList || 'No partner services yet.'}
 
+${driveContext ? `=== FSE PROTOCOLS INDEXED FROM GOOGLE DRIVE (use EXACT supplier_name when matching) ===\n${driveContext}\n` : ''}
 ${fseContext ? `=== ADDITIONAL FSE CONTEXT ===\n${fseContext}\n` : ''}
 Also reference our full FSE protocol archive: https://drive.google.com/drive/folders/1HAjGSOKdgPQU3F3QPK6945OyeZMCJORN
 
