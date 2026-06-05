@@ -6,11 +6,36 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
   FileText, FolderOpen, Plus, Info, ExternalLink, MapPin,
-  ChevronDown, ChevronRight, Database, BarChart3, Globe2, Users2,
+  ChevronDown, ChevronRight, Database, BarChart3, Globe2, Users2, RefreshCw,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { FSE_DESTINATIONS, getFSEStats, type FSEDestination, type FSECategory, type FSEDocument } from "@/data/fseDatabase";
 import FSECreateModal from "@/components/commercial/FSECreateModal";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
+
+const SyncDriveButton = () => {
+  const [loading, setLoading] = useState(false);
+  const sync = async () => {
+    setLoading(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("index-drive-fses", { body: {} });
+      if (error) throw error;
+      toast.success(`Drive sincronizado: ${data?.total ?? 0} registos`);
+    } catch (e: any) {
+      toast.error(`Falha a sincronizar: ${e.message || e}`);
+    } finally {
+      setLoading(false);
+    }
+  };
+  return (
+    <Button size="sm" variant="outline" className="gap-1.5" onClick={sync} disabled={loading}>
+      <RefreshCw className={cn("h-4 w-4", loading && "animate-spin")} />
+      {loading ? "A sincronizar..." : "Sincronizar do Drive"}
+    </Button>
+  );
+};
+
 
 // ─── Stats Header ───
 const StatsHeader = () => {
