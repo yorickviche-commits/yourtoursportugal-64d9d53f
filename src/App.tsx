@@ -18,6 +18,7 @@ import ItineraryPreviewPage from "./pages/ItineraryPreviewPage";
 import PublicProposalPage from "./pages/PublicProposalPage";
 import ProposalDetailPage from "./pages/ProposalDetailPage";
 import AgentControlPage from "./pages/AgentControlPage";
+import MobilePage from "./pages/MobilePage";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -46,6 +47,7 @@ const App = () => (
             <Route path="/payments" element={<ProtectedRoute><PaymentsPage /></ProtectedRoute>} />
             <Route path="/proposals/:id" element={<ProtectedRoute><ProposalDetailPage /></ProtectedRoute>} />
             <Route path="/agents" element={<ProtectedRoute><AgentControlPage /></ProtectedRoute>} />
+            <Route path="/mobile" element={<ProtectedRoute><MobilePage /></ProtectedRoute>} />
 
             <Route path="*" element={<NotFound />} />
           </Routes>
