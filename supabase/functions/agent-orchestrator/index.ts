@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient, SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
+import { requireInternalUser } from "../_shared/require-auth.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -447,6 +448,9 @@ serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
+  const __auth = await requireInternalUser(req);
+  if (!__auth.ok) return __auth.response;
+
 
   try {
     const { action, leadId, approvalId, decision } = await req.json();
@@ -454,6 +458,11 @@ serve(async (req) => {
 
     // Handle approval decisions
     if (action === 'approve_decision' && approvalId) {
+      if (!__auth.isAdmin) {
+        return new Response(JSON.stringify({ error: 'Forbidden — admin only' }), {
+          status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
       const { data: approval } = await supabase
         .from('ceo_approval_queue')
         .select('*')

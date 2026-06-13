@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { requireInternalUser } from "../_shared/require-auth.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -220,6 +221,9 @@ async function extractWithFailover(emailText: string) {
 
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
+  const __auth = await requireInternalUser(req);
+  if (!__auth.ok) return __auth.response;
+
 
   try {
     const { emailText } = await req.json();

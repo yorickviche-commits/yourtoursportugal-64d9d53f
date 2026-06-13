@@ -6,6 +6,7 @@
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
+import { requireInternalUser } from "../_shared/require-auth.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -277,6 +278,9 @@ async function handleMCPRequest(body: any) {
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response(null, { headers: corsHeaders });
+  const __auth = await requireInternalUser(req);
+  if (!__auth.ok) return __auth.response;
+
 
   if (req.method === 'GET' && new URL(req.url).pathname.endsWith('/health')) {
     return new Response(JSON.stringify({ status: 'ok', server: 'yt-operations-mcp', version: '1.0.0' }), {
