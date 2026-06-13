@@ -298,7 +298,7 @@ const PublicProposalPage = () => {
                   onClick={() => { setSelectedDay(idx); setNotepadTab('day'); setNotepadOpen(true); }}
                   className="mt-4 text-xs text-slate-400 hover:text-sky-600 flex items-center gap-1 transition-colors"
                 >
-                  <MessageSquare className="h-3 w-3" /> Commenter cette journée
+                  <MessageSquare className="h-3 w-3" /> {dict.commentThisDay}
                 </button>
               </div>
             </div>
