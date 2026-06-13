@@ -254,7 +254,7 @@ const PublicProposalPage = () => {
               )}
 
               <div className="p-5">
-                <h4 className="text-xs uppercase tracking-wider text-slate-400 font-semibold mb-3">Itinéraire & Inclus</h4>
+                <h4 className="text-xs uppercase tracking-wider text-slate-400 font-semibold mb-3">{dict.itineraryIncludes}</h4>
                 <ul className="space-y-2.5">
                   {day.items.map((item, i) => (
                     <li key={i} className="flex gap-3 text-sm text-slate-600">
