@@ -106,9 +106,10 @@ async function callAI(systemPrompt: string, userPrompt: string): Promise<string>
         method: 'POST',
         headers: { 'Authorization': `Bearer ${LOVABLE_KEY}`, 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          model: 'google/gemini-2.5-flash',
+          model: 'google/gemini-2.5-pro',
           messages: [{ role: 'system', content: systemPrompt }, { role: 'user', content: userPrompt }],
-          max_tokens: 4096,
+          max_tokens: 32768,
+          response_format: { type: 'json_object' },
         }),
       });
       if (res.ok) {
@@ -129,13 +130,13 @@ async function callAI(systemPrompt: string, userPrompt: string): Promise<string>
   if (GEMINI_KEY) {
     try {
       const res = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_KEY}`,
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-pro:generateContent?key=${GEMINI_KEY}`,
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             contents: [{ role: 'user', parts: [{ text: `${systemPrompt}\n\n${userPrompt}` }] }],
-            generationConfig: { maxOutputTokens: 4096, temperature: 0.7 },
+            generationConfig: { maxOutputTokens: 32768, temperature: 0.7, responseMimeType: 'application/json' },
           }),
         }
       );
@@ -162,7 +163,7 @@ async function callAI(systemPrompt: string, userPrompt: string): Promise<string>
         body: JSON.stringify({
           model: 'gpt-4o',
           messages: [{ role: 'system', content: systemPrompt }, { role: 'user', content: userPrompt }],
-          max_tokens: 4096,
+          max_tokens: 16384,
           temperature: 0.7,
         }),
       });
@@ -192,7 +193,7 @@ async function callAI(systemPrompt: string, userPrompt: string): Promise<string>
         },
         body: JSON.stringify({
           model: 'claude-sonnet-4-20250514',
-          max_tokens: 4096,
+          max_tokens: 16384,
           system: systemPrompt,
           messages: [{ role: 'user', content: userPrompt }],
         }),
@@ -250,17 +251,32 @@ Format dates as DD-Mon-YYYY (e.g. 02-Aug-2026). If exact dates aren't provided, 
 
     const raw = await callAI(systemWithExtra, userPrompt);
 
-    // Parse JSON from response
-    let parsed;
-    try {
-      const jsonMatch = raw.match(/\{[\s\S]*\}/);
-      parsed = jsonMatch ? JSON.parse(jsonMatch[0]) : null;
-    } catch {
-      parsed = null;
+    // Parse JSON from response — strip code fences, then try greedy match + partial repair
+    let parsed: any = null;
+    const cleaned = raw.replace(/```json\s*/gi, '').replace(/```/g, '').trim();
+    try { parsed = JSON.parse(cleaned); } catch {}
+    if (!parsed) {
+      const m = cleaned.match(/\{[\s\S]*\}/);
+      if (m) { try { parsed = JSON.parse(m[0]); } catch {} }
+    }
+    // Partial repair: truncate to last complete day and close braces
+    if (!parsed) {
+      try {
+        const start = cleaned.indexOf('{');
+        if (start >= 0) {
+          let s = cleaned.slice(start);
+          // cut at last closed day object inside days array
+          const lastDayEnd = s.lastIndexOf('}\n    }');
+          if (lastDayEnd > 0) {
+            s = s.slice(0, lastDayEnd + 1) + ']\n}';
+            parsed = JSON.parse(s);
+          }
+        }
+      } catch {}
     }
 
     if (!parsed || !parsed.days) {
-      return new Response(JSON.stringify({ error: 'AI returned invalid format', raw: raw.slice(0, 500) }), {
+      return new Response(JSON.stringify({ error: 'AI returned invalid format', raw: raw.slice(0, 1200), tail: raw.slice(-400) }), {
         status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }

@@ -24,6 +24,7 @@ import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import EmailComposerDialog from '@/components/leads/EmailComposerDialog';
+import { PaymentsDialog, usePaymentsSummary } from '@/components/leads/PaymentsDialog';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
@@ -1028,8 +1029,10 @@ const LeadDetailPage = ({ mode = 'lead' }: { mode?: 'lead' | 'booking' } = {}) =
               </DropdownMenu>
             </div>
             <div className="flex items-center gap-2">
-              <Button variant="outline" size="sm" className="text-xs">Pagamento</Button>
-              <div className="bg-destructive text-destructive-foreground text-xs font-bold px-3 py-1.5 rounded">NOT PAID 0€ - {formState.budgetLevel}</div>
+              <PaymentsDialog leadId={lead.id}>
+                <Button variant="outline" size="sm" className="text-xs">Pagamentos</Button>
+              </PaymentsDialog>
+              <PaymentBadge leadId={lead.id} budgetLabel={formState.budgetLevel} />
             </div>
           </div>
         </div>
@@ -1289,4 +1292,16 @@ const LeadDetailPage = ({ mode = 'lead' }: { mode?: 'lead' | 'booking' } = {}) =
   );
 };
 
+function PaymentBadge({ leadId, budgetLabel }: { leadId: string; budgetLabel: string }) {
+  const { data } = usePaymentsSummary(leadId);
+  const net = data?.net ?? 0;
+  const paid = net > 0;
+  return (
+    <div className={cn("text-xs font-bold px-3 py-1.5 rounded", paid ? "bg-green-600 text-white" : "bg-destructive text-destructive-foreground")}>
+      {paid ? `PAID ${net.toFixed(0)}€` : `NOT PAID 0€`} - {budgetLabel}
+    </div>
+  );
+}
+
 export default LeadDetailPage;
+
