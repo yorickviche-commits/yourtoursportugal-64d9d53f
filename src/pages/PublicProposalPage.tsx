@@ -136,19 +136,17 @@ const PublicProposalPage = () => {
           <Check className="h-8 w-8 text-emerald-600" />
         </div>
         <h1 className="text-2xl font-serif text-slate-800 mb-3">
-          Merci, {clientName || proposal.client_name} !
+          {dict.thanks(clientName || proposal.client_name)}
         </h1>
-        <p className="text-slate-500">
-          Votre réponse a été enregistrée. L'équipe Your Tours Portugal vous contactera dans les 24 heures.
-        </p>
+        <p className="text-slate-500">{dict.thanksBody}</p>
       </div>
     </div>
   );
 
   const statusBadge = proposal.status === 'approved' ? (
-    <span className="bg-emerald-100 text-emerald-700 text-xs px-3 py-1 rounded-full font-medium">✓ Approuvé</span>
+    <span className="bg-emerald-100 text-emerald-700 text-xs px-3 py-1 rounded-full font-medium">{dict.approved}</span>
   ) : proposal.status === 'revision_requested' ? (
-    <span className="bg-amber-100 text-amber-700 text-xs px-3 py-1 rounded-full font-medium">⟳ Modifications demandées</span>
+    <span className="bg-amber-100 text-amber-700 text-xs px-3 py-1 rounded-full font-medium">{dict.revisionRequested}</span>
   ) : null;
 
   return (
@@ -175,12 +173,12 @@ const PublicProposalPage = () => {
                   rel="noopener noreferrer"
                   className="inline-flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-lg font-semibold shadow-lg transition"
                 >
-                  ✈️ Book Now — Reserve Your Spot
+                  {dict.bookNow}
                 </a>
                 <p className="mt-2 text-xs text-white/80">
                   {(proposal as any).deposit_amount_eur
-                    ? `€${(proposal as any).deposit_amount_eur} deposit · ${(proposal as any).deposit_percent ?? 50}% of total · 100% refundable`
-                    : '50% deposit · 100% refundable'}
+                    ? dict.depositSuffix(String((proposal as any).deposit_amount_eur), (proposal as any).deposit_percent ?? 50)
+                    : dict.defaultDepositNote}
                 </p>
               </div>
             )}
@@ -192,17 +190,18 @@ const PublicProposalPage = () => {
       <nav className="sticky top-0 z-30 bg-white border-b border-slate-200 shadow-sm">
         <div className="max-w-4xl mx-auto px-4">
           <div className="flex items-center gap-1 overflow-x-auto py-2 text-sm no-scrollbar">
-            <a href="#summary" className="shrink-0 px-3 py-1.5 rounded-full hover:bg-sky-50 text-slate-600 font-medium">Résumé</a>
+            <a href="#summary" className="shrink-0 px-3 py-1.5 rounded-full hover:bg-sky-50 text-slate-600 font-medium">{dict.summary}</a>
             {days.map((d: ProposalDay) => (
               <a key={d.day_number} href={`#day-${d.day_number}`} className="shrink-0 px-3 py-1.5 rounded-full hover:bg-sky-50 text-slate-600">
-                Jour {d.day_number}
+                {dict.day} {d.day_number}
               </a>
             ))}
-            <a href="#map" className="shrink-0 px-3 py-1.5 rounded-full hover:bg-sky-50 text-slate-600">Carte</a>
-            <a href="#reviews" className="shrink-0 px-3 py-1.5 rounded-full hover:bg-sky-50 text-slate-600">Avis</a>
-            <a href="#about" className="shrink-0 px-3 py-1.5 rounded-full hover:bg-sky-50 text-slate-600">À propos</a>
+            <a href="#map" className="shrink-0 px-3 py-1.5 rounded-full hover:bg-sky-50 text-slate-600">{dict.map}</a>
+            <a href="#reviews" className="shrink-0 px-3 py-1.5 rounded-full hover:bg-sky-50 text-slate-600">{dict.reviews}</a>
+            <a href="#about" className="shrink-0 px-3 py-1.5 rounded-full hover:bg-sky-50 text-slate-600">{dict.about}</a>
           </div>
         </div>
+
       </nav>
 
       <div className="max-w-4xl mx-auto px-4 py-8 space-y-12">
