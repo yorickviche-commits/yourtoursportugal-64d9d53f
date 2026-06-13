@@ -1,0 +1,414 @@
+// Public proposal viewer translations.
+// Keyed by proposal.language (en, fr, es, pt, it, de). Falls back to English.
+
+export type ProposalLang = 'en' | 'fr' | 'es' | 'pt' | 'it' | 'de';
+
+export interface ProposalDict {
+  loading: string;
+  notFound: string;
+  notFoundHint: string;
+  thanks: (name: string) => string;
+  thanksBody: string;
+  approved: string;
+  revisionRequested: string;
+  bookNow: string;
+  depositSuffix: (deposit: string, pct: number) => string;
+  defaultDepositNote: string;
+  // Nav
+  summary: string;
+  day: string;
+  map: string;
+  reviews: string;
+  about: string;
+  // Sections
+  tripSummary: string;
+  programDayByDay: string;
+  itineraryIncludes: string;
+  tripMap: string;
+  mapUnavailable: string;
+  mapLoading: string;
+  travellersSay: string;
+  aboutUs: string;
+  aboutBody: string;
+  website: string;
+  // Comment chrome
+  commentThisDay: string;
+  addNote: string;
+  approveProgram: string;
+  requestChanges: string;
+  approveTitle: string;
+  requestTitle: string;
+  yourName: string;
+  approveNotePlaceholder: string;
+  requestNotePlaceholder: string;
+  confirmApprove: string;
+  sendRequest: string;
+  notepad: string;
+  tabGeneral: string;
+  tabPerDay: string;
+  tabHistory: string;
+  generalNoteCaption: string;
+  yourComment: string;
+  send: string;
+  noAnnotations: string;
+  dayCommentPlaceholder: (n: number) => string;
+  itemComment: string;
+  badgeGeneral: string;
+  badgeDay: (n: number) => string;
+  badgeItem: string;
+  // Sentiment
+  sentimentLike: string;
+  sentimentDislike: string;
+}
+
+const en: ProposalDict = {
+  loading: 'Loading proposal…',
+  notFound: 'Proposal not found',
+  notFoundHint: 'The link may be expired or incorrect.',
+  thanks: (n) => `Thank you, ${n}!`,
+  thanksBody: 'Your response has been recorded. The Your Tours Portugal team will contact you within 24 hours.',
+  approved: '✓ Approved',
+  revisionRequested: '⟳ Changes requested',
+  bookNow: '✈️ Book Now — Reserve Your Spot',
+  depositSuffix: (d, p) => `€${d} deposit · ${p}% of total · 100% refundable`,
+  defaultDepositNote: '50% deposit · 100% refundable',
+  summary: 'Summary',
+  day: 'Day',
+  map: 'Map',
+  reviews: 'Reviews',
+  about: 'About',
+  tripSummary: 'Trip summary',
+  programDayByDay: 'Day-by-day programme',
+  itineraryIncludes: 'Itinerary & inclusions',
+  tripMap: 'Trip map',
+  mapUnavailable: 'Map unavailable',
+  mapLoading: 'Loading map…',
+  travellersSay: 'What travellers say',
+  aboutUs: 'About Your Tours Portugal',
+  aboutBody: 'Your Tours Portugal is a bespoke travel agency specialised in authentic Portuguese experiences. We craft tailor-made itineraries that reveal the very best of local culture, gastronomy and craftsmanship with passionate local guides.',
+  website: 'Website',
+  commentThisDay: 'Comment on this day',
+  addNote: 'Add a note',
+  approveProgram: '✓ Approve this programme',
+  requestChanges: '⟳ Request changes',
+  approveTitle: 'Approve the programme',
+  requestTitle: 'Request changes',
+  yourName: 'Your name',
+  approveNotePlaceholder: 'Optional note…',
+  requestNotePlaceholder: 'Describe the changes you would like…',
+  confirmApprove: 'Confirm approval',
+  sendRequest: 'Send request',
+  notepad: 'Notepad',
+  tabGeneral: 'General note',
+  tabPerDay: 'Per day',
+  tabHistory: 'History',
+  generalNoteCaption: 'Overall comment on the programme',
+  yourComment: 'Your comment…',
+  send: 'Send',
+  noAnnotations: 'No annotations yet',
+  dayCommentPlaceholder: (n) => `Comment for Day ${n}…`,
+  itemComment: 'Comment…',
+  badgeGeneral: 'General',
+  badgeDay: (n) => `Day ${n}`,
+  badgeItem: 'Item',
+  sentimentLike: 'I like this',
+  sentimentDislike: 'I’d change this',
+};
+
+const fr: ProposalDict = {
+  loading: 'Chargement de la proposition…',
+  notFound: 'Proposition introuvable',
+  notFoundHint: 'Le lien peut être expiré ou incorrect.',
+  thanks: (n) => `Merci, ${n} !`,
+  thanksBody: 'Votre réponse a été enregistrée. L’équipe Your Tours Portugal vous contactera dans les 24 heures.',
+  approved: '✓ Approuvé',
+  revisionRequested: '⟳ Modifications demandées',
+  bookNow: '✈️ Réserver — Confirmer votre place',
+  depositSuffix: (d, p) => `Acompte de €${d} · ${p}% du total · 100% remboursable`,
+  defaultDepositNote: 'Acompte 50% · 100% remboursable',
+  summary: 'Résumé',
+  day: 'Jour',
+  map: 'Carte',
+  reviews: 'Avis',
+  about: 'À propos',
+  tripSummary: 'Résumé du voyage',
+  programDayByDay: 'Programme jour par jour',
+  itineraryIncludes: 'Itinéraire & inclus',
+  tripMap: 'Carte du voyage',
+  mapUnavailable: 'Carte indisponible',
+  mapLoading: 'Chargement de la carte…',
+  travellersSay: 'Ce que disent nos voyageurs',
+  aboutUs: 'À propos de Your Tours Portugal',
+  aboutBody: 'Your Tours Portugal est une agence de voyages sur mesure spécialisée dans les expériences authentiques au Portugal. Nous créons des itinéraires personnalisés qui révèlent le meilleur de la culture, de la gastronomie et de l’artisanat portugais, avec des guides locaux francophones passionnés.',
+  website: 'Site web',
+  commentThisDay: 'Commenter cette journée',
+  addNote: 'Ajouter une note',
+  approveProgram: '✓ Approuver ce programme',
+  requestChanges: '⟳ Demander des modifications',
+  approveTitle: 'Approuver le programme',
+  requestTitle: 'Demander des modifications',
+  yourName: 'Votre nom',
+  approveNotePlaceholder: 'Note optionnelle…',
+  requestNotePlaceholder: 'Décrivez les modifications souhaitées…',
+  confirmApprove: 'Confirmer l’approbation',
+  sendRequest: 'Envoyer la demande',
+  notepad: 'Bloc-notes',
+  tabGeneral: 'Note générale',
+  tabPerDay: 'Par jour',
+  tabHistory: 'Historique',
+  generalNoteCaption: 'Commentaire global sur le programme',
+  yourComment: 'Votre commentaire…',
+  send: 'Envoyer',
+  noAnnotations: 'Aucune annotation pour le moment',
+  dayCommentPlaceholder: (n) => `Commentaire pour Jour ${n}…`,
+  itemComment: 'Commentaire…',
+  badgeGeneral: 'Général',
+  badgeDay: (n) => `Jour ${n}`,
+  badgeItem: 'Item',
+  sentimentLike: 'J’aime',
+  sentimentDislike: 'À revoir',
+};
+
+const es: ProposalDict = {
+  loading: 'Cargando propuesta…',
+  notFound: 'Propuesta no encontrada',
+  notFoundHint: 'El enlace puede haber caducado o ser incorrecto.',
+  thanks: (n) => `¡Gracias, ${n}!`,
+  thanksBody: 'Tu respuesta ha sido registrada. El equipo de Your Tours Portugal te contactará en las próximas 24 horas.',
+  approved: '✓ Aprobado',
+  revisionRequested: '⟳ Cambios solicitados',
+  bookNow: '✈️ Reservar — Confirma tu plaza',
+  depositSuffix: (d, p) => `Depósito de €${d} · ${p}% del total · 100% reembolsable`,
+  defaultDepositNote: 'Depósito 50% · 100% reembolsable',
+  summary: 'Resumen',
+  day: 'Día',
+  map: 'Mapa',
+  reviews: 'Opiniones',
+  about: 'Sobre nosotros',
+  tripSummary: 'Resumen del viaje',
+  programDayByDay: 'Programa día a día',
+  itineraryIncludes: 'Itinerario e incluido',
+  tripMap: 'Mapa del viaje',
+  mapUnavailable: 'Mapa no disponible',
+  mapLoading: 'Cargando mapa…',
+  travellersSay: 'Lo que dicen nuestros viajeros',
+  aboutUs: 'Sobre Your Tours Portugal',
+  aboutBody: 'Your Tours Portugal es una agencia de viajes a medida especializada en experiencias auténticas en Portugal. Creamos itinerarios personalizados que revelan lo mejor de la cultura, la gastronomía y la artesanía portuguesa, con guías locales apasionados.',
+  website: 'Sitio web',
+  commentThisDay: 'Comentar este día',
+  addNote: 'Añadir una nota',
+  approveProgram: '✓ Aprobar este programa',
+  requestChanges: '⟳ Solicitar cambios',
+  approveTitle: 'Aprobar el programa',
+  requestTitle: 'Solicitar cambios',
+  yourName: 'Tu nombre',
+  approveNotePlaceholder: 'Nota opcional…',
+  requestNotePlaceholder: 'Describe los cambios que deseas…',
+  confirmApprove: 'Confirmar aprobación',
+  sendRequest: 'Enviar solicitud',
+  notepad: 'Bloc de notas',
+  tabGeneral: 'Nota general',
+  tabPerDay: 'Por día',
+  tabHistory: 'Historial',
+  generalNoteCaption: 'Comentario global sobre el programa',
+  yourComment: 'Tu comentario…',
+  send: 'Enviar',
+  noAnnotations: 'Aún no hay anotaciones',
+  dayCommentPlaceholder: (n) => `Comentario para el Día ${n}…`,
+  itemComment: 'Comentario…',
+  badgeGeneral: 'General',
+  badgeDay: (n) => `Día ${n}`,
+  badgeItem: 'Ítem',
+  sentimentLike: 'Me gusta',
+  sentimentDislike: 'Cambiaría esto',
+};
+
+const pt: ProposalDict = {
+  loading: 'A carregar proposta…',
+  notFound: 'Proposta não encontrada',
+  notFoundHint: 'O link pode estar expirado ou incorreto.',
+  thanks: (n) => `Obrigado, ${n}!`,
+  thanksBody: 'A sua resposta foi registada. A equipa Your Tours Portugal entrará em contacto nas próximas 24 horas.',
+  approved: '✓ Aprovado',
+  revisionRequested: '⟳ Alterações solicitadas',
+  bookNow: '✈️ Reservar — Confirme o seu lugar',
+  depositSuffix: (d, p) => `Sinal de €${d} · ${p}% do total · 100% reembolsável`,
+  defaultDepositNote: 'Sinal 50% · 100% reembolsável',
+  summary: 'Resumo',
+  day: 'Dia',
+  map: 'Mapa',
+  reviews: 'Opiniões',
+  about: 'Sobre nós',
+  tripSummary: 'Resumo da viagem',
+  programDayByDay: 'Programa dia a dia',
+  itineraryIncludes: 'Itinerário e incluído',
+  tripMap: 'Mapa da viagem',
+  mapUnavailable: 'Mapa indisponível',
+  mapLoading: 'A carregar mapa…',
+  travellersSay: 'O que dizem os nossos viajantes',
+  aboutUs: 'Sobre a Your Tours Portugal',
+  aboutBody: 'A Your Tours Portugal é uma agência de viagens à medida especializada em experiências autênticas em Portugal. Criamos itinerários personalizados que revelam o melhor da cultura, gastronomia e artesanato português, com guias locais apaixonados.',
+  website: 'Site',
+  commentThisDay: 'Comentar este dia',
+  addNote: 'Adicionar nota',
+  approveProgram: '✓ Aprovar este programa',
+  requestChanges: '⟳ Pedir alterações',
+  approveTitle: 'Aprovar o programa',
+  requestTitle: 'Pedir alterações',
+  yourName: 'O seu nome',
+  approveNotePlaceholder: 'Nota opcional…',
+  requestNotePlaceholder: 'Descreva as alterações pretendidas…',
+  confirmApprove: 'Confirmar aprovação',
+  sendRequest: 'Enviar pedido',
+  notepad: 'Bloco de notas',
+  tabGeneral: 'Nota geral',
+  tabPerDay: 'Por dia',
+  tabHistory: 'Histórico',
+  generalNoteCaption: 'Comentário global sobre o programa',
+  yourComment: 'O seu comentário…',
+  send: 'Enviar',
+  noAnnotations: 'Ainda sem anotações',
+  dayCommentPlaceholder: (n) => `Comentário para o Dia ${n}…`,
+  itemComment: 'Comentário…',
+  badgeGeneral: 'Geral',
+  badgeDay: (n) => `Dia ${n}`,
+  badgeItem: 'Item',
+  sentimentLike: 'Gosto',
+  sentimentDislike: 'A rever',
+};
+
+const it: ProposalDict = {
+  ...en,
+  loading: 'Caricamento proposta…',
+  notFound: 'Proposta non trovata',
+  notFoundHint: 'Il link potrebbe essere scaduto o errato.',
+  thanks: (n) => `Grazie, ${n}!`,
+  thanksBody: 'La tua risposta è stata registrata. Il team di Your Tours Portugal ti contatterà entro 24 ore.',
+  approved: '✓ Approvato',
+  revisionRequested: '⟳ Modifiche richieste',
+  bookNow: '✈️ Prenota ora — Conferma il tuo posto',
+  depositSuffix: (d, p) => `Acconto di €${d} · ${p}% del totale · 100% rimborsabile`,
+  defaultDepositNote: 'Acconto 50% · 100% rimborsabile',
+  summary: 'Riepilogo',
+  day: 'Giorno',
+  map: 'Mappa',
+  reviews: 'Recensioni',
+  about: 'Chi siamo',
+  tripSummary: 'Riepilogo del viaggio',
+  programDayByDay: 'Programma giorno per giorno',
+  itineraryIncludes: 'Itinerario e incluso',
+  tripMap: 'Mappa del viaggio',
+  mapUnavailable: 'Mappa non disponibile',
+  mapLoading: 'Caricamento mappa…',
+  travellersSay: 'Cosa dicono i nostri viaggiatori',
+  aboutUs: 'Chi è Your Tours Portugal',
+  aboutBody: 'Your Tours Portugal è un’agenzia di viaggi su misura specializzata in esperienze autentiche in Portogallo. Creiamo itinerari personalizzati che rivelano il meglio della cultura, della gastronomia e dell’artigianato portoghese, con guide locali appassionate.',
+  website: 'Sito web',
+  commentThisDay: 'Commenta questo giorno',
+  addNote: 'Aggiungi una nota',
+  approveProgram: '✓ Approva questo programma',
+  requestChanges: '⟳ Richiedi modifiche',
+  approveTitle: 'Approva il programma',
+  requestTitle: 'Richiedi modifiche',
+  yourName: 'Il tuo nome',
+  approveNotePlaceholder: 'Nota opzionale…',
+  requestNotePlaceholder: 'Descrivi le modifiche desiderate…',
+  confirmApprove: 'Conferma approvazione',
+  sendRequest: 'Invia richiesta',
+  notepad: 'Blocco note',
+  tabGeneral: 'Nota generale',
+  tabPerDay: 'Per giorno',
+  tabHistory: 'Cronologia',
+  generalNoteCaption: 'Commento generale sul programma',
+  yourComment: 'Il tuo commento…',
+  send: 'Invia',
+  noAnnotations: 'Nessuna annotazione',
+  dayCommentPlaceholder: (n) => `Commento per il Giorno ${n}…`,
+  itemComment: 'Commento…',
+  badgeGeneral: 'Generale',
+  badgeDay: (n) => `Giorno ${n}`,
+  badgeItem: 'Elemento',
+  sentimentLike: 'Mi piace',
+  sentimentDislike: 'Da rivedere',
+};
+
+const de: ProposalDict = {
+  ...en,
+  loading: 'Angebot wird geladen…',
+  notFound: 'Angebot nicht gefunden',
+  notFoundHint: 'Der Link ist möglicherweise abgelaufen oder falsch.',
+  thanks: (n) => `Danke, ${n}!`,
+  thanksBody: 'Ihre Antwort wurde gespeichert. Das Team von Your Tours Portugal meldet sich innerhalb von 24 Stunden.',
+  approved: '✓ Bestätigt',
+  revisionRequested: '⟳ Änderungen angefragt',
+  bookNow: '✈️ Jetzt buchen — Platz sichern',
+  depositSuffix: (d, p) => `Anzahlung €${d} · ${p}% der Gesamtkosten · 100% rückerstattbar`,
+  defaultDepositNote: '50% Anzahlung · 100% rückerstattbar',
+  summary: 'Übersicht',
+  day: 'Tag',
+  map: 'Karte',
+  reviews: 'Bewertungen',
+  about: 'Über uns',
+  tripSummary: 'Reiseübersicht',
+  programDayByDay: 'Tag-für-Tag-Programm',
+  itineraryIncludes: 'Reiseverlauf & Leistungen',
+  tripMap: 'Reisekarte',
+  mapUnavailable: 'Karte nicht verfügbar',
+  mapLoading: 'Karte wird geladen…',
+  travellersSay: 'Was unsere Reisenden sagen',
+  aboutUs: 'Über Your Tours Portugal',
+  aboutBody: 'Your Tours Portugal ist ein massgeschneidertes Reisebüro, spezialisiert auf authentische Erlebnisse in Portugal. Wir gestalten individuelle Reiserouten, die das Beste der portugiesischen Kultur, Gastronomie und Handwerkskunst mit leidenschaftlichen lokalen Guides zeigen.',
+  website: 'Website',
+  commentThisDay: 'Diesen Tag kommentieren',
+  addNote: 'Notiz hinzufügen',
+  approveProgram: '✓ Programm bestätigen',
+  requestChanges: '⟳ Änderungen anfragen',
+  approveTitle: 'Programm bestätigen',
+  requestTitle: 'Änderungen anfragen',
+  yourName: 'Ihr Name',
+  approveNotePlaceholder: 'Optionale Notiz…',
+  requestNotePlaceholder: 'Beschreiben Sie die gewünschten Änderungen…',
+  confirmApprove: 'Bestätigung absenden',
+  sendRequest: 'Anfrage senden',
+  notepad: 'Notizblock',
+  tabGeneral: 'Allgemeine Notiz',
+  tabPerDay: 'Pro Tag',
+  tabHistory: 'Verlauf',
+  generalNoteCaption: 'Allgemeiner Kommentar zum Programm',
+  yourComment: 'Ihr Kommentar…',
+  send: 'Senden',
+  noAnnotations: 'Noch keine Anmerkungen',
+  dayCommentPlaceholder: (n) => `Kommentar zu Tag ${n}…`,
+  itemComment: 'Kommentar…',
+  badgeGeneral: 'Allgemein',
+  badgeDay: (n) => `Tag ${n}`,
+  badgeItem: 'Element',
+  sentimentLike: 'Gefällt mir',
+  sentimentDislike: 'Bitte anpassen',
+};
+
+const DICTS: Record<ProposalLang, ProposalDict> = { en, fr, es, pt, it, de };
+
+export function getProposalDict(lang?: string | null): ProposalDict {
+  const key = (lang || 'en').toLowerCase().slice(0, 2) as ProposalLang;
+  return DICTS[key] || en;
+}
+
+// Sentiment is encoded as a leading marker in annotation.content so the existing
+// schema doesn't change. UI strips the marker on render and tags the card.
+export const SENTIMENT_LIKE = '[👍]';
+export const SENTIMENT_DISLIKE = '[👎]';
+
+export type Sentiment = 'like' | 'dislike' | null;
+
+export function encodeSentiment(text: string, s: Sentiment): string {
+  if (s === 'like') return `${SENTIMENT_LIKE} ${text}`;
+  if (s === 'dislike') return `${SENTIMENT_DISLIKE} ${text}`;
+  return text;
+}
+
+export function decodeSentiment(content: string): { sentiment: Sentiment; text: string } {
+  if (content.startsWith(SENTIMENT_LIKE)) return { sentiment: 'like', text: content.slice(SENTIMENT_LIKE.length).trim() };
+  if (content.startsWith(SENTIMENT_DISLIKE)) return { sentiment: 'dislike', text: content.slice(SENTIMENT_DISLIKE.length).trim() };
+  return { sentiment: null, text: content };
+}
