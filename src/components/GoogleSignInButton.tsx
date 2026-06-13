@@ -27,7 +27,9 @@ const GoogleSignInButton = ({ label = 'Continuar com Google' }: { label?: string
       return;
     }
     if (result.redirected) return;
-    navigate('/leads');
+    const stored = sessionStorage.getItem('postAuthRedirect');
+    if (stored) sessionStorage.removeItem('postAuthRedirect');
+    navigate(stored || '/leads');
   };
 
   return (

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, Link, useLocation } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
@@ -15,14 +15,31 @@ const LoginPage = () => {
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
+  const location = useLocation();
   const { toast } = useToast();
   const { user, loading: authLoading } = useAuth();
 
+  // Preserve intended destination across OAuth roundtrip
+  const fromState = (location.state as any)?.from as string | undefined;
+  useEffect(() => {
+    if (fromState) sessionStorage.setItem('postAuthRedirect', fromState);
+  }, [fromState]);
+
+  const getRedirect = () => {
+    const stored = sessionStorage.getItem('postAuthRedirect');
+    if (stored) {
+      sessionStorage.removeItem('postAuthRedirect');
+      return stored;
+    }
+    return '/leads';
+  };
+
   useEffect(() => {
     if (!authLoading && user) {
-      navigate('/leads', { replace: true });
+      navigate(getRedirect(), { replace: true });
     }
-  }, [authLoading, navigate, user]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [authLoading, user]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -33,7 +50,7 @@ const LoginPage = () => {
     if (error) {
       toast({ title: 'Erro ao entrar', description: error.message, variant: 'destructive' });
     } else {
-      navigate('/');
+      navigate(getRedirect(), { replace: true });
     }
   };
 
