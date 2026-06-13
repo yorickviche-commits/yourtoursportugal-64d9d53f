@@ -36,6 +36,7 @@ const PublicProposalPage = () => {
   const [approvalMode, setApprovalMode] = useState<'approve' | 'revision' | null>(null);
   const [clientName, setClientName] = useState('');
   const [noteText, setNoteText] = useState('');
+  const [sentiment, setSentiment] = useState<Sentiment>(null);
   const [submitted, setSubmitted] = useState(false);
   const [navOpen, setNavOpen] = useState(false);
 
@@ -53,20 +54,23 @@ const PublicProposalPage = () => {
     // eslint-disable-next-line
   }, [proposal?.id]);
 
+  const dict = getProposalDict(proposal?.language);
+
   if (isLoading) return (
     <div className="min-h-screen flex items-center justify-center bg-sky-50">
-      <div className="animate-pulse text-sky-400">A carregar proposta...</div>
+      <div className="animate-pulse text-sky-400">{dict.loading}</div>
     </div>
   );
 
   if (!proposal) return (
     <div className="min-h-screen flex items-center justify-center bg-sky-50">
       <div className="text-center">
-        <h1 className="text-2xl font-serif text-slate-800 mb-2">Proposta não encontrada</h1>
-        <p className="text-slate-500">O link pode estar expirado ou incorreto.</p>
+        <h1 className="text-2xl font-serif text-slate-800 mb-2">{dict.notFound}</h1>
+        <p className="text-slate-500">{dict.notFoundHint}</p>
       </div>
     </div>
   );
+
 
   const days = proposal.days || [];
 
