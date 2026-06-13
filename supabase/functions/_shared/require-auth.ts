@@ -34,11 +34,11 @@ export async function requireInternalUser(
   const service = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
   const sb = createClient(url, anon, { global: { headers: { Authorization: `Bearer ${jwt}` } } });
 
-  const { data: claims, error: claimsErr } = await sb.auth.getClaims(jwt);
-  if (claimsErr || !claims?.claims?.sub) {
+  const { data: userData, error: userErr } = await sb.auth.getUser(jwt);
+  if (userErr || !userData?.user?.id) {
     return { ok: false, response: unauthorized("Invalid or expired token") };
   }
-  const userId = claims.claims.sub as string;
+  const userId = userData.user.id;
 
   // Role check uses service role to bypass any RLS on user_roles
   const svc = createClient(url, service);
