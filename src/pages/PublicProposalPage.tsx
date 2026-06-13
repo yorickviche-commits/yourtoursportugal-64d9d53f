@@ -321,7 +321,7 @@ const PublicProposalPage = () => {
 
         {/* ─── REVIEWS ─── */}
         <section id="reviews">
-          <h2 className="text-2xl font-serif text-slate-800 mb-4">Ce que disent nos voyageurs</h2>
+          <h2 className="text-2xl font-serif text-slate-800 mb-4">{dict.travellersSay}</h2>
           <div className="grid md:grid-cols-2 gap-4">
             {[
               { name: 'Sophie M.', text: 'Un voyage inoubliable ! L\'équipe a tout organisé à la perfection. Les guides étaient passionnés et les hôtels magnifiques.', stars: 5 },
