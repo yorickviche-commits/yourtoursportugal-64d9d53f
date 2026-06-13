@@ -308,10 +308,10 @@ const PublicProposalPage = () => {
         {/* ─── MAP ─── */}
         {proposal.map_stops.length > 0 && (
           <section id="map">
-            <h2 className="text-2xl font-serif text-slate-800 mb-4">Carte du voyage</h2>
+            <h2 className="text-2xl font-serif text-slate-800 mb-4">{dict.tripMap}</h2>
             <div className="rounded-2xl overflow-hidden border border-slate-200 shadow-sm h-[400px]">
               <MapErrorBoundary>
-                <Suspense fallback={<div className="h-full flex items-center justify-center bg-sky-50 text-sky-300">Chargement de la carte...</div>}>
+                <Suspense fallback={<div className="h-full flex items-center justify-center bg-sky-50 text-sky-300">{dict.mapLoading}</div>}>
                   <LazyMap stops={proposal.map_stops} />
                 </Suspense>
               </MapErrorBoundary>
