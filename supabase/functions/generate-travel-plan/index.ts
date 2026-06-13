@@ -130,13 +130,13 @@ async function callAI(systemPrompt: string, userPrompt: string): Promise<string>
   if (GEMINI_KEY) {
     try {
       const res = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_KEY}`,
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-pro:generateContent?key=${GEMINI_KEY}`,
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             contents: [{ role: 'user', parts: [{ text: `${systemPrompt}\n\n${userPrompt}` }] }],
-            generationConfig: { maxOutputTokens: 16384, temperature: 0.7 },
+            generationConfig: { maxOutputTokens: 32768, temperature: 0.7, responseMimeType: 'application/json' },
           }),
         }
       );
