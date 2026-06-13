@@ -7,6 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2 } from 'lucide-react';
+import GoogleSignInButton from '@/components/GoogleSignInButton';
 
 const SignupPage = () => {
   const [fullName, setFullName] = useState('');
