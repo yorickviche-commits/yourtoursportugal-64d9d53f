@@ -366,7 +366,7 @@ const PublicProposalPage = () => {
       <button
         onClick={() => setNotepadOpen(true)}
         className="fixed bottom-24 right-5 z-40 w-12 h-12 bg-sky-500 text-white rounded-full shadow-lg flex items-center justify-center hover:bg-sky-600 transition-colors"
-        title="Ajouter une note"
+        title={dict.addNote}
       >
         <MessageSquare className="h-5 w-5" />
       </button>
@@ -376,10 +376,10 @@ const PublicProposalPage = () => {
         <div className="fixed bottom-0 left-0 right-0 z-30 bg-white border-t border-slate-200 shadow-2xl">
           <div className="max-w-4xl mx-auto px-4 py-3 flex items-center gap-2">
             <button onClick={() => setApprovalMode('approve')} className="flex-1 px-4 py-3 bg-emerald-600 text-white rounded-xl font-medium text-sm hover:bg-emerald-700 transition-colors">
-              ✓ Approuver ce programme
+              {dict.approveProgram}
             </button>
             <button onClick={() => setApprovalMode('revision')} className="flex-1 px-4 py-3 bg-sky-500 text-white rounded-xl font-medium text-sm hover:bg-sky-600 transition-colors">
-              ⟳ Demander des modifications
+              {dict.requestChanges}
             </button>
             <button onClick={() => { setNotepadTab('general'); setNotepadOpen(true); }} className="px-4 py-3 bg-slate-100 text-slate-700 rounded-xl font-medium text-sm hover:bg-slate-200 transition-colors">
               <MessageSquare className="h-4 w-4" />
@@ -394,7 +394,7 @@ const PublicProposalPage = () => {
           <div className="bg-white rounded-t-2xl md:rounded-2xl w-full max-w-md p-6">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-lg font-serif font-bold text-slate-800">
-                {approvalMode === 'approve' ? 'Approuver le programme' : 'Demander des modifications'}
+                {approvalMode === 'approve' ? dict.approveTitle : dict.requestTitle}
               </h3>
               <button onClick={() => setApprovalMode(null)}><X className="h-5 w-5 text-slate-400" /></button>
             </div>
@@ -402,13 +402,13 @@ const PublicProposalPage = () => {
               <input
                 value={clientName}
                 onChange={e => setClientName(e.target.value)}
-                placeholder="Votre nom"
+                placeholder={dict.yourName}
                 className="w-full px-4 py-3 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-sky-300"
               />
               <textarea
                 value={noteText}
                 onChange={e => setNoteText(e.target.value)}
-                placeholder={approvalMode === 'approve' ? 'Note optionnelle...' : 'Décrivez les modifications souhaitées...'}
+                placeholder={approvalMode === 'approve' ? dict.approveNotePlaceholder : dict.requestNotePlaceholder}
                 rows={4}
                 className="w-full px-4 py-3 border border-slate-200 rounded-xl text-sm resize-none focus:outline-none focus:ring-2 focus:ring-sky-300"
               />
@@ -421,7 +421,7 @@ const PublicProposalPage = () => {
                   approvalMode === 'revision' && !noteText.trim() && 'opacity-50 cursor-not-allowed'
                 )}
               >
-                {approvalMode === 'approve' ? 'Confirmer l\'approbation' : 'Envoyer la demande'}
+                {approvalMode === 'approve' ? dict.confirmApprove : dict.sendRequest}
               </button>
             </div>
           </div>
@@ -434,7 +434,7 @@ const PublicProposalPage = () => {
           <div className="hidden md:block flex-1" onClick={() => setNotepadOpen(false)} />
           <div className="w-full md:w-[420px] bg-white shadow-2xl flex flex-col h-full md:border-l border-slate-200">
             <div className="flex items-center justify-between p-4 border-b border-slate-200">
-              <h3 className="font-serif font-bold text-slate-800">Bloc-notes</h3>
+              <h3 className="font-serif font-bold text-slate-800">{dict.notepad}</h3>
               <button onClick={() => setNotepadOpen(false)}><X className="h-5 w-5 text-slate-400" /></button>
             </div>
 
@@ -449,7 +449,7 @@ const PublicProposalPage = () => {
                     notepadTab === tab ? 'text-sky-600 border-b-2 border-sky-500' : 'text-slate-400 hover:text-slate-600'
                   )}
                 >
-                  {tab === 'general' ? 'Note générale' : tab === 'day' ? 'Par jour' : 'Historique'}
+                  {tab === 'general' ? dict.tabGeneral : tab === 'day' ? dict.tabPerDay : dict.tabHistory}
                 </button>
               ))}
             </div>
@@ -457,24 +457,24 @@ const PublicProposalPage = () => {
             <div className="flex-1 overflow-y-auto p-4">
               {notepadTab === 'general' && (
                 <div className="space-y-3">
-                  <p className="text-sm text-slate-500">Commentaire global sur le programme</p>
+                  <p className="text-sm text-slate-500">{dict.generalNoteCaption}</p>
+                  <SentimentPicker value={sentiment} onChange={setSentiment} dict={dict} />
                   <textarea
                     value={noteText}
                     onChange={e => setNoteText(e.target.value)}
-                    placeholder="Votre commentaire..."
+                    placeholder={dict.yourComment}
                     rows={5}
                     className="w-full px-4 py-3 border border-slate-200 rounded-xl text-sm resize-none focus:outline-none focus:ring-2 focus:ring-sky-300"
                   />
                   <button
                     onClick={() => handleSubmitAnnotation('proposal')}
-                    disabled={!noteText.trim()}
+                    disabled={!noteText.trim() && !sentiment}
                     className="w-full px-4 py-2.5 bg-sky-500 text-white rounded-xl text-sm font-medium hover:bg-sky-600 disabled:opacity-50"
                   >
-                    <Send className="h-4 w-4 inline mr-2" />Envoyer
+                    <Send className="h-4 w-4 inline mr-2" />{dict.send}
                   </button>
-                  {/* Show existing general annotations */}
                   {annotations.filter(a => a.level === 'proposal').map(a => (
-                    <AnnotationCard key={a.id} annotation={a} />
+                    <AnnotationCard key={a.id} annotation={a} dict={dict} />
                   ))}
                 </div>
               )}
@@ -491,7 +491,10 @@ const PublicProposalPage = () => {
                       annotations={annotations.filter(a => a.target_day_index === idx)}
                       noteText={noteText}
                       setNoteText={setNoteText}
+                      sentiment={sentiment}
+                      setSentiment={setSentiment}
                       onSubmit={(level, itemIdx) => handleSubmitAnnotation(level, idx, itemIdx)}
+                      dict={dict}
                     />
                   ))}
                 </div>
@@ -500,10 +503,10 @@ const PublicProposalPage = () => {
               {notepadTab === 'history' && (
                 <div className="space-y-3">
                   {[...annotations].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()).map(a => (
-                    <AnnotationCard key={a.id} annotation={a} showBadge />
+                    <AnnotationCard key={a.id} annotation={a} showBadge dict={dict} />
                   ))}
                   {annotations.length === 0 && (
-                    <p className="text-sm text-slate-400 text-center py-8">Aucune annotation pour le moment</p>
+                    <p className="text-sm text-slate-400 text-center py-8">{dict.noAnnotations}</p>
                   )}
                 </div>
               )}
@@ -520,14 +523,46 @@ const PublicProposalPage = () => {
             rel="noopener noreferrer"
             className="block w-full text-center bg-green-600 hover:bg-green-700 text-white font-semibold py-3 rounded-lg"
           >
-            ✈️ Book Now — €{(proposal as any).deposit_amount_eur ?? '—'} Deposit
+            {dict.bookNow} — €{(proposal as any).deposit_amount_eur ?? '—'}
           </a>
-          <p className="mt-1 text-[10px] text-center text-slate-500">100% refundable · secure your spot today</p>
+          <p className="mt-1 text-[10px] text-center text-slate-500">{dict.defaultDepositNote}</p>
         </div>
       )}
     </div>
   );
 };
+
+const SentimentPicker = ({ value, onChange, dict }: { value: Sentiment; onChange: (s: Sentiment) => void; dict: ReturnType<typeof getProposalDict> }) => (
+  <div className="flex items-center gap-2">
+    <button
+      type="button"
+      onClick={() => onChange(value === 'like' ? null : 'like')}
+      className={cn(
+        "flex-1 inline-flex items-center justify-center gap-2 px-3 py-2 rounded-xl border text-sm font-medium transition-all",
+        value === 'like'
+          ? 'bg-emerald-500 border-emerald-500 text-white shadow-sm'
+          : 'bg-white border-slate-200 text-slate-500 hover:border-emerald-300 hover:text-emerald-600'
+      )}
+      aria-pressed={value === 'like'}
+    >
+      <ThumbsUp className="h-4 w-4" /> {dict.sentimentLike}
+    </button>
+    <button
+      type="button"
+      onClick={() => onChange(value === 'dislike' ? null : 'dislike')}
+      className={cn(
+        "flex-1 inline-flex items-center justify-center gap-2 px-3 py-2 rounded-xl border text-sm font-medium transition-all",
+        value === 'dislike'
+          ? 'bg-rose-500 border-rose-500 text-white shadow-sm'
+          : 'bg-white border-slate-200 text-slate-500 hover:border-rose-300 hover:text-rose-600'
+      )}
+      aria-pressed={value === 'dislike'}
+    >
+      <ThumbsDown className="h-4 w-4" /> {dict.sentimentDislike}
+    </button>
+  </div>
+);
+
 
 const AnnotationCard = ({ annotation, showBadge }: { annotation: any; showBadge?: boolean }) => (
   <div className="bg-sky-50 rounded-xl p-3 border border-sky-100">
