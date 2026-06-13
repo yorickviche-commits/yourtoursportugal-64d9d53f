@@ -458,6 +458,11 @@ serve(async (req) => {
 
     // Handle approval decisions
     if (action === 'approve_decision' && approvalId) {
+      if (!__auth.isAdmin) {
+        return new Response(JSON.stringify({ error: 'Forbidden — admin only' }), {
+          status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
       const { data: approval } = await supabase
         .from('ceo_approval_queue')
         .select('*')
