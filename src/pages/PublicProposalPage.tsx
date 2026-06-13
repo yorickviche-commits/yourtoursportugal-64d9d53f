@@ -344,13 +344,9 @@ const PublicProposalPage = () => {
 
         {/* ─── ABOUT US ─── */}
         <section id="about" className="pb-32">
-          <h2 className="text-2xl font-serif text-slate-800 mb-4">À propos de Your Tours Portugal</h2>
+          <h2 className="text-2xl font-serif text-slate-800 mb-4">{dict.aboutUs}</h2>
           <div className="bg-white rounded-2xl border border-slate-200 p-6">
-            <p className="text-slate-600 leading-relaxed mb-6">
-              Your Tours Portugal est une agence de voyages sur mesure spécialisée dans les expériences authentiques au Portugal.
-              Nous créons des itinéraires personnalisés qui révèlent le meilleur de la culture, de la gastronomie et de l'artisanat portugais,
-              avec des guides locaux francophones passionnés.
-            </p>
+            <p className="text-slate-600 leading-relaxed mb-6">{dict.aboutBody}</p>
             <div className="flex flex-wrap gap-3">
               <a href="https://wa.me/351961615400" target="_blank" rel="noopener" className="flex items-center gap-2 px-4 py-2 bg-emerald-500 text-white rounded-lg text-sm font-medium hover:bg-emerald-600 transition-colors">
                 <Phone className="h-4 w-4" /> WhatsApp
@@ -359,7 +355,7 @@ const PublicProposalPage = () => {
                 <Mail className="h-4 w-4" /> Email
               </a>
               <a href="https://yourtoursportugal.com" target="_blank" rel="noopener" className="flex items-center gap-2 px-4 py-2 bg-slate-100 text-slate-700 rounded-lg text-sm font-medium hover:bg-slate-200 transition-colors">
-                <Globe className="h-4 w-4" /> Site web
+                <Globe className="h-4 w-4" /> {dict.website}
               </a>
             </div>
           </div>
