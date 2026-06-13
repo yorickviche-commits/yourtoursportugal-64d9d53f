@@ -18,6 +18,7 @@ import ItineraryPreviewPage from "./pages/ItineraryPreviewPage";
 import PublicProposalPage from "./pages/PublicProposalPage";
 import ProposalDetailPage from "./pages/ProposalDetailPage";
 import AgentControlPage from "./pages/AgentControlPage";
+import MobilePage from "./pages/MobilePage";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
