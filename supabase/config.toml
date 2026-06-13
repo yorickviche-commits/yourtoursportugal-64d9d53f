@@ -1,34 +1,27 @@
 project_id = "jufqscczzmioauzkqztj"
 
-[functions.generate-itinerary]
-verify_jwt = false
-
-[functions.nethunt-proxy]
-verify_jwt = false
-
-[functions.wetravel-proxy]
-verify_jwt = false
-
-[functions.parse-lead-email]
-verify_jwt = false
-
-[functions.generate-email]
-verify_jwt = false
-
-[functions.search-destination-images]
-verify_jwt = false
-
-[functions.extract-supplier-data]
-verify_jwt = false
-
-[functions.auto-fulfill-budget]
-verify_jwt = false
-
-[functions.auto-score-supplier]
-verify_jwt = false
-
-[functions.search-supplier-links]
-verify_jwt = false
-
-[functions.process-email-queue]
-verify_jwt = true
+[functions]
+  [functions.auth-email-hook]
+    verify_jwt = false
+  [functions.auto-fulfill-budget]
+    verify_jwt = false
+  [functions.auto-score-supplier]
+    verify_jwt = false
+  [functions.extract-supplier-data]
+    verify_jwt = false
+  [functions.generate-email]
+    verify_jwt = false
+  [functions.generate-itinerary]
+    verify_jwt = false
+  [functions.nethunt-proxy]
+    verify_jwt = false
+  [functions.parse-lead-email]
+    verify_jwt = false
+  [functions.process-email-queue]
+    verify_jwt = true
+  [functions.search-destination-images]
+    verify_jwt = false
+  [functions.search-supplier-links]
+    verify_jwt = false
+  [functions.wetravel-proxy]
+    verify_jwt = false
