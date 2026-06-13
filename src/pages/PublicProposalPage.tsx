@@ -1,8 +1,10 @@
 import { useParams } from 'react-router-dom';
 import { useProposalByToken, useProposalAnnotations, useProposalEvents, useCreateAnnotation, useCreateEvent, useUpdateProposal, ProposalDay, Proposal } from '@/hooks/useProposalsQuery';
 import { useState, useEffect, useRef, lazy, Suspense, Component, ReactNode } from 'react';
-import { MessageSquare, Check, Star, Phone, Mail, Globe, ChevronDown, ChevronUp, Send, X, Clock, MapPin, Hotel } from 'lucide-react';
+import { MessageSquare, Check, Star, Phone, Mail, Globe, ChevronDown, ChevronUp, Send, X, Clock, MapPin, Hotel, ThumbsUp, ThumbsDown } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { getProposalDict, encodeSentiment, decodeSentiment, Sentiment } from '@/lib/proposalI18n';
+
 
 // Lazy load map to avoid react-leaflet context crash
 const LazyMap = lazy(() => import('@/components/proposal/ProposalMap'));
@@ -34,6 +36,7 @@ const PublicProposalPage = () => {
   const [approvalMode, setApprovalMode] = useState<'approve' | 'revision' | null>(null);
   const [clientName, setClientName] = useState('');
   const [noteText, setNoteText] = useState('');
+  const [sentiment, setSentiment] = useState<Sentiment>(null);
   const [submitted, setSubmitted] = useState(false);
   const [navOpen, setNavOpen] = useState(false);
 
@@ -51,25 +54,31 @@ const PublicProposalPage = () => {
     // eslint-disable-next-line
   }, [proposal?.id]);
 
+  const dict = getProposalDict(proposal?.language);
+
   if (isLoading) return (
     <div className="min-h-screen flex items-center justify-center bg-sky-50">
-      <div className="animate-pulse text-sky-400">A carregar proposta...</div>
+      <div className="animate-pulse text-sky-400">{dict.loading}</div>
     </div>
   );
 
   if (!proposal) return (
     <div className="min-h-screen flex items-center justify-center bg-sky-50">
       <div className="text-center">
-        <h1 className="text-2xl font-serif text-slate-800 mb-2">Proposta não encontrada</h1>
-        <p className="text-slate-500">O link pode estar expirado ou incorreto.</p>
+        <h1 className="text-2xl font-serif text-slate-800 mb-2">{dict.notFound}</h1>
+        <p className="text-slate-500">{dict.notFoundHint}</p>
       </div>
     </div>
   );
 
+
   const days = proposal.days || [];
 
-  const handleSubmitAnnotation = (level: string, dayIdx?: number, itemIdx?: number) => {
-    if (!noteText.trim()) return;
+  const handleSubmitAnnotation = (level: string, dayIdx?: number, itemIdx?: number, overrideText?: string, overrideSentiment?: Sentiment) => {
+    const baseText = (overrideText ?? noteText).trim();
+    const eff = overrideSentiment !== undefined ? overrideSentiment : sentiment;
+    if (!baseText && !eff) return;
+    const content = encodeSentiment(baseText, eff);
     createAnnotation.mutate({
       proposal_id: proposal.id,
       level,
@@ -78,7 +87,7 @@ const PublicProposalPage = () => {
       author_type: 'client',
       author_name: clientName || proposal.client_name,
       author_email: proposal.client_email || null,
-      content: noteText,
+      content,
       is_resolved: false,
       parent_id: null,
     });
@@ -87,10 +96,12 @@ const PublicProposalPage = () => {
       event_type: 'annotation_added',
       actor_name: clientName || proposal.client_name,
       actor_email: proposal.client_email || null,
-      note: noteText.slice(0, 100),
+      note: content.slice(0, 100),
     });
     setNoteText('');
+    setSentiment(null);
   };
+
 
   const handleApprove = () => {
     updateProposal.mutate({ id: proposal.id, status: 'approved', approved_at: new Date().toISOString() });
@@ -125,19 +136,17 @@ const PublicProposalPage = () => {
           <Check className="h-8 w-8 text-emerald-600" />
         </div>
         <h1 className="text-2xl font-serif text-slate-800 mb-3">
-          Merci, {clientName || proposal.client_name} !
+          {dict.thanks(clientName || proposal.client_name)}
         </h1>
-        <p className="text-slate-500">
-          Votre réponse a été enregistrée. L'équipe Your Tours Portugal vous contactera dans les 24 heures.
-        </p>
+        <p className="text-slate-500">{dict.thanksBody}</p>
       </div>
     </div>
   );
 
   const statusBadge = proposal.status === 'approved' ? (
-    <span className="bg-emerald-100 text-emerald-700 text-xs px-3 py-1 rounded-full font-medium">✓ Approuvé</span>
+    <span className="bg-emerald-100 text-emerald-700 text-xs px-3 py-1 rounded-full font-medium">{dict.approved}</span>
   ) : proposal.status === 'revision_requested' ? (
-    <span className="bg-amber-100 text-amber-700 text-xs px-3 py-1 rounded-full font-medium">⟳ Modifications demandées</span>
+    <span className="bg-amber-100 text-amber-700 text-xs px-3 py-1 rounded-full font-medium">{dict.revisionRequested}</span>
   ) : null;
 
   return (
@@ -164,12 +173,12 @@ const PublicProposalPage = () => {
                   rel="noopener noreferrer"
                   className="inline-flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-lg font-semibold shadow-lg transition"
                 >
-                  ✈️ Book Now — Reserve Your Spot
+                  {dict.bookNow}
                 </a>
                 <p className="mt-2 text-xs text-white/80">
                   {(proposal as any).deposit_amount_eur
-                    ? `€${(proposal as any).deposit_amount_eur} deposit · ${(proposal as any).deposit_percent ?? 50}% of total · 100% refundable`
-                    : '50% deposit · 100% refundable'}
+                    ? dict.depositSuffix(String((proposal as any).deposit_amount_eur), (proposal as any).deposit_percent ?? 50)
+                    : dict.defaultDepositNote}
                 </p>
               </div>
             )}
@@ -181,27 +190,28 @@ const PublicProposalPage = () => {
       <nav className="sticky top-0 z-30 bg-white border-b border-slate-200 shadow-sm">
         <div className="max-w-4xl mx-auto px-4">
           <div className="flex items-center gap-1 overflow-x-auto py-2 text-sm no-scrollbar">
-            <a href="#summary" className="shrink-0 px-3 py-1.5 rounded-full hover:bg-sky-50 text-slate-600 font-medium">Résumé</a>
+            <a href="#summary" className="shrink-0 px-3 py-1.5 rounded-full hover:bg-sky-50 text-slate-600 font-medium">{dict.summary}</a>
             {days.map((d: ProposalDay) => (
               <a key={d.day_number} href={`#day-${d.day_number}`} className="shrink-0 px-3 py-1.5 rounded-full hover:bg-sky-50 text-slate-600">
-                Jour {d.day_number}
+                {dict.day} {d.day_number}
               </a>
             ))}
-            <a href="#map" className="shrink-0 px-3 py-1.5 rounded-full hover:bg-sky-50 text-slate-600">Carte</a>
-            <a href="#reviews" className="shrink-0 px-3 py-1.5 rounded-full hover:bg-sky-50 text-slate-600">Avis</a>
-            <a href="#about" className="shrink-0 px-3 py-1.5 rounded-full hover:bg-sky-50 text-slate-600">À propos</a>
+            <a href="#map" className="shrink-0 px-3 py-1.5 rounded-full hover:bg-sky-50 text-slate-600">{dict.map}</a>
+            <a href="#reviews" className="shrink-0 px-3 py-1.5 rounded-full hover:bg-sky-50 text-slate-600">{dict.reviews}</a>
+            <a href="#about" className="shrink-0 px-3 py-1.5 rounded-full hover:bg-sky-50 text-slate-600">{dict.about}</a>
           </div>
         </div>
+
       </nav>
 
       <div className="max-w-4xl mx-auto px-4 py-8 space-y-12">
         {/* ─── SUMMARY ─── */}
         <section id="summary">
-          <h2 className="text-2xl font-serif text-slate-800 mb-4">Résumé du voyage</h2>
+          <h2 className="text-2xl font-serif text-slate-800 mb-4">{dict.tripSummary}</h2>
           <p className="text-slate-600 leading-relaxed mb-6">{proposal.summary_text}</p>
           <div className="bg-white rounded-xl border border-slate-200 p-5">
             <button onClick={() => setNavOpen(!navOpen)} className="flex items-center justify-between w-full text-left">
-              <span className="font-medium text-slate-700">Programme jour par jour</span>
+              <span className="font-medium text-slate-700">{dict.programDayByDay}</span>
               {navOpen ? <ChevronUp className="h-4 w-4 text-slate-400" /> : <ChevronDown className="h-4 w-4 text-slate-400" />}
             </button>
             {navOpen && (
@@ -244,7 +254,7 @@ const PublicProposalPage = () => {
               )}
 
               <div className="p-5">
-                <h4 className="text-xs uppercase tracking-wider text-slate-400 font-semibold mb-3">Itinéraire & Inclus</h4>
+                <h4 className="text-xs uppercase tracking-wider text-slate-400 font-semibold mb-3">{dict.itineraryIncludes}</h4>
                 <ul className="space-y-2.5">
                   {day.items.map((item, i) => (
                     <li key={i} className="flex gap-3 text-sm text-slate-600">
@@ -288,7 +298,7 @@ const PublicProposalPage = () => {
                   onClick={() => { setSelectedDay(idx); setNotepadTab('day'); setNotepadOpen(true); }}
                   className="mt-4 text-xs text-slate-400 hover:text-sky-600 flex items-center gap-1 transition-colors"
                 >
-                  <MessageSquare className="h-3 w-3" /> Commenter cette journée
+                  <MessageSquare className="h-3 w-3" /> {dict.commentThisDay}
                 </button>
               </div>
             </div>
@@ -298,10 +308,10 @@ const PublicProposalPage = () => {
         {/* ─── MAP ─── */}
         {proposal.map_stops.length > 0 && (
           <section id="map">
-            <h2 className="text-2xl font-serif text-slate-800 mb-4">Carte du voyage</h2>
+            <h2 className="text-2xl font-serif text-slate-800 mb-4">{dict.tripMap}</h2>
             <div className="rounded-2xl overflow-hidden border border-slate-200 shadow-sm h-[400px]">
               <MapErrorBoundary>
-                <Suspense fallback={<div className="h-full flex items-center justify-center bg-sky-50 text-sky-300">Chargement de la carte...</div>}>
+                <Suspense fallback={<div className="h-full flex items-center justify-center bg-sky-50 text-sky-300">{dict.mapLoading}</div>}>
                   <LazyMap stops={proposal.map_stops} />
                 </Suspense>
               </MapErrorBoundary>
@@ -311,7 +321,7 @@ const PublicProposalPage = () => {
 
         {/* ─── REVIEWS ─── */}
         <section id="reviews">
-          <h2 className="text-2xl font-serif text-slate-800 mb-4">Ce que disent nos voyageurs</h2>
+          <h2 className="text-2xl font-serif text-slate-800 mb-4">{dict.travellersSay}</h2>
           <div className="grid md:grid-cols-2 gap-4">
             {[
               { name: 'Sophie M.', text: 'Un voyage inoubliable ! L\'équipe a tout organisé à la perfection. Les guides étaient passionnés et les hôtels magnifiques.', stars: 5 },
@@ -334,13 +344,9 @@ const PublicProposalPage = () => {
 
         {/* ─── ABOUT US ─── */}
         <section id="about" className="pb-32">
-          <h2 className="text-2xl font-serif text-slate-800 mb-4">À propos de Your Tours Portugal</h2>
+          <h2 className="text-2xl font-serif text-slate-800 mb-4">{dict.aboutUs}</h2>
           <div className="bg-white rounded-2xl border border-slate-200 p-6">
-            <p className="text-slate-600 leading-relaxed mb-6">
-              Your Tours Portugal est une agence de voyages sur mesure spécialisée dans les expériences authentiques au Portugal.
-              Nous créons des itinéraires personnalisés qui révèlent le meilleur de la culture, de la gastronomie et de l'artisanat portugais,
-              avec des guides locaux francophones passionnés.
-            </p>
+            <p className="text-slate-600 leading-relaxed mb-6">{dict.aboutBody}</p>
             <div className="flex flex-wrap gap-3">
               <a href="https://wa.me/351961615400" target="_blank" rel="noopener" className="flex items-center gap-2 px-4 py-2 bg-emerald-500 text-white rounded-lg text-sm font-medium hover:bg-emerald-600 transition-colors">
                 <Phone className="h-4 w-4" /> WhatsApp
@@ -349,7 +355,7 @@ const PublicProposalPage = () => {
                 <Mail className="h-4 w-4" /> Email
               </a>
               <a href="https://yourtoursportugal.com" target="_blank" rel="noopener" className="flex items-center gap-2 px-4 py-2 bg-slate-100 text-slate-700 rounded-lg text-sm font-medium hover:bg-slate-200 transition-colors">
-                <Globe className="h-4 w-4" /> Site web
+                <Globe className="h-4 w-4" /> {dict.website}
               </a>
             </div>
           </div>
@@ -360,7 +366,7 @@ const PublicProposalPage = () => {
       <button
         onClick={() => setNotepadOpen(true)}
         className="fixed bottom-24 right-5 z-40 w-12 h-12 bg-sky-500 text-white rounded-full shadow-lg flex items-center justify-center hover:bg-sky-600 transition-colors"
-        title="Ajouter une note"
+        title={dict.addNote}
       >
         <MessageSquare className="h-5 w-5" />
       </button>
@@ -370,10 +376,10 @@ const PublicProposalPage = () => {
         <div className="fixed bottom-0 left-0 right-0 z-30 bg-white border-t border-slate-200 shadow-2xl">
           <div className="max-w-4xl mx-auto px-4 py-3 flex items-center gap-2">
             <button onClick={() => setApprovalMode('approve')} className="flex-1 px-4 py-3 bg-emerald-600 text-white rounded-xl font-medium text-sm hover:bg-emerald-700 transition-colors">
-              ✓ Approuver ce programme
+              {dict.approveProgram}
             </button>
             <button onClick={() => setApprovalMode('revision')} className="flex-1 px-4 py-3 bg-sky-500 text-white rounded-xl font-medium text-sm hover:bg-sky-600 transition-colors">
-              ⟳ Demander des modifications
+              {dict.requestChanges}
             </button>
             <button onClick={() => { setNotepadTab('general'); setNotepadOpen(true); }} className="px-4 py-3 bg-slate-100 text-slate-700 rounded-xl font-medium text-sm hover:bg-slate-200 transition-colors">
               <MessageSquare className="h-4 w-4" />
@@ -388,7 +394,7 @@ const PublicProposalPage = () => {
           <div className="bg-white rounded-t-2xl md:rounded-2xl w-full max-w-md p-6">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-lg font-serif font-bold text-slate-800">
-                {approvalMode === 'approve' ? 'Approuver le programme' : 'Demander des modifications'}
+                {approvalMode === 'approve' ? dict.approveTitle : dict.requestTitle}
               </h3>
               <button onClick={() => setApprovalMode(null)}><X className="h-5 w-5 text-slate-400" /></button>
             </div>
@@ -396,13 +402,13 @@ const PublicProposalPage = () => {
               <input
                 value={clientName}
                 onChange={e => setClientName(e.target.value)}
-                placeholder="Votre nom"
+                placeholder={dict.yourName}
                 className="w-full px-4 py-3 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-sky-300"
               />
               <textarea
                 value={noteText}
                 onChange={e => setNoteText(e.target.value)}
-                placeholder={approvalMode === 'approve' ? 'Note optionnelle...' : 'Décrivez les modifications souhaitées...'}
+                placeholder={approvalMode === 'approve' ? dict.approveNotePlaceholder : dict.requestNotePlaceholder}
                 rows={4}
                 className="w-full px-4 py-3 border border-slate-200 rounded-xl text-sm resize-none focus:outline-none focus:ring-2 focus:ring-sky-300"
               />
@@ -415,7 +421,7 @@ const PublicProposalPage = () => {
                   approvalMode === 'revision' && !noteText.trim() && 'opacity-50 cursor-not-allowed'
                 )}
               >
-                {approvalMode === 'approve' ? 'Confirmer l\'approbation' : 'Envoyer la demande'}
+                {approvalMode === 'approve' ? dict.confirmApprove : dict.sendRequest}
               </button>
             </div>
           </div>
@@ -428,7 +434,7 @@ const PublicProposalPage = () => {
           <div className="hidden md:block flex-1" onClick={() => setNotepadOpen(false)} />
           <div className="w-full md:w-[420px] bg-white shadow-2xl flex flex-col h-full md:border-l border-slate-200">
             <div className="flex items-center justify-between p-4 border-b border-slate-200">
-              <h3 className="font-serif font-bold text-slate-800">Bloc-notes</h3>
+              <h3 className="font-serif font-bold text-slate-800">{dict.notepad}</h3>
               <button onClick={() => setNotepadOpen(false)}><X className="h-5 w-5 text-slate-400" /></button>
             </div>
 
@@ -443,7 +449,7 @@ const PublicProposalPage = () => {
                     notepadTab === tab ? 'text-sky-600 border-b-2 border-sky-500' : 'text-slate-400 hover:text-slate-600'
                   )}
                 >
-                  {tab === 'general' ? 'Note générale' : tab === 'day' ? 'Par jour' : 'Historique'}
+                  {tab === 'general' ? dict.tabGeneral : tab === 'day' ? dict.tabPerDay : dict.tabHistory}
                 </button>
               ))}
             </div>
@@ -451,24 +457,24 @@ const PublicProposalPage = () => {
             <div className="flex-1 overflow-y-auto p-4">
               {notepadTab === 'general' && (
                 <div className="space-y-3">
-                  <p className="text-sm text-slate-500">Commentaire global sur le programme</p>
+                  <p className="text-sm text-slate-500">{dict.generalNoteCaption}</p>
+                  <SentimentPicker value={sentiment} onChange={setSentiment} dict={dict} />
                   <textarea
                     value={noteText}
                     onChange={e => setNoteText(e.target.value)}
-                    placeholder="Votre commentaire..."
+                    placeholder={dict.yourComment}
                     rows={5}
                     className="w-full px-4 py-3 border border-slate-200 rounded-xl text-sm resize-none focus:outline-none focus:ring-2 focus:ring-sky-300"
                   />
                   <button
                     onClick={() => handleSubmitAnnotation('proposal')}
-                    disabled={!noteText.trim()}
+                    disabled={!noteText.trim() && !sentiment}
                     className="w-full px-4 py-2.5 bg-sky-500 text-white rounded-xl text-sm font-medium hover:bg-sky-600 disabled:opacity-50"
                   >
-                    <Send className="h-4 w-4 inline mr-2" />Envoyer
+                    <Send className="h-4 w-4 inline mr-2" />{dict.send}
                   </button>
-                  {/* Show existing general annotations */}
                   {annotations.filter(a => a.level === 'proposal').map(a => (
-                    <AnnotationCard key={a.id} annotation={a} />
+                    <AnnotationCard key={a.id} annotation={a} dict={dict} />
                   ))}
                 </div>
               )}
@@ -485,7 +491,10 @@ const PublicProposalPage = () => {
                       annotations={annotations.filter(a => a.target_day_index === idx)}
                       noteText={noteText}
                       setNoteText={setNoteText}
+                      sentiment={sentiment}
+                      setSentiment={setSentiment}
                       onSubmit={(level, itemIdx) => handleSubmitAnnotation(level, idx, itemIdx)}
+                      dict={dict}
                     />
                   ))}
                 </div>
@@ -494,10 +503,10 @@ const PublicProposalPage = () => {
               {notepadTab === 'history' && (
                 <div className="space-y-3">
                   {[...annotations].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()).map(a => (
-                    <AnnotationCard key={a.id} annotation={a} showBadge />
+                    <AnnotationCard key={a.id} annotation={a} showBadge dict={dict} />
                   ))}
                   {annotations.length === 0 && (
-                    <p className="text-sm text-slate-400 text-center py-8">Aucune annotation pour le moment</p>
+                    <p className="text-sm text-slate-400 text-center py-8">{dict.noAnnotations}</p>
                   )}
                 </div>
               )}
@@ -514,14 +523,46 @@ const PublicProposalPage = () => {
             rel="noopener noreferrer"
             className="block w-full text-center bg-green-600 hover:bg-green-700 text-white font-semibold py-3 rounded-lg"
           >
-            ✈️ Book Now — €{(proposal as any).deposit_amount_eur ?? '—'} Deposit
+            {dict.bookNow} — €{(proposal as any).deposit_amount_eur ?? '—'}
           </a>
-          <p className="mt-1 text-[10px] text-center text-slate-500">100% refundable · secure your spot today</p>
+          <p className="mt-1 text-[10px] text-center text-slate-500">{dict.defaultDepositNote}</p>
         </div>
       )}
     </div>
   );
 };
+
+const SentimentPicker = ({ value, onChange, dict }: { value: Sentiment; onChange: (s: Sentiment) => void; dict: ReturnType<typeof getProposalDict> }) => (
+  <div className="flex items-center gap-2">
+    <button
+      type="button"
+      onClick={() => onChange(value === 'like' ? null : 'like')}
+      className={cn(
+        "flex-1 inline-flex items-center justify-center gap-2 px-3 py-2 rounded-xl border text-sm font-medium transition-all",
+        value === 'like'
+          ? 'bg-emerald-500 border-emerald-500 text-white shadow-sm'
+          : 'bg-white border-slate-200 text-slate-500 hover:border-emerald-300 hover:text-emerald-600'
+      )}
+      aria-pressed={value === 'like'}
+    >
+      <ThumbsUp className="h-4 w-4" /> {dict.sentimentLike}
+    </button>
+    <button
+      type="button"
+      onClick={() => onChange(value === 'dislike' ? null : 'dislike')}
+      className={cn(
+        "flex-1 inline-flex items-center justify-center gap-2 px-3 py-2 rounded-xl border text-sm font-medium transition-all",
+        value === 'dislike'
+          ? 'bg-rose-500 border-rose-500 text-white shadow-sm'
+          : 'bg-white border-slate-200 text-slate-500 hover:border-rose-300 hover:text-rose-600'
+      )}
+      aria-pressed={value === 'dislike'}
+    >
+      <ThumbsDown className="h-4 w-4" /> {dict.sentimentDislike}
+    </button>
+  </div>
+);
+
 
 const AnnotationCard = ({ annotation, showBadge }: { annotation: any; showBadge?: boolean }) => (
   <div className="bg-sky-50 rounded-xl p-3 border border-sky-100">
