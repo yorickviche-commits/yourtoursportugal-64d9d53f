@@ -493,7 +493,7 @@ const PublicProposalPage = () => {
                       setNoteText={setNoteText}
                       sentiment={sentiment}
                       setSentiment={setSentiment}
-                      onSubmit={(level, itemIdx) => handleSubmitAnnotation(level, idx, itemIdx)}
+                      onSubmit={(level: string, itemIdx?: number, daySentiment?: Sentiment) => handleSubmitAnnotation(level, idx, itemIdx, undefined, daySentiment)}
                       dict={dict}
                     />
                   ))}
@@ -564,30 +564,54 @@ const SentimentPicker = ({ value, onChange, dict }: { value: Sentiment; onChange
 );
 
 
-const AnnotationCard = ({ annotation, showBadge }: { annotation: any; showBadge?: boolean }) => (
-  <div className="bg-sky-50 rounded-xl p-3 border border-sky-100">
-    <div className="flex items-center gap-2 mb-1">
-      {showBadge && (
-        <span className="text-[10px] px-2 py-0.5 bg-sky-100 text-sky-600 rounded-full font-medium">
-          {annotation.level === 'proposal' ? 'Général' : annotation.level === 'day' ? `Jour ${(annotation.target_day_index ?? 0) + 1}` : `Item`}
-        </span>
-      )}
-      <span className={cn("w-2 h-2 rounded-full", annotation.is_resolved ? "bg-emerald-400" : "bg-sky-400")} />
-      <span className="text-xs font-medium text-slate-700">{annotation.author_name}</span>
-      <span className="text-[10px] text-slate-400 ml-auto">{new Date(annotation.created_at).toLocaleDateString()}</span>
+const AnnotationCard = ({ annotation, showBadge, dict }: { annotation: any; showBadge?: boolean; dict: ReturnType<typeof getProposalDict> }) => {
+  const { sentiment, text } = decodeSentiment(annotation.content || '');
+  const sentimentStyles =
+    sentiment === 'like'
+      ? 'bg-emerald-50 border-emerald-200'
+      : sentiment === 'dislike'
+        ? 'bg-rose-50 border-rose-200'
+        : 'bg-sky-50 border-sky-100';
+  return (
+    <div className={cn('rounded-xl p-3 border', sentimentStyles)}>
+      <div className="flex items-center gap-2 mb-1 flex-wrap">
+        {showBadge && (
+          <span className="text-[10px] px-2 py-0.5 bg-white/70 text-slate-600 rounded-full font-medium border border-slate-200">
+            {annotation.level === 'proposal'
+              ? dict.badgeGeneral
+              : annotation.level === 'day'
+                ? dict.badgeDay((annotation.target_day_index ?? 0) + 1)
+                : dict.badgeItem}
+          </span>
+        )}
+        {sentiment === 'like' && (
+          <span className="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 bg-emerald-100 text-emerald-700 rounded-full font-semibold">
+            <ThumbsUp className="h-3 w-3" /> {dict.sentimentLike}
+          </span>
+        )}
+        {sentiment === 'dislike' && (
+          <span className="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 bg-rose-100 text-rose-700 rounded-full font-semibold">
+            <ThumbsDown className="h-3 w-3" /> {dict.sentimentDislike}
+          </span>
+        )}
+        <span className={cn('w-2 h-2 rounded-full', annotation.is_resolved ? 'bg-emerald-400' : 'bg-sky-400')} />
+        <span className="text-xs font-medium text-slate-700">{annotation.author_name}</span>
+        <span className="text-[10px] text-slate-400 ml-auto">{new Date(annotation.created_at).toLocaleDateString()}</span>
+      </div>
+      <p className="text-sm text-slate-700 whitespace-pre-wrap">{text}</p>
     </div>
-    <p className="text-sm text-slate-600">{annotation.content}</p>
-  </div>
-);
+  );
+};
 
-const DayAnnotationSection = ({ day, dayIdx, isOpen, onToggle, annotations, noteText, setNoteText, onSubmit }: any) => {
+const DayAnnotationSection = ({ day, dayIdx, isOpen, onToggle, annotations, noteText, setNoteText, onSubmit, dict }: any) => {
   const [itemComment, setItemComment] = useState<number | null>(null);
   const [itemText, setItemText] = useState('');
+  const [daySentiment, setDaySentiment] = useState<Sentiment>(null);
 
   return (
     <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
       <button onClick={onToggle} className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-sky-50">
-        <span className="w-7 h-7 bg-sky-50 text-sky-600 rounded-full flex items-center justify-center text-xs font-bold">J{day.day_number}</span>
+        <span className="w-7 h-7 bg-sky-50 text-sky-600 rounded-full flex items-center justify-center text-xs font-bold">{dict.day.charAt(0)}{day.day_number}</span>
         <span className="text-sm font-medium text-slate-800 flex-1 truncate">{day.title}</span>
         <span className="text-xs text-slate-400">{annotations.filter((a: any) => a.level === 'day').length}</span>
         {isOpen ? <ChevronUp className="h-4 w-4 text-slate-400" /> : <ChevronDown className="h-4 w-4 text-slate-400" />}
@@ -597,21 +621,22 @@ const DayAnnotationSection = ({ day, dayIdx, isOpen, onToggle, annotations, note
           <textarea
             value={noteText}
             onChange={e => setNoteText(e.target.value)}
-            placeholder={`Commentaire pour Jour ${day.day_number}...`}
+            placeholder={dict.dayCommentPlaceholder(day.day_number)}
             rows={2}
             className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm resize-none focus:outline-none focus:ring-2 focus:ring-sky-300"
           />
+          <SentimentPicker value={daySentiment} onChange={setDaySentiment} dict={dict} />
           <button
-            onClick={() => onSubmit('day')}
+            onClick={() => { onSubmit('day', undefined, daySentiment); setDaySentiment(null); }}
             disabled={!noteText.trim()}
             className="px-3 py-1.5 bg-sky-500 text-white rounded-lg text-xs font-medium hover:bg-sky-600 disabled:opacity-50"
           >
-            Envoyer
+            {dict.send}
           </button>
 
           {/* Day-level annotations */}
           {annotations.filter((a: any) => a.level === 'day' && a.target_item_index === null).map((a: any) => (
-            <AnnotationCard key={a.id} annotation={a} />
+            <AnnotationCard key={a.id} annotation={a} dict={dict} />
           ))}
 
           {/* Items */}
@@ -629,7 +654,7 @@ const DayAnnotationSection = ({ day, dayIdx, isOpen, onToggle, annotations, note
                     <input
                       value={itemText}
                       onChange={e => setItemText(e.target.value)}
-                      placeholder="Commentaire..."
+                      placeholder={dict.itemComment}
                       className="flex-1 px-2 py-1 border border-slate-200 rounded text-xs focus:outline-none"
                     />
                     <button
@@ -649,7 +674,7 @@ const DayAnnotationSection = ({ day, dayIdx, isOpen, onToggle, annotations, note
                 )}
                 {/* Item-level annotations */}
                 {annotations.filter((a: any) => a.target_item_index === i).map((a: any) => (
-                  <AnnotationCard key={a.id} annotation={a} />
+                  <AnnotationCard key={a.id} annotation={a} dict={dict} />
                 ))}
               </div>
             ))}
