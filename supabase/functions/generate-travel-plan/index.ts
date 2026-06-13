@@ -108,7 +108,7 @@ async function callAI(systemPrompt: string, userPrompt: string): Promise<string>
         body: JSON.stringify({
           model: 'google/gemini-2.5-flash',
           messages: [{ role: 'system', content: systemPrompt }, { role: 'user', content: userPrompt }],
-          max_tokens: 4096,
+          max_tokens: 16384,
         }),
       });
       if (res.ok) {
@@ -135,7 +135,7 @@ async function callAI(systemPrompt: string, userPrompt: string): Promise<string>
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             contents: [{ role: 'user', parts: [{ text: `${systemPrompt}\n\n${userPrompt}` }] }],
-            generationConfig: { maxOutputTokens: 4096, temperature: 0.7 },
+            generationConfig: { maxOutputTokens: 16384, temperature: 0.7 },
           }),
         }
       );
@@ -162,7 +162,7 @@ async function callAI(systemPrompt: string, userPrompt: string): Promise<string>
         body: JSON.stringify({
           model: 'gpt-4o',
           messages: [{ role: 'system', content: systemPrompt }, { role: 'user', content: userPrompt }],
-          max_tokens: 4096,
+          max_tokens: 16384,
           temperature: 0.7,
         }),
       });
@@ -192,7 +192,7 @@ async function callAI(systemPrompt: string, userPrompt: string): Promise<string>
         },
         body: JSON.stringify({
           model: 'claude-sonnet-4-20250514',
-          max_tokens: 4096,
+          max_tokens: 16384,
           system: systemPrompt,
           messages: [{ role: 'user', content: userPrompt }],
         }),
