@@ -2,6 +2,7 @@
 // using the Lovable connector gateway. Supports optional PDF (or other) attachments.
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
+import { requireInternalUser } from "../_shared/require-auth.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -99,6 +100,9 @@ function buildMultipartEmail(opts: {
 
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
+  const __auth = await requireInternalUser(req);
+  if (!__auth.ok) return __auth.response;
+
 
   try {
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
