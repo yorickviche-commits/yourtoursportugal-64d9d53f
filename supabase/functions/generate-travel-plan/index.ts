@@ -251,17 +251,32 @@ Format dates as DD-Mon-YYYY (e.g. 02-Aug-2026). If exact dates aren't provided, 
 
     const raw = await callAI(systemWithExtra, userPrompt);
 
-    // Parse JSON from response
-    let parsed;
-    try {
-      const jsonMatch = raw.match(/\{[\s\S]*\}/);
-      parsed = jsonMatch ? JSON.parse(jsonMatch[0]) : null;
-    } catch {
-      parsed = null;
+    // Parse JSON from response — strip code fences, then try greedy match + partial repair
+    let parsed: any = null;
+    const cleaned = raw.replace(/```json\s*/gi, '').replace(/```/g, '').trim();
+    try { parsed = JSON.parse(cleaned); } catch {}
+    if (!parsed) {
+      const m = cleaned.match(/\{[\s\S]*\}/);
+      if (m) { try { parsed = JSON.parse(m[0]); } catch {} }
+    }
+    // Partial repair: truncate to last complete day and close braces
+    if (!parsed) {
+      try {
+        const start = cleaned.indexOf('{');
+        if (start >= 0) {
+          let s = cleaned.slice(start);
+          // cut at last closed day object inside days array
+          const lastDayEnd = s.lastIndexOf('}\n    }');
+          if (lastDayEnd > 0) {
+            s = s.slice(0, lastDayEnd + 1) + ']\n}';
+            parsed = JSON.parse(s);
+          }
+        }
+      } catch {}
     }
 
     if (!parsed || !parsed.days) {
-      return new Response(JSON.stringify({ error: 'AI returned invalid format', raw: raw.slice(0, 500) }), {
+      return new Response(JSON.stringify({ error: 'AI returned invalid format', raw: raw.slice(0, 1200), tail: raw.slice(-400) }), {
         status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
