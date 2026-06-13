@@ -493,7 +493,7 @@ const PublicProposalPage = () => {
                       setNoteText={setNoteText}
                       sentiment={sentiment}
                       setSentiment={setSentiment}
-                      onSubmit={(level, itemIdx) => handleSubmitAnnotation(level, idx, itemIdx)}
+                      onSubmit={(level: string, itemIdx?: number, daySentiment?: Sentiment) => handleSubmitAnnotation(level, idx, itemIdx, undefined, daySentiment)}
                       dict={dict}
                     />
                   ))}
