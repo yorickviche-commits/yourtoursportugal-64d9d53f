@@ -207,11 +207,11 @@ const PublicProposalPage = () => {
       <div className="max-w-4xl mx-auto px-4 py-8 space-y-12">
         {/* ─── SUMMARY ─── */}
         <section id="summary">
-          <h2 className="text-2xl font-serif text-slate-800 mb-4">Résumé du voyage</h2>
+          <h2 className="text-2xl font-serif text-slate-800 mb-4">{dict.tripSummary}</h2>
           <p className="text-slate-600 leading-relaxed mb-6">{proposal.summary_text}</p>
           <div className="bg-white rounded-xl border border-slate-200 p-5">
             <button onClick={() => setNavOpen(!navOpen)} className="flex items-center justify-between w-full text-left">
-              <span className="font-medium text-slate-700">Programme jour par jour</span>
+              <span className="font-medium text-slate-700">{dict.programDayByDay}</span>
               {navOpen ? <ChevronUp className="h-4 w-4 text-slate-400" /> : <ChevronDown className="h-4 w-4 text-slate-400" />}
             </button>
             {navOpen && (
