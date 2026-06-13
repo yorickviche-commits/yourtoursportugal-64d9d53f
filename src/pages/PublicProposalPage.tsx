@@ -74,8 +74,11 @@ const PublicProposalPage = () => {
 
   const days = proposal.days || [];
 
-  const handleSubmitAnnotation = (level: string, dayIdx?: number, itemIdx?: number) => {
-    if (!noteText.trim()) return;
+  const handleSubmitAnnotation = (level: string, dayIdx?: number, itemIdx?: number, overrideText?: string, overrideSentiment?: Sentiment) => {
+    const baseText = (overrideText ?? noteText).trim();
+    const eff = overrideSentiment !== undefined ? overrideSentiment : sentiment;
+    if (!baseText && !eff) return;
+    const content = encodeSentiment(baseText, eff);
     createAnnotation.mutate({
       proposal_id: proposal.id,
       level,
@@ -84,7 +87,7 @@ const PublicProposalPage = () => {
       author_type: 'client',
       author_name: clientName || proposal.client_name,
       author_email: proposal.client_email || null,
-      content: noteText,
+      content,
       is_resolved: false,
       parent_id: null,
     });
@@ -93,10 +96,12 @@ const PublicProposalPage = () => {
       event_type: 'annotation_added',
       actor_name: clientName || proposal.client_name,
       actor_email: proposal.client_email || null,
-      note: noteText.slice(0, 100),
+      note: content.slice(0, 100),
     });
     setNoteText('');
+    setSentiment(null);
   };
+
 
   const handleApprove = () => {
     updateProposal.mutate({ id: proposal.id, status: 'approved', approved_at: new Date().toISOString() });
