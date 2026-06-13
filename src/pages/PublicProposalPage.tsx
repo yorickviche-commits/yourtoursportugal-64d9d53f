@@ -1,8 +1,10 @@
 import { useParams } from 'react-router-dom';
 import { useProposalByToken, useProposalAnnotations, useProposalEvents, useCreateAnnotation, useCreateEvent, useUpdateProposal, ProposalDay, Proposal } from '@/hooks/useProposalsQuery';
 import { useState, useEffect, useRef, lazy, Suspense, Component, ReactNode } from 'react';
-import { MessageSquare, Check, Star, Phone, Mail, Globe, ChevronDown, ChevronUp, Send, X, Clock, MapPin, Hotel } from 'lucide-react';
+import { MessageSquare, Check, Star, Phone, Mail, Globe, ChevronDown, ChevronUp, Send, X, Clock, MapPin, Hotel, ThumbsUp, ThumbsDown } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { getProposalDict, encodeSentiment, decodeSentiment, Sentiment } from '@/lib/proposalI18n';
+
 
 // Lazy load map to avoid react-leaflet context crash
 const LazyMap = lazy(() => import('@/components/proposal/ProposalMap'));
