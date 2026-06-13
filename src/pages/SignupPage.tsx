@@ -7,6 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2 } from 'lucide-react';
+import GoogleSignInButton from '@/components/GoogleSignInButton';
 
 const SignupPage = () => {
   const [fullName, setFullName] = useState('');
@@ -62,6 +63,15 @@ const SignupPage = () => {
               Criar conta
             </Button>
           </form>
+
+          <div className="relative my-4">
+            <div className="absolute inset-0 flex items-center"><span className="w-full border-t" /></div>
+            <div className="relative flex justify-center text-xs uppercase">
+              <span className="bg-card px-2 text-muted-foreground">ou</span>
+            </div>
+          </div>
+
+          <GoogleSignInButton label="Registar com Google" />
           <p className="mt-4 text-center text-sm text-muted-foreground">
             Já tens conta? <Link to="/login" className="text-primary hover:underline">Entrar</Link>
           </p>
