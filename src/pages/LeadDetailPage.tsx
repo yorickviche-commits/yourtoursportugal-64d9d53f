@@ -1292,4 +1292,16 @@ const LeadDetailPage = ({ mode = 'lead' }: { mode?: 'lead' | 'booking' } = {}) =
   );
 };
 
+function PaymentBadge({ leadId, budgetLabel }: { leadId: string; budgetLabel: string }) {
+  const { data } = usePaymentsSummary(leadId);
+  const net = data?.net ?? 0;
+  const paid = net > 0;
+  return (
+    <div className={cn("text-xs font-bold px-3 py-1.5 rounded", paid ? "bg-green-600 text-white" : "bg-destructive text-destructive-foreground")}>
+      {paid ? `PAID ${net.toFixed(0)}€` : `NOT PAID 0€`} - {budgetLabel}
+    </div>
+  );
+}
+
 export default LeadDetailPage;
+
