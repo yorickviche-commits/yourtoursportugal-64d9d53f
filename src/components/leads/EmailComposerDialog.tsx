@@ -78,7 +78,13 @@ const EmailComposerDialog = ({ lead, children, open: openProp, onOpenChange, ini
   const { toast } = useToast();
   const qc = useQueryClient();
 
-  const PROPOSAL_TEMPLATES = ['send_proposal', 'proposal_followup', 'followup_3days', 'followup_7days', 'breakup'];
+  // Templates onde o PDF + Link Interactivo da proposta devem ser anexados/incluídos
+  const PROPOSAL_TEMPLATES = [
+    // Sales pipeline (todos — o plano é sempre a referência principal)
+    'send_proposal', 'proposal_followup', 'followup_3days', 'followup_7days', 'breakup',
+    // Ops pipeline — Booking Confirmado e Briefing Guia também devem incluir o plano
+    'booking_confirmed', 'guide_briefing',
+  ];
   const isProposalTemplate = useMemo(
     () => !!selectedTemplate && PROPOSAL_TEMPLATES.includes(selectedTemplate),
     [selectedTemplate],
