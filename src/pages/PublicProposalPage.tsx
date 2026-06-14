@@ -340,7 +340,7 @@ const PublicProposalPage = () => {
                             <textarea
                               value={itemDraft}
                               onChange={e => setItemDraft(e.target.value)}
-                              placeholder={openItem?.sentiment === 'dislike' ? dict.dayCommentPlaceholder : dict.dayCommentPlaceholder}
+                              placeholder={dict.dayCommentPlaceholder(idx + 1)}
                               className="w-full text-sm bg-transparent resize-none outline-none placeholder:text-slate-400"
                               rows={2}
                               autoFocus
