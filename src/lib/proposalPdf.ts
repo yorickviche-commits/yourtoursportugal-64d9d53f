@@ -1,5 +1,6 @@
 import jsPDF from 'jspdf';
 
+interface ProposalDayImage { url?: string; caption?: string }
 interface ProposalDay {
   day_number?: number;
   title?: string;
@@ -12,6 +13,8 @@ interface ProposalDay {
   // current shape
   items?: string[];
   accommodation?: string | { label?: string; hotel_name?: string; note?: string } | null;
+  cover_image_url?: string;
+  images?: ProposalDayImage[];
 }
 
 export interface ProposalLite {
@@ -24,7 +27,27 @@ export interface ProposalLite {
   total_value_eur?: number | null;
   public_token?: string;
   booking_ref?: string | null;
+  hero_image_url?: string | null;
   days?: ProposalDay[] | unknown;
+}
+
+async function fetchImageAsDataUrl(url: string): Promise<{ dataUrl: string; format: 'JPEG' | 'PNG' } | null> {
+  try {
+    const res = await fetch(url, { mode: 'cors' });
+    if (!res.ok) return null;
+    const blob = await res.blob();
+    const format: 'JPEG' | 'PNG' = blob.type.includes('png') ? 'PNG' : 'JPEG';
+    const dataUrl: string = await new Promise((resolve, reject) => {
+      const r = new FileReader();
+      r.onload = () => resolve(r.result as string);
+      r.onerror = reject;
+      r.readAsDataURL(blob);
+    });
+    return { dataUrl, format };
+  } catch (e) {
+    console.warn('fetchImageAsDataUrl failed', url, e);
+    return null;
+  }
 }
 
 const dayItems = (d: ProposalDay): string[] => {
@@ -91,7 +114,7 @@ export function buildProposalEmailText(p: ProposalLite, weblink: string): string
   return lines.join('\n');
 }
 
-export function buildProposalPdfBase64(p: ProposalLite, weblink: string): { base64: string; filename: string } {
+export async function buildProposalPdfBase64(p: ProposalLite, weblink: string): Promise<{ base64: string; filename: string }> {
   const doc = new jsPDF({ unit: 'pt', format: 'a4' });
   const pageW = doc.internal.pageSize.getWidth();
   const pageH = doc.internal.pageSize.getHeight();
@@ -102,6 +125,32 @@ export function buildProposalPdfBase64(p: ProposalLite, weblink: string): { base
     if (y + h > pageH - margin) {
       doc.addPage();
       y = margin;
+    }
+  };
+
+  const days = Array.isArray(p.days) ? (p.days as ProposalDay[]) : [];
+
+  // Pre-fetch all images in parallel
+  const heroUrl = p.hero_image_url || days[0]?.cover_image_url || days[0]?.images?.[0]?.url || '';
+  const dayImageUrls: string[][] = days.map(d => {
+    const urls = (d.images || []).map(i => i?.url).filter(Boolean) as string[];
+    if (d.cover_image_url && !urls.includes(d.cover_image_url)) urls.unshift(d.cover_image_url);
+    return urls.slice(0, 2);
+  });
+  const allUrls = [heroUrl, ...dayImageUrls.flat()].filter(Boolean);
+  const fetched = await Promise.all(allUrls.map(u => fetchImageAsDataUrl(u)));
+  const imgCache = new Map<string, { dataUrl: string; format: 'JPEG' | 'PNG' } | null>();
+  allUrls.forEach((u, i) => imgCache.set(u, fetched[i]));
+
+  const drawImage = (url: string, x: number, yy: number, w: number, h: number) => {
+    const img = imgCache.get(url);
+    if (!img) return false;
+    try {
+      doc.addImage(img.dataUrl, img.format, x, yy, w, h, undefined, 'FAST');
+      return true;
+    } catch (e) {
+      console.warn('addImage failed', e);
+      return false;
     }
   };
 
@@ -116,14 +165,25 @@ export function buildProposalPdfBase64(p: ProposalLite, weblink: string): { base
   doc.setFontSize(10);
   doc.text('Tailored Travel Plan', margin, 60);
   doc.text('reservas@yourtours.pt', pageW - margin, 60, { align: 'right' });
-  y = 120;
+  y = 110;
+
+  // Hero cover image (21:9 like the planner)
+  if (heroUrl && imgCache.get(heroUrl)) {
+    const w = pageW - margin * 2;
+    const h = Math.round((w * 9) / 21);
+    ensureSpace(h + 12);
+    drawImage(heroUrl, margin, y, w, h);
+    y += h + 14;
+  }
 
   doc.setTextColor(20, 20, 20);
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(20);
   const title = p.title || 'Travel Plan';
-  doc.text(doc.splitTextToSize(title, pageW - margin * 2), margin, y);
-  y += 28;
+  const titleLines = doc.splitTextToSize(title, pageW - margin * 2);
+  ensureSpace(titleLines.length * 24 + 6);
+  doc.text(titleLines, margin, y);
+  y += titleLines.length * 24 + 4;
 
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(11);
@@ -133,10 +193,14 @@ export function buildProposalPdfBase64(p: ProposalLite, weblink: string): { base
   if (p.booking_ref) meta.push(`ID: ${p.booking_ref}`);
   if (p.date_range) meta.push(p.date_range);
   if (p.participants) meta.push(p.participants);
-  doc.text(meta.join('  ·  '), margin, y);
-  y += 22;
+  if (meta.length) {
+    ensureSpace(20);
+    doc.text(meta.join('  ·  '), margin, y);
+    y += 22;
+  }
 
   if (weblink) {
+    ensureSpace(20);
     doc.setTextColor(10, 37, 64);
     doc.setFont('helvetica', 'bold');
     doc.text('Interactive version:', margin, y);
@@ -155,8 +219,6 @@ export function buildProposalPdfBase64(p: ProposalLite, weblink: string): { base
     doc.text(lines, margin, y);
     y += lines.length * 14 + 10;
   }
-
-  const days = Array.isArray(p.days) ? (p.days as ProposalDay[]) : [];
 
   if (days.length) {
     ensureSpace(24);
@@ -245,6 +307,21 @@ export function buildProposalPdfBase64(p: ProposalLite, weblink: string): { base
       ensureSpace(14);
       doc.text(`Night: ${acc}`, margin, y);
       y += 16;
+    }
+
+    // Two images per day at the bottom (matching planner layout)
+    const imgs = dayImageUrls[idx].filter(u => imgCache.get(u));
+    if (imgs.length) {
+      const gap = 10;
+      const totalW = pageW - margin * 2;
+      const imgW = imgs.length === 1 ? totalW : (totalW - gap) / 2;
+      const imgH = Math.round((imgW * 2) / 3);
+      ensureSpace(imgH + 10);
+      imgs.forEach((u, i) => {
+        const x = margin + i * (imgW + gap);
+        drawImage(u, x, y, imgW, imgH);
+      });
+      y += imgH + 12;
     }
   });
 
