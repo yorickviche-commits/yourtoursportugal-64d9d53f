@@ -234,10 +234,12 @@ interface LeadCostingEditorProps {
   paxChildren: number;
   destination?: string;
   leadId?: string;
+  pvpOverride?: number | null;
+  onPvpOverrideChange?: (v: number | null) => void;
 }
 
 // ─── Component ───────────────────────────────────────
-const LeadCostingEditor = ({ costingDays, onChange, onSave, saving, plannerDays, pax, paxChildren, destination, leadId }: LeadCostingEditorProps) => {
+const LeadCostingEditor = ({ costingDays, onChange, onSave, saving, plannerDays, pax, paxChildren, destination, leadId, pvpOverride: pvpOverrideProp, onPvpOverrideChange }: LeadCostingEditorProps) => {
   const [expandedDays, setExpandedDays] = useState<number[]>(costingDays.length > 0 ? costingDays.map(d => d.day) : []);
   const [autoFilling, setAutoFilling] = useState(false);
   const [importingTP, setImportingTP] = useState(false);
