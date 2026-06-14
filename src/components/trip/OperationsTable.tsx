@@ -196,11 +196,12 @@ const OperationsTable = ({ costItems, tripId, tripCode, startDate }: OperationsT
       <input
         ref={fileInputRef}
         type="file"
-        accept=".pdf,.jpg,.jpeg,.png,.webp"
+        multiple
+        accept=".pdf,.jpg,.jpeg,.png,.webp,.doc,.docx,.xls,.xlsx,.csv,.txt,.zip"
         className="hidden"
         onChange={e => {
-          const file = e.target.files?.[0];
-          if (file && activeUploadCostId) handleInvoiceUpload(activeUploadCostId, file);
+          const files = e.target.files;
+          if (files && files.length > 0 && activeUploadCostId) handleInvoiceUpload(activeUploadCostId, files);
           e.target.value = '';
         }}
       />
