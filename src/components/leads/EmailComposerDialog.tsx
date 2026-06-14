@@ -349,6 +349,18 @@ const EmailComposerDialog = ({ lead, children, open: openProp, onOpenChange, ini
         {/* Step 3: Preview & Edit */}
         {step === 'preview' && generatedEmail && (
           <div className="space-y-4">
+            {/* Para */}
+            <div>
+              <label className="text-xs font-semibold text-muted-foreground mb-1 block">Para</label>
+              <Input
+                type="email"
+                className="text-sm"
+                placeholder="Email do destinatário"
+                value={recipientEmail}
+                onChange={e => setRecipientEmail(e.target.value)}
+              />
+            </div>
+
             {/* Subject */}
             <div>
               <div className="flex items-center justify-between mb-1">
