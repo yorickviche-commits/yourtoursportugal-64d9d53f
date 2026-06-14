@@ -1,5 +1,6 @@
 import jsPDF from 'jspdf';
 
+interface ProposalDayImage { url?: string; caption?: string }
 interface ProposalDay {
   day_number?: number;
   title?: string;
@@ -12,6 +13,8 @@ interface ProposalDay {
   // current shape
   items?: string[];
   accommodation?: string | { label?: string; hotel_name?: string; note?: string } | null;
+  cover_image_url?: string;
+  images?: ProposalDayImage[];
 }
 
 export interface ProposalLite {
@@ -24,7 +27,27 @@ export interface ProposalLite {
   total_value_eur?: number | null;
   public_token?: string;
   booking_ref?: string | null;
+  hero_image_url?: string | null;
   days?: ProposalDay[] | unknown;
+}
+
+async function fetchImageAsDataUrl(url: string): Promise<{ dataUrl: string; format: 'JPEG' | 'PNG' } | null> {
+  try {
+    const res = await fetch(url, { mode: 'cors' });
+    if (!res.ok) return null;
+    const blob = await res.blob();
+    const format: 'JPEG' | 'PNG' = blob.type.includes('png') ? 'PNG' : 'JPEG';
+    const dataUrl: string = await new Promise((resolve, reject) => {
+      const r = new FileReader();
+      r.onload = () => resolve(r.result as string);
+      r.onerror = reject;
+      r.readAsDataURL(blob);
+    });
+    return { dataUrl, format };
+  } catch (e) {
+    console.warn('fetchImageAsDataUrl failed', url, e);
+    return null;
+  }
 }
 
 const dayItems = (d: ProposalDay): string[] => {
