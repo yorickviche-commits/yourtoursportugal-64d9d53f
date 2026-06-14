@@ -29,9 +29,15 @@ interface LeadContext {
 interface EmailComposerDialogProps {
   lead: LeadContext;
   children?: React.ReactNode;
+  /** Controlled mode (no trigger rendered). */
+  open?: boolean;
+  onOpenChange?: (v: boolean) => void;
+  /** Preselect a template key when opening. */
+  initialTemplateKey?: string | null;
 }
 
-const EMAIL_TEMPLATES = [
+export const AI_EMAIL_TEMPLATES = [
+
   { key: 'new_inquiry', label: '1. Nova Consulta', stage: 'Sales', description: 'Resposta inicial + discovery questions' },
   { key: 'send_proposal', label: '★ Enviar Proposta', stage: 'Sales', description: 'Email curto a apresentar a proposta (anexar PDF no Gmail)' },
   { key: 'proposal_followup', label: '2. Follow-up Proposta (24h)', stage: 'Sales', description: 'Verificar se recebeu a proposta' },
