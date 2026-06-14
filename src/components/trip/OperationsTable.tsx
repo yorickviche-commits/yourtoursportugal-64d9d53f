@@ -49,6 +49,7 @@ interface OperationsTableProps {
 const OperationsTable = ({ costItems, tripId, tripCode, startDate }: OperationsTableProps) => {
   const { data: operations = [], isLoading } = useTripOperationsQuery(tripId);
   const upsertOp = useUpsertTripOperation();
+  const qc = useQueryClient();
   const { toast } = useToast();
   const [expandedDays, setExpandedDays] = useState<Set<number>>(new Set([1, 2, 3, 4, 5, 6, 7, 8, 9, 10]));
   const [uploadingId, setUploadingId] = useState<string | null>(null);
