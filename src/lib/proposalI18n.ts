@@ -17,6 +17,7 @@ export interface ProposalDict {
   // Nav
   summary: string;
   day: string;
+  dayShort: (n: number) => string;
   map: string;
   reviews: string;
   about: string;
@@ -28,6 +29,7 @@ export interface ProposalDict {
   mapUnavailable: string;
   mapLoading: string;
   travellersSay: string;
+  reviewsList: { name: string; text: string; stars: number }[];
   aboutUs: string;
   aboutBody: string;
   website: string;
@@ -74,6 +76,7 @@ const en: ProposalDict = {
   defaultDepositNote: '50% deposit · 100% refundable',
   summary: 'Summary',
   day: 'Day',
+  dayShort: (n) => `D${n}`,
   map: 'Map',
   reviews: 'Reviews',
   about: 'About',
@@ -84,6 +87,12 @@ const en: ProposalDict = {
   mapUnavailable: 'Map unavailable',
   mapLoading: 'Loading map…',
   travellersSay: 'What travellers say',
+  reviewsList: [
+    { name: 'Sophie M.', text: 'An unforgettable trip. The team organised everything perfectly, with passionate guides and beautiful hotels.', stars: 5 },
+    { name: 'Jean-Pierre L.', text: 'Exceptional service from beginning to end. The level of personalisation was remarkable. Highly recommended.', stars: 5 },
+    { name: 'Marie C.', text: 'Our local guide was wonderful. Every detail was carefully considered and Portugal felt even more special from the inside.', stars: 5 },
+    { name: 'François D.', text: 'Thank you for a truly unique experience. Local craftsmanship and gastronomy were the highlights of our stay.', stars: 5 },
+  ],
   aboutUs: 'About Your Tours Portugal',
   aboutBody: 'Your Tours Portugal is a bespoke travel agency specialised in authentic Portuguese experiences. We craft tailor-made itineraries that reveal the very best of local culture, gastronomy and craftsmanship with passionate local guides.',
   website: 'Website',
@@ -128,6 +137,7 @@ const fr: ProposalDict = {
   defaultDepositNote: 'Acompte 50% · 100% remboursable',
   summary: 'Résumé',
   day: 'Jour',
+  dayShort: (n) => `J${n}`,
   map: 'Carte',
   reviews: 'Avis',
   about: 'À propos',
@@ -138,6 +148,12 @@ const fr: ProposalDict = {
   mapUnavailable: 'Carte indisponible',
   mapLoading: 'Chargement de la carte…',
   travellersSay: 'Ce que disent nos voyageurs',
+  reviewsList: [
+    { name: 'Sophie M.', text: 'Un voyage inoubliable ! L’équipe a tout organisé à la perfection. Les guides étaient passionnés et les hôtels magnifiques.', stars: 5 },
+    { name: 'Jean-Pierre L.', text: 'Service exceptionnel du début à la fin. La personnalisation du voyage était remarquable. Nous recommandons vivement !', stars: 5 },
+    { name: 'Marie C.', text: 'Notre guide francophone était formidable. Chaque détail était pensé. Le Portugal est encore plus beau vu de l’intérieur.', stars: 5 },
+    { name: 'François D.', text: 'Merci pour cette expérience unique. L’artisanat local et la gastronomie étaient les points forts de notre séjour.', stars: 5 },
+  ],
   aboutUs: 'À propos de Your Tours Portugal',
   aboutBody: 'Your Tours Portugal est une agence de voyages sur mesure spécialisée dans les expériences authentiques au Portugal. Nous créons des itinéraires personnalisés qui révèlent le meilleur de la culture, de la gastronomie et de l’artisanat portugais, avec des guides locaux francophones passionnés.',
   website: 'Site web',
