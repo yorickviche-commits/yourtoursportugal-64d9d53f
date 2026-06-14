@@ -39,6 +39,8 @@ const PublicProposalPage = () => {
   const [sentiment, setSentiment] = useState<Sentiment>(null);
   const [submitted, setSubmitted] = useState(false);
   const [navOpen, setNavOpen] = useState(false);
+  const [openItem, setOpenItem] = useState<{ day: number; item: number; sentiment: Sentiment } | null>(null);
+  const [itemDraft, setItemDraft] = useState('');
 
   // Log opened event
   useEffect(() => {
@@ -256,13 +258,120 @@ const PublicProposalPage = () => {
 
               <div className="p-5">
                 <h4 className="text-xs uppercase tracking-wider text-slate-400 font-semibold mb-3">{dict.itineraryIncludes}</h4>
-                <ul className="space-y-2.5">
-                  {day.items.map((item, i) => (
-                    <li key={i} className="flex gap-3 text-sm text-slate-600">
-                      <span className="w-1.5 h-1.5 rounded-full bg-sky-400 mt-2 shrink-0" />
-                      <span>{item}</span>
-                    </li>
-                  ))}
+                <ul className="space-y-1.5">
+                  {day.items.map((item, i) => {
+                    const itemAnns = annotations.filter((a: any) => a.level === 'day' && a.target_day_index === idx && a.target_item_index === i);
+                    const itemSentiments = itemAnns.map(a => decodeSentiment(a.content || '').sentiment);
+                    const isLiked = itemSentiments.includes('like');
+                    const isChange = itemSentiments.includes('dislike');
+                    const isOpen = openItem?.day === idx && openItem?.item === i;
+                    return (
+                      <li key={i} className={cn(
+                        'rounded-lg transition-colors',
+                        isLiked && 'bg-emerald-50',
+                        isChange && 'bg-amber-50',
+                        !isLiked && !isChange && 'hover:bg-slate-50',
+                      )}>
+                        <div className="flex items-start gap-2 px-2 py-1.5">
+                          <span className={cn(
+                            'w-1.5 h-1.5 rounded-full mt-2 shrink-0',
+                            isLiked ? 'bg-emerald-500' : isChange ? 'bg-amber-500' : 'bg-sky-400',
+                          )} />
+                          <span className="flex-1 text-sm text-slate-700">{item}</span>
+                          <div className="flex items-center gap-1 shrink-0">
+                            <button
+                              onClick={() => {
+                                if (isLiked) return; // already liked
+                                handleSubmitAnnotation('day', idx, i, '', 'like');
+                                setOpenItem({ day: idx, item: i, sentiment: 'like' });
+                                setItemDraft('');
+                              }}
+                              title={dict.sentimentLike}
+                              className={cn(
+                                'p-1.5 rounded-md transition-all',
+                                isLiked
+                                  ? 'bg-emerald-500 text-white shadow-sm'
+                                  : 'text-slate-300 hover:text-emerald-600 hover:bg-emerald-100',
+                              )}
+                            >
+                              <ThumbsUp className="h-3.5 w-3.5" />
+                            </button>
+                            <button
+                              onClick={() => {
+                                if (!isChange) handleSubmitAnnotation('day', idx, i, '', 'dislike');
+                                setOpenItem(isOpen ? null : { day: idx, item: i, sentiment: 'dislike' });
+                                setItemDraft('');
+                              }}
+                              title={dict.sentimentDislike}
+                              className={cn(
+                                'p-1.5 rounded-md transition-all',
+                                isChange
+                                  ? 'bg-amber-500 text-white shadow-sm'
+                                  : 'text-slate-300 hover:text-amber-600 hover:bg-amber-100',
+                              )}
+                            >
+                              <ThumbsDown className="h-3.5 w-3.5" />
+                            </button>
+                          </div>
+                        </div>
+
+                        {/* Existing comments for this item */}
+                        {itemAnns.filter(a => decodeSentiment(a.content || '').text).map(a => {
+                          const { sentiment: s, text } = decodeSentiment(a.content || '');
+                          return (
+                            <div key={a.id} className={cn(
+                              'mx-2 mb-1.5 px-3 py-1.5 rounded-md text-xs border-l-2',
+                              s === 'like' ? 'border-emerald-400 bg-white text-emerald-800' :
+                              s === 'dislike' ? 'border-amber-400 bg-white text-amber-800' :
+                              'border-sky-400 bg-white text-slate-700',
+                            )}>
+                              <div className="font-medium text-[10px] uppercase tracking-wide opacity-60 mb-0.5">{a.author_name}</div>
+                              <div>{text}</div>
+                            </div>
+                          );
+                        })}
+
+                        {/* Inline comment composer */}
+                        {isOpen && (
+                          <div className={cn(
+                            'mx-2 mb-2 p-2 rounded-md border',
+                            openItem?.sentiment === 'like' ? 'border-emerald-200 bg-white' : 'border-amber-200 bg-white',
+                          )}>
+                            <textarea
+                              value={itemDraft}
+                              onChange={e => setItemDraft(e.target.value)}
+                              placeholder={openItem?.sentiment === 'dislike' ? dict.dayCommentPlaceholder : dict.dayCommentPlaceholder}
+                              className="w-full text-sm bg-transparent resize-none outline-none placeholder:text-slate-400"
+                              rows={2}
+                              autoFocus
+                            />
+                            <div className="flex justify-end gap-2 mt-1">
+                              <button
+                                onClick={() => { setOpenItem(null); setItemDraft(''); }}
+                                className="text-xs text-slate-400 hover:text-slate-600 px-2 py-1"
+                              >
+                                {dict.send === 'Send' ? 'Cancel' : (dict.send === 'Enviar' ? 'Cancelar' : (dict.send === 'Envoyer' ? 'Annuler' : (dict.send === 'Invia' ? 'Annulla' : (dict.send === 'Senden' ? 'Abbrechen' : 'Cancel'))))}
+                              </button>
+                              <button
+                                onClick={() => {
+                                  if (!itemDraft.trim()) { setOpenItem(null); return; }
+                                  handleSubmitAnnotation('day', idx, i, itemDraft.trim(), openItem?.sentiment ?? null);
+                                  setOpenItem(null);
+                                  setItemDraft('');
+                                }}
+                                className={cn(
+                                  'text-xs px-3 py-1 rounded-md text-white font-medium',
+                                  openItem?.sentiment === 'like' ? 'bg-emerald-500 hover:bg-emerald-600' : 'bg-amber-500 hover:bg-amber-600',
+                                )}
+                              >
+                                <Send className="h-3 w-3 inline mr-1" /> {dict.send}
+                              </button>
+                            </div>
+                          </div>
+                        )}
+                      </li>
+                    );
+                  })}
                 </ul>
 
                 {day.accommodation && (
