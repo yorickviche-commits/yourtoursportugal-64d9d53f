@@ -257,8 +257,9 @@ const EmailComposerDialog = ({ lead, children, open: openProp, onOpenChange, ini
   };
 
   const handleCopy = async () => {
+    const finalBody = buildFinalBody();
     // Build Gmail-compatible HTML
-    const htmlBody = editedBody
+    const htmlBody = finalBody
       .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
       .replace(/\n/g, '<br/>');
 
@@ -268,22 +269,27 @@ const EmailComposerDialog = ({ lead, children, open: openProp, onOpenChange, ini
       await navigator.clipboard.write([
         new ClipboardItem({
           'text/html': new Blob([html], { type: 'text/html' }),
-          'text/plain': new Blob([editedBody], { type: 'text/plain' }),
+          'text/plain': new Blob([finalBody], { type: 'text/plain' }),
         }),
       ]);
       setCopied(true);
-      toast({ title: 'Copiado!', description: 'Email pronto para colar no Gmail (Ctrl+V)' });
+      setEditedBody(finalBody);
+      toast({
+        title: 'Copiado!',
+        description: isProposalTemplate && attachPdf && proposal
+          ? 'Email copiado. Lembra-te de anexar o PDF da proposta no Gmail.'
+          : 'Email pronto para colar no Gmail (Ctrl+V)',
+      });
       void logToHistory('copied');
       setTimeout(() => setCopied(false), 3000);
     } catch {
-      // Fallback to plain text
-      await navigator.clipboard.writeText(editedBody);
+      await navigator.clipboard.writeText(finalBody);
       setCopied(true);
+      setEditedBody(finalBody);
       toast({ title: 'Copiado (texto)', description: 'Colado como texto simples' });
       void logToHistory('copied');
       setTimeout(() => setCopied(false), 3000);
     }
-
   };
 
   const handleCopySubject = async () => {
@@ -292,11 +298,19 @@ const EmailComposerDialog = ({ lead, children, open: openProp, onOpenChange, ini
   };
 
   const handleOpenGmail = () => {
-    const url = `https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(recipientEmail || '')}&su=${encodeURIComponent(editedSubject)}&body=${encodeURIComponent(editedBody)}`;
+    const finalBody = buildFinalBody();
+    setEditedBody(finalBody);
+    const url = `https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(recipientEmail || '')}&su=${encodeURIComponent(editedSubject)}&body=${encodeURIComponent(finalBody)}`;
     window.open(url, '_blank', 'noopener,noreferrer');
-    toast({ title: 'Gmail aberto', description: 'Anexa o PDF da proposta antes de enviar.' });
+    toast({
+      title: 'Gmail aberto',
+      description: isProposalTemplate && attachPdf && proposal
+        ? 'Anexa o PDF da proposta antes de enviar.'
+        : 'Pronto para enviar.',
+    });
     void logToHistory('gmail');
   };
+
 
   const selectedTemplateInfo = AI_EMAIL_TEMPLATES.find(t => t.key === selectedTemplate);
 
