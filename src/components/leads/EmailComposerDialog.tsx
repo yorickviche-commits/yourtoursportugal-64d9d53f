@@ -204,6 +204,13 @@ const EmailComposerDialog = ({ lead, children, open: openProp, onOpenChange, ini
       if ((data as any)?.error) throw new Error((data as any).error);
       setEditedBody(finalBody);
       setSent(true);
+      // Mark proposal as sent so the public link becomes accessible to anon visitors
+      if (isProposalTemplate && proposal?.id && (proposal as any).status === 'draft') {
+        try {
+          await supabase.from('proposals').update({ status: 'sent', sent_at: new Date().toISOString() }).eq('id', proposal.id);
+          qc.invalidateQueries({ queryKey: ['proposals'] });
+        } catch (e) { console.warn('Update proposal status failed', e); }
+      }
       toast({
         title: 'Email enviado',
         description: attachments.length
