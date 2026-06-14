@@ -161,14 +161,17 @@ const EmailComposerDialog = ({ lead, children, open: openProp, onOpenChange, ini
       ]);
       setCopied(true);
       toast({ title: 'Copiado!', description: 'Email pronto para colar no Gmail (Ctrl+V)' });
+      void logToHistory('copied');
       setTimeout(() => setCopied(false), 3000);
     } catch {
       // Fallback to plain text
       await navigator.clipboard.writeText(editedBody);
       setCopied(true);
       toast({ title: 'Copiado (texto)', description: 'Colado como texto simples' });
+      void logToHistory('copied');
       setTimeout(() => setCopied(false), 3000);
     }
+
   };
 
   const handleCopySubject = async () => {
