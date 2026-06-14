@@ -1,4 +1,5 @@
 import { useState, useMemo, useCallback, useRef } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { ChevronDown, ChevronRight, Eye, Upload, Clock, Paperclip, FileText, ExternalLink, Loader2 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -48,6 +49,7 @@ interface OperationsTableProps {
 const OperationsTable = ({ costItems, tripId, tripCode, startDate }: OperationsTableProps) => {
   const { data: operations = [], isLoading } = useTripOperationsQuery(tripId);
   const upsertOp = useUpsertTripOperation();
+  const qc = useQueryClient();
   const { toast } = useToast();
   const [expandedDays, setExpandedDays] = useState<Set<number>>(new Set([1, 2, 3, 4, 5, 6, 7, 8, 9, 10]));
   const [uploadingId, setUploadingId] = useState<string | null>(null);
@@ -102,25 +104,54 @@ const OperationsTable = ({ costItems, tripId, tripCode, startDate }: OperationsT
     }
   }, [upsertOp, tripId, toast]);
 
-  const handleInvoiceUpload = async (costItemId: string, file: File) => {
+  const handleInvoiceUpload = async (costItemId: string, files: FileList | File[]) => {
+    const list = Array.from(files);
+    if (list.length === 0) return;
     setUploadingId(costItemId);
     try {
-      const ext = file.name.split('.').pop();
-      const path = `invoices/${tripId}/${costItemId}_${Date.now()}.${ext}`;
-      const { error: uploadError } = await supabase.storage.from('supplier-files').upload(path, file);
-      if (uploadError) throw uploadError;
+      const { data: { user } } = await supabase.auth.getUser();
+      let lastUrl: string | null = null;
+      let lastName: string | null = null;
 
-      const { data: { publicUrl } } = supabase.storage.from('supplier-files').getPublicUrl(path);
+      for (const file of list) {
+        const ext = file.name.split('.').pop();
+        const path = `invoices/${tripId}/${costItemId}_${Date.now()}_${Math.random().toString(36).slice(2, 8)}.${ext}`;
+        const { error: uploadError } = await supabase.storage.from('supplier-files').upload(path, file);
+        if (uploadError) throw uploadError;
+        const { data: { publicUrl } } = supabase.storage.from('supplier-files').getPublicUrl(path);
+        lastUrl = publicUrl;
+        lastName = file.name;
 
-      await upsertOp.mutateAsync({
-        cost_item_id: costItemId,
-        trip_id: tripId,
-        invoice_file_url: publicUrl,
-        invoice_file_name: file.name,
-        invoice_status: 'invoice_received',
+        // Persist each file in the line's history (notes) — unlimited, downloadable
+        const { error: noteErr } = await supabase.from('item_notes').insert({
+          entity_type: 'cost_item',
+          entity_id: costItemId,
+          note_text: `📎 Ficheiro carregado: ${file.name}`,
+          attachment_url: publicUrl,
+          attachment_name: file.name,
+          created_by: user?.id || null,
+        } as any);
+        if (noteErr) throw noteErr;
+      }
+
+      // Update operation with the latest file as primary invoice reference (keeps the green file icon)
+      if (lastUrl) {
+        await upsertOp.mutateAsync({
+          cost_item_id: costItemId,
+          trip_id: tripId,
+          invoice_file_url: lastUrl,
+          invoice_file_name: lastName,
+          invoice_status: 'invoice_received',
+        });
+      }
+
+      // Refresh the per-item notes list so history reflects the new entries
+      await qc.invalidateQueries({ queryKey: ['item_notes', 'cost_item', costItemId] });
+
+      toast({
+        title: list.length > 1 ? `${list.length} ficheiros carregados` : 'Ficheiro carregado',
+        description: 'Disponíveis no histórico (📝)',
       });
-
-      toast({ title: 'Fatura carregada com sucesso' });
     } catch (err: any) {
       toast({ title: 'Erro no upload', description: err.message, variant: 'destructive' });
     } finally {
@@ -165,11 +196,12 @@ const OperationsTable = ({ costItems, tripId, tripCode, startDate }: OperationsT
       <input
         ref={fileInputRef}
         type="file"
-        accept=".pdf,.jpg,.jpeg,.png,.webp"
+        multiple
+        accept=".pdf,.jpg,.jpeg,.png,.webp,.doc,.docx,.xls,.xlsx,.csv,.txt,.zip"
         className="hidden"
         onChange={e => {
-          const file = e.target.files?.[0];
-          if (file && activeUploadCostId) handleInvoiceUpload(activeUploadCostId, file);
+          const files = e.target.files;
+          if (files && files.length > 0 && activeUploadCostId) handleInvoiceUpload(activeUploadCostId, files);
           e.target.value = '';
         }}
       />
@@ -325,22 +357,25 @@ const OperationsTable = ({ costItems, tripId, tripCode, startDate }: OperationsT
                             </Select>
                           </div>
 
-                          {/* Invoice Upload */}
+                          {/* Invoice Upload (multi, unlimited — stored in history) */}
                           <div className="flex items-center justify-center gap-0.5">
                             {uploadingId === item.id ? (
                               <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />
-                            ) : invoiceUrl ? (
-                              <a href={invoiceUrl} target="_blank" rel="noopener noreferrer" className="p-1 hover:bg-muted rounded" title={invoiceName || 'Ver fatura'}>
-                                <FileText className="h-3 w-3 text-[hsl(var(--success))]" />
-                              </a>
                             ) : (
-                              <button
-                                className="p-1 hover:bg-muted rounded"
-                                title="Upload fatura"
-                                onClick={() => { setActiveUploadCostId(item.id); fileInputRef.current?.click(); }}
-                              >
-                                <Upload className="h-3 w-3 text-muted-foreground" />
-                              </button>
+                              <>
+                                <button
+                                  className="p-1 hover:bg-muted rounded"
+                                  title={invoiceUrl ? 'Adicionar mais ficheiros (sem limite)' : 'Carregar ficheiros (múltiplos)'}
+                                  onClick={() => { setActiveUploadCostId(item.id); fileInputRef.current?.click(); }}
+                                >
+                                  <Upload className={cn("h-3 w-3", invoiceUrl ? 'text-[hsl(var(--success))]' : 'text-muted-foreground')} />
+                                </button>
+                                {invoiceUrl && (
+                                  <a href={invoiceUrl} target="_blank" rel="noopener noreferrer" className="p-1 hover:bg-muted rounded" title={invoiceName || 'Abrir último ficheiro'}>
+                                    <FileText className="h-3 w-3 text-[hsl(var(--success))]" />
+                                  </a>
+                                )}
+                              </>
                             )}
                           </div>
 
