@@ -394,11 +394,39 @@ const LeadCostingEditor = ({ costingDays, onChange, onSave, saving, plannerDays,
   // Grand totals (only 'aceite' and 'neutro' items)
   const activeItems = costingDays.flatMap(d => d.items.filter(i => i.status !== 'eliminar'));
   const grandNet = activeItems.reduce((s, i) => s + i.netTotal, 0);
-  const grandPVP = activeItems.reduce((s, i) => s + i.pvpTotal, 0);
+  const computedPVP = activeItems.reduce((s, i) => s + i.pvpTotal, 0);
+  const totalPax = (pax || 0) + (paxChildren || 0);
+
+  // Editable PVP override (drives margin & per-pax dynamically). NET is read-only.
+  const [pvpOverride, setPvpOverride] = useState<number | null>(null);
+  const effectivePVP = pvpOverride != null ? pvpOverride : computedPVP;
+  const grandPVP = effectivePVP;
   const grandProfit = grandPVP - grandNet;
   const grandMargin = grandNet > 0 ? (grandProfit / grandNet) * 100 : 0;
-  const totalPax = (pax || 0) + (paxChildren || 0);
   const pvpPerPax = totalPax > 0 ? grandPVP / totalPax : 0;
+
+  // Local edit buffers for the totals row
+  const [editMargin, setEditMargin] = useState<string>('');
+  const [editPVP, setEditPVP] = useState<string>('');
+  const [editPerPax, setEditPerPax] = useState<string>('');
+
+  const commitMargin = () => {
+    const m = parseFloat(editMargin.replace(',', '.'));
+    if (!isNaN(m) && grandNet > 0) setPvpOverride(grandNet * (1 + m / 100));
+    setEditMargin('');
+  };
+  const commitPVP = () => {
+    const v = parseFloat(editPVP.replace(',', '.'));
+    if (!isNaN(v) && v >= 0) setPvpOverride(v);
+    setEditPVP('');
+  };
+  const commitPerPax = () => {
+    const v = parseFloat(editPerPax.replace(',', '.'));
+    if (!isNaN(v) && v >= 0 && totalPax > 0) setPvpOverride(v * totalPax);
+    setEditPerPax('');
+  };
+  const resetOverride = () => setPvpOverride(null);
+
 
   const hasItems = costingDays.some(d => d.items.length > 0);
 
