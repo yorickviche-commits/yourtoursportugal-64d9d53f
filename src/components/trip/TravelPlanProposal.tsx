@@ -417,6 +417,9 @@ const TravelPlanProposal = ({
       const meta = savedPlan.extra_instructions ? JSON.parse(savedPlan.extra_instructions) : null;
       if (meta?.cover_image) cover_image = meta.cover_image;
       if (meta?.closing) setClosing({ ...DEFAULT_CLOSING, ...meta.closing });
+      if (meta?.language && LANGUAGE_OPTIONS.some(o => o.value === String(meta.language).toUpperCase())) {
+        setLanguage(String(meta.language).toUpperCase());
+      }
     } catch { /* not JSON, ignore */ }
     setPlan({ trip_title: savedPlan.trip_title || '', narrative: savedPlan.narrative || '', cover_image, days });
   }
