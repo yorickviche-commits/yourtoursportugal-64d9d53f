@@ -444,6 +444,47 @@ const EmailComposerDialog = ({ lead, children, open: openProp, onOpenChange, ini
               />
             </div>
 
+            {/* Proposal attachment banner */}
+            {isProposalTemplate && (
+              <div className={cn(
+                "rounded-lg border p-3 text-xs flex items-start gap-2",
+                proposal
+                  ? "bg-[hsl(var(--info)/0.06)] border-[hsl(var(--info)/0.25)]"
+                  : "bg-[hsl(var(--warning)/0.08)] border-[hsl(var(--warning)/0.3)]",
+              )}>
+                <Paperclip className="h-3.5 w-3.5 mt-0.5 shrink-0" />
+                <div className="flex-1 min-w-0">
+                  {proposalLoading ? (
+                    <p className="text-muted-foreground">A carregar proposta…</p>
+                  ) : proposal ? (
+                    <>
+                      <p className="font-semibold text-foreground truncate">
+                        Proposta: {proposal.title || proposal.booking_ref || proposal.id}
+                      </p>
+                      <p className="text-muted-foreground truncate">
+                        Weblink: <a href={weblink} target="_blank" rel="noreferrer" className="underline">{weblink}</a>
+                      </p>
+                      <label className="flex items-center gap-1.5 mt-1 cursor-pointer select-none">
+                        <input
+                          type="checkbox"
+                          checked={attachPdf}
+                          onChange={e => setAttachPdf(e.target.checked)}
+                          className="h-3 w-3"
+                        />
+                        <span>Anexar PDF da proposta + adicionar weblink ao corpo</span>
+                      </label>
+                    </>
+                  ) : (
+                    <p className="text-[hsl(var(--warning))]">
+                      Nenhuma proposta encontrada para esta lead. Cria/envia uma proposta primeiro para incluir PDF + weblink.
+                    </p>
+                  )}
+                </div>
+              </div>
+            )}
+
+
+
             {/* Subject */}
             <div>
               <div className="flex items-center justify-between mb-1">
