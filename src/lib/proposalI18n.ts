@@ -321,6 +321,7 @@ const it: ProposalDict = {
   defaultDepositNote: 'Acconto 50% · 100% rimborsabile',
   summary: 'Riepilogo',
   day: 'Giorno',
+  dayShort: (n) => `G${n}`,
   map: 'Mappa',
   reviews: 'Recensioni',
   about: 'Chi siamo',
@@ -331,6 +332,12 @@ const it: ProposalDict = {
   mapUnavailable: 'Mappa non disponibile',
   mapLoading: 'Caricamento mappa…',
   travellersSay: 'Cosa dicono i nostri viaggiatori',
+  reviewsList: [
+    { name: 'Sophie M.', text: 'Un viaggio indimenticabile. Il team ha organizzato tutto alla perfezione, con guide appassionate e hotel splendidi.', stars: 5 },
+    { name: 'Jean-Pierre L.', text: 'Servizio eccezionale dall’inizio alla fine. La personalizzazione del viaggio è stata notevole. Consigliatissimo.', stars: 5 },
+    { name: 'Marie C.', text: 'La nostra guida locale è stata fantastica. Ogni dettaglio era curato e il Portogallo è sembrato ancora più speciale.', stars: 5 },
+    { name: 'François D.', text: 'Grazie per questa esperienza unica. Artigianato locale e gastronomia sono stati i momenti più belli del soggiorno.', stars: 5 },
+  ],
   aboutUs: 'Chi è Your Tours Portugal',
   aboutBody: 'Your Tours Portugal è un’agenzia di viaggi su misura specializzata in esperienze autentiche in Portogallo. Creiamo itinerari personalizzati che rivelano il meglio della cultura, della gastronomia e dell’artigianato portoghese, con guide locali appassionate.',
   website: 'Sito web',
@@ -376,6 +383,7 @@ const de: ProposalDict = {
   defaultDepositNote: '50% Anzahlung · 100% rückerstattbar',
   summary: 'Übersicht',
   day: 'Tag',
+  dayShort: (n) => `T${n}`,
   map: 'Karte',
   reviews: 'Bewertungen',
   about: 'Über uns',
@@ -386,6 +394,12 @@ const de: ProposalDict = {
   mapUnavailable: 'Karte nicht verfügbar',
   mapLoading: 'Karte wird geladen…',
   travellersSay: 'Was unsere Reisenden sagen',
+  reviewsList: [
+    { name: 'Sophie M.', text: 'Eine unvergessliche Reise. Das Team hat alles perfekt organisiert, mit leidenschaftlichen Guides und wunderschönen Hotels.', stars: 5 },
+    { name: 'Jean-Pierre L.', text: 'Aussergewöhnlicher Service von Anfang bis Ende. Die persönliche Gestaltung der Reise war bemerkenswert. Sehr empfehlenswert.', stars: 5 },
+    { name: 'Marie C.', text: 'Unser lokaler Guide war fantastisch. Jedes Detail war durchdacht und Portugal fühlte sich noch besonderer an.', stars: 5 },
+    { name: 'François D.', text: 'Danke für diese einzigartige Erfahrung. Lokales Handwerk und Gastronomie waren die Höhepunkte unserer Reise.', stars: 5 },
+  ],
   aboutUs: 'Über Your Tours Portugal',
   aboutBody: 'Your Tours Portugal ist ein massgeschneidertes Reisebüro, spezialisiert auf authentische Erlebnisse in Portugal. Wir gestalten individuelle Reiserouten, die das Beste der portugiesischen Kultur, Gastronomie und Handwerkskunst mit leidenschaftlichen lokalen Guides zeigen.',
   website: 'Website',
@@ -419,9 +433,40 @@ const de: ProposalDict = {
 
 const DICTS: Record<ProposalLang, ProposalDict> = { en, fr, es, pt, it, de };
 
-export function getProposalDict(lang?: string | null): ProposalDict {
+const LANGUAGE_MARKERS: Record<ProposalLang, string[]> = {
+  en: [' an ', ' the ', ' and ', ' with ', ' from ', ' through ', ' designed ', ' seeking ', ' journey ', ' showcases ', ' private ', ' day '],
+  fr: [' le ', ' la ', ' les ', ' avec ', ' depuis ', ' voyage ', ' journée ', ' découvrir ', ' soigneusement ', ' francophone '],
+  es: [' el ', ' la ', ' los ', ' con ', ' desde ', ' viaje ', ' día ', ' diseñado ', ' descubrir ', ' cuidadosamente '],
+  pt: [' uma ', ' com ', ' desde ', ' viagem ', ' dia ', ' desenhado ', ' descobrir ', ' cuidadosamente ', ' português '],
+  it: [' il ', ' con ', ' da ', ' viaggio ', ' giorno ', ' progettato ', ' scoprire ', ' accuratamente '],
+  de: [' der ', ' die ', ' und ', ' mit ', ' von ', ' reise ', ' tag ', ' entdecken ', ' sorgfältig '],
+};
+
+function normalizeLang(lang?: string | null): ProposalLang {
   const key = (lang || 'en').toLowerCase().slice(0, 2) as ProposalLang;
-  return DICTS[key] || en;
+  return DICTS[key] ? key : 'en';
+}
+
+export function resolveProposalLang(proposal?: { language?: string | null; title?: string | null; summary_text?: string | null; days?: any[] } | null): ProposalLang {
+  const stored = normalizeLang(proposal?.language);
+  const dayText = (proposal?.days || [])
+    .flatMap((day: any) => [day?.title, day?.subtitle, ...(Array.isArray(day?.items) ? day.items : [])])
+    .filter(Boolean)
+    .join(' ');
+  const text = ` ${[proposal?.title, proposal?.summary_text, dayText].filter(Boolean).join(' ').toLowerCase()} `;
+  if (!text.trim()) return stored;
+
+  const scores = Object.entries(LANGUAGE_MARKERS).map(([lang, markers]) => ({
+    lang: lang as ProposalLang,
+    score: markers.reduce((total, marker) => total + (text.includes(marker) ? 1 : 0), 0),
+  })).sort((a, b) => b.score - a.score);
+  const best = scores[0];
+  const storedScore = scores.find(s => s.lang === stored)?.score || 0;
+  return best && best.score >= 3 && best.score >= storedScore + 2 ? best.lang : stored;
+}
+
+export function getProposalDict(lang?: string | null): ProposalDict {
+  return DICTS[normalizeLang(lang)] || en;
 }
 
 // Sentiment is encoded as a leading marker in annotation.content so the existing
