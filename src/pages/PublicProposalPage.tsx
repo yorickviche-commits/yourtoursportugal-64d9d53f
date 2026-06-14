@@ -39,6 +39,8 @@ const PublicProposalPage = () => {
   const [sentiment, setSentiment] = useState<Sentiment>(null);
   const [submitted, setSubmitted] = useState(false);
   const [navOpen, setNavOpen] = useState(false);
+  const [openItem, setOpenItem] = useState<{ day: number; item: number; sentiment: Sentiment } | null>(null);
+  const [itemDraft, setItemDraft] = useState('');
 
   // Log opened event
   useEffect(() => {
