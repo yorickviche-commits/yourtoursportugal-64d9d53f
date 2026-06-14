@@ -68,7 +68,7 @@ const CommunicationsTab = ({ scope, entityId, recipientEmail, context, leadConte
     email: recipientEmail || '',
     destination: context.destination || '',
     travelDates: context.travel_dates || '',
-    pax: context.pax || 0,
+    pax: Number(context.pax) || 0,
     status: '',
     budgetLevel: '',
     leadId: scope === 'lead' ? entityId : undefined,
