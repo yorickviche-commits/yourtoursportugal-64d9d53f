@@ -167,7 +167,7 @@ const AgentControlPage = () => {
         accent: 'from-blue-500/15 to-blue-500/5 border-blue-200',
         items: qualification,
         emptyLabel: 'Sem novos leads para qualificar.',
-        cta: { label: 'Ver todos', href: '/leads?status=new' },
+        cta: { label: 'Abrir centro do agente', href: '/agents/qualification' },
       },
       {
         id: 'itinerary',
@@ -177,7 +177,7 @@ const AgentControlPage = () => {
         accent: 'from-violet-500/15 to-violet-500/5 border-violet-200',
         items: itinerary,
         emptyLabel: 'Nenhuma proposta prioritária pendente.',
-        cta: { label: 'Ver leads qualificados', href: '/leads?status=qualified' },
+        cta: { label: 'Abrir centro do agente', href: '/agents/itinerary' },
       },
       {
         id: 'followup',
@@ -187,7 +187,7 @@ const AgentControlPage = () => {
         accent: 'from-amber-500/15 to-amber-500/5 border-amber-200',
         items: followup,
         emptyLabel: 'Sem follow-ups pendentes.',
-        cta: { label: 'Ver propostas', href: '/proposals' },
+        cta: { label: 'Abrir centro do agente', href: '/agents/followup' },
       },
       {
         id: 'supplier',
@@ -197,7 +197,7 @@ const AgentControlPage = () => {
         accent: 'from-emerald-500/15 to-emerald-500/5 border-emerald-200',
         items: supplier,
         emptyLabel: 'Sem pré-reservas pendentes.',
-        cta: { label: 'Ver viagens', href: '/trips' },
+        cta: { label: 'Abrir centro do agente', href: '/agents/supplier' },
       },
       {
         id: 'ops_review',
@@ -207,7 +207,7 @@ const AgentControlPage = () => {
         accent: 'from-rose-500/15 to-rose-500/5 border-rose-200',
         items: ops,
         emptyLabel: 'Nenhum trip nos próximos 14 dias.',
-        cta: { label: 'Ver viagens', href: '/trips' },
+        cta: { label: 'Abrir centro do agente', href: '/agents/ops-review' },
       },
     ];
   }, [leads, proposals]);
