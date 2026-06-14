@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react';
-import { Mail, Loader2, Copy, Check, ChevronRight, Sparkles, ExternalLink, Send } from 'lucide-react';
+import { useState, useEffect, useMemo } from 'react';
+import { Mail, Loader2, Copy, Check, ChevronRight, Sparkles, ExternalLink, Send, Paperclip } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -8,6 +8,8 @@ import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useQueryClient } from '@tanstack/react-query';
 import { cn } from '@/lib/utils';
+import { buildProposalPdfBase64, type ProposalLite } from '@/lib/proposalPdf';
+
 
 
 interface LeadContext {
