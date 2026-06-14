@@ -1028,12 +1028,8 @@ const LeadDetailPage = ({ mode = 'lead' }: { mode?: 'lead' | 'booking' } = {}) =
                 </DropdownMenuContent>
               </DropdownMenu>
             </div>
-            <div className="flex items-center gap-2">
-              <PaymentsDialog leadId={lead.id}>
-                <Button variant="outline" size="sm" className="text-xs">Pagamentos</Button>
-              </PaymentsDialog>
-              <PaymentBadge leadId={lead.id} budgetLabel={formState.budgetLevel} />
-            </div>
+            <PaymentSummaryBar leadId={lead.id} />
+
           </div>
         </div>
 
@@ -1292,16 +1288,58 @@ const LeadDetailPage = ({ mode = 'lead' }: { mode?: 'lead' | 'booking' } = {}) =
   );
 };
 
-function PaymentBadge({ leadId, budgetLabel }: { leadId: string; budgetLabel: string }) {
-  const { data } = usePaymentsSummary(leadId);
-  const net = data?.net ?? 0;
-  const paid = net > 0;
+function PaymentSummaryBar({ leadId }: { leadId: string }) {
+  const { data: pay } = usePaymentsSummary(leadId);
+  const { data: prop } = useQuery({
+    queryKey: ['lead_proposal_totals', leadId],
+    queryFn: async () => {
+      const { data } = await (supabase as any)
+        .from('proposals')
+        .select('total_value_eur, deposit_amount_eur, updated_at')
+        .eq('lead_id', leadId)
+        .order('updated_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      return data as { total_value_eur: number | null; deposit_amount_eur: number | null } | null;
+    },
+    enabled: !!leadId,
+  });
+
+  const total = Number(prop?.total_value_eur ?? 0);
+  const deposit = Number(prop?.deposit_amount_eur ?? 0);
+  const paid = Math.max(0, Number(pay?.net ?? 0));
+  const outstanding = Math.max(0, total - paid);
+  const fmt = (n: number) => `${n.toLocaleString('pt-PT', { maximumFractionDigits: 0 })}€`;
+
+  const fullyPaid = total > 0 && paid >= total;
+  const depositMet = deposit > 0 && paid >= deposit;
+
   return (
-    <div className={cn("text-xs font-bold px-3 py-1.5 rounded", paid ? "bg-green-600 text-white" : "bg-destructive text-destructive-foreground")}>
-      {paid ? `PAID ${net.toFixed(0)}€` : `NOT PAID 0€`} - {budgetLabel}
-    </div>
+    <PaymentsDialog leadId={leadId}>
+      <button className="flex items-stretch gap-1 rounded-md overflow-hidden border border-border hover:opacity-90 transition-opacity text-left">
+        <div className="px-3 py-1.5 bg-[#0a2540] text-white">
+          <div className="text-[9px] uppercase tracking-wide opacity-80 leading-none">Total YT</div>
+          <div className="text-sm font-bold leading-tight">{fmt(total)}</div>
+        </div>
+        <div className={cn(
+          "px-3 py-1.5",
+          fullyPaid ? "bg-green-600 text-white" : depositMet ? "bg-yellow-400 text-black" : paid > 0 ? "bg-yellow-400 text-black" : "bg-muted text-muted-foreground"
+        )}>
+          <div className="text-[9px] uppercase tracking-wide opacity-80 leading-none">{fullyPaid ? 'Pago Total' : 'Depósito/Pago'}</div>
+          <div className="text-sm font-bold leading-tight">{fmt(paid)}</div>
+        </div>
+        <div className={cn(
+          "px-3 py-1.5",
+          outstanding > 0 ? "bg-destructive text-destructive-foreground" : "bg-green-600 text-white"
+        )}>
+          <div className="text-[9px] uppercase tracking-wide opacity-80 leading-none">Em Falta</div>
+          <div className="text-sm font-bold leading-tight">{fmt(outstanding)}</div>
+        </div>
+      </button>
+    </PaymentsDialog>
   );
 }
+
 
 export default LeadDetailPage;
 
