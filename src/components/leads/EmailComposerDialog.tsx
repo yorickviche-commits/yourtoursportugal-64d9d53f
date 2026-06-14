@@ -36,7 +36,7 @@ interface EmailComposerDialogProps {
   initialTemplateKey?: string | null;
 }
 
-export const AI_EMAIL_TEMPLATES = [
+export const AI_AI_EMAIL_TEMPLATES = [
 
   { key: 'new_inquiry', label: '1. Nova Consulta', stage: 'Sales', description: 'Resposta inicial + discovery questions' },
   { key: 'send_proposal', label: '★ Enviar Proposta', stage: 'Sales', description: 'Email curto a apresentar a proposta (anexar PDF no Gmail)' },
@@ -145,7 +145,7 @@ const EmailComposerDialog = ({ lead, children }: EmailComposerDialogProps) => {
     toast({ title: 'Gmail aberto', description: 'Anexa o PDF da proposta antes de enviar.' });
   };
 
-  const selectedTemplateInfo = EMAIL_TEMPLATES.find(t => t.key === selectedTemplate);
+  const selectedTemplateInfo = AI_EMAIL_TEMPLATES.find(t => t.key === selectedTemplate);
 
   return (
     <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) reset(); }}>
@@ -170,7 +170,7 @@ const EmailComposerDialog = ({ lead, children }: EmailComposerDialogProps) => {
             <p className="text-xs text-muted-foreground mb-3">Seleciona o tipo de email para este lead:</p>
             
             <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Sales Pipeline</p>
-            {EMAIL_TEMPLATES.filter(t => t.stage === 'Sales').map(t => (
+            {AI_EMAIL_TEMPLATES.filter(t => t.stage === 'Sales').map(t => (
               <button key={t.key} onClick={() => handleSelectTemplate(t.key)}
                 className="w-full flex items-center justify-between p-3 rounded-lg border border-border hover:border-[hsl(var(--info))] hover:bg-[hsl(var(--info)/0.05)] transition-colors text-left group">
                 <div>
@@ -182,7 +182,7 @@ const EmailComposerDialog = ({ lead, children }: EmailComposerDialogProps) => {
             ))}
 
             <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mt-4">Operations Pipeline</p>
-            {EMAIL_TEMPLATES.filter(t => t.stage === 'Ops').map(t => (
+            {AI_EMAIL_TEMPLATES.filter(t => t.stage === 'Ops').map(t => (
               <button key={t.key} onClick={() => handleSelectTemplate(t.key)}
                 className="w-full flex items-center justify-between p-3 rounded-lg border border-border hover:border-[hsl(var(--info))] hover:bg-[hsl(var(--info)/0.05)] transition-colors text-left group">
                 <div>
