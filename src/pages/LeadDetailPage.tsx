@@ -1308,7 +1308,7 @@ const LeadDetailPage = ({ mode = 'lead' }: { mode?: 'lead' | 'booking' } = {}) =
   );
 };
 
-function PaymentSummaryBar({ leadId }: { leadId: string }) {
+function PaymentSummaryBar({ leadId, totalPVP }: { leadId: string; totalPVP: number }) {
   const { data: pay } = usePaymentsSummary(leadId);
   const { data: prop } = useQuery({
     queryKey: ['lead_proposal_totals', leadId],
@@ -1325,7 +1325,9 @@ function PaymentSummaryBar({ leadId }: { leadId: string }) {
     enabled: !!leadId,
   });
 
-  const total = Number(prop?.total_value_eur ?? 0);
+  // Total YT mirrors the Costing PVP grand total (auto or manual override).
+  // Falls back to the latest proposal value if costing has no data yet.
+  const total = totalPVP > 0 ? totalPVP : Number(prop?.total_value_eur ?? 0);
   const deposit = Number(prop?.deposit_amount_eur ?? 0);
   const paid = Math.max(0, Number(pay?.net ?? 0));
   const outstanding = Math.max(0, total - paid);
