@@ -31,7 +31,7 @@ const ProposalBuilderPage = () => {
     client_name: '',
     client_email: '',
     booking_ref: '',
-    language: 'fr',
+    language: 'en',
     title: '',
     date_range: '',
     participants: '',

@@ -645,6 +645,8 @@ const TravelPlanProposal = ({
         .eq('lead_id', leadId)
         .maybeSingle();
 
+      const proposalLang = (language || 'EN').toLowerCase().slice(0, 2);
+
       if (existingProposal) {
         await supabase.from('proposals').update({
           title: plan.trip_title,
@@ -654,6 +656,7 @@ const TravelPlanProposal = ({
           hero_image_url: plan.cover_image?.url || '',
           summary_text: plan.narrative,
           days: proposalDays as any,
+          language: proposalLang,
         }).eq('id', existingProposal.id);
       } else {
         await supabase.from('proposals').insert({
@@ -667,7 +670,7 @@ const TravelPlanProposal = ({
           summary_text: plan.narrative,
           days: proposalDays as any,
           map_stops: [] as any,
-          language: 'fr',
+          language: proposalLang,
           status: 'draft',
         });
         console.log(`[YTP] Proposal created — public URL: /proposal/${token}`);
