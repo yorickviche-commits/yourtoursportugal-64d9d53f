@@ -166,6 +166,15 @@ const EmailComposerDialog = ({ lead, children, open: openProp, onOpenChange, ini
     }
   };
 
+  const buildFinalBody = () => {
+    let body = editedBody || '';
+    if (isProposalTemplate && weblink && !body.includes(weblink)) {
+      body += `\n\n— Interactive Travel Plan (mobile-friendly):\n${weblink}`;
+      if (attachPdf && proposal) body += `\n\nThe full PDF version is attached for your records.`;
+    }
+    return body;
+  };
+
   const handleSendFromApp = async () => {
     if (!recipientEmail) {
       toast({ title: 'Sem email do destinatário', description: 'Adiciona um email no campo "Para".', variant: 'destructive' });
@@ -173,17 +182,34 @@ const EmailComposerDialog = ({ lead, children, open: openProp, onOpenChange, ini
     }
     setSending(true);
     try {
+      const finalBody = buildFinalBody();
+      const attachments: any[] = [];
+      if (isProposalTemplate && attachPdf && proposal) {
+        try {
+          const { base64, filename } = buildProposalPdfBase64(proposal, weblink);
+          attachments.push({ filename, mimeType: 'application/pdf', contentBase64: base64 });
+        } catch (e) {
+          console.error('PDF build failed', e);
+        }
+      }
       const { data, error } = await supabase.functions.invoke('send-booking-email', {
         body: {
           to: recipientEmail,
           subject: editedSubject,
-          body: editedBody,
+          body: finalBody,
+          attachments: attachments.length ? attachments : undefined,
         },
       });
       if (error) throw error;
       if ((data as any)?.error) throw new Error((data as any).error);
+      setEditedBody(finalBody);
       setSent(true);
-      toast({ title: 'Email enviado', description: `Enviado para ${recipientEmail} via reservas@yourtours.pt` });
+      toast({
+        title: 'Email enviado',
+        description: attachments.length
+          ? `Enviado para ${recipientEmail} com PDF anexado`
+          : `Enviado para ${recipientEmail} via reservas@yourtours.pt`,
+      });
       void logToHistory('sent');
       setTimeout(() => setSent(false), 4000);
     } catch (e: any) {
@@ -193,6 +219,7 @@ const EmailComposerDialog = ({ lead, children, open: openProp, onOpenChange, ini
       setSending(false);
     }
   };
+
 
   const handleSelectTemplate = (key: string) => {
     setSelectedTemplate(key);
