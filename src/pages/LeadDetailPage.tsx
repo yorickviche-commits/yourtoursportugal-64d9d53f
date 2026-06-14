@@ -663,6 +663,13 @@ const LeadDetailPage = ({ mode = 'lead' }: { mode?: 'lead' | 'booking' } = {}) =
   const [aiResults, setAiResults] = useState<Record<string, any>>({});
   const [plannerDays, setPlannerDays] = useState<PlannerDay[]>([]);
   const [costingDays, setCostingDays] = useState<LeadCostingDay[]>([]);
+  const [pvpOverride, setPvpOverride] = useState<number | null>(null);
+  const costingTotalPVP = useMemo(() => {
+    if (pvpOverride != null) return pvpOverride;
+    return costingDays.reduce((sum, d) => sum + (d.items || [])
+      .filter((i: any) => i.status !== 'eliminar')
+      .reduce((s: number, i: any) => s + (Number(i.pvpTotal) || 0), 0), 0);
+  }, [costingDays, pvpOverride]);
   // plannerSubTab removed — unified view
   const [finalPrice, setFinalPrice] = useState(0);
   const { toast } = useToast();
@@ -1028,7 +1035,7 @@ const LeadDetailPage = ({ mode = 'lead' }: { mode?: 'lead' | 'booking' } = {}) =
                 </DropdownMenuContent>
               </DropdownMenu>
             </div>
-            <PaymentSummaryBar leadId={lead.id} />
+            <PaymentSummaryBar leadId={lead.id} totalPVP={costingTotalPVP} />
 
           </div>
         </div>
@@ -1249,6 +1256,8 @@ const LeadDetailPage = ({ mode = 'lead' }: { mode?: 'lead' | 'booking' } = {}) =
               paxChildren={formState.paxChildren}
               destination={destino.join(', ') || lead?.destination || ''}
               leadId={lead?.id}
+              pvpOverride={pvpOverride}
+              onPvpOverrideChange={setPvpOverride}
             />
           </div>
         )}
@@ -1301,7 +1310,7 @@ const LeadDetailPage = ({ mode = 'lead' }: { mode?: 'lead' | 'booking' } = {}) =
   );
 };
 
-function PaymentSummaryBar({ leadId }: { leadId: string }) {
+function PaymentSummaryBar({ leadId, totalPVP }: { leadId: string; totalPVP: number }) {
   const { data: pay } = usePaymentsSummary(leadId);
   const { data: prop } = useQuery({
     queryKey: ['lead_proposal_totals', leadId],
@@ -1318,7 +1327,9 @@ function PaymentSummaryBar({ leadId }: { leadId: string }) {
     enabled: !!leadId,
   });
 
-  const total = Number(prop?.total_value_eur ?? 0);
+  // Total YT mirrors the Costing PVP grand total (auto or manual override).
+  // Falls back to the latest proposal value if costing has no data yet.
+  const total = totalPVP > 0 ? totalPVP : Number(prop?.total_value_eur ?? 0);
   const deposit = Number(prop?.deposit_amount_eur ?? 0);
   const paid = Math.max(0, Number(pay?.net ?? 0));
   const outstanding = Math.max(0, total - paid);

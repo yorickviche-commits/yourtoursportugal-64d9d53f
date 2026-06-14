@@ -234,10 +234,12 @@ interface LeadCostingEditorProps {
   paxChildren: number;
   destination?: string;
   leadId?: string;
+  pvpOverride?: number | null;
+  onPvpOverrideChange?: (v: number | null) => void;
 }
 
 // ─── Component ───────────────────────────────────────
-const LeadCostingEditor = ({ costingDays, onChange, onSave, saving, plannerDays, pax, paxChildren, destination, leadId }: LeadCostingEditorProps) => {
+const LeadCostingEditor = ({ costingDays, onChange, onSave, saving, plannerDays, pax, paxChildren, destination, leadId, pvpOverride: pvpOverrideProp, onPvpOverrideChange }: LeadCostingEditorProps) => {
   const [expandedDays, setExpandedDays] = useState<number[]>(costingDays.length > 0 ? costingDays.map(d => d.day) : []);
   const [autoFilling, setAutoFilling] = useState(false);
   const [importingTP, setImportingTP] = useState(false);
@@ -398,7 +400,12 @@ const LeadCostingEditor = ({ costingDays, onChange, onSave, saving, plannerDays,
   const totalPax = (pax || 0) + (paxChildren || 0);
 
   // Editable PVP override (drives margin & per-pax dynamically). NET is read-only.
-  const [pvpOverride, setPvpOverride] = useState<number | null>(null);
+  const [localPvpOverride, setLocalPvpOverride] = useState<number | null>(null);
+  const pvpOverride = pvpOverrideProp !== undefined ? pvpOverrideProp : localPvpOverride;
+  const setPvpOverride = (v: number | null) => {
+    if (onPvpOverrideChange) onPvpOverrideChange(v);
+    else setLocalPvpOverride(v);
+  };
   const effectivePVP = pvpOverride != null ? pvpOverride : computedPVP;
   const grandPVP = effectivePVP;
   const grandProfit = grandPVP - grandNet;
