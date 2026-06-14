@@ -69,6 +69,7 @@ const EmailComposerDialog = ({ lead, children, open: openProp, onOpenChange, ini
   const [logging, setLogging] = useState(false);
   const [sending, setSending] = useState(false);
   const [sent, setSent] = useState(false);
+  const [recipientEmail, setRecipientEmail] = useState(lead.email || '');
   const { toast } = useToast();
   const qc = useQueryClient();
 
@@ -78,6 +79,7 @@ const EmailComposerDialog = ({ lead, children, open: openProp, onOpenChange, ini
     setCustomNotes('');
     setGeneratedEmail(null);
     setCopied(false);
+    setRecipientEmail(lead.email || '');
   };
 
   // When opening via controlled mode with a preselected template, jump straight to confirm.
@@ -89,6 +91,11 @@ const EmailComposerDialog = ({ lead, children, open: openProp, onOpenChange, ini
     if (!open) reset();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, initialTemplateKey]);
+
+  // Sync recipient email when lead changes
+  useEffect(() => {
+    setRecipientEmail(lead.email || '');
+  }, [lead.email]);
 
   const logToHistory = async (action: 'copied' | 'gmail' | 'sent') => {
     if (!lead.leadId) return;
@@ -102,7 +109,7 @@ const EmailComposerDialog = ({ lead, children, open: openProp, onOpenChange, ini
           : '[Registado via Email Composer — Copiado para Gmail]';
       await supabase.from('booking_emails_log').insert({
         lead_id: lead.leadId,
-        supplier_email: lead.email || null,
+        supplier_email: recipientEmail || lead.email || null,
         subject: editedSubject,
         body: editedBody + `\n\n${tag}`,
         email_category: selectedTemplate,
@@ -118,15 +125,15 @@ const EmailComposerDialog = ({ lead, children, open: openProp, onOpenChange, ini
   };
 
   const handleSendFromApp = async () => {
-    if (!lead.email) {
-      toast({ title: 'Sem email do cliente', description: 'Adiciona um email no lead.', variant: 'destructive' });
+    if (!recipientEmail) {
+      toast({ title: 'Sem email do destinatário', description: 'Adiciona um email no campo "Para".', variant: 'destructive' });
       return;
     }
     setSending(true);
     try {
       const { data, error } = await supabase.functions.invoke('send-booking-email', {
         body: {
-          to: lead.email,
+          to: recipientEmail,
           subject: editedSubject,
           body: editedBody,
         },
@@ -134,7 +141,7 @@ const EmailComposerDialog = ({ lead, children, open: openProp, onOpenChange, ini
       if (error) throw error;
       if ((data as any)?.error) throw new Error((data as any).error);
       setSent(true);
-      toast({ title: 'Email enviado', description: `Enviado para ${lead.email} via reservas@yourtours.pt` });
+      toast({ title: 'Email enviado', description: `Enviado para ${recipientEmail} via reservas@yourtours.pt` });
       void logToHistory('sent');
       setTimeout(() => setSent(false), 4000);
     } catch (e: any) {
@@ -216,7 +223,7 @@ const EmailComposerDialog = ({ lead, children, open: openProp, onOpenChange, ini
   };
 
   const handleOpenGmail = () => {
-    const url = `https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(lead.email || '')}&su=${encodeURIComponent(editedSubject)}&body=${encodeURIComponent(editedBody)}`;
+    const url = `https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(recipientEmail || '')}&su=${encodeURIComponent(editedSubject)}&body=${encodeURIComponent(editedBody)}`;
     window.open(url, '_blank', 'noopener,noreferrer');
     toast({ title: 'Gmail aberto', description: 'Anexa o PDF da proposta antes de enviar.' });
     void logToHistory('gmail');
@@ -342,6 +349,18 @@ const EmailComposerDialog = ({ lead, children, open: openProp, onOpenChange, ini
         {/* Step 3: Preview & Edit */}
         {step === 'preview' && generatedEmail && (
           <div className="space-y-4">
+            {/* Para */}
+            <div>
+              <label className="text-xs font-semibold text-muted-foreground mb-1 block">Para</label>
+              <Input
+                type="email"
+                className="text-sm"
+                placeholder="Email do destinatário"
+                value={recipientEmail}
+                onChange={e => setRecipientEmail(e.target.value)}
+              />
+            </div>
+
             {/* Subject */}
             <div>
               <div className="flex items-center justify-between mb-1">
@@ -393,7 +412,7 @@ const EmailComposerDialog = ({ lead, children, open: openProp, onOpenChange, ini
                 </Button>
                 <Button size="sm" className={cn("text-xs gap-1 min-w-[150px]",
                   sent ? "bg-[hsl(var(--stable))] text-white" : "bg-[hsl(var(--info))] text-white")}
-                  onClick={handleSendFromApp} disabled={sending || !lead.email}>
+                  onClick={handleSendFromApp} disabled={sending || !recipientEmail}>
                   {sending ? <><Loader2 className="h-3 w-3 animate-spin" /> A enviar...</>
                     : sent ? <><Check className="h-3 w-3" /> Enviado!</>
                     : <><Send className="h-3 w-3" /> Enviar pela App</>}
