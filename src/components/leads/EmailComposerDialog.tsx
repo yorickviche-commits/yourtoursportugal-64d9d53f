@@ -377,19 +377,26 @@ const EmailComposerDialog = ({ lead, children, open: openProp, onOpenChange, ini
             )}
 
             {/* Actions */}
-            <div className="flex items-center justify-between pt-2 border-t">
+            <div className="flex items-center justify-between pt-2 border-t flex-wrap gap-2">
               <Button variant="ghost" size="sm" className="text-xs" onClick={() => setStep('confirm_details')}>← Editar contexto</Button>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 flex-wrap">
                 <Button variant="outline" size="sm" className="text-xs" onClick={handleGenerate} disabled={loading}>
                   {loading ? <Loader2 className="h-3 w-3 animate-spin" /> : '🔄 Regenerar'}
                 </Button>
                 <Button size="sm" variant="outline" className="text-xs gap-1" onClick={handleOpenGmail}>
                   <ExternalLink className="h-3 w-3" /> Abrir no Gmail
                 </Button>
-                <Button size="sm" className={cn("text-xs gap-1 min-w-[140px]",
-                  copied ? "bg-[hsl(var(--stable))] text-white" : "bg-[hsl(var(--info))] text-white")}
+                <Button size="sm" variant="outline" className={cn("text-xs gap-1 min-w-[140px]",
+                  copied && "bg-[hsl(var(--stable))] text-white border-[hsl(var(--stable))]")}
                   onClick={handleCopy}>
                   {copied ? <><Check className="h-3 w-3" /> Copiado!</> : <><Copy className="h-3 w-3" /> Copiar para Gmail</>}
+                </Button>
+                <Button size="sm" className={cn("text-xs gap-1 min-w-[150px]",
+                  sent ? "bg-[hsl(var(--stable))] text-white" : "bg-[hsl(var(--info))] text-white")}
+                  onClick={handleSendFromApp} disabled={sending || !lead.email}>
+                  {sending ? <><Loader2 className="h-3 w-3 animate-spin" /> A enviar...</>
+                    : sent ? <><Check className="h-3 w-3" /> Enviado!</>
+                    : <><Send className="h-3 w-3" /> Enviar pela App</>}
                 </Button>
               </div>
             </div>
