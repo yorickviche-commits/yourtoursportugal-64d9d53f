@@ -263,7 +263,7 @@ const PublicProposalPage = () => {
                     const itemAnns = annotations.filter((a: any) => a.level === 'day' && a.target_day_index === idx && a.target_item_index === i);
                     const itemSentiments = itemAnns.map(a => decodeSentiment(a.content || '').sentiment);
                     const isLiked = itemSentiments.includes('like');
-                    const isChange = itemSentiments.includes('change');
+                    const isChange = itemSentiments.includes('dislike');
                     const isOpen = openItem?.day === idx && openItem?.item === i;
                     return (
                       <li key={i} className={cn(
@@ -286,7 +286,7 @@ const PublicProposalPage = () => {
                                 setOpenItem({ day: idx, item: i, sentiment: 'like' });
                                 setItemDraft('');
                               }}
-                              title={dict.iLikeThis}
+                              title={dict.sentimentLike}
                               className={cn(
                                 'p-1.5 rounded-md transition-all',
                                 isLiked
@@ -298,11 +298,11 @@ const PublicProposalPage = () => {
                             </button>
                             <button
                               onClick={() => {
-                                if (!isChange) handleSubmitAnnotation('day', idx, i, '', 'change');
-                                setOpenItem(isOpen ? null : { day: idx, item: i, sentiment: 'change' });
+                                if (!isChange) handleSubmitAnnotation('day', idx, i, '', 'dislike');
+                                setOpenItem(isOpen ? null : { day: idx, item: i, sentiment: 'dislike' });
                                 setItemDraft('');
                               }}
-                              title={dict.iDChangeThis}
+                              title={dict.sentimentDislike}
                               className={cn(
                                 'p-1.5 rounded-md transition-all',
                                 isChange
@@ -322,7 +322,7 @@ const PublicProposalPage = () => {
                             <div key={a.id} className={cn(
                               'mx-2 mb-1.5 px-3 py-1.5 rounded-md text-xs border-l-2',
                               s === 'like' ? 'border-emerald-400 bg-white text-emerald-800' :
-                              s === 'change' ? 'border-amber-400 bg-white text-amber-800' :
+                              s === 'dislike' ? 'border-amber-400 bg-white text-amber-800' :
                               'border-sky-400 bg-white text-slate-700',
                             )}>
                               <div className="font-medium text-[10px] uppercase tracking-wide opacity-60 mb-0.5">{a.author_name}</div>
@@ -340,7 +340,7 @@ const PublicProposalPage = () => {
                             <textarea
                               value={itemDraft}
                               onChange={e => setItemDraft(e.target.value)}
-                              placeholder={openItem?.sentiment === 'change' ? dict.commentPlaceholderChange || 'What would you change?' : dict.commentPlaceholderLike || 'Tell us why you love it (optional)'}
+                              placeholder={openItem?.sentiment === 'dislike' ? dict.dayCommentPlaceholder : dict.dayCommentPlaceholder}
                               className="w-full text-sm bg-transparent resize-none outline-none placeholder:text-slate-400"
                               rows={2}
                               autoFocus
@@ -350,7 +350,7 @@ const PublicProposalPage = () => {
                                 onClick={() => { setOpenItem(null); setItemDraft(''); }}
                                 className="text-xs text-slate-400 hover:text-slate-600 px-2 py-1"
                               >
-                                {dict.cancel || 'Cancel'}
+                                {dict.send === 'Send' ? 'Cancel' : (dict.send === 'Enviar' ? 'Cancelar' : (dict.send === 'Envoyer' ? 'Annuler' : (dict.send === 'Invia' ? 'Annulla' : (dict.send === 'Senden' ? 'Abbrechen' : 'Cancel'))))}
                               </button>
                               <button
                                 onClick={() => {
