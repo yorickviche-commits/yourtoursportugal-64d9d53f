@@ -412,7 +412,7 @@ const EmailComposerDialog = ({ lead, children, open: openProp, onOpenChange, ini
                 </Button>
                 <Button size="sm" className={cn("text-xs gap-1 min-w-[150px]",
                   sent ? "bg-[hsl(var(--stable))] text-white" : "bg-[hsl(var(--info))] text-white")}
-                  onClick={handleSendFromApp} disabled={sending || !lead.email}>
+                  onClick={handleSendFromApp} disabled={sending || !recipientEmail}>
                   {sending ? <><Loader2 className="h-3 w-3 animate-spin" /> A enviar...</>
                     : sent ? <><Check className="h-3 w-3" /> Enviado!</>
                     : <><Send className="h-3 w-3" /> Enviar pela App</>}
