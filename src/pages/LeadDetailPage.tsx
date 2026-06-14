@@ -663,6 +663,13 @@ const LeadDetailPage = ({ mode = 'lead' }: { mode?: 'lead' | 'booking' } = {}) =
   const [aiResults, setAiResults] = useState<Record<string, any>>({});
   const [plannerDays, setPlannerDays] = useState<PlannerDay[]>([]);
   const [costingDays, setCostingDays] = useState<LeadCostingDay[]>([]);
+  const [pvpOverride, setPvpOverride] = useState<number | null>(null);
+  const costingTotalPVP = useMemo(() => {
+    if (pvpOverride != null) return pvpOverride;
+    return costingDays.reduce((sum, d) => sum + (d.items || [])
+      .filter((i: any) => i.status !== 'eliminar')
+      .reduce((s: number, i: any) => s + (Number(i.pvpTotal) || 0), 0), 0);
+  }, [costingDays, pvpOverride]);
   // plannerSubTab removed — unified view
   const [finalPrice, setFinalPrice] = useState(0);
   const { toast } = useToast();
