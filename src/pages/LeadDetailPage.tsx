@@ -1278,8 +1278,24 @@ const LeadDetailPage = ({ mode = 'lead' }: { mode?: 'lead' | 'booking' } = {}) =
               pax: formState.pax ?? lead.pax,
               sales_owner: formState.salesOwner || lead.sales_owner || '',
             }}
+            leadContext={{
+              clientName: formState.clientName,
+              email: formState.email,
+              phone: formState.phone,
+              destination: destino.join(', '),
+              travelDates: formState.travelDates,
+              pax: formState.pax,
+              status: leadStatus,
+              budgetLevel: formState.budgetLevel,
+              travelStyle: travelStyles,
+              comfortLevel: categoria[0],
+              magicQuestion: lead.magic_question,
+              notes: formState.notes,
+              leadId: lead.id,
+            }}
           />
         )}
+
       </div>
     </AppLayout>
   );
