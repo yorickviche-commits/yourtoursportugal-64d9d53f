@@ -183,20 +183,24 @@ const EmailComposerDialog = ({ lead, children, open: openProp, onOpenChange, ini
     const url = `https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(lead.email || '')}&su=${encodeURIComponent(editedSubject)}&body=${encodeURIComponent(editedBody)}`;
     window.open(url, '_blank', 'noopener,noreferrer');
     toast({ title: 'Gmail aberto', description: 'Anexa o PDF da proposta antes de enviar.' });
+    void logToHistory('gmail');
   };
 
   const selectedTemplateInfo = AI_EMAIL_TEMPLATES.find(t => t.key === selectedTemplate);
 
   return (
     <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) reset(); }}>
-      <DialogTrigger asChild>
-        {children || (
-          <Button variant="outline" size="sm" className="text-xs gap-1">
-            <Mail className="h-3 w-3" /> Compor Email
-          </Button>
-        )}
-      </DialogTrigger>
+      {!isControlled && (
+        <DialogTrigger asChild>
+          {children || (
+            <Button variant="outline" size="sm" className="text-xs gap-1">
+              <Mail className="h-3 w-3" /> Compor Email
+            </Button>
+          )}
+        </DialogTrigger>
+      )}
       <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
+
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-base">
             <Sparkles className="h-4 w-4 text-[hsl(var(--info))]" />
