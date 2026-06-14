@@ -394,11 +394,39 @@ const LeadCostingEditor = ({ costingDays, onChange, onSave, saving, plannerDays,
   // Grand totals (only 'aceite' and 'neutro' items)
   const activeItems = costingDays.flatMap(d => d.items.filter(i => i.status !== 'eliminar'));
   const grandNet = activeItems.reduce((s, i) => s + i.netTotal, 0);
-  const grandPVP = activeItems.reduce((s, i) => s + i.pvpTotal, 0);
+  const computedPVP = activeItems.reduce((s, i) => s + i.pvpTotal, 0);
+  const totalPax = (pax || 0) + (paxChildren || 0);
+
+  // Editable PVP override (drives margin & per-pax dynamically). NET is read-only.
+  const [pvpOverride, setPvpOverride] = useState<number | null>(null);
+  const effectivePVP = pvpOverride != null ? pvpOverride : computedPVP;
+  const grandPVP = effectivePVP;
   const grandProfit = grandPVP - grandNet;
   const grandMargin = grandNet > 0 ? (grandProfit / grandNet) * 100 : 0;
-  const totalPax = (pax || 0) + (paxChildren || 0);
   const pvpPerPax = totalPax > 0 ? grandPVP / totalPax : 0;
+
+  // Local edit buffers for the totals row
+  const [editMargin, setEditMargin] = useState<string>('');
+  const [editPVP, setEditPVP] = useState<string>('');
+  const [editPerPax, setEditPerPax] = useState<string>('');
+
+  const commitMargin = () => {
+    const m = parseFloat(editMargin.replace(',', '.'));
+    if (!isNaN(m) && grandNet > 0) setPvpOverride(grandNet * (1 + m / 100));
+    setEditMargin('');
+  };
+  const commitPVP = () => {
+    const v = parseFloat(editPVP.replace(',', '.'));
+    if (!isNaN(v) && v >= 0) setPvpOverride(v);
+    setEditPVP('');
+  };
+  const commitPerPax = () => {
+    const v = parseFloat(editPerPax.replace(',', '.'));
+    if (!isNaN(v) && v >= 0 && totalPax > 0) setPvpOverride(v * totalPax);
+    setEditPerPax('');
+  };
+  const resetOverride = () => setPvpOverride(null);
+
 
   const hasItems = costingDays.some(d => d.items.length > 0);
 
@@ -624,34 +652,74 @@ const LeadCostingEditor = ({ costingDays, onChange, onSave, saving, plannerDays,
         })}
       </div>
 
-      {/* Grand Totals */}
+      {/* Grand Totals — editable & dynamic (NET read-only) */}
       {activeItems.length > 0 && (
         <div className="bg-card rounded-lg border p-4">
-          <div className="grid grid-cols-2 md:grid-cols-5 gap-6 text-center">
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-6 text-center items-end">
             <div>
               <p className="text-[10px] text-muted-foreground uppercase font-semibold">Total NET</p>
               <p className="text-lg font-bold">€{grandNet.toFixed(2)}</p>
+              <p className="text-[9px] text-muted-foreground">somatório custos</p>
             </div>
             <div>
               <p className="text-[10px] text-muted-foreground uppercase font-semibold">Margem Média</p>
-              <p className="text-lg font-bold">{grandMargin.toFixed(1)}%</p>
+              <Input
+                type="text"
+                inputMode="decimal"
+                value={editMargin !== '' ? editMargin : grandMargin.toFixed(1)}
+                onFocus={() => setEditMargin(grandMargin.toFixed(1))}
+                onChange={e => setEditMargin(e.target.value)}
+                onBlur={commitMargin}
+                onKeyDown={e => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); }}
+                className="h-9 text-lg font-bold text-center px-1"
+                disabled={grandNet <= 0}
+              />
+              <p className="text-[9px] text-muted-foreground">% sobre NET</p>
             </div>
             <div>
               <p className="text-[10px] text-muted-foreground uppercase font-semibold">Lucro</p>
               <p className="text-lg font-bold text-[hsl(var(--success))]">€{grandProfit.toFixed(2)}</p>
+              <p className="text-[9px] text-muted-foreground">PVP − NET</p>
             </div>
             <div>
               <p className="text-[10px] text-muted-foreground uppercase font-semibold">TOTAL PVP</p>
-              <p className="text-lg font-bold text-[hsl(var(--info))]">€{grandPVP.toFixed(2)}</p>
+              <Input
+                type="text"
+                inputMode="decimal"
+                value={editPVP !== '' ? editPVP : grandPVP.toFixed(2)}
+                onFocus={() => setEditPVP(grandPVP.toFixed(2))}
+                onChange={e => setEditPVP(e.target.value)}
+                onBlur={commitPVP}
+                onKeyDown={e => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); }}
+                className="h-9 text-lg font-bold text-center text-[hsl(var(--info))] px-1"
+              />
+              <p className="text-[9px] text-muted-foreground">preço total</p>
             </div>
             <div>
               <p className="text-[10px] text-muted-foreground uppercase font-semibold">PVP / Pessoa</p>
-              <p className="text-lg font-bold text-[hsl(var(--info))]">€{pvpPerPax.toFixed(2)}</p>
+              <Input
+                type="text"
+                inputMode="decimal"
+                value={editPerPax !== '' ? editPerPax : pvpPerPax.toFixed(2)}
+                onFocus={() => setEditPerPax(pvpPerPax.toFixed(2))}
+                onChange={e => setEditPerPax(e.target.value)}
+                onBlur={commitPerPax}
+                onKeyDown={e => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); }}
+                className="h-9 text-lg font-bold text-center text-[hsl(var(--info))] px-1"
+                disabled={totalPax <= 0}
+              />
               <p className="text-[9px] text-muted-foreground">{totalPax} pax</p>
             </div>
           </div>
+          {pvpOverride != null && (
+            <div className="flex items-center justify-end gap-2 mt-3 pt-2 border-t text-[10px] text-muted-foreground">
+              <span>PVP ajustado manualmente (€{computedPVP.toFixed(2)} calculado)</span>
+              <button onClick={resetOverride} className="text-[hsl(var(--info))] hover:underline font-medium">Repor cálculo</button>
+            </div>
+          )}
         </div>
       )}
+
     </div>
   );
 };
