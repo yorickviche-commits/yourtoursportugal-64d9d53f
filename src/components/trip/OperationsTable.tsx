@@ -357,22 +357,25 @@ const OperationsTable = ({ costItems, tripId, tripCode, startDate }: OperationsT
                             </Select>
                           </div>
 
-                          {/* Invoice Upload */}
+                          {/* Invoice Upload (multi, unlimited — stored in history) */}
                           <div className="flex items-center justify-center gap-0.5">
                             {uploadingId === item.id ? (
                               <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />
-                            ) : invoiceUrl ? (
-                              <a href={invoiceUrl} target="_blank" rel="noopener noreferrer" className="p-1 hover:bg-muted rounded" title={invoiceName || 'Ver fatura'}>
-                                <FileText className="h-3 w-3 text-[hsl(var(--success))]" />
-                              </a>
                             ) : (
-                              <button
-                                className="p-1 hover:bg-muted rounded"
-                                title="Upload fatura"
-                                onClick={() => { setActiveUploadCostId(item.id); fileInputRef.current?.click(); }}
-                              >
-                                <Upload className="h-3 w-3 text-muted-foreground" />
-                              </button>
+                              <>
+                                <button
+                                  className="p-1 hover:bg-muted rounded"
+                                  title={invoiceUrl ? 'Adicionar mais ficheiros (sem limite)' : 'Carregar ficheiros (múltiplos)'}
+                                  onClick={() => { setActiveUploadCostId(item.id); fileInputRef.current?.click(); }}
+                                >
+                                  <Upload className={cn("h-3 w-3", invoiceUrl ? 'text-[hsl(var(--success))]' : 'text-muted-foreground')} />
+                                </button>
+                                {invoiceUrl && (
+                                  <a href={invoiceUrl} target="_blank" rel="noopener noreferrer" className="p-1 hover:bg-muted rounded" title={invoiceName || 'Abrir último ficheiro'}>
+                                    <FileText className="h-3 w-3 text-[hsl(var(--success))]" />
+                                  </a>
+                                )}
+                              </>
                             )}
                           </div>
 
