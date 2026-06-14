@@ -125,15 +125,15 @@ const EmailComposerDialog = ({ lead, children, open: openProp, onOpenChange, ini
   };
 
   const handleSendFromApp = async () => {
-    if (!lead.email) {
-      toast({ title: 'Sem email do cliente', description: 'Adiciona um email no lead.', variant: 'destructive' });
+    if (!recipientEmail) {
+      toast({ title: 'Sem email do destinatário', description: 'Adiciona um email no campo "Para".', variant: 'destructive' });
       return;
     }
     setSending(true);
     try {
       const { data, error } = await supabase.functions.invoke('send-booking-email', {
         body: {
-          to: lead.email,
+          to: recipientEmail,
           subject: editedSubject,
           body: editedBody,
         },
@@ -141,7 +141,7 @@ const EmailComposerDialog = ({ lead, children, open: openProp, onOpenChange, ini
       if (error) throw error;
       if ((data as any)?.error) throw new Error((data as any).error);
       setSent(true);
-      toast({ title: 'Email enviado', description: `Enviado para ${lead.email} via reservas@yourtours.pt` });
+      toast({ title: 'Email enviado', description: `Enviado para ${recipientEmail} via reservas@yourtours.pt` });
       void logToHistory('sent');
       setTimeout(() => setSent(false), 4000);
     } catch (e: any) {
