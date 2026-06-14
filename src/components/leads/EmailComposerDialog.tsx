@@ -223,7 +223,7 @@ const EmailComposerDialog = ({ lead, children, open: openProp, onOpenChange, ini
   };
 
   const handleOpenGmail = () => {
-    const url = `https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(lead.email || '')}&su=${encodeURIComponent(editedSubject)}&body=${encodeURIComponent(editedBody)}`;
+    const url = `https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(recipientEmail || '')}&su=${encodeURIComponent(editedSubject)}&body=${encodeURIComponent(editedBody)}`;
     window.open(url, '_blank', 'noopener,noreferrer');
     toast({ title: 'Gmail aberto', description: 'Anexa o PDF da proposta antes de enviar.' });
     void logToHistory('gmail');
