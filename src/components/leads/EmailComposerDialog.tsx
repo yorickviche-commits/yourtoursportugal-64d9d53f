@@ -52,8 +52,11 @@ export const AI_EMAIL_TEMPLATES = [
 
 type Step = 'select_template' | 'confirm_details' | 'preview';
 
-const EmailComposerDialog = ({ lead, children }: EmailComposerDialogProps) => {
-  const [open, setOpen] = useState(false);
+const EmailComposerDialog = ({ lead, children, open: openProp, onOpenChange, initialTemplateKey }: EmailComposerDialogProps) => {
+  const isControlled = openProp !== undefined;
+  const [internalOpen, setInternalOpen] = useState(false);
+  const open = isControlled ? !!openProp : internalOpen;
+  const setOpen = (v: boolean) => { if (isControlled) onOpenChange?.(v); else setInternalOpen(v); };
   const [step, setStep] = useState<Step>('select_template');
   const [selectedTemplate, setSelectedTemplate] = useState<string | null>(null);
   const [customNotes, setCustomNotes] = useState('');
@@ -63,7 +66,9 @@ const EmailComposerDialog = ({ lead, children }: EmailComposerDialogProps) => {
   const [editedSubject, setEditedSubject] = useState('');
   const [editedBody, setEditedBody] = useState('');
   const [copied, setCopied] = useState(false);
+  const [logging, setLogging] = useState(false);
   const { toast } = useToast();
+  const qc = useQueryClient();
 
   const reset = () => {
     setStep('select_template');
@@ -73,10 +78,42 @@ const EmailComposerDialog = ({ lead, children }: EmailComposerDialogProps) => {
     setCopied(false);
   };
 
+  // When opening via controlled mode with a preselected template, jump straight to confirm.
+  useEffect(() => {
+    if (open && initialTemplateKey) {
+      setSelectedTemplate(initialTemplateKey);
+      setStep('confirm_details');
+    }
+    if (!open) reset();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, initialTemplateKey]);
+
+  const logToHistory = async (action: 'copied' | 'gmail') => {
+    if (!lead.leadId) return;
+    setLogging(true);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      await supabase.from('booking_emails_log').insert({
+        lead_id: lead.leadId,
+        supplier_email: lead.email || null,
+        subject: editedSubject,
+        body: editedBody + `\n\n[Registado via Email Composer — ${action === 'gmail' ? 'Aberto no Gmail' : 'Copiado para Gmail'}]`,
+        email_category: selectedTemplate,
+        sent_by: user?.id || null,
+      } as any);
+      qc.invalidateQueries({ queryKey: ['comms_log'] });
+    } catch (e) {
+      console.error('Log to history failed', e);
+    } finally {
+      setLogging(false);
+    }
+  };
+
   const handleSelectTemplate = (key: string) => {
     setSelectedTemplate(key);
     setStep('confirm_details');
   };
+
 
   const handleGenerate = async () => {
     if (!selectedTemplate) return;
