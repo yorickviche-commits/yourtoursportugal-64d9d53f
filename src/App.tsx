@@ -18,6 +18,11 @@ import ItineraryPreviewPage from "./pages/ItineraryPreviewPage";
 import PublicProposalPage from "./pages/PublicProposalPage";
 import ProposalDetailPage from "./pages/ProposalDetailPage";
 import AgentControlPage from "./pages/AgentControlPage";
+import QualificationAgentPage from "./pages/agents/QualificationAgentPage";
+import ItineraryAgentPage from "./pages/agents/ItineraryAgentPage";
+import FollowupAgentPage from "./pages/agents/FollowupAgentPage";
+import SupplierAgentPage from "./pages/agents/SupplierAgentPage";
+import OpsReviewAgentPage from "./pages/agents/OpsReviewAgentPage";
 import MobilePage from "./pages/MobilePage";
 import NotFound from "./pages/NotFound";
 
