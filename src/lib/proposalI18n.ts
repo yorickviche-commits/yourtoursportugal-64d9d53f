@@ -17,6 +17,7 @@ export interface ProposalDict {
   // Nav
   summary: string;
   day: string;
+  dayShort: (n: number) => string;
   map: string;
   reviews: string;
   about: string;
@@ -28,6 +29,7 @@ export interface ProposalDict {
   mapUnavailable: string;
   mapLoading: string;
   travellersSay: string;
+  reviewsList: { name: string; text: string; stars: number }[];
   aboutUs: string;
   aboutBody: string;
   website: string;
@@ -74,6 +76,7 @@ const en: ProposalDict = {
   defaultDepositNote: '50% deposit · 100% refundable',
   summary: 'Summary',
   day: 'Day',
+  dayShort: (n) => `D${n}`,
   map: 'Map',
   reviews: 'Reviews',
   about: 'About',
@@ -84,6 +87,12 @@ const en: ProposalDict = {
   mapUnavailable: 'Map unavailable',
   mapLoading: 'Loading map…',
   travellersSay: 'What travellers say',
+  reviewsList: [
+    { name: 'Sophie M.', text: 'An unforgettable trip. The team organised everything perfectly, with passionate guides and beautiful hotels.', stars: 5 },
+    { name: 'Jean-Pierre L.', text: 'Exceptional service from beginning to end. The level of personalisation was remarkable. Highly recommended.', stars: 5 },
+    { name: 'Marie C.', text: 'Our local guide was wonderful. Every detail was carefully considered and Portugal felt even more special from the inside.', stars: 5 },
+    { name: 'François D.', text: 'Thank you for a truly unique experience. Local craftsmanship and gastronomy were the highlights of our stay.', stars: 5 },
+  ],
   aboutUs: 'About Your Tours Portugal',
   aboutBody: 'Your Tours Portugal is a bespoke travel agency specialised in authentic Portuguese experiences. We craft tailor-made itineraries that reveal the very best of local culture, gastronomy and craftsmanship with passionate local guides.',
   website: 'Website',
@@ -128,6 +137,7 @@ const fr: ProposalDict = {
   defaultDepositNote: 'Acompte 50% · 100% remboursable',
   summary: 'Résumé',
   day: 'Jour',
+  dayShort: (n) => `J${n}`,
   map: 'Carte',
   reviews: 'Avis',
   about: 'À propos',
@@ -138,6 +148,12 @@ const fr: ProposalDict = {
   mapUnavailable: 'Carte indisponible',
   mapLoading: 'Chargement de la carte…',
   travellersSay: 'Ce que disent nos voyageurs',
+  reviewsList: [
+    { name: 'Sophie M.', text: 'Un voyage inoubliable ! L’équipe a tout organisé à la perfection. Les guides étaient passionnés et les hôtels magnifiques.', stars: 5 },
+    { name: 'Jean-Pierre L.', text: 'Service exceptionnel du début à la fin. La personnalisation du voyage était remarquable. Nous recommandons vivement !', stars: 5 },
+    { name: 'Marie C.', text: 'Notre guide francophone était formidable. Chaque détail était pensé. Le Portugal est encore plus beau vu de l’intérieur.', stars: 5 },
+    { name: 'François D.', text: 'Merci pour cette expérience unique. L’artisanat local et la gastronomie étaient les points forts de notre séjour.', stars: 5 },
+  ],
   aboutUs: 'À propos de Your Tours Portugal',
   aboutBody: 'Your Tours Portugal est une agence de voyages sur mesure spécialisée dans les expériences authentiques au Portugal. Nous créons des itinéraires personnalisés qui révèlent le meilleur de la culture, de la gastronomie et de l’artisanat portugais, avec des guides locaux francophones passionnés.',
   website: 'Site web',
@@ -182,6 +198,7 @@ const es: ProposalDict = {
   defaultDepositNote: 'Depósito 50% · 100% reembolsable',
   summary: 'Resumen',
   day: 'Día',
+  dayShort: (n) => `D${n}`,
   map: 'Mapa',
   reviews: 'Opiniones',
   about: 'Sobre nosotros',
@@ -192,6 +209,12 @@ const es: ProposalDict = {
   mapUnavailable: 'Mapa no disponible',
   mapLoading: 'Cargando mapa…',
   travellersSay: 'Lo que dicen nuestros viajeros',
+  reviewsList: [
+    { name: 'Sophie M.', text: 'Un viaje inolvidable. El equipo organizó todo a la perfección, con guías apasionados y hoteles magníficos.', stars: 5 },
+    { name: 'Jean-Pierre L.', text: 'Servicio excepcional de principio a fin. La personalización del viaje fue extraordinaria. Muy recomendable.', stars: 5 },
+    { name: 'Marie C.', text: 'Nuestro guía local fue fantástico. Cada detalle estaba cuidado y Portugal se sintió aún más especial desde dentro.', stars: 5 },
+    { name: 'François D.', text: 'Gracias por una experiencia única. La artesanía local y la gastronomía fueron los grandes momentos del viaje.', stars: 5 },
+  ],
   aboutUs: 'Sobre Your Tours Portugal',
   aboutBody: 'Your Tours Portugal es una agencia de viajes a medida especializada en experiencias auténticas en Portugal. Creamos itinerarios personalizados que revelan lo mejor de la cultura, la gastronomía y la artesanía portuguesa, con guías locales apasionados.',
   website: 'Sitio web',
@@ -236,6 +259,7 @@ const pt: ProposalDict = {
   defaultDepositNote: 'Sinal 50% · 100% reembolsável',
   summary: 'Resumo',
   day: 'Dia',
+  dayShort: (n) => `D${n}`,
   map: 'Mapa',
   reviews: 'Opiniões',
   about: 'Sobre nós',
@@ -246,6 +270,12 @@ const pt: ProposalDict = {
   mapUnavailable: 'Mapa indisponível',
   mapLoading: 'A carregar mapa…',
   travellersSay: 'O que dizem os nossos viajantes',
+  reviewsList: [
+    { name: 'Sophie M.', text: 'Uma viagem inesquecível. A equipa organizou tudo na perfeição, com guias apaixonados e hotéis excelentes.', stars: 5 },
+    { name: 'Jean-Pierre L.', text: 'Serviço excecional do início ao fim. A personalização da viagem foi notável. Recomendamos vivamente.', stars: 5 },
+    { name: 'Marie C.', text: 'O nosso guia local foi fantástico. Cada detalhe foi pensado e Portugal tornou-se ainda mais especial visto por dentro.', stars: 5 },
+    { name: 'François D.', text: 'Obrigado por esta experiência única. O artesanato local e a gastronomia foram os pontos altos da viagem.', stars: 5 },
+  ],
   aboutUs: 'Sobre a Your Tours Portugal',
   aboutBody: 'A Your Tours Portugal é uma agência de viagens à medida especializada em experiências autênticas em Portugal. Criamos itinerários personalizados que revelam o melhor da cultura, gastronomia e artesanato português, com guias locais apaixonados.',
   website: 'Site',
@@ -291,6 +321,7 @@ const it: ProposalDict = {
   defaultDepositNote: 'Acconto 50% · 100% rimborsabile',
   summary: 'Riepilogo',
   day: 'Giorno',
+  dayShort: (n) => `G${n}`,
   map: 'Mappa',
   reviews: 'Recensioni',
   about: 'Chi siamo',
@@ -301,6 +332,12 @@ const it: ProposalDict = {
   mapUnavailable: 'Mappa non disponibile',
   mapLoading: 'Caricamento mappa…',
   travellersSay: 'Cosa dicono i nostri viaggiatori',
+  reviewsList: [
+    { name: 'Sophie M.', text: 'Un viaggio indimenticabile. Il team ha organizzato tutto alla perfezione, con guide appassionate e hotel splendidi.', stars: 5 },
+    { name: 'Jean-Pierre L.', text: 'Servizio eccezionale dall’inizio alla fine. La personalizzazione del viaggio è stata notevole. Consigliatissimo.', stars: 5 },
+    { name: 'Marie C.', text: 'La nostra guida locale è stata fantastica. Ogni dettaglio era curato e il Portogallo è sembrato ancora più speciale.', stars: 5 },
+    { name: 'François D.', text: 'Grazie per questa esperienza unica. Artigianato locale e gastronomia sono stati i momenti più belli del soggiorno.', stars: 5 },
+  ],
   aboutUs: 'Chi è Your Tours Portugal',
   aboutBody: 'Your Tours Portugal è un’agenzia di viaggi su misura specializzata in esperienze autentiche in Portogallo. Creiamo itinerari personalizzati che rivelano il meglio della cultura, della gastronomia e dell’artigianato portoghese, con guide locali appassionate.',
   website: 'Sito web',
@@ -346,6 +383,7 @@ const de: ProposalDict = {
   defaultDepositNote: '50% Anzahlung · 100% rückerstattbar',
   summary: 'Übersicht',
   day: 'Tag',
+  dayShort: (n) => `T${n}`,
   map: 'Karte',
   reviews: 'Bewertungen',
   about: 'Über uns',
@@ -356,6 +394,12 @@ const de: ProposalDict = {
   mapUnavailable: 'Karte nicht verfügbar',
   mapLoading: 'Karte wird geladen…',
   travellersSay: 'Was unsere Reisenden sagen',
+  reviewsList: [
+    { name: 'Sophie M.', text: 'Eine unvergessliche Reise. Das Team hat alles perfekt organisiert, mit leidenschaftlichen Guides und wunderschönen Hotels.', stars: 5 },
+    { name: 'Jean-Pierre L.', text: 'Aussergewöhnlicher Service von Anfang bis Ende. Die persönliche Gestaltung der Reise war bemerkenswert. Sehr empfehlenswert.', stars: 5 },
+    { name: 'Marie C.', text: 'Unser lokaler Guide war fantastisch. Jedes Detail war durchdacht und Portugal fühlte sich noch besonderer an.', stars: 5 },
+    { name: 'François D.', text: 'Danke für diese einzigartige Erfahrung. Lokales Handwerk und Gastronomie waren die Höhepunkte unserer Reise.', stars: 5 },
+  ],
   aboutUs: 'Über Your Tours Portugal',
   aboutBody: 'Your Tours Portugal ist ein massgeschneidertes Reisebüro, spezialisiert auf authentische Erlebnisse in Portugal. Wir gestalten individuelle Reiserouten, die das Beste der portugiesischen Kultur, Gastronomie und Handwerkskunst mit leidenschaftlichen lokalen Guides zeigen.',
   website: 'Website',
@@ -389,9 +433,40 @@ const de: ProposalDict = {
 
 const DICTS: Record<ProposalLang, ProposalDict> = { en, fr, es, pt, it, de };
 
-export function getProposalDict(lang?: string | null): ProposalDict {
+const LANGUAGE_MARKERS: Record<ProposalLang, string[]> = {
+  en: [' an ', ' the ', ' and ', ' with ', ' from ', ' through ', ' designed ', ' seeking ', ' journey ', ' showcases ', ' private ', ' day '],
+  fr: [' le ', ' la ', ' les ', ' avec ', ' depuis ', ' voyage ', ' journée ', ' découvrir ', ' soigneusement ', ' francophone '],
+  es: [' el ', ' la ', ' los ', ' con ', ' desde ', ' viaje ', ' día ', ' diseñado ', ' descubrir ', ' cuidadosamente '],
+  pt: [' uma ', ' com ', ' desde ', ' viagem ', ' dia ', ' desenhado ', ' descobrir ', ' cuidadosamente ', ' português '],
+  it: [' il ', ' con ', ' da ', ' viaggio ', ' giorno ', ' progettato ', ' scoprire ', ' accuratamente '],
+  de: [' der ', ' die ', ' und ', ' mit ', ' von ', ' reise ', ' tag ', ' entdecken ', ' sorgfältig '],
+};
+
+function normalizeLang(lang?: string | null): ProposalLang {
   const key = (lang || 'en').toLowerCase().slice(0, 2) as ProposalLang;
-  return DICTS[key] || en;
+  return DICTS[key] ? key : 'en';
+}
+
+export function resolveProposalLang(proposal?: { language?: string | null; title?: string | null; summary_text?: string | null; days?: any[] } | null): ProposalLang {
+  const stored = normalizeLang(proposal?.language);
+  const dayText = (proposal?.days || [])
+    .flatMap((day: any) => [day?.title, day?.subtitle, ...(Array.isArray(day?.items) ? day.items : [])])
+    .filter(Boolean)
+    .join(' ');
+  const text = ` ${[proposal?.title, proposal?.summary_text, dayText].filter(Boolean).join(' ').toLowerCase()} `;
+  if (!text.trim()) return stored;
+
+  const scores = Object.entries(LANGUAGE_MARKERS).map(([lang, markers]) => ({
+    lang: lang as ProposalLang,
+    score: markers.reduce((total, marker) => total + (text.includes(marker) ? 1 : 0), 0),
+  })).sort((a, b) => b.score - a.score);
+  const best = scores[0];
+  const storedScore = scores.find(s => s.lang === stored)?.score || 0;
+  return best && best.score >= 3 && best.score >= storedScore + 2 ? best.lang : stored;
+}
+
+export function getProposalDict(lang?: string | null): ProposalDict {
+  return DICTS[normalizeLang(lang)] || en;
 }
 
 // Sentiment is encoded as a leading marker in annotation.content so the existing

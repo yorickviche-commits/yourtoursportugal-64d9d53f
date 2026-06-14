@@ -417,6 +417,9 @@ const TravelPlanProposal = ({
       const meta = savedPlan.extra_instructions ? JSON.parse(savedPlan.extra_instructions) : null;
       if (meta?.cover_image) cover_image = meta.cover_image;
       if (meta?.closing) setClosing({ ...DEFAULT_CLOSING, ...meta.closing });
+      if (meta?.language && LANGUAGE_OPTIONS.some(o => o.value === String(meta.language).toUpperCase())) {
+        setLanguage(String(meta.language).toUpperCase());
+      }
     } catch { /* not JSON, ignore */ }
     setPlan({ trip_title: savedPlan.trip_title || '', narrative: savedPlan.narrative || '', cover_image, days });
   }
@@ -612,10 +615,20 @@ const TravelPlanProposal = ({
     try {
       const startDate = plan.days[0]?.date || travelDates || null;
       const endDate = plan.days[plan.days.length - 1]?.date || travelEndDate || null;
-      const paxStr = `${pax} adult${pax > 1 ? 's' : ''}${paxChildren ? ` + ${paxChildren} children` : ''}`;
+      const proposalLang = (language || 'EN').toLowerCase().slice(0, 2);
+      const participantLabels: Record<string, { adult: string; adults: string; child: string; children: string }> = {
+        en: { adult: 'adult', adults: 'adults', child: 'child', children: 'children' },
+        fr: { adult: 'adulte', adults: 'adultes', child: 'enfant', children: 'enfants' },
+        es: { adult: 'adulto', adults: 'adultos', child: 'niño', children: 'niños' },
+        pt: { adult: 'adulto', adults: 'adultos', child: 'criança', children: 'crianças' },
+        it: { adult: 'adulto', adults: 'adulti', child: 'bambino', children: 'bambini' },
+        de: { adult: 'Erwachsener', adults: 'Erwachsene', child: 'Kind', children: 'Kinder' },
+      };
+      const participantLabel = participantLabels[proposalLang] || participantLabels.en;
+      const paxStr = `${pax} ${pax === 1 ? participantLabel.adult : participantLabel.adults}${paxChildren ? ` + ${paxChildren} ${paxChildren === 1 ? participantLabel.child : participantLabel.children}` : ''}`;
       await supabase.from('travel_plans').delete().eq('lead_id', leadId);
       // Store cover_image in extra_instructions as JSON metadata
-      const metadata = JSON.stringify({ cover_image: plan.cover_image || null, closing });
+      const metadata = JSON.stringify({ cover_image: plan.cover_image || null, closing, language });
       const { error } = await supabase.from('travel_plans').insert({
         lead_id: leadId, file_id: leadCode, trip_title: plan.trip_title,
         client_name: clientName, start_date: startDate, end_date: endDate,
@@ -627,9 +640,10 @@ const TravelPlanProposal = ({
       // Auto-create/update proposal from travel plan
       const token = `ytp-${leadCode.toLowerCase().replace(/[^a-z0-9]/g, '-')}`;
       const dateRange = startDate && endDate ? `${startDate} — ${endDate}` : startDate || '';
+      const dayLabelByLang: Record<string, string> = { en: 'Day', fr: 'Jour', es: 'Día', pt: 'Dia', it: 'Giorno', de: 'Tag' };
       const proposalDays = plan.days.map((d, i) => ({
         day_number: d.day_number,
-        date_label: d.date || `Jour ${d.day_number}`,
+        date_label: d.date || `${dayLabelByLang[proposalLang] || 'Day'} ${d.day_number}`,
         title: d.title,
         subtitle: d.subtitle || '',
         cover_image_url: d.images?.[0]?.url || '',
@@ -644,8 +658,6 @@ const TravelPlanProposal = ({
         .select('id')
         .eq('lead_id', leadId)
         .maybeSingle();
-
-      const proposalLang = (language || 'EN').toLowerCase().slice(0, 2);
 
       if (existingProposal) {
         await supabase.from('proposals').update({

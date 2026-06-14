@@ -3,21 +3,21 @@ import { useProposalByToken, useProposalAnnotations, useProposalEvents, useCreat
 import { useState, useEffect, useRef, lazy, Suspense, Component, ReactNode } from 'react';
 import { MessageSquare, Check, Star, Phone, Mail, Globe, ChevronDown, ChevronUp, Send, X, Clock, MapPin, Hotel, ThumbsUp, ThumbsDown } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { getProposalDict, encodeSentiment, decodeSentiment, Sentiment } from '@/lib/proposalI18n';
+import { getProposalDict, resolveProposalLang, encodeSentiment, decodeSentiment, Sentiment } from '@/lib/proposalI18n';
 
 
 // Lazy load map to avoid react-leaflet context crash
 const LazyMap = lazy(() => import('@/components/proposal/ProposalMap'));
 
 // Error boundary for map
-class MapErrorBoundary extends Component<{ children: ReactNode }, { hasError: boolean }> {
-  constructor(props: { children: ReactNode }) {
+class MapErrorBoundary extends Component<{ children: ReactNode; fallback: string }, { hasError: boolean }> {
+  constructor(props: { children: ReactNode; fallback: string }) {
     super(props);
     this.state = { hasError: false };
   }
   static getDerivedStateFromError() { return { hasError: true }; }
   render() {
-    if (this.state.hasError) return <div className="h-full flex items-center justify-center bg-sky-50 text-sky-300">Carte indisponible</div>;
+    if (this.state.hasError) return <div className="h-full flex items-center justify-center bg-sky-50 text-sky-300">{this.props.fallback}</div>;
     return this.props.children;
   }
 }
@@ -54,7 +54,8 @@ const PublicProposalPage = () => {
     // eslint-disable-next-line
   }, [proposal?.id]);
 
-  const dict = getProposalDict(proposal?.language);
+  const effectiveLang = resolveProposalLang(proposal);
+  const dict = getProposalDict(effectiveLang);
 
   if (isLoading) return (
     <div className="min-h-screen flex items-center justify-center bg-sky-50">
@@ -218,7 +219,7 @@ const PublicProposalPage = () => {
               <div className="mt-3 space-y-1">
                 {days.map((d: ProposalDay) => (
                   <a key={d.day_number} href={`#day-${d.day_number}`} className="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-sky-50 text-sm text-slate-600">
-                    <span className="w-8 h-8 bg-sky-100 rounded-full flex items-center justify-center text-xs font-bold text-sky-600">J{d.day_number}</span>
+                    <span className="w-8 h-8 bg-sky-100 rounded-full flex items-center justify-center text-xs font-bold text-sky-600">{dict.dayShort(d.day_number)}</span>
                     <div>
                       <span className="font-medium text-slate-800">{d.title}</span>
                       {d.subtitle && <span className="text-slate-400 ml-2">— {d.subtitle}</span>}
@@ -310,7 +311,7 @@ const PublicProposalPage = () => {
           <section id="map">
             <h2 className="text-2xl font-serif text-slate-800 mb-4">{dict.tripMap}</h2>
             <div className="rounded-2xl overflow-hidden border border-slate-200 shadow-sm h-[400px]">
-              <MapErrorBoundary>
+              <MapErrorBoundary fallback={dict.mapUnavailable}>
                 <Suspense fallback={<div className="h-full flex items-center justify-center bg-sky-50 text-sky-300">{dict.mapLoading}</div>}>
                   <LazyMap stops={proposal.map_stops} />
                 </Suspense>
@@ -323,12 +324,7 @@ const PublicProposalPage = () => {
         <section id="reviews">
           <h2 className="text-2xl font-serif text-slate-800 mb-4">{dict.travellersSay}</h2>
           <div className="grid md:grid-cols-2 gap-4">
-            {[
-              { name: 'Sophie M.', text: 'Un voyage inoubliable ! L\'équipe a tout organisé à la perfection. Les guides étaient passionnés et les hôtels magnifiques.', stars: 5 },
-              { name: 'Jean-Pierre L.', text: 'Service exceptionnel du début à la fin. La personnalisation du voyage était remarquable. Nous recommandons vivement !', stars: 5 },
-              { name: 'Marie C.', text: 'Notre guide francophone était formidable. Chaque détail était pensé. Le Portugal est encore plus beau vu de l\'intérieur.', stars: 5 },
-              { name: 'François D.', text: 'Merci pour cette expérience unique. L\'artisanat local et la gastronomie étaient les points forts de notre séjour.', stars: 5 },
-            ].map((review, i) => (
+            {dict.reviewsList.map((review, i) => (
               <div key={i} className="bg-white rounded-xl border border-slate-200 p-5">
                 <div className="flex gap-1 mb-2">
                   {Array.from({ length: review.stars }).map((_, j) => (
