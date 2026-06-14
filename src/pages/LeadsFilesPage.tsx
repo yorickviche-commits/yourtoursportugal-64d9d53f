@@ -1,39 +1,43 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import AppLayout from '@/components/AppLayout';
 import { useLeadsQuery } from '@/hooks/useLeadsQuery';
+import { useLeadsCostingSummary } from '@/hooks/useLeadsCostingSummary';
 import { cn } from '@/lib/utils';
-import { Search, Eye, Plus, Loader2 } from 'lucide-react';
+import { Search, Eye } from 'lucide-react';
 import { Input } from '@/components/ui/input';
-import { Button } from '@/components/ui/button';
 import AISimulationForm from '@/components/leads/AISimulationForm';
 import NewLeadDialog from '@/components/NewLeadDialog';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { Skeleton } from '@/components/ui/skeleton';
 import StatusBadge from '@/components/StatusBadge';
 
+// Aligned 1:1 with LEAD_STATUSES in LeadDetailPage.tsx — same labels users can assign inside a lead.
 type LeadStatusFilter = 'all' | 'new' | 'contacted' | 'qualified' | 'proposal_sent' | 'negotiation' | 'won' | 'lost';
 
 const STATUS_TABS: { value: LeadStatusFilter; label: string }[] = [
   { value: 'all', label: 'Todas' },
-  { value: 'new', label: 'Em Construção' },
-  { value: 'contacted', label: 'A Aguardar' },
-  { value: 'qualified', label: 'Pre-Reservadas' },
-  { value: 'proposal_sent', label: 'Recusadas' },
-  { value: 'negotiation', label: 'Reservadas' },
-  { value: 'won', label: 'Concluídas' },
-  { value: 'lost', label: 'Canceladas' },
+  { value: 'new', label: 'Novo' },
+  { value: 'contacted', label: 'Contactado' },
+  { value: 'qualified', label: 'Qualificado' },
+  { value: 'proposal_sent', label: 'Proposta Enviada' },
+  { value: 'negotiation', label: 'Negociação' },
+  { value: 'won', label: 'Ganho' },
+  { value: 'lost', label: 'Perdido' },
 ];
 
 const statusBadgeConfig: Record<string, { label: string; className: string }> = {
-  new: { label: 'Novo', className: 'bg-[hsl(var(--info))]/10 text-[hsl(var(--info))]' },
-  contacted: { label: 'Contactado', className: 'bg-[hsl(var(--warning))]/10 text-[hsl(var(--warning))]' },
-  qualified: { label: 'Qualificado', className: 'bg-purple-100 text-purple-700' },
-  proposal_sent: { label: 'Proposta', className: 'bg-[hsl(var(--urgent))]/10 text-[hsl(var(--urgent))]' },
-  negotiation: { label: 'Negociação', className: 'bg-purple-100 text-purple-700' },
-  won: { label: 'Ganho', className: 'bg-[hsl(var(--success))]/10 text-[hsl(var(--success))]' },
-  lost: { label: 'Perdido', className: 'bg-destructive/10 text-destructive' },
+  new: { label: 'Novo', className: 'bg-muted text-muted-foreground' },
+  contacted: { label: 'Contactado', className: 'bg-[hsl(var(--info))]/15 text-[hsl(var(--info))]' },
+  qualified: { label: 'Qualificado', className: 'bg-[hsl(var(--warning))]/15 text-[hsl(var(--warning))]' },
+  proposal_sent: { label: 'Proposta Enviada', className: 'bg-[hsl(var(--info))]/15 text-[hsl(var(--info))]' },
+  negotiation: { label: 'Negociação', className: 'bg-[hsl(var(--warning))]/15 text-[hsl(var(--warning))]' },
+  won: { label: 'Ganho ✓', className: 'bg-[hsl(var(--stable))]/15 text-[hsl(var(--stable))]' },
+  lost: { label: 'Perdido', className: 'bg-destructive/15 text-destructive' },
 };
+
+const fmtMoney = (n: number) =>
+  n.toLocaleString('pt-PT', { maximumFractionDigits: 0 }) + '€';
 
 const LeadsFilesPage = () => {
   const navigate = useNavigate();
@@ -44,12 +48,27 @@ const LeadsFilesPage = () => {
   const [newLeadOpen, setNewLeadOpen] = useState(false);
   const isMobile = useIsMobile();
 
-  const filteredLeads = leads.filter(l => {
-    if (statusFilter !== 'all' && l.status !== statusFilter) return false;
-    if (search && !l.client_name.toLowerCase().includes(search.toLowerCase()) &&
-        !(l.destination || '').toLowerCase().includes(search.toLowerCase())) return false;
-    return true;
-  });
+  const leadIds = useMemo(() => leads.map(l => l.id), [leads]);
+  const { data: costingMap = {} } = useLeadsCostingSummary(leadIds);
+
+  const filteredLeads = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    return leads.filter(l => {
+      if (statusFilter !== 'all' && l.status !== statusFilter) return false;
+      if (!q) return true;
+      const haystack = [
+        l.lead_code,
+        l.client_name,
+        l.destination,
+        l.travel_dates,
+        l.email,
+        String(l.pax ?? ''),
+        String(l.number_of_days ?? ''),
+        statusBadgeConfig[l.status]?.label,
+      ].filter(Boolean).join(' ').toLowerCase();
+      return haystack.includes(q);
+    });
+  }, [leads, statusFilter, search]);
 
   return (
     <AppLayout>
@@ -75,7 +94,7 @@ const LeadsFilesPage = () => {
         <div className="flex items-center gap-3">
           <div className="relative flex-1 max-w-sm">
             <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-            <Input placeholder="Pesquisar..." value={search} onChange={e => setSearch(e.target.value)}
+            <Input placeholder="Pesquisar por ID, nome, destino, datas..." value={search} onChange={e => setSearch(e.target.value)}
               className="pl-8 h-9 text-sm" />
           </div>
         </div>
@@ -89,6 +108,8 @@ const LeadsFilesPage = () => {
           <div className="space-y-3">
             {filteredLeads.map(lead => {
               const badge = statusBadgeConfig[lead.status] || statusBadgeConfig.new;
+              const cs = costingMap[lead.id];
+              const hasPvp = cs && cs.pvp > 0;
               return (
                 <div key={lead.id} onClick={() => navigate(`/leads/${lead.id}`)}
                   className="bg-card rounded-lg border p-4 active:bg-muted/50 transition-colors cursor-pointer">
@@ -99,9 +120,13 @@ const LeadsFilesPage = () => {
                     </div>
                     <StatusBadge label={badge.label} className={badge.className} />
                   </div>
-                  <div className="flex items-center justify-between mt-3">
-                    <span className="text-[10px] text-muted-foreground">{lead.lead_code}</span>
-                    <span className="text-xs text-muted-foreground">{new Date(lead.created_at).toLocaleDateString('pt-PT')}</span>
+                  <div className="flex items-center justify-between mt-2 text-[11px]">
+                    <span className="text-muted-foreground">{lead.lead_code}</span>
+                    <span className="font-medium">
+                      PVP: <span className={cn(!hasPvp && "text-muted-foreground")}>{hasPvp ? fmtMoney(cs.pvp) : '—'}</span>
+                      <span className="mx-1.5 text-muted-foreground">·</span>
+                      Margem: <span className={cn(!hasPvp && "text-muted-foreground")}>{hasPvp ? `${cs.marginPct.toFixed(0)}%` : '—'}</span>
+                    </span>
                   </div>
                 </div>
               );
@@ -114,39 +139,59 @@ const LeadsFilesPage = () => {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-border bg-muted/50">
-                  <th className="text-left px-4 py-2.5 font-medium text-muted-foreground text-xs">Id</th>
-                  <th className="text-left px-4 py-2.5 font-medium text-muted-foreground text-xs">Nome</th>
-                  <th className="text-left px-4 py-2.5 font-medium text-muted-foreground text-xs">Destino</th>
-                  <th className="text-center px-4 py-2.5 font-medium text-muted-foreground text-xs">Dias</th>
-                  <th className="text-left px-4 py-2.5 font-medium text-muted-foreground text-xs">Datas</th>
-                  <th className="text-center px-4 py-2.5 font-medium text-muted-foreground text-xs">Pax</th>
-                  <th className="text-left px-4 py-2.5 font-medium text-muted-foreground text-xs">Data Criação</th>
-                  <th className="text-center px-4 py-2.5 font-medium text-muted-foreground text-xs">Estado</th>
-                  <th className="text-center px-4 py-2.5 font-medium text-muted-foreground text-xs">Ver</th>
+                  <th className="text-left px-3 py-2.5 font-medium text-muted-foreground text-xs">Id</th>
+                  <th className="text-left px-3 py-2.5 font-medium text-muted-foreground text-xs">Nome</th>
+                  <th className="text-left px-3 py-2.5 font-medium text-muted-foreground text-xs">Destino</th>
+                  <th className="text-center px-2 py-2.5 font-medium text-muted-foreground text-xs">Dias</th>
+                  <th className="text-left px-3 py-2.5 font-medium text-muted-foreground text-xs">Datas</th>
+                  <th className="text-center px-2 py-2.5 font-medium text-muted-foreground text-xs">Pax</th>
+                  <th className="text-right px-3 py-2.5 font-medium text-muted-foreground text-xs">PVP / Margem</th>
+                  <th className="text-left px-3 py-2.5 font-medium text-muted-foreground text-xs">Data Criação</th>
+                  <th className="text-center px-3 py-2.5 font-medium text-muted-foreground text-xs">Estado</th>
+                  <th className="text-center px-2 py-2.5 font-medium text-muted-foreground text-xs">Ver</th>
                 </tr>
               </thead>
               <tbody>
                 {filteredLeads.map(lead => {
                   const badge = statusBadgeConfig[lead.status] || statusBadgeConfig.new;
+                  const cs = costingMap[lead.id];
+                  const hasPvp = cs && cs.pvp > 0;
+                  const marginColor = hasPvp
+                    ? (cs.marginPct >= 30
+                        ? 'text-[hsl(var(--stable))]'
+                        : cs.marginPct >= 25
+                          ? 'text-[hsl(var(--warning))]'
+                          : 'text-[hsl(var(--urgent))]')
+                    : 'text-muted-foreground';
                   return (
                     <tr key={lead.id} onClick={() => navigate(`/leads/${lead.id}`)}
                       className="border-b border-border last:border-0 hover:bg-muted/30 transition-colors cursor-pointer">
-                      <td className="px-4 py-3 text-xs text-muted-foreground">{lead.lead_code}</td>
-                      <td className="px-4 py-3"><p className="text-xs font-medium text-[hsl(var(--info))] hover:underline">{lead.client_name}</p></td>
-                      <td className="px-4 py-3 text-xs text-foreground">{lead.destination}</td>
-                      <td className="px-4 py-3 text-xs text-center text-foreground">{lead.number_of_days || '—'}</td>
-                      <td className="px-4 py-3 text-xs text-muted-foreground">{lead.travel_dates}</td>
-                      <td className="px-4 py-3 text-xs text-center text-foreground">{lead.pax}</td>
-                      <td className="px-4 py-3 text-xs text-muted-foreground">
+                      <td className="px-3 py-3 text-xs text-muted-foreground whitespace-nowrap">{lead.lead_code}</td>
+                      <td className="px-3 py-3"><p className="text-xs font-medium text-[hsl(var(--info))] hover:underline">{lead.client_name}</p></td>
+                      <td className="px-3 py-3 text-xs text-foreground">{lead.destination}</td>
+                      <td className="px-2 py-3 text-xs text-center text-foreground">{lead.number_of_days || '—'}</td>
+                      <td className="px-3 py-3 text-xs text-muted-foreground">{lead.travel_dates}</td>
+                      <td className="px-2 py-3 text-xs text-center text-foreground">{lead.pax}</td>
+                      <td className="px-3 py-3 text-xs text-right whitespace-nowrap">
+                        {hasPvp ? (
+                          <div className="leading-tight">
+                            <div className="font-semibold text-foreground">{fmtMoney(cs.pvp)}</div>
+                            <div className={cn("text-[10px] font-medium", marginColor)}>{cs.marginPct.toFixed(0)}%</div>
+                          </div>
+                        ) : (
+                          <span className="text-muted-foreground">—</span>
+                        )}
+                      </td>
+                      <td className="px-3 py-3 text-xs text-muted-foreground whitespace-nowrap">
                         {new Date(lead.created_at).toLocaleDateString('pt-PT')} {new Date(lead.created_at).toLocaleTimeString('pt-PT', { hour: '2-digit', minute: '2-digit' })}
                       </td>
-                      <td className="px-4 py-3 text-center"><StatusBadge label={badge.label} className={badge.className} /></td>
-                      <td className="px-4 py-3 text-center"><Eye className="h-4 w-4 text-muted-foreground mx-auto" /></td>
+                      <td className="px-3 py-3 text-center"><StatusBadge label={badge.label} className={badge.className} /></td>
+                      <td className="px-2 py-3 text-center"><Eye className="h-4 w-4 text-muted-foreground mx-auto" /></td>
                     </tr>
                   );
                 })}
                 {filteredLeads.length === 0 && (
-                  <tr><td colSpan={9} className="px-4 py-8 text-center text-sm text-muted-foreground">Sem simulações encontradas</td></tr>
+                  <tr><td colSpan={10} className="px-4 py-8 text-center text-sm text-muted-foreground">Sem simulações encontradas</td></tr>
                 )}
               </tbody>
             </table>
