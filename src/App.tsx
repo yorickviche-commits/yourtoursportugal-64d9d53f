@@ -18,6 +18,11 @@ import ItineraryPreviewPage from "./pages/ItineraryPreviewPage";
 import PublicProposalPage from "./pages/PublicProposalPage";
 import ProposalDetailPage from "./pages/ProposalDetailPage";
 import AgentControlPage from "./pages/AgentControlPage";
+import QualificationAgentPage from "./pages/agents/QualificationAgentPage";
+import ItineraryAgentPage from "./pages/agents/ItineraryAgentPage";
+import FollowupAgentPage from "./pages/agents/FollowupAgentPage";
+import SupplierAgentPage from "./pages/agents/SupplierAgentPage";
+import OpsReviewAgentPage from "./pages/agents/OpsReviewAgentPage";
 import MobilePage from "./pages/MobilePage";
 import NotFound from "./pages/NotFound";
 
@@ -47,6 +52,11 @@ const App = () => (
             <Route path="/payments" element={<ProtectedRoute><PaymentsPage /></ProtectedRoute>} />
             <Route path="/proposals/:id" element={<ProtectedRoute><ProposalDetailPage /></ProtectedRoute>} />
             <Route path="/agents" element={<ProtectedRoute><AgentControlPage /></ProtectedRoute>} />
+            <Route path="/agents/qualification" element={<ProtectedRoute><QualificationAgentPage /></ProtectedRoute>} />
+            <Route path="/agents/itinerary" element={<ProtectedRoute><ItineraryAgentPage /></ProtectedRoute>} />
+            <Route path="/agents/followup" element={<ProtectedRoute><FollowupAgentPage /></ProtectedRoute>} />
+            <Route path="/agents/supplier" element={<ProtectedRoute><SupplierAgentPage /></ProtectedRoute>} />
+            <Route path="/agents/ops-review" element={<ProtectedRoute><OpsReviewAgentPage /></ProtectedRoute>} />
             <Route path="/mobile" element={<ProtectedRoute><MobilePage /></ProtectedRoute>} />
 
             <Route path="*" element={<NotFound />} />

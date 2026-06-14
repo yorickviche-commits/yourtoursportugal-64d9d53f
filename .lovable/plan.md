@@ -1,81 +1,96 @@
-## Objetivo
+## Goal
 
-Separar claramente as duas áreas e remover sobreposição:
+Transform Spark from a passive dashboard into an **action cockpit**. Each agent gets its own page where it:
+1. Diagnoses what to do (with full context)
+2. Drafts the work (emails, status changes, notes)
+3. Presents it to the human **one item at a time** with **Send / Edit / Skip / Approve / Reject** controls
 
-- **Leads & Files** = ciclo comercial (vendas, propostas, follow-up cliente)
-- **Bookings & Reservas Confirmadas** = ciclo operacional (execução do trip)
+Keep the current `/agents` overview, but every card opens a dedicated page.
 
-Cada área mantém a sua lista e histórico próprios.
+## Routes
 
----
+```
+/agents                            ← existing overview (unchanged layout, cards become links)
+/agents/qualification              ← New Leads triage
+/agents/itinerary                  ← Proposal builder queue
+/agents/followup                   ← Follow-up email queue
+/agents/supplier                   ← FSE Pre-Booker (the main workflow)
+/agents/ops-review                 ← Daily operations review
+```
 
-## 1. Lead Detail (Leads & Files) — remover Operações
+Each sub-page is a focused workspace, full width, large cards.
 
-Hoje a Lead tem 5 tabs (Dados Gerais, Planner, Custos, **Operações**, etc.).
+## Shared UI primitives (new)
 
-**Mudança:**
-- Remover a tab **Operações** da Lead.
-- Manter: Dados Gerais, Planner/Itinerário, Custos, Propostas.
-- Adicionar tab/secção **"Comunicações"** com botões de email pré-configurados:
-  - Primeiro contacto / Qualificação
-  - Envio de proposta
-  - Follow-up cliente (D+2, D+5, D+10)
-  - Pedido de feedback / fecho de lead
+`src/components/agents/AgentPageShell.tsx`
+- Header: agent icon + name + role + back link to `/agents`
+- Sidebar (left, ~280px): scrollable list of pending items with status dot, name, urgency. Click selects.
+- Main panel (right): the **active item card** — large, with all context + action zone.
 
-Cada botão abre o AI Email Composer já existente, com template pré-selecionado e envia via Gmail (`reservas@yourtours.pt`), regista em `booking_emails_log` (vamos generalizar — ver §4).
+`src/components/agents/ActionApprovalCard.tsx`
+- Renders an "AI suggested action" with:
+  - Reason / explanation block
+  - Target (lead / supplier / email recipient)
+  - Big primary button "Aprovar e Executar"
+  - Secondary "Editar" / "Rejeitar"
 
----
+`src/components/agents/EmailReviewQueue.tsx`
+- For email batches (FSE pre-bookings, follow-ups)
+- Shows queue: `Email 2 de 7 — Fornecedor X`
+- Pre-filled editor (reuses existing `BookingRequestDialog` HTML editor logic, inline)
+- Buttons: `Enviar` · `Editar` · `Saltar` · `Enviar Todos os Restantes`
+- After send/skip → auto-advance to next email
 
-## 2. Booking/Trip Detail (Bookings & Reservas) — absorver Operações
+## Agent-specific behavior
 
-Quando uma Lead é confirmada e passa a Booking, o workspace do Trip passa a ter:
+### 1. New Leads & Qualification (`/agents/qualification`)
+- Left list: leads in `new`/`contacted` sorted by budget weight
+- Right card per lead: name, contact, budget, destination, pax, raw simulation text
+- AI suggestions (computed locally from lead data):
+  - "Score = X/100 → Qualificar para `qualified`" → Approve button
+  - "Score < 50 → Rejeitar com email pré-feito" → Email review
+  - "Pedir mais info ao cliente" → Email draft via existing `generate-email` function
 
-1. **Dados Gerais** — cliente, datas, pax, valor (read-only herdado da Lead)
-2. **Itinerário** — exatamente o que está hoje no Travel Planner / PDF da proposta aprovada (read-only ou editável conforme já existe)
-3. **Custos** — importados da Lead (cost_items / lead_costing_data já existentes, copiados ou referenciados pelo trip_id)
-4. **Operações** — o quadro de funções que hoje está dentro da Lead (booking_status, payment_status, invoice_status por item — vem de `lead_operations`, será espelhado/movido para chave por `trip_id`)
-5. **Comunicações Ops** — emails operacionais pré-configurados:
-   - Pré-trip: Briefing cliente / welcome
-   - Briefing do guia
-   - Briefing final FSE (fornecedor)
-   - Pedido de reserva ao fornecedor (já existe — `BookingRequestDialog`)
-   - Pós-trip: Review cliente / pedido de testemunho
+### 2. Itinerary Construction & Proposal (`/agents/itinerary`)
+- Left list: qualified leads without proposal + last-minute high-budget
+- Right card: lead context + "Gerar travel plan + proposta" CTA (links to existing builder), or "Acelerar last-minute"
+- Action: status nudge to `negotiation`, or shortcut to `/leads/:id?tab=planner`
 
----
+### 3. Follow-up Agent (`/agents/followup`)
+- Left list: `proposal_sent`/`negotiation` stale > N days
+- Right: EmailReviewQueue — AI drafts a follow-up email per lead (calls existing `generate-email` function with a "follow-up after proposal" template)
+- Human walks through, sends or edits each
 
-## 3. Migração de dados Lead → Booking
+### 4. FSE Supplier Pre-Booker (`/agents/supplier`) — **the headline flow**
+- Left list: leads in `won` or `proposal_sent` with travel ≤ 45d
+- When a lead is selected:
+  1. Pull its `cost_items` (already linked to FSE suppliers) via existing `useCostItemsQuery`
+  2. Filter cost items where: supplier set AND not already requested in `trip_operations`/`lead_operations`
+  3. Show panel: *"Esta lead tem X serviços confirmados sem pedido de reserva enviado. Pedir permissão para enviar pré-bookings a todos os fornecedores?"*
+  4. Big **"Preparar X emails"** button
+  5. Opens EmailReviewQueue: each cost item generates a pre-composed booking email (reuses the same default body as `BookingRequestDialog`)
+  6. Human reviews email #1, clicks Enviar (or Editar), advances to #2, …, until queue done
+  7. Each send updates `trip_operations`/`lead_operations` booking_status='requested' and logs to `booking_emails_log` (same logic as today)
 
-Para garantir que o histórico se mantém em cada lado:
+### 5. Operations Wizard Review (`/agents/ops-review`)
+- Left list: won leads with travel D-14 or sooner
+- Right card per lead: checklist
+  - Bookings confirmed: X/Y → action "Reenviar pendentes" (→ EmailReviewQueue)
+  - Payments outstanding: list
+  - Missing pickup times / supplier email gaps
+  - Final voucher status
+- Each row has Approve / Mark Done / Open lead
 
-- `lead_operations` continua a existir para leads históricas, mas para Trips confirmadas a UI passa a ler/escrever via `trip_id`. Adicionar coluna `trip_id` opcional em `lead_operations` (já existe `lead_id`) OU criar `trip_operations` espelho. **Decisão recomendada:** adicionar `trip_id` a `lead_operations` e filtrar a tab de Operações do Trip por `trip_id` (mais simples, mantém histórico unificado).
-- Custos: a tab Custos do Trip lê `lead_costing_data` da lead original (link via `proposals.lead_id` ou `proposals.booking_id`).
-- Itinerário do Trip: lê a `proposal` aprovada (status `approved`) ligada à booking — é exatamente o PDF.
+## Wiring
 
----
+- `/agents` overview: each card now also has a button "Abrir centro do agente →" pointing to the sub-page.
+- Add 5 routes in `src/App.tsx` (lazy-loaded).
+- No DB changes — all data already exists (`leads`, `cost_items`, `trip_operations`, `lead_operations`, `booking_emails_log`).
+- Email send reuses the existing `send-booking-email` edge function. Follow-up/qualification emails reuse `generate-email` + a generic "send Gmail" path; if no generic send exists, add a minimal `send-generic-email` edge function (small, mirrors `send-booking-email` but with arbitrary subject/body and no operation update).
 
-## 4. Templates de email e log
+## Scope decisions
 
-- Generalizar `booking_emails_log` para servir os dois lados:
-  - já tem `lead_operation_id` e `operation_id` — adicionar `email_category` (`sales_first_contact`, `sales_proposal`, `sales_followup`, `ops_client_briefing`, `ops_guide_briefing`, `ops_fse_briefing`, `ops_post_trip`)
-  - na Lead: timeline filtra por `lead_id` + categorias sales
-  - na Booking: timeline filtra por `trip_id` + categorias ops
-- Templates ficam definidos em `src/data/emailTemplates.ts` (novo) e usam variáveis do Master Prompt.
+- Build the **shell + overview links + FSE Supplier Pre-Booker page (full flow)** in this iteration since that's the example the user gave.
+- The other 4 sub-pages get the same shell with their lists + a "coming soon" hint for AI email batches, but qualification/follow-up email queues will be wired in a follow-up iteration to keep this change shippable.
 
----
-
-## Detalhes técnicos
-
-**Ficheiros a alterar (estimativa):**
-- `src/components/lead/LeadDetailTabs.tsx` (ou equivalente) — remover tab Operações, adicionar tab Comunicações
-- `src/components/trip/TripWorkspace.tsx` (ou equivalente) — garantir 5 tabs: Dados / Itinerário / Custos / Operações / Comunicações Ops
-- Mover `OperationsBoard` / `LeadOperationsTable` para componente partilhado parametrizado por `lead_id` OU `trip_id`
-- Novo `src/components/communications/EmailQuickActions.tsx` — botões com categorias
-- Novo `src/data/emailTemplates.ts` — templates PT/EN por categoria
-- Reutilizar `send-booking-email` edge function (renomear conceptualmente para `send-workflow-email`) — aceita `category` no payload
-- Migração SQL: `ALTER TABLE lead_operations ADD COLUMN trip_id uuid` + `ALTER TABLE booking_emails_log ADD COLUMN email_category text, trip_id uuid`
-
-**Confirmações necessárias antes de implementar:**
-
-1. **Operações na Lead:** confirmas que queremos REMOVER completamente a tab Operações da Lead (ninguém vai mais lá), OU manter como read-only enquanto a lead não é convertida?
-2. **Lista única vs separada:** "Bookings & Reservas Confirmadas" só mostra trips com status confirmado/pago (origem = proposal aprovada). Lead deixa de aparecer aí. Correto?
-3. **Templates de email:** queres que eu escreva já os textos completos PT/EN para os 8 templates (sales + ops), ou só a estrutura e tu preenches depois no Admin?
+If you want all 5 agent flows fully wired in one go (longer, heavier), say so and I'll expand.

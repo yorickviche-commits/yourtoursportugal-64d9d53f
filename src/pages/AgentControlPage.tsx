@@ -167,7 +167,7 @@ const AgentControlPage = () => {
         accent: 'from-blue-500/15 to-blue-500/5 border-blue-200',
         items: qualification,
         emptyLabel: 'Sem novos leads para qualificar.',
-        cta: { label: 'Ver todos', href: '/leads?status=new' },
+        cta: { label: 'Abrir centro do agente', href: '/agents/qualification' },
       },
       {
         id: 'itinerary',
@@ -177,7 +177,7 @@ const AgentControlPage = () => {
         accent: 'from-violet-500/15 to-violet-500/5 border-violet-200',
         items: itinerary,
         emptyLabel: 'Nenhuma proposta prioritária pendente.',
-        cta: { label: 'Ver leads qualificados', href: '/leads?status=qualified' },
+        cta: { label: 'Abrir centro do agente', href: '/agents/itinerary' },
       },
       {
         id: 'followup',
@@ -187,7 +187,7 @@ const AgentControlPage = () => {
         accent: 'from-amber-500/15 to-amber-500/5 border-amber-200',
         items: followup,
         emptyLabel: 'Sem follow-ups pendentes.',
-        cta: { label: 'Ver propostas', href: '/proposals' },
+        cta: { label: 'Abrir centro do agente', href: '/agents/followup' },
       },
       {
         id: 'supplier',
@@ -197,7 +197,7 @@ const AgentControlPage = () => {
         accent: 'from-emerald-500/15 to-emerald-500/5 border-emerald-200',
         items: supplier,
         emptyLabel: 'Sem pré-reservas pendentes.',
-        cta: { label: 'Ver viagens', href: '/trips' },
+        cta: { label: 'Abrir centro do agente', href: '/agents/supplier' },
       },
       {
         id: 'ops_review',
@@ -207,7 +207,7 @@ const AgentControlPage = () => {
         accent: 'from-rose-500/15 to-rose-500/5 border-rose-200',
         items: ops,
         emptyLabel: 'Nenhum trip nos próximos 14 dias.',
-        cta: { label: 'Ver viagens', href: '/trips' },
+        cta: { label: 'Abrir centro do agente', href: '/agents/ops-review' },
       },
     ];
   }, [leads, proposals]);
@@ -250,18 +250,18 @@ const AgentControlPage = () => {
                   card.accent,
                 )}
               >
-                <div className="flex items-start gap-2 mb-2">
+                <Link to={card.cta?.href || '/agents'} className="flex items-start gap-2 mb-2 group">
                   <div className="h-8 w-8 rounded-md bg-white shadow-sm flex items-center justify-center shrink-0">
                     <Icon className="h-4 w-4 text-foreground" />
                   </div>
                   <div className="min-w-0 flex-1">
-                    <h3 className="text-sm font-semibold leading-tight">{card.name}</h3>
+                    <h3 className="text-sm font-semibold leading-tight group-hover:underline">{card.name}</h3>
                     <p className="text-[11px] text-muted-foreground leading-snug mt-0.5">{card.role}</p>
                   </div>
                   <span className="text-[10px] font-bold text-muted-foreground bg-white/70 px-1.5 py-0.5 rounded">
                     {card.items.length}
                   </span>
-                </div>
+                </Link>
 
                 <div className="flex-1 space-y-1">
                   {card.items.length === 0 ? (
