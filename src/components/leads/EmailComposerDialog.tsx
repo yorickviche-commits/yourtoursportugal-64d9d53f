@@ -112,6 +112,33 @@ const EmailComposerDialog = ({ lead, children, open: openProp, onOpenChange, ini
     setRecipientEmail(lead.email || '');
   }, [lead.email]);
 
+  // Fetch latest proposal for this lead when a proposal-related template is selected
+  useEffect(() => {
+    if (!open || !isProposalTemplate || !lead.leadId) return;
+    let cancelled = false;
+    (async () => {
+      setProposalLoading(true);
+      try {
+        const { data, error } = await supabase
+          .from('proposals')
+          .select('*')
+          .eq('lead_id', lead.leadId)
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        if (error) throw error;
+        if (!cancelled) setProposal(data as any);
+      } catch (e) {
+        console.error('Fetch proposal failed', e);
+        if (!cancelled) setProposal(null);
+      } finally {
+        if (!cancelled) setProposalLoading(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [open, isProposalTemplate, lead.leadId]);
+
+
   const logToHistory = async (action: 'copied' | 'gmail' | 'sent') => {
     if (!lead.leadId) return;
     setLogging(true);
