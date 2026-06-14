@@ -1035,7 +1035,7 @@ const LeadDetailPage = ({ mode = 'lead' }: { mode?: 'lead' | 'booking' } = {}) =
                 </DropdownMenuContent>
               </DropdownMenu>
             </div>
-            <PaymentSummaryBar leadId={lead.id} />
+            <PaymentSummaryBar leadId={lead.id} totalPVP={costingTotalPVP} />
 
           </div>
         </div>
