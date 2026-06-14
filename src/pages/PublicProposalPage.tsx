@@ -3,21 +3,21 @@ import { useProposalByToken, useProposalAnnotations, useProposalEvents, useCreat
 import { useState, useEffect, useRef, lazy, Suspense, Component, ReactNode } from 'react';
 import { MessageSquare, Check, Star, Phone, Mail, Globe, ChevronDown, ChevronUp, Send, X, Clock, MapPin, Hotel, ThumbsUp, ThumbsDown } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { getProposalDict, encodeSentiment, decodeSentiment, Sentiment } from '@/lib/proposalI18n';
+import { getProposalDict, resolveProposalLang, encodeSentiment, decodeSentiment, Sentiment } from '@/lib/proposalI18n';
 
 
 // Lazy load map to avoid react-leaflet context crash
 const LazyMap = lazy(() => import('@/components/proposal/ProposalMap'));
 
 // Error boundary for map
-class MapErrorBoundary extends Component<{ children: ReactNode }, { hasError: boolean }> {
-  constructor(props: { children: ReactNode }) {
+class MapErrorBoundary extends Component<{ children: ReactNode; fallback: string }, { hasError: boolean }> {
+  constructor(props: { children: ReactNode; fallback: string }) {
     super(props);
     this.state = { hasError: false };
   }
   static getDerivedStateFromError() { return { hasError: true }; }
   render() {
-    if (this.state.hasError) return <div className="h-full flex items-center justify-center bg-sky-50 text-sky-300">Carte indisponible</div>;
+    if (this.state.hasError) return <div className="h-full flex items-center justify-center bg-sky-50 text-sky-300">{this.props.fallback}</div>;
     return this.props.children;
   }
 }
@@ -54,7 +54,8 @@ const PublicProposalPage = () => {
     // eslint-disable-next-line
   }, [proposal?.id]);
 
-  const dict = getProposalDict(proposal?.language);
+  const effectiveLang = resolveProposalLang(proposal);
+  const dict = getProposalDict(effectiveLang);
 
   if (isLoading) return (
     <div className="min-h-screen flex items-center justify-center bg-sky-50">
