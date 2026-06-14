@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Mail, Loader2, Copy, Check, ChevronRight, Sparkles, ExternalLink } from 'lucide-react';
+import { Mail, Loader2, Copy, Check, ChevronRight, Sparkles, ExternalLink, Send } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -67,6 +67,8 @@ const EmailComposerDialog = ({ lead, children, open: openProp, onOpenChange, ini
   const [editedBody, setEditedBody] = useState('');
   const [copied, setCopied] = useState(false);
   const [logging, setLogging] = useState(false);
+  const [sending, setSending] = useState(false);
+  const [sent, setSent] = useState(false);
   const { toast } = useToast();
   const qc = useQueryClient();
 
@@ -88,24 +90,58 @@ const EmailComposerDialog = ({ lead, children, open: openProp, onOpenChange, ini
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, initialTemplateKey]);
 
-  const logToHistory = async (action: 'copied' | 'gmail') => {
+  const logToHistory = async (action: 'copied' | 'gmail' | 'sent') => {
     if (!lead.leadId) return;
     setLogging(true);
     try {
       const { data: { user } } = await supabase.auth.getUser();
+      const tag = action === 'sent'
+        ? '[Enviado pela App via reservas@yourtours.pt]'
+        : action === 'gmail'
+          ? '[Registado via Email Composer — Aberto no Gmail]'
+          : '[Registado via Email Composer — Copiado para Gmail]';
       await supabase.from('booking_emails_log').insert({
         lead_id: lead.leadId,
         supplier_email: lead.email || null,
         subject: editedSubject,
-        body: editedBody + `\n\n[Registado via Email Composer — ${action === 'gmail' ? 'Aberto no Gmail' : 'Copiado para Gmail'}]`,
+        body: editedBody + `\n\n${tag}`,
         email_category: selectedTemplate,
         sent_by: user?.id || null,
       } as any);
       qc.invalidateQueries({ queryKey: ['comms_log'] });
+      qc.invalidateQueries({ queryKey: ['booking_emails', lead.leadId] });
     } catch (e) {
       console.error('Log to history failed', e);
     } finally {
       setLogging(false);
+    }
+  };
+
+  const handleSendFromApp = async () => {
+    if (!lead.email) {
+      toast({ title: 'Sem email do cliente', description: 'Adiciona um email no lead.', variant: 'destructive' });
+      return;
+    }
+    setSending(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('send-booking-email', {
+        body: {
+          to: lead.email,
+          subject: editedSubject,
+          body: editedBody,
+        },
+      });
+      if (error) throw error;
+      if ((data as any)?.error) throw new Error((data as any).error);
+      setSent(true);
+      toast({ title: 'Email enviado', description: `Enviado para ${lead.email} via reservas@yourtours.pt` });
+      void logToHistory('sent');
+      setTimeout(() => setSent(false), 4000);
+    } catch (e: any) {
+      console.error('Send from app failed', e);
+      toast({ title: 'Falha no envio', description: e?.message || 'Erro desconhecido', variant: 'destructive' });
+    } finally {
+      setSending(false);
     }
   };
 
@@ -341,19 +377,26 @@ const EmailComposerDialog = ({ lead, children, open: openProp, onOpenChange, ini
             )}
 
             {/* Actions */}
-            <div className="flex items-center justify-between pt-2 border-t">
+            <div className="flex items-center justify-between pt-2 border-t flex-wrap gap-2">
               <Button variant="ghost" size="sm" className="text-xs" onClick={() => setStep('confirm_details')}>← Editar contexto</Button>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 flex-wrap">
                 <Button variant="outline" size="sm" className="text-xs" onClick={handleGenerate} disabled={loading}>
                   {loading ? <Loader2 className="h-3 w-3 animate-spin" /> : '🔄 Regenerar'}
                 </Button>
                 <Button size="sm" variant="outline" className="text-xs gap-1" onClick={handleOpenGmail}>
                   <ExternalLink className="h-3 w-3" /> Abrir no Gmail
                 </Button>
-                <Button size="sm" className={cn("text-xs gap-1 min-w-[140px]",
-                  copied ? "bg-[hsl(var(--stable))] text-white" : "bg-[hsl(var(--info))] text-white")}
+                <Button size="sm" variant="outline" className={cn("text-xs gap-1 min-w-[140px]",
+                  copied && "bg-[hsl(var(--stable))] text-white border-[hsl(var(--stable))]")}
                   onClick={handleCopy}>
                   {copied ? <><Check className="h-3 w-3" /> Copiado!</> : <><Copy className="h-3 w-3" /> Copiar para Gmail</>}
+                </Button>
+                <Button size="sm" className={cn("text-xs gap-1 min-w-[150px]",
+                  sent ? "bg-[hsl(var(--stable))] text-white" : "bg-[hsl(var(--info))] text-white")}
+                  onClick={handleSendFromApp} disabled={sending || !lead.email}>
+                  {sending ? <><Loader2 className="h-3 w-3 animate-spin" /> A enviar...</>
+                    : sent ? <><Check className="h-3 w-3" /> Enviado!</>
+                    : <><Send className="h-3 w-3" /> Enviar pela App</>}
                 </Button>
               </div>
             </div>
