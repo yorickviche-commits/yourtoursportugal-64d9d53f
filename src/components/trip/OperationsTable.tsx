@@ -1,4 +1,5 @@
 import { useState, useMemo, useCallback, useRef } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { ChevronDown, ChevronRight, Eye, Upload, Clock, Paperclip, FileText, ExternalLink, Loader2 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
