@@ -250,18 +250,18 @@ const AgentControlPage = () => {
                   card.accent,
                 )}
               >
-                <div className="flex items-start gap-2 mb-2">
+                <Link to={card.cta?.href || '/agents'} className="flex items-start gap-2 mb-2 group">
                   <div className="h-8 w-8 rounded-md bg-white shadow-sm flex items-center justify-center shrink-0">
                     <Icon className="h-4 w-4 text-foreground" />
                   </div>
                   <div className="min-w-0 flex-1">
-                    <h3 className="text-sm font-semibold leading-tight">{card.name}</h3>
+                    <h3 className="text-sm font-semibold leading-tight group-hover:underline">{card.name}</h3>
                     <p className="text-[11px] text-muted-foreground leading-snug mt-0.5">{card.role}</p>
                   </div>
                   <span className="text-[10px] font-bold text-muted-foreground bg-white/70 px-1.5 py-0.5 rounded">
                     {card.items.length}
                   </span>
-                </div>
+                </Link>
 
                 <div className="flex-1 space-y-1">
                   {card.items.length === 0 ? (
