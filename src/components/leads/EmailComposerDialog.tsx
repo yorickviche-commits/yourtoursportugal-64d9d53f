@@ -72,8 +72,21 @@ const EmailComposerDialog = ({ lead, children, open: openProp, onOpenChange, ini
   const [sending, setSending] = useState(false);
   const [sent, setSent] = useState(false);
   const [recipientEmail, setRecipientEmail] = useState(lead.email || '');
+  const [proposal, setProposal] = useState<ProposalLite | null>(null);
+  const [proposalLoading, setProposalLoading] = useState(false);
+  const [attachPdf, setAttachPdf] = useState(true);
   const { toast } = useToast();
   const qc = useQueryClient();
+
+  const PROPOSAL_TEMPLATES = ['send_proposal', 'proposal_followup', 'followup_3days', 'followup_7days', 'breakup'];
+  const isProposalTemplate = useMemo(
+    () => !!selectedTemplate && PROPOSAL_TEMPLATES.includes(selectedTemplate),
+    [selectedTemplate],
+  );
+  const weblink = proposal?.public_token
+    ? `${window.location.origin}/proposal/${proposal.public_token}`
+    : '';
+
 
   const reset = () => {
     setStep('select_template');
