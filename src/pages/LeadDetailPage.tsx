@@ -1028,12 +1028,8 @@ const LeadDetailPage = ({ mode = 'lead' }: { mode?: 'lead' | 'booking' } = {}) =
                 </DropdownMenuContent>
               </DropdownMenu>
             </div>
-            <div className="flex items-center gap-2">
-              <PaymentsDialog leadId={lead.id}>
-                <Button variant="outline" size="sm" className="text-xs">Pagamentos</Button>
-              </PaymentsDialog>
-              <PaymentBadge leadId={lead.id} budgetLabel={formState.budgetLevel} />
-            </div>
+            <PaymentSummaryBar leadId={lead.id} />
+
           </div>
         </div>
 
