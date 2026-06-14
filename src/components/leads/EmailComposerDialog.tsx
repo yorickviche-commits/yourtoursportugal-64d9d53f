@@ -69,6 +69,7 @@ const EmailComposerDialog = ({ lead, children, open: openProp, onOpenChange, ini
   const [logging, setLogging] = useState(false);
   const [sending, setSending] = useState(false);
   const [sent, setSent] = useState(false);
+  const [recipientEmail, setRecipientEmail] = useState(lead.email || '');
   const { toast } = useToast();
   const qc = useQueryClient();
 
