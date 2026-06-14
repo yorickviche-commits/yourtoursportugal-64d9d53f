@@ -1,9 +1,8 @@
-import { useState } from 'react';
-import { Mail, Loader2, Send } from 'lucide-react';
+import { useRef, useState } from 'react';
+import { Mail, Loader2, Send, Bold, Underline, Link as LinkIcon, Paperclip, Image as ImageIcon, X } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import { useUpsertTripOperation } from '@/hooks/useTripOperationsQuery';
 import { useUpsertLeadOperation } from '@/hooks/useLeadOperationsQuery';
@@ -26,6 +25,25 @@ interface BookingRequestDialogProps {
   dayNumber?: number;
 }
 
+interface AttachmentItem {
+  filename: string;
+  mimeType: string;
+  contentBase64: string;
+  sizeKb: number;
+}
+
+const fileToBase64 = (file: File): Promise<string> => new Promise((resolve, reject) => {
+  const r = new FileReader();
+  r.onload = () => {
+    const result = r.result as string;
+    resolve(result.split(',')[1] || '');
+  };
+  r.onerror = reject;
+  r.readAsDataURL(file);
+});
+
+const escapeHtml = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+
 const BookingRequestDialog = ({
   operationId, costItemId, tripId, tripCode,
   activityName, activityDate, scheduleTime,
@@ -39,8 +57,11 @@ const BookingRequestDialog = ({
   const upsertTripOp = useUpsertTripOperation();
   const upsertLeadOp = useUpsertLeadOperation();
 
+  const editorRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
   const defaultSubject = `Booking Request — ${activityName} — ${tripCode}`;
-  const defaultBody = `Dear ${supplierName || '[Supplier Name]'},
+  const defaultBodyText = `Dear ${supplierName || '[Supplier Name]'},
 
 We would like to request a booking for the following service:
 
@@ -57,44 +78,100 @@ Best regards,
 Your Tours Portugal
 reservas@yourtours.pt`;
 
+  const defaultBodyHtml = `<div style="font-family:Arial,sans-serif;font-size:14px;line-height:1.5;color:#1a1a1a">${
+    escapeHtml(defaultBodyText).replace(/\n/g, '<br>')
+  }</div>`;
+
   const [to, setTo] = useState(initialSupplierEmail);
   const [subject, setSubject] = useState(defaultSubject);
-  const [body, setBody] = useState(defaultBody);
-  const [resolvedEmail, setResolvedEmail] = useState(initialSupplierEmail);
+  const [attachments, setAttachments] = useState<AttachmentItem[]>([]);
 
   const handleOpen = async (isOpen: boolean) => {
     if (isOpen) {
-      // Try to resolve supplier email if not provided
       let email = initialSupplierEmail;
       if (!email && supplierName) {
         try {
-          // Search in suppliers table
           const { data: supplier } = await supabase
-            .from('suppliers')
-            .select('contact_email')
-            .ilike('name', `%${supplierName}%`)
-            .maybeSingle();
-          if (supplier?.contact_email) {
-            email = supplier.contact_email;
-          } else {
-            // Search in partners table
+            .from('suppliers').select('contact_email')
+            .ilike('name', `%${supplierName}%`).maybeSingle();
+          if (supplier?.contact_email) email = supplier.contact_email;
+          else {
             const { data: partner } = await supabase
-              .from('partners')
-              .select('contact_email')
-              .ilike('name', `%${supplierName}%`)
-              .maybeSingle();
-            if (partner?.contact_email) {
-              email = partner.contact_email;
-            }
+              .from('partners').select('contact_email')
+              .ilike('name', `%${supplierName}%`).maybeSingle();
+            if (partner?.contact_email) email = partner.contact_email;
           }
         } catch { /* ignore */ }
       }
-      setResolvedEmail(email);
       setTo(email);
-      setSubject(`Booking Request — ${activityName} — ${tripCode}`);
-      setBody(defaultBody);
+      setSubject(defaultSubject);
+      setAttachments([]);
+      // Reset editor on next tick (after mount)
+      setTimeout(() => {
+        if (editorRef.current) editorRef.current.innerHTML = defaultBodyHtml;
+      }, 0);
     }
     setOpen(isOpen);
+  };
+
+  const exec = (cmd: string, value?: string) => {
+    editorRef.current?.focus();
+    document.execCommand(cmd, false, value);
+  };
+
+  const onInsertLink = () => {
+    const url = window.prompt('URL do link:', 'https://');
+    if (!url) return;
+    exec('createLink', url);
+    // open in new tab
+    const sel = window.getSelection();
+    if (sel && sel.anchorNode) {
+      const a = (sel.anchorNode as HTMLElement).parentElement?.closest('a');
+      if (a) { a.setAttribute('target', '_blank'); a.setAttribute('rel', 'noopener'); }
+    }
+  };
+
+  const onPaste = async (e: React.ClipboardEvent<HTMLDivElement>) => {
+    const items = Array.from(e.clipboardData?.items || []);
+    const imgItem = items.find(it => it.type.startsWith('image/'));
+    if (imgItem) {
+      e.preventDefault();
+      const file = imgItem.getAsFile();
+      if (!file) return;
+      const b64 = await fileToBase64(file);
+      const dataUri = `data:${file.type};base64,${b64}`;
+      exec('insertHTML', `<img src="${dataUri}" alt="" style="max-width:100%;height:auto;display:block;margin:8px 0" />`);
+    }
+  };
+
+  const onPickFiles = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []);
+    const next: AttachmentItem[] = [];
+    for (const f of files) {
+      const b64 = await fileToBase64(f);
+      next.push({
+        filename: f.name,
+        mimeType: f.type || 'application/octet-stream',
+        contentBase64: b64,
+        sizeKb: Math.round(f.size / 1024),
+      });
+    }
+    setAttachments(prev => [...prev, ...next]);
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  };
+
+  const onInsertInlineImage = () => {
+    const inp = document.createElement('input');
+    inp.type = 'file';
+    inp.accept = 'image/*';
+    inp.onchange = async () => {
+      const f = inp.files?.[0];
+      if (!f) return;
+      const b64 = await fileToBase64(f);
+      const dataUri = `data:${f.type};base64,${b64}`;
+      exec('insertHTML', `<img src="${dataUri}" alt="" style="max-width:100%;height:auto;display:block;margin:8px 0" />`);
+    };
+    inp.click();
   };
 
   const handleSend = async () => {
@@ -104,15 +181,17 @@ reservas@yourtours.pt`;
     }
     setSending(true);
     try {
-      // 1. Send the email via Gmail API (reservas@yourtours.pt)
+      const html = editorRef.current?.innerHTML || defaultBodyHtml;
       const { data: sendData, error: sendError } = await supabase.functions.invoke('send-booking-email', {
-        body: { to, subject, body },
+        body: { to, subject, html, attachments },
       });
       if (sendError || (sendData as any)?.error) {
         throw new Error((sendData as any)?.error || sendError?.message || 'Falha ao enviar email');
       }
 
-      // 2. Update operational status + log
+      // Store a plain-text excerpt in the log for readability
+      const plain = (editorRef.current?.innerText || '').slice(0, 8000);
+
       if (isLeadContext) {
         const result = await upsertLeadOp.mutateAsync({
           lead_id: tripId,
@@ -123,23 +202,15 @@ reservas@yourtours.pt`;
         const leadOpId = (result as any)?.id;
         if (leadOpId) {
           await createEmailLog.mutateAsync({
-            lead_operation_id: leadOpId,
-            supplier_email: to,
-            subject,
-            body,
+            lead_operation_id: leadOpId, supplier_email: to, subject, body: plain,
           });
         }
       } else {
         const op = await upsertTripOp.mutateAsync({
-          cost_item_id: costItemId,
-          trip_id: tripId,
-          booking_status: 'requested',
+          cost_item_id: costItemId, trip_id: tripId, booking_status: 'requested',
         });
         await createEmailLog.mutateAsync({
-          operation_id: op.id,
-          supplier_email: to,
-          subject,
-          body,
+          operation_id: op.id, supplier_email: to, subject, body: plain,
         });
       }
 
@@ -152,7 +223,6 @@ reservas@yourtours.pt`;
     }
   };
 
-
   return (
     <Dialog open={open} onOpenChange={handleOpen}>
       <DialogTrigger asChild>
@@ -160,7 +230,7 @@ reservas@yourtours.pt`;
           <Send className="h-3 w-3 text-muted-foreground" />
         </button>
       </DialogTrigger>
-      <DialogContent className="max-w-xl">
+      <DialogContent className="max-w-2xl">
         <DialogHeader>
           <DialogTitle className="text-sm flex items-center gap-2">
             <Mail className="h-4 w-4" /> Pedido de Reserva — {activityName}
@@ -176,9 +246,62 @@ reservas@yourtours.pt`;
             <label className="text-[10px] text-muted-foreground uppercase font-medium">Assunto</label>
             <Input value={subject} onChange={e => setSubject(e.target.value)} className="h-8 text-xs" />
           </div>
+
           <div>
             <label className="text-[10px] text-muted-foreground uppercase font-medium">Corpo do email</label>
-            <Textarea value={body} onChange={e => setBody(e.target.value)} className="text-xs min-h-[200px] font-mono" />
+            {/* Formatting toolbar */}
+            <div className="flex items-center gap-1 border border-b-0 rounded-t-md bg-muted/30 px-1.5 py-1">
+              <button type="button" onMouseDown={e => e.preventDefault()} onClick={() => exec('bold')}
+                className="h-6 w-6 grid place-items-center rounded hover:bg-muted" title="Bold (Ctrl+B)">
+                <Bold className="h-3.5 w-3.5" />
+              </button>
+              <button type="button" onMouseDown={e => e.preventDefault()} onClick={() => exec('underline')}
+                className="h-6 w-6 grid place-items-center rounded hover:bg-muted" title="Underline (Ctrl+U)">
+                <Underline className="h-3.5 w-3.5" />
+              </button>
+              <button type="button" onMouseDown={e => e.preventDefault()} onClick={onInsertLink}
+                className="h-6 w-6 grid place-items-center rounded hover:bg-muted" title="Inserir link">
+                <LinkIcon className="h-3.5 w-3.5" />
+              </button>
+              <div className="w-px h-4 bg-border mx-1" />
+              <button type="button" onMouseDown={e => e.preventDefault()} onClick={onInsertInlineImage}
+                className="h-6 w-6 grid place-items-center rounded hover:bg-muted" title="Inserir imagem no corpo">
+                <ImageIcon className="h-3.5 w-3.5" />
+              </button>
+              <button type="button" onMouseDown={e => e.preventDefault()} onClick={() => fileInputRef.current?.click()}
+                className="h-6 w-6 grid place-items-center rounded hover:bg-muted" title="Anexar ficheiro">
+                <Paperclip className="h-3.5 w-3.5" />
+              </button>
+              <span className="ml-auto text-[10px] text-muted-foreground pr-1">Cola screenshots (Ctrl+V)</span>
+            </div>
+            <div
+              ref={editorRef}
+              contentEditable
+              suppressContentEditableWarning
+              onPaste={onPaste}
+              className="min-h-[220px] max-h-[400px] overflow-y-auto border rounded-b-md p-3 text-xs bg-background focus:outline-none focus:ring-1 focus:ring-ring"
+              style={{ fontFamily: 'Arial, sans-serif', fontSize: '13px', lineHeight: 1.5 }}
+            />
+            <input ref={fileInputRef} type="file" multiple className="hidden" onChange={onPickFiles} />
+
+            {attachments.length > 0 && (
+              <div className="mt-2 flex flex-wrap gap-1.5">
+                {attachments.map((a, i) => (
+                  <div key={i} className="flex items-center gap-1.5 px-2 py-1 bg-muted rounded text-[11px]">
+                    <Paperclip className="h-3 w-3 text-muted-foreground" />
+                    <span className="font-medium">{a.filename}</span>
+                    <span className="text-muted-foreground">({a.sizeKb} KB)</span>
+                    <button
+                      onClick={() => setAttachments(prev => prev.filter((_, j) => j !== i))}
+                      className="ml-0.5 text-muted-foreground hover:text-destructive"
+                      title="Remover"
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         </div>
 
