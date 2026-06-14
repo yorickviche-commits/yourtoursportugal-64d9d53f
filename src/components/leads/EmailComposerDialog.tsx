@@ -36,7 +36,7 @@ interface EmailComposerDialogProps {
   initialTemplateKey?: string | null;
 }
 
-export const AI_AI_EMAIL_TEMPLATES = [
+export const AI_EMAIL_TEMPLATES = [
 
   { key: 'new_inquiry', label: '1. Nova Consulta', stage: 'Sales', description: 'Resposta inicial + discovery questions' },
   { key: 'send_proposal', label: '★ Enviar Proposta', stage: 'Sales', description: 'Email curto a apresentar a proposta (anexar PDF no Gmail)' },
