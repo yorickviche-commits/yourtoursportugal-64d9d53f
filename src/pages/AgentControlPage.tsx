@@ -1,75 +1,81 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
+import { Link } from 'react-router-dom';
 import AppLayout from '@/components/AppLayout';
-import { useAgentNotifications, useMarkNotificationRead, useDismissNotification } from '@/hooks/useAgentNotifications';
+import { useLeads } from '@/hooks/useLeads';
 import { useAgentPendingActions, useApproveAction, useRejectAction } from '@/hooks/useAgentPendingActions';
 import { cn } from '@/lib/utils';
 import { formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import {
-  Bell, Zap, CheckCircle, XCircle, Clock, AlertTriangle,
-  Info, AlertCircle, Mail, CalendarCheck, FileText, X, Sparkles,
+  Sparkles, Mail, FileText, Star, MessageSquare, ListChecks,
+  ChevronRight, Zap, CheckCircle, XCircle, Search, Lightbulb,
 } from 'lucide-react';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
+import { Lead } from '@/types/leads';
 
-const PRIORITY_CONFIG = {
-  urgent: { color: 'bg-red-500', text: 'text-red-600', label: 'Urgente', border: 'border-l-red-500' },
-  high:   { color: 'bg-orange-500', text: 'text-orange-600', label: 'Alto', border: 'border-l-orange-500' },
-  medium: { color: 'bg-yellow-500', text: 'text-yellow-600', label: 'Médio', border: 'border-l-yellow-400' },
-  low:    { color: 'bg-blue-400', text: 'text-blue-500', label: 'Info', border: 'border-l-blue-400' },
+const STATUS_LABEL: Record<string, { label: string; color: string }> = {
+  new:           { label: 'Novo', color: 'bg-blue-100 text-blue-700' },
+  contacted:     { label: 'Contactado', color: 'bg-indigo-100 text-indigo-700' },
+  qualified:     { label: 'Qualificado', color: 'bg-emerald-100 text-emerald-700' },
+  proposal_sent: { label: 'Proposta', color: 'bg-violet-100 text-violet-700' },
+  negotiation:   { label: 'Negociação', color: 'bg-amber-100 text-amber-700' },
+  won:           { label: 'Ganho', color: 'bg-green-100 text-green-700' },
+  lost:          { label: 'Perdido', color: 'bg-gray-100 text-gray-600' },
 };
 
-const TYPE_ICON = {
-  alert:           <AlertCircle className="h-4 w-4 text-red-500" />,
-  warning:         <AlertTriangle className="h-4 w-4 text-orange-500" />,
-  info:            <Info className="h-4 w-4 text-blue-500" />,
-  action_required: <Zap className="h-4 w-4 text-yellow-500" />,
-};
-
-const ACTION_ICON: Record<string, React.ReactNode> = {
-  send_email:            <Mail className="h-4 w-4" />,
-  create_calendar_event: <CalendarCheck className="h-4 w-4" />,
-  request_invoice:       <FileText className="h-4 w-4" />,
-  send_proposal_followup:<Mail className="h-4 w-4" />,
-  update_status:         <CheckCircle className="h-4 w-4" />,
-};
-
-const STATUS_CONFIG = {
-  pending:  { label: 'A aguardar', color: 'bg-yellow-100 text-yellow-800' },
-  approved: { label: 'Aprovado', color: 'bg-green-100 text-green-800' },
-  rejected: { label: 'Rejeitado', color: 'bg-red-100 text-red-800' },
-  executed: { label: 'Executado', color: 'bg-blue-100 text-blue-800' },
-  failed:   { label: 'Erro', color: 'bg-gray-100 text-gray-800' },
-};
+const SPARK_TASKS = [
+  { id: 'draft_followup', label: 'Redigir follow-up', icon: Mail,
+    description: 'Spark prepara um email de follow-up personalizado para o lead.' },
+  { id: 'score_lead', label: 'Avaliar lead', icon: Star,
+    description: 'Spark analisa contexto e atribui pontuação 0–100 com justificação.' },
+  { id: 'suggest_itinerary', label: 'Sugerir esqueleto de itinerário', icon: Lightbulb,
+    description: 'Spark propõe um esqueleto de dias com base no perfil e destino.' },
+  { id: 'summarize_history', label: 'Resumir histórico', icon: MessageSquare,
+    description: 'Spark resume todas as comunicações e notas existentes do lead.' },
+  { id: 'next_action', label: 'Sugerir próxima acção', icon: ListChecks,
+    description: 'Spark identifica o próximo passo comercial mais provável de fechar.' },
+];
 
 const AgentControlPage = () => {
-  const { data: notifications = [], isLoading: nLoad } = useAgentNotifications();
-  const { data: actions = [], isLoading: aLoad } = useAgentPendingActions();
-  const markRead = useMarkNotificationRead();
-  const dismiss = useDismissNotification();
+  const { leads } = useLeads();
+  const { data: actions = [] } = useAgentPendingActions();
   const approve = useApproveAction();
   const reject = useRejectAction();
   const { toast } = useToast();
-  const [activeTab, setActiveTab] = useState('notifications');
+  const [query, setQuery] = useState('');
+  const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
 
-  const unread = notifications.filter(n => !n.read_at).length;
-  const pending = actions.filter(a => a.status === 'pending').length;
+  // Sort by most recent activity, exclude won/lost from main focus
+  const filteredLeads = useMemo(() => {
+    const active = leads.filter(l => !['won', 'lost'].includes(l.status));
+    const q = query.trim().toLowerCase();
+    const filtered = q
+      ? active.filter(l =>
+          l.clientName.toLowerCase().includes(q) ||
+          l.destination.toLowerCase().includes(q) ||
+          l.id.toLowerCase().includes(q)
+        )
+      : active;
+    return [...filtered].sort((a, b) =>
+      new Date(b.lastContact || b.createdAt).getTime() -
+      new Date(a.lastContact || a.createdAt).getTime()
+    );
+  }, [leads, query]);
 
-  const handleApprove = async (id: string, title: string) => {
-    await approve.mutateAsync(id);
-    toast({ title: 'Acção aprovada', description: title });
-  };
+  const pendingActions = actions.filter(a => a.status === 'pending');
 
-  const handleReject = async (id: string, title: string) => {
-    await reject.mutateAsync({ id });
-    toast({ title: 'Acção rejeitada', description: title, variant: 'destructive' });
+  const handleDelegate = (lead: Lead, taskLabel: string) => {
+    toast({
+      title: 'Tarefa enviada ao Spark',
+      description: `${taskLabel} · ${lead.clientName} (${lead.id})`,
+    });
   };
 
   return (
     <AppLayout>
-      <div className="p-6 max-w-4xl mx-auto space-y-6">
+      <div className="p-6 max-w-6xl mx-auto space-y-6">
 
         {/* Header */}
         <div className="flex items-center gap-3">
@@ -77,177 +83,160 @@ const AgentControlPage = () => {
             <Sparkles className="h-5 w-5 text-white" />
           </div>
           <div>
-            <h1 className="text-xl font-bold text-foreground">Agent Control Center</h1>
-            <p className="text-xs text-muted-foreground">Monitorização e aprovação de acções do Spark</p>
+            <h1 className="text-xl font-bold text-foreground">Spark · Assistente Comercial</h1>
+            <p className="text-xs text-muted-foreground">
+              Delegue tarefas repetitivas: emails, scoring, resumos e sugestões de próxima acção.
+            </p>
           </div>
-          <div className="ml-auto flex items-center gap-2">
-            <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-green-50 border border-green-200">
-              <span className="h-2 w-2 rounded-full bg-green-500 animate-pulse" />
-              <span className="text-xs font-medium text-green-700">Spark activo</span>
+          <div className="ml-auto flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-green-50 border border-green-200">
+            <span className="h-2 w-2 rounded-full bg-green-500 animate-pulse" />
+            <span className="text-xs font-medium text-green-700">Spark activo</span>
+          </div>
+        </div>
+
+        {/* What Spark does — quick explainer */}
+        <div className="bg-gradient-to-br from-violet-50 to-indigo-50 border border-violet-200/60 rounded-xl p-4">
+          <div className="flex items-start gap-3">
+            <Lightbulb className="h-4 w-4 text-violet-600 mt-0.5 shrink-0" />
+            <div className="text-xs text-foreground/80 leading-relaxed">
+              <strong className="text-foreground">O que o Spark faz:</strong> escolha um lead e delegue uma tarefa.
+              O Spark prepara o trabalho (rascunho de email, scoring, resumo, sugestão de itinerário) e devolve para a sua aprovação antes de qualquer envio ao cliente.
             </div>
           </div>
         </div>
 
-        {/* Stats */}
-        <div className="grid grid-cols-3 gap-3">
-          {[
-            { label: 'Notificações novas', value: unread, icon: <Bell className="h-4 w-4" />, color: 'text-violet-600' },
-            { label: 'Acções pendentes', value: pending, icon: <Zap className="h-4 w-4" />, color: 'text-yellow-600' },
-            { label: 'Total hoje', value: notifications.length + actions.length, icon: <CheckCircle className="h-4 w-4" />, color: 'text-blue-600' },
-          ].map(s => (
-            <div key={s.label} className="bg-card border border-border rounded-xl p-4">
-              <div className={cn("flex items-center gap-2 mb-1", s.color)}>
-                {s.icon}
-                <span className="text-xs text-muted-foreground">{s.label}</span>
-              </div>
-              <p className="text-2xl font-bold text-foreground">{s.value}</p>
+        {/* Pending approvals */}
+        {pendingActions.length > 0 && (
+          <div className="bg-card border border-border rounded-xl p-4">
+            <div className="flex items-center gap-2 mb-3">
+              <Zap className="h-4 w-4 text-yellow-600" />
+              <h2 className="text-sm font-semibold">Acções a aguardar a sua aprovação</h2>
+              <span className="ml-auto text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-yellow-100 text-yellow-700">
+                {pendingActions.length}
+              </span>
             </div>
-          ))}
-        </div>
-
-        {/* Tabs */}
-        <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="grid grid-cols-2 w-full">
-            <TabsTrigger value="notifications" className="gap-2">
-              <Bell className="h-3.5 w-3.5" />
-              Notificações
-              {unread > 0 && (
-                <span className="ml-1 px-1.5 py-0.5 text-[10px] font-bold bg-violet-600 text-white rounded-full">{unread}</span>
-              )}
-            </TabsTrigger>
-            <TabsTrigger value="actions" className="gap-2">
-              <Zap className="h-3.5 w-3.5" />
-              Acções Pendentes
-              {pending > 0 && (
-                <span className="ml-1 px-1.5 py-0.5 text-[10px] font-bold bg-yellow-500 text-white rounded-full">{pending}</span>
-              )}
-            </TabsTrigger>
-          </TabsList>
-
-          {/* NOTIFICATIONS */}
-          <TabsContent value="notifications" className="space-y-3 mt-4">
-            {nLoad && <p className="text-sm text-muted-foreground text-center py-8">A carregar...</p>}
-            {!nLoad && notifications.length === 0 && (
-              <div className="text-center py-12 text-muted-foreground">
-                <Bell className="h-8 w-8 mx-auto mb-2 opacity-30" />
-                <p className="text-sm">Sem notificações</p>
-              </div>
-            )}
-            {notifications.map(n => {
-              const p = PRIORITY_CONFIG[n.priority] || PRIORITY_CONFIG.medium;
-              return (
-                <div
-                  key={n.id}
-                  onClick={() => !n.read_at && markRead.mutate(n.id)}
-                  className={cn(
-                    "bg-card border border-border rounded-xl p-4 border-l-4 cursor-pointer transition-all",
-                    p.border,
-                    !n.read_at ? 'shadow-sm' : 'opacity-60'
-                  )}
-                >
-                  <div className="flex items-start gap-3">
-                    <div className="mt-0.5">{TYPE_ICON[n.type]}</div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 mb-1">
-                        <span className="text-sm font-semibold text-foreground">{n.title}</span>
-                        <span className={cn("text-[10px] font-bold px-1.5 py-0.5 rounded-full", p.color, 'bg-opacity-10')}>{p.label}</span>
-                        {!n.read_at && <span className="h-2 w-2 rounded-full bg-violet-500 ml-auto shrink-0" />}
-                      </div>
-                      <p className="text-xs text-muted-foreground leading-relaxed">{n.body}</p>
-                      {n.entity_ref && (
-                        <p className="text-[11px] text-foreground/50 mt-1.5 font-medium">{n.entity_ref}</p>
-                      )}
-                      <p className="text-[10px] text-muted-foreground/60 mt-1">
-                        {n.agent_name} · {formatDistanceToNow(new Date(n.created_at), { addSuffix: true, locale: ptBR })}
-                      </p>
-                    </div>
-                    <button
-                      onClick={e => { e.stopPropagation(); dismiss.mutate(n.id); }}
-                      className="p-1 hover:bg-muted rounded shrink-0"
-                    >
-                      <X className="h-3.5 w-3.5 text-muted-foreground" />
-                    </button>
+            <div className="space-y-2">
+              {pendingActions.map(a => (
+                <div key={a.id} className="flex items-center gap-3 p-3 bg-muted/40 rounded-lg">
+                  <Mail className="h-4 w-4 text-muted-foreground shrink-0" />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium truncate">{a.title}</p>
+                    <p className="text-xs text-muted-foreground truncate">
+                      {a.entity_ref} · {formatDistanceToNow(new Date(a.created_at), { addSuffix: true, locale: ptBR })}
+                    </p>
                   </div>
+                  <Button size="sm" variant="outline" className="h-7 text-red-600 border-red-200"
+                    onClick={() => reject.mutateAsync({ id: a.id }).then(() => toast({ title: 'Rejeitado' }))}>
+                    <XCircle className="h-3.5 w-3.5" />
+                  </Button>
+                  <Button size="sm" className="h-7 bg-green-600 hover:bg-green-700 text-white"
+                    onClick={() => approve.mutateAsync(a.id).then(() => toast({ title: 'Aprovado' }))}>
+                    <CheckCircle className="h-3.5 w-3.5" />
+                  </Button>
                 </div>
-              );
-            })}
-          </TabsContent>
+              ))}
+            </div>
+          </div>
+        )}
 
-          {/* PENDING ACTIONS */}
-          <TabsContent value="actions" className="space-y-3 mt-4">
-            {aLoad && <p className="text-sm text-muted-foreground text-center py-8">A carregar...</p>}
-            {!aLoad && actions.length === 0 && (
-              <div className="text-center py-12 text-muted-foreground">
-                <Zap className="h-8 w-8 mx-auto mb-2 opacity-30" />
-                <p className="text-sm">Sem acções pendentes</p>
-              </div>
-            )}
-            {actions.map(a => {
-              const s = STATUS_CONFIG[a.status] || STATUS_CONFIG.pending;
-              const isPending = a.status === 'pending';
-              return (
-                <div key={a.id} className={cn(
-                  "bg-card border border-border rounded-xl p-4 transition-all",
-                  isPending ? 'shadow-sm' : 'opacity-60'
-                )}>
-                  <div className="flex items-start gap-3">
-                    <div className="h-8 w-8 rounded-lg bg-muted flex items-center justify-center shrink-0">
-                      {ACTION_ICON[a.action_type] || <Zap className="h-4 w-4" />}
-                    </div>
+        {/* Two-column: leads + spark task panel */}
+        <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-4">
+
+          {/* Leads list */}
+          <div className="bg-card border border-border rounded-xl">
+            <div className="p-3 border-b border-border flex items-center gap-2">
+              <Search className="h-3.5 w-3.5 text-muted-foreground" />
+              <Input
+                placeholder="Procurar lead, destino ou ID..."
+                value={query}
+                onChange={e => setQuery(e.target.value)}
+                className="h-7 border-0 focus-visible:ring-0 px-0 text-sm"
+              />
+              <span className="text-[10px] text-muted-foreground">{filteredLeads.length} activos</span>
+            </div>
+            <div className="divide-y divide-border max-h-[600px] overflow-y-auto">
+              {filteredLeads.length === 0 && (
+                <div className="p-8 text-center text-sm text-muted-foreground">Sem leads activos</div>
+              )}
+              {filteredLeads.map(lead => {
+                const s = STATUS_LABEL[lead.status] || STATUS_LABEL.new;
+                const selected = selectedLead?.id === lead.id;
+                return (
+                  <button
+                    key={lead.id}
+                    onClick={() => setSelectedLead(lead)}
+                    className={cn(
+                      'w-full text-left p-3 hover:bg-muted/40 transition-colors flex items-center gap-3',
+                      selected && 'bg-violet-50 hover:bg-violet-50'
+                    )}
+                  >
                     <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 mb-1">
-                        <span className="text-sm font-semibold text-foreground">{a.title}</span>
-                        <span className={cn("text-[10px] font-bold px-1.5 py-0.5 rounded-full", s.color)}>{s.label}</span>
+                      <div className="flex items-center gap-2 mb-0.5">
+                        <span className="text-sm font-semibold truncate">{lead.clientName}</span>
+                        <span className={cn('text-[10px] font-medium px-1.5 py-0.5 rounded', s.color)}>{s.label}</span>
                       </div>
-                      <p className="text-xs text-muted-foreground leading-relaxed">{a.description}</p>
+                      <p className="text-xs text-muted-foreground truncate">
+                        {lead.id} · {lead.destination} · {lead.pax} pax · {lead.travelDates}
+                      </p>
+                      {lead.notes && (
+                        <p className="text-[11px] text-foreground/60 truncate mt-1 italic">"{lead.notes}"</p>
+                      )}
+                    </div>
+                    <ChevronRight className={cn('h-4 w-4 text-muted-foreground transition-transform', selected && 'rotate-90 text-violet-600')} />
+                  </button>
+                );
+              })}
+            </div>
+          </div>
 
-                      {/* Email preview */}
-                      {a.payload?.body_preview && (
-                        <div className="mt-2 p-2.5 bg-muted/50 rounded-lg border border-border">
-                          <p className="text-[10px] text-muted-foreground font-medium mb-1">
-                            Para: {a.payload.to} · {a.payload.subject}
-                          </p>
-                          <p className="text-xs text-foreground/70 italic">"{a.payload.body_preview}..."</p>
+          {/* Spark tasks panel */}
+          <div className="bg-card border border-border rounded-xl p-4 h-fit lg:sticky lg:top-4">
+            <div className="flex items-center gap-2 mb-3">
+              <Sparkles className="h-4 w-4 text-violet-600" />
+              <h2 className="text-sm font-semibold">Encarregar Spark</h2>
+            </div>
+
+            {!selectedLead ? (
+              <p className="text-xs text-muted-foreground py-4 text-center">
+                Seleccione um lead à esquerda para ver as tarefas disponíveis.
+              </p>
+            ) : (
+              <>
+                <div className="p-2.5 bg-muted/40 rounded-lg mb-3">
+                  <p className="text-xs font-semibold truncate">{selectedLead.clientName}</p>
+                  <p className="text-[11px] text-muted-foreground truncate">
+                    {selectedLead.id} · {selectedLead.destination}
+                  </p>
+                  <Link
+                    to={`/leads/${selectedLead.id}`}
+                    className="text-[11px] text-violet-600 hover:underline inline-flex items-center gap-1 mt-1"
+                  >
+                    Abrir ficha completa <ChevronRight className="h-3 w-3" />
+                  </Link>
+                </div>
+
+                <div className="space-y-1.5">
+                  {SPARK_TASKS.map(task => {
+                    const Icon = task.icon;
+                    return (
+                      <button
+                        key={task.id}
+                        onClick={() => handleDelegate(selectedLead, task.label)}
+                        className="w-full text-left p-2.5 rounded-lg border border-border hover:border-violet-300 hover:bg-violet-50/50 transition-colors group"
+                      >
+                        <div className="flex items-center gap-2 mb-0.5">
+                          <Icon className="h-3.5 w-3.5 text-violet-600" />
+                          <span className="text-xs font-semibold">{task.label}</span>
                         </div>
-                      )}
-
-                      {a.entity_ref && (
-                        <p className="text-[11px] text-foreground/50 mt-1.5 font-medium">{a.entity_ref}</p>
-                      )}
-                      <p className="text-[10px] text-muted-foreground/60 mt-1">
-                        {a.agent_name} · {formatDistanceToNow(new Date(a.created_at), { addSuffix: true, locale: ptBR })}
-                      </p>
-                    </div>
-                  </div>
-
-                  {isPending && (
-                    <div className="flex gap-2 mt-3 pt-3 border-t border-border">
-                      <Button
-                        size="sm"
-                        className="flex-1 gap-1.5 bg-green-600 hover:bg-green-700 text-white h-8"
-                        onClick={() => handleApprove(a.id, a.title)}
-                        disabled={approve.isPending}
-                      >
-                        <CheckCircle className="h-3.5 w-3.5" />
-                        Aprovar
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        className="flex-1 gap-1.5 text-red-600 border-red-200 hover:bg-red-50 h-8"
-                        onClick={() => handleReject(a.id, a.title)}
-                        disabled={reject.isPending}
-                      >
-                        <XCircle className="h-3.5 w-3.5" />
-                        Rejeitar
-                      </Button>
-                    </div>
-                  )}
+                        <p className="text-[11px] text-muted-foreground leading-snug">{task.description}</p>
+                      </button>
+                    );
+                  })}
                 </div>
-              );
-            })}
-          </TabsContent>
-        </Tabs>
+              </>
+            )}
+          </div>
+        </div>
       </div>
     </AppLayout>
   );
