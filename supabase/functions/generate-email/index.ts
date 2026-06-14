@@ -311,18 +311,48 @@ Return a JSON object with:
 
 Use the extract_email tool to return the result.`;
 
-    // Try Lovable AI gateway first, fallback to Gemini direct
+    // Strategy: call Gemini direct FIRST (gateway has been returning 402 — wasted ~10s round-trip).
+    // Fallback to Lovable AI gateway only if direct fails.
     let data: any;
+    let result: any;
 
-    try {
+    const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY");
+
+    const callGeminiDirect = async () => {
+      if (!GEMINI_API_KEY) throw new Error("GEMINI_API_KEY not configured");
+      const fallbackPrompt = `${systemPrompt}\n\n${userPrompt}\n\nIMPORTANT: Return ONLY a valid JSON object with keys "subject", "body", and "internal_notes". No markdown, no extra text.`;
+      const r = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key=${GEMINI_API_KEY}`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            contents: [{ parts: [{ text: fallbackPrompt }] }],
+            generationConfig: {
+              temperature: 0.6,
+              responseMimeType: "application/json",
+              thinkingConfig: { thinkingBudget: 0 },
+            },
+          }),
+        }
+      );
+      if (!r.ok) {
+        const t = await r.text();
+        console.error("Gemini direct error:", r.status, t);
+        throw new Error(`Gemini ${r.status}`);
+      }
+      const gd = await r.json();
+      let rawText = gd.candidates?.[0]?.content?.parts?.[0]?.text || "";
+      rawText = rawText.replace(/```json\s*/g, "").replace(/```\s*/g, "").trim();
+      return JSON.parse(rawText);
+    };
+
+    const callLovableGateway = async () => {
       const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
         method: "POST",
-        headers: {
-          Authorization: `Bearer ${LOVABLE_API_KEY}`,
-          "Content-Type": "application/json",
-        },
+        headers: { Authorization: `Bearer ${LOVABLE_API_KEY}`, "Content-Type": "application/json" },
         body: JSON.stringify({
-          model: "google/gemini-2.5-flash",
+          model: "google/gemini-2.5-flash-lite",
           messages: [
             { role: "system", content: systemPrompt },
             { role: "user", content: userPrompt },
@@ -357,64 +387,29 @@ Use the extract_email tool to return the result.`;
           tool_choice: { type: "function", function: { name: "extract_email" } },
         }),
       });
-
-      if (!response.ok) {
-        if (response.status === 402 || response.status === 429) {
-          console.error(`Lovable AI returned ${response.status}, falling back to Gemini direct`);
-          throw new Error(`Gateway ${response.status}`);
-        }
-        const t = await response.text();
-        console.error("AI gateway error:", response.status, t);
-        throw new Error("AI gateway error");
-      }
-
+      if (!response.ok) throw new Error(`Gateway ${response.status}`);
       data = await response.json();
-    } catch (gatewayErr) {
-      // Fallback to Gemini direct
-      const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY");
-      if (!GEMINI_API_KEY) {
-        return new Response(JSON.stringify({ error: "AI credits exhausted and no fallback key configured." }), {
-          status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      const toolCall = data.choices?.[0]?.message?.tool_calls?.[0];
+      if (!toolCall) throw new Error("No tool call in response");
+      return JSON.parse(toolCall.function.arguments);
+    };
+
+    try {
+      result = await callGeminiDirect();
+    } catch (directErr) {
+      console.error("Gemini direct failed, falling back to Lovable gateway:", directErr);
+      try {
+        result = await callLovableGateway();
+      } catch (gatewayErr) {
+        console.error("Both AI providers failed:", gatewayErr);
+        return new Response(JSON.stringify({ error: "AI providers unavailable" }), {
+          status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
-
-      console.log("Using Gemini direct fallback...");
-
-      const fallbackPrompt = `${systemPrompt}\n\n${userPrompt}\n\nIMPORTANT: Return ONLY a valid JSON object with keys "subject", "body", and "internal_notes". No markdown, no extra text.`;
-
-      const geminiRes = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            contents: [{ parts: [{ text: fallbackPrompt }] }],
-          }),
-        }
-      );
-
-      if (!geminiRes.ok) {
-        const errText = await geminiRes.text();
-        console.error("Gemini fallback error:", geminiRes.status, errText);
-        throw new Error("Both AI providers failed");
-      }
-
-      const geminiData = await geminiRes.json();
-      let rawText = geminiData.candidates?.[0]?.content?.parts?.[0]?.text || "";
-      rawText = rawText.replace(/```json\s*/g, "").replace(/```\s*/g, "").trim();
-
-      const result = JSON.parse(rawText);
-      result.body = injectBookNowButton(result.body, (leadContext as any).wetravel_checkout_url, (leadContext as any).deposit_amount_eur);
-      return new Response(JSON.stringify({ email: result }), {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
     }
 
-    const toolCall = data.choices?.[0]?.message?.tool_calls?.[0];
-    if (!toolCall) throw new Error("No tool call in response");
-
-    const result = JSON.parse(toolCall.function.arguments);
     result.body = injectBookNowButton(result.body, (leadContext as any).wetravel_checkout_url, (leadContext as any).deposit_amount_eur);
+
 
     return new Response(JSON.stringify({ email: result }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
