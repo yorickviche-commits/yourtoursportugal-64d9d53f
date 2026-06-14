@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Mail, Loader2, Copy, Check, ChevronRight, Sparkles, ExternalLink } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -6,7 +6,9 @@ import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
+import { useQueryClient } from '@tanstack/react-query';
 import { cn } from '@/lib/utils';
+
 
 interface LeadContext {
   clientName: string;
@@ -27,9 +29,15 @@ interface LeadContext {
 interface EmailComposerDialogProps {
   lead: LeadContext;
   children?: React.ReactNode;
+  /** Controlled mode (no trigger rendered). */
+  open?: boolean;
+  onOpenChange?: (v: boolean) => void;
+  /** Preselect a template key when opening. */
+  initialTemplateKey?: string | null;
 }
 
-const EMAIL_TEMPLATES = [
+export const AI_EMAIL_TEMPLATES = [
+
   { key: 'new_inquiry', label: '1. Nova Consulta', stage: 'Sales', description: 'Resposta inicial + discovery questions' },
   { key: 'send_proposal', label: '★ Enviar Proposta', stage: 'Sales', description: 'Email curto a apresentar a proposta (anexar PDF no Gmail)' },
   { key: 'proposal_followup', label: '2. Follow-up Proposta (24h)', stage: 'Sales', description: 'Verificar se recebeu a proposta' },
@@ -44,8 +52,11 @@ const EMAIL_TEMPLATES = [
 
 type Step = 'select_template' | 'confirm_details' | 'preview';
 
-const EmailComposerDialog = ({ lead, children }: EmailComposerDialogProps) => {
-  const [open, setOpen] = useState(false);
+const EmailComposerDialog = ({ lead, children, open: openProp, onOpenChange, initialTemplateKey }: EmailComposerDialogProps) => {
+  const isControlled = openProp !== undefined;
+  const [internalOpen, setInternalOpen] = useState(false);
+  const open = isControlled ? !!openProp : internalOpen;
+  const setOpen = (v: boolean) => { if (isControlled) onOpenChange?.(v); else setInternalOpen(v); };
   const [step, setStep] = useState<Step>('select_template');
   const [selectedTemplate, setSelectedTemplate] = useState<string | null>(null);
   const [customNotes, setCustomNotes] = useState('');
@@ -55,7 +66,9 @@ const EmailComposerDialog = ({ lead, children }: EmailComposerDialogProps) => {
   const [editedSubject, setEditedSubject] = useState('');
   const [editedBody, setEditedBody] = useState('');
   const [copied, setCopied] = useState(false);
+  const [logging, setLogging] = useState(false);
   const { toast } = useToast();
+  const qc = useQueryClient();
 
   const reset = () => {
     setStep('select_template');
@@ -65,10 +78,42 @@ const EmailComposerDialog = ({ lead, children }: EmailComposerDialogProps) => {
     setCopied(false);
   };
 
+  // When opening via controlled mode with a preselected template, jump straight to confirm.
+  useEffect(() => {
+    if (open && initialTemplateKey) {
+      setSelectedTemplate(initialTemplateKey);
+      setStep('confirm_details');
+    }
+    if (!open) reset();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, initialTemplateKey]);
+
+  const logToHistory = async (action: 'copied' | 'gmail') => {
+    if (!lead.leadId) return;
+    setLogging(true);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      await supabase.from('booking_emails_log').insert({
+        lead_id: lead.leadId,
+        supplier_email: lead.email || null,
+        subject: editedSubject,
+        body: editedBody + `\n\n[Registado via Email Composer — ${action === 'gmail' ? 'Aberto no Gmail' : 'Copiado para Gmail'}]`,
+        email_category: selectedTemplate,
+        sent_by: user?.id || null,
+      } as any);
+      qc.invalidateQueries({ queryKey: ['comms_log'] });
+    } catch (e) {
+      console.error('Log to history failed', e);
+    } finally {
+      setLogging(false);
+    }
+  };
+
   const handleSelectTemplate = (key: string) => {
     setSelectedTemplate(key);
     setStep('confirm_details');
   };
+
 
   const handleGenerate = async () => {
     if (!selectedTemplate) return;
@@ -116,14 +161,17 @@ const EmailComposerDialog = ({ lead, children }: EmailComposerDialogProps) => {
       ]);
       setCopied(true);
       toast({ title: 'Copiado!', description: 'Email pronto para colar no Gmail (Ctrl+V)' });
+      void logToHistory('copied');
       setTimeout(() => setCopied(false), 3000);
     } catch {
       // Fallback to plain text
       await navigator.clipboard.writeText(editedBody);
       setCopied(true);
       toast({ title: 'Copiado (texto)', description: 'Colado como texto simples' });
+      void logToHistory('copied');
       setTimeout(() => setCopied(false), 3000);
     }
+
   };
 
   const handleCopySubject = async () => {
@@ -135,20 +183,24 @@ const EmailComposerDialog = ({ lead, children }: EmailComposerDialogProps) => {
     const url = `https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(lead.email || '')}&su=${encodeURIComponent(editedSubject)}&body=${encodeURIComponent(editedBody)}`;
     window.open(url, '_blank', 'noopener,noreferrer');
     toast({ title: 'Gmail aberto', description: 'Anexa o PDF da proposta antes de enviar.' });
+    void logToHistory('gmail');
   };
 
-  const selectedTemplateInfo = EMAIL_TEMPLATES.find(t => t.key === selectedTemplate);
+  const selectedTemplateInfo = AI_EMAIL_TEMPLATES.find(t => t.key === selectedTemplate);
 
   return (
     <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) reset(); }}>
-      <DialogTrigger asChild>
-        {children || (
-          <Button variant="outline" size="sm" className="text-xs gap-1">
-            <Mail className="h-3 w-3" /> Compor Email
-          </Button>
-        )}
-      </DialogTrigger>
+      {!isControlled && (
+        <DialogTrigger asChild>
+          {children || (
+            <Button variant="outline" size="sm" className="text-xs gap-1">
+              <Mail className="h-3 w-3" /> Compor Email
+            </Button>
+          )}
+        </DialogTrigger>
+      )}
       <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
+
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-base">
             <Sparkles className="h-4 w-4 text-[hsl(var(--info))]" />
@@ -162,7 +214,7 @@ const EmailComposerDialog = ({ lead, children }: EmailComposerDialogProps) => {
             <p className="text-xs text-muted-foreground mb-3">Seleciona o tipo de email para este lead:</p>
             
             <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Sales Pipeline</p>
-            {EMAIL_TEMPLATES.filter(t => t.stage === 'Sales').map(t => (
+            {AI_EMAIL_TEMPLATES.filter(t => t.stage === 'Sales').map(t => (
               <button key={t.key} onClick={() => handleSelectTemplate(t.key)}
                 className="w-full flex items-center justify-between p-3 rounded-lg border border-border hover:border-[hsl(var(--info))] hover:bg-[hsl(var(--info)/0.05)] transition-colors text-left group">
                 <div>
@@ -174,7 +226,7 @@ const EmailComposerDialog = ({ lead, children }: EmailComposerDialogProps) => {
             ))}
 
             <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mt-4">Operations Pipeline</p>
-            {EMAIL_TEMPLATES.filter(t => t.stage === 'Ops').map(t => (
+            {AI_EMAIL_TEMPLATES.filter(t => t.stage === 'Ops').map(t => (
               <button key={t.key} onClick={() => handleSelectTemplate(t.key)}
                 className="w-full flex items-center justify-between p-3 rounded-lg border border-border hover:border-[hsl(var(--info))] hover:bg-[hsl(var(--info)/0.05)] transition-colors text-left group">
                 <div>

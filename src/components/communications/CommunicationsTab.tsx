@@ -1,21 +1,34 @@
-import { useState, useMemo } from 'react';
-import { Mail, Send, Loader2, Clock, ChevronRight, Paperclip, Link2 } from 'lucide-react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
-import { Checkbox } from '@/components/ui/checkbox';
+import { useState } from 'react';
+import { Mail, Loader2, Clock, ChevronRight, Sparkles } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { EMAIL_TEMPLATES, renderTemplate, type EmailTemplate, type TemplateContext } from '@/data/emailTemplates';
-import { buildProposalPdfBase64, buildProposalEmailText, type ProposalLite } from '@/lib/proposalPdf';
+import EmailComposerDialog, { AI_EMAIL_TEMPLATES } from '@/components/leads/EmailComposerDialog';
+import type { TemplateContext } from '@/data/emailTemplates';
+
+interface LeadContext {
+  clientName: string;
+  email: string;
+  phone?: string;
+  destination: string;
+  travelDates: string;
+  pax: number;
+  status: string;
+  budgetLevel: string;
+  travelStyle?: string[];
+  comfortLevel?: string;
+  magicQuestion?: string;
+  notes?: string;
+  leadId?: string;
+}
 
 interface Props {
   scope: 'lead' | 'trip';
-  entityId: string;          // lead.id or trip.id
-  recipientEmail?: string;   // client email
+  entityId: string;
+  recipientEmail?: string;
   context: TemplateContext;
+  /** Full lead context (enables AI Email Composer for all 10 templates). */
+  leadContext?: LeadContext;
 }
 
 interface EmailLogRow {
@@ -27,39 +40,12 @@ interface EmailLogRow {
   email_category: string | null;
 }
 
-const CommunicationsTab = ({ scope, entityId, recipientEmail, context }: Props) => {
-  const { toast } = useToast();
-  const qc = useQueryClient();
-  const [selected, setSelected] = useState<EmailTemplate | null>(null);
-  const [to, setTo] = useState('');
-  const [subject, setSubject] = useState('');
-  const [body, setBody] = useState('');
-  const [sending, setSending] = useState(false);
-  const [attachPdf, setAttachPdf] = useState(true);
+const CommunicationsTab = ({ scope, entityId, recipientEmail, context, leadContext }: Props) => {
+  useToast();
+  const [composerOpen, setComposerOpen] = useState(false);
+  const [composerTemplate, setComposerTemplate] = useState<string | null>(null);
 
   const filterField = scope === 'lead' ? 'lead_id' : 'trip_id';
-
-  // Latest proposal for this lead/trip — used to auto-attach Travel Plan & weblink
-  const { data: latestProposal } = useQuery({
-    queryKey: ['latest_proposal', scope, entityId],
-    queryFn: async () => {
-      if (!entityId) return null;
-      const col = scope === 'lead' ? 'lead_id' : 'booking_id';
-      const { data } = await supabase
-        .from('proposals')
-        .select('id, title, client_name, date_range, participants, summary_text, total_value_eur, public_token, booking_ref, days, status')
-        .eq(col, entityId)
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .maybeSingle();
-      return (data as ProposalLite | null) || null;
-    },
-    enabled: !!entityId,
-  });
-
-  const proposalWeblink = latestProposal?.public_token
-    ? `${window.location.origin}/proposal/${latestProposal.public_token}`
-    : '';
 
   const { data: history = [], isLoading } = useQuery({
     queryKey: ['comms_log', scope, entityId],
@@ -76,127 +62,71 @@ const CommunicationsTab = ({ scope, entityId, recipientEmail, context }: Props) 
     enabled: !!entityId,
   });
 
-  const templates = useMemo(
-    () => EMAIL_TEMPLATES.filter(t => t.group === (scope === 'lead' ? 'sales' : 'ops')),
-    [scope],
+  // Build a lead context from props (fallback to TemplateContext fields)
+  const effectiveLead: LeadContext = leadContext || {
+    clientName: context.client_name || '',
+    email: recipientEmail || '',
+    destination: context.destination || '',
+    travelDates: context.travel_dates || '',
+    pax: Number(context.pax) || 0,
+    status: '',
+    budgetLevel: '',
+    leadId: scope === 'lead' ? entityId : undefined,
+  };
+
+  const salesTemplates = AI_EMAIL_TEMPLATES.filter(t => t.stage === 'Sales');
+  const opsTemplates = AI_EMAIL_TEMPLATES.filter(t => t.stage === 'Ops');
+
+  const openComposer = (key: string) => {
+    setComposerTemplate(key);
+    setComposerOpen(true);
+  };
+
+  const Section = ({ title, items }: { title: string; items: typeof AI_EMAIL_TEMPLATES }) => (
+    <div>
+      <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider px-3 pt-2 pb-1">{title}</p>
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2 p-3 pt-1">
+        {items.map(t => (
+          <button
+            key={t.key}
+            onClick={() => openComposer(t.key)}
+            className="text-left p-2.5 rounded border border-border hover:border-[hsl(var(--info))] hover:bg-[hsl(var(--info)/0.05)] transition group"
+          >
+            <div className="flex items-start justify-between gap-2">
+              <div className="min-w-0">
+                <div className="text-xs font-semibold truncate">{t.label}</div>
+                <div className="text-[10px] text-muted-foreground line-clamp-2 mt-0.5">{t.description}</div>
+              </div>
+              <Sparkles className="h-3.5 w-3.5 text-muted-foreground group-hover:text-[hsl(var(--info))] shrink-0" />
+            </div>
+          </button>
+        ))}
+      </div>
+    </div>
   );
-
-  const isProposalTemplate = selected?.key === 'sales_proposal';
-
-  const openTemplate = (t: EmailTemplate) => {
-    const rendered = renderTemplate(t, context);
-    let finalSubject = rendered.subject;
-    let finalBody = rendered.body;
-
-    if (t.key === 'sales_proposal' && latestProposal) {
-      // Build the email body to mirror the Travel Plan structure (same as the PDF).
-      const greeting = `Dear ${latestProposal.client_name || context.client_name || 'traveller'},`;
-      const intro = `It's been a pleasure putting this together. Please find your tailored Travel Plan below — every day has been hand-designed to balance signature experiences with quiet local moments. We can of course refine anything: pacing, accommodation style, or activity mix.`;
-      const plan = buildProposalEmailText(latestProposal, proposalWeblink);
-      const signature = `Warmly,\n${context.sales_owner || 'Your Tours Portugal'}\nYour Tours Portugal\nreservas@yourtours.pt`;
-      finalBody = `${greeting}\n\n${intro}\n\n────────────────────────────────────\n${plan}\n────────────────────────────────────\n\n${signature}`;
-      if (latestProposal.title) {
-        finalSubject = `Your tailored Travel Plan — ${latestProposal.title}`;
-      }
-    }
-
-    setSelected(t);
-    setTo(recipientEmail || '');
-    setSubject(finalSubject);
-    setBody(finalBody);
-    setAttachPdf(t.key === 'sales_proposal' && !!latestProposal);
-  };
-
-  const handleSend = async () => {
-    if (!to.trim()) {
-      toast({ title: 'Destinatário em falta', variant: 'destructive' });
-      return;
-    }
-    setSending(true);
-    try {
-      const attachments: Array<{ filename: string; mimeType: string; contentBase64: string }> = [];
-      if (isProposalTemplate && attachPdf && latestProposal) {
-        const { base64, filename } = buildProposalPdfBase64(latestProposal, proposalWeblink);
-        attachments.push({ filename, mimeType: 'application/pdf', contentBase64: base64 });
-      }
-
-      const { data: sendData, error: sendError } = await supabase.functions.invoke('send-booking-email', {
-        body: { to, subject, body, attachments },
-      });
-      if (sendError || (sendData as any)?.error) {
-        throw new Error((sendData as any)?.error || sendError?.message || 'Falha ao enviar');
-      }
-
-      const { data: { user } } = await supabase.auth.getUser();
-      await supabase.from('booking_emails_log').insert({
-        [filterField]: entityId,
-        supplier_email: to,
-        subject,
-        body,
-        email_category: selected?.key,
-        sent_by: user?.id || null,
-      } as any);
-
-      // Mark proposal as 'sent' so the public link becomes accessible
-      if (isProposalTemplate && latestProposal?.id) {
-        await supabase
-          .from('proposals')
-          .update({ status: 'sent', sent_at: new Date().toISOString() })
-          .eq('id', latestProposal.id)
-          .in('status', ['draft']);
-        qc.invalidateQueries({ queryKey: ['latest_proposal', scope, entityId] });
-        qc.invalidateQueries({ queryKey: ['proposals'] });
-      }
-
-      toast({
-        title: 'Email enviado',
-        description: `${to}${attachments.length ? ' · Travel Plan PDF anexo' : ''}`,
-      });
-      qc.invalidateQueries({ queryKey: ['comms_log', scope, entityId] });
-      setSelected(null);
-    } catch (err: any) {
-      toast({ title: 'Erro ao enviar', description: err.message, variant: 'destructive' });
-    } finally {
-      setSending(false);
-    }
-  };
 
   return (
     <div className="space-y-4">
-      {/* Quick Actions */}
+      {/* AI Email Composer — Sales + Ops pipelines */}
       <div className="bg-card rounded-lg border">
         <div className="px-4 py-2.5 border-b border-border">
           <h2 className="text-sm font-semibold flex items-center gap-2">
-            <Mail className="h-3.5 w-3.5" />
-            {scope === 'lead' ? 'Comunicações de Vendas' : 'Comunicações Operacionais'}
+            <Sparkles className="h-3.5 w-3.5 text-[hsl(var(--info))]" />
+            Email Composer AI
           </h2>
           <p className="text-[10px] text-muted-foreground mt-0.5">
-            Envia diretamente da caixa <strong>reservas@yourtours.pt</strong>. Cada envio fica registado abaixo.
+            Gera emails personalizados (Sales + Ops) e copia para o Gmail. Cada envio fica registado no histórico abaixo.
           </p>
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2 p-3">
-          {templates.map(t => (
-            <button
-              key={t.key}
-              onClick={() => openTemplate(t)}
-              className="text-left p-2.5 rounded border border-border hover:border-primary hover:bg-muted/40 transition group"
-            >
-              <div className="flex items-start justify-between gap-2">
-                <div className="min-w-0">
-                  <div className="text-xs font-semibold truncate">{t.label}</div>
-                  <div className="text-[10px] text-muted-foreground line-clamp-2 mt-0.5">{t.description}</div>
-                </div>
-                <ChevronRight className="h-3.5 w-3.5 text-muted-foreground group-hover:text-primary shrink-0" />
-              </div>
-            </button>
-          ))}
-        </div>
+        <Section title="Sales Pipeline" items={salesTemplates} />
+        <div className="border-t border-border" />
+        <Section title="Operations Pipeline" items={opsTemplates} />
       </div>
 
       {/* History */}
       <div className="bg-card rounded-lg border">
         <div className="px-4 py-2.5 border-b border-border flex items-center justify-between">
-          <h2 className="text-sm font-semibold">Histórico ({history.length})</h2>
+          <h2 className="text-sm font-semibold flex items-center gap-2"><Mail className="h-3.5 w-3.5" /> Histórico ({history.length})</h2>
           <span className="text-[10px] text-muted-foreground">Mais recente primeiro</span>
         </div>
         {isLoading ? (
@@ -206,14 +136,14 @@ const CommunicationsTab = ({ scope, entityId, recipientEmail, context }: Props) 
         ) : (
           <div className="divide-y divide-border">
             {history.map(h => {
-              const tpl = EMAIL_TEMPLATES.find(t => t.key === h.email_category);
+              const tpl = AI_EMAIL_TEMPLATES.find(t => t.key === h.email_category);
               return (
                 <details key={h.id} className="px-4 py-2.5 group">
                   <summary className="cursor-pointer list-none flex items-center justify-between gap-3">
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-2">
                         {tpl && (
-                          <span className="text-[9px] px-1.5 py-0.5 rounded bg-primary/10 text-primary font-medium">
+                          <span className="text-[9px] px-1.5 py-0.5 rounded bg-[hsl(var(--info)/0.1)] text-[hsl(var(--info))] font-medium">
                             {tpl.label}
                           </span>
                         )}
@@ -237,64 +167,13 @@ const CommunicationsTab = ({ scope, entityId, recipientEmail, context }: Props) 
         )}
       </div>
 
-      {/* Composer Dialog */}
-      <Dialog open={!!selected} onOpenChange={(o) => !o && setSelected(null)}>
-        <DialogContent className="max-w-2xl">
-          <DialogHeader>
-            <DialogTitle className="text-sm flex items-center gap-2">
-              <Mail className="h-4 w-4" /> {selected?.label}
-            </DialogTitle>
-          </DialogHeader>
-          <div className="space-y-3">
-            <div>
-              <label className="text-[10px] text-muted-foreground uppercase font-medium">Para</label>
-              <Input value={to} onChange={e => setTo(e.target.value)} className="h-8 text-xs" placeholder="cliente@email.com" />
-            </div>
-            <div>
-              <label className="text-[10px] text-muted-foreground uppercase font-medium">Assunto</label>
-              <Input value={subject} onChange={e => setSubject(e.target.value)} className="h-8 text-xs" />
-            </div>
-            <div>
-              <label className="text-[10px] text-muted-foreground uppercase font-medium">Corpo</label>
-              <Textarea value={body} onChange={e => setBody(e.target.value)} className="text-xs min-h-[260px] font-mono" />
-            </div>
-
-            {isProposalTemplate && (
-              <div className="rounded-md border border-primary/30 bg-primary/5 p-2.5 space-y-2">
-                {proposalWeblink ? (
-                  <div className="flex items-center gap-2 text-[11px]">
-                    <Link2 className="h-3.5 w-3.5 text-primary shrink-0" />
-                    <span className="font-medium">Weblink interativo:</span>
-                    <a href={proposalWeblink} target="_blank" rel="noopener" className="text-primary truncate hover:underline">
-                      {proposalWeblink}
-                    </a>
-                  </div>
-                ) : (
-                  <div className="text-[11px] text-amber-700">
-                    Sem proposta gerada para esta lead — cria uma proposta primeiro para incluir weblink + PDF.
-                  </div>
-                )}
-                <label className="flex items-center gap-2 text-[11px] cursor-pointer">
-                  <Checkbox
-                    checked={attachPdf}
-                    onCheckedChange={(v) => setAttachPdf(!!v)}
-                    disabled={!latestProposal}
-                  />
-                  <Paperclip className="h-3.5 w-3.5" />
-                  <span>Anexar PDF do Travel Plan automaticamente</span>
-                </label>
-              </div>
-            )}
-          </div>
-          <DialogFooter>
-            <Button variant="outline" size="sm" onClick={() => setSelected(null)} className="text-xs">Cancelar</Button>
-            <Button size="sm" onClick={handleSend} disabled={sending} className="text-xs gap-1">
-              {sending ? <Loader2 className="h-3 w-3 animate-spin" /> : <Send className="h-3 w-3" />}
-              Enviar via reservas@yourtours.pt
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      {/* Controlled AI Email Composer */}
+      <EmailComposerDialog
+        lead={effectiveLead}
+        open={composerOpen}
+        onOpenChange={setComposerOpen}
+        initialTemplateKey={composerTemplate}
+      />
     </div>
   );
 };

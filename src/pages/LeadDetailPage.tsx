@@ -23,7 +23,7 @@ import LeadCostingEditor, { LeadCostingDay, LeadCostItem } from '@/components/tr
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import EmailComposerDialog from '@/components/leads/EmailComposerDialog';
+// EmailComposerDialog now embedded inside CommunicationsTab
 import { PaymentsDialog, usePaymentsSummary } from '@/components/leads/PaymentsDialog';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -1040,11 +1040,8 @@ const LeadDetailPage = ({ mode = 'lead' }: { mode?: 'lead' | 'booking' } = {}) =
               <button key={tab.key} onClick={() => setActiveTab(tab.key)} className={cn("px-4 py-2 text-xs font-medium border-b-2 transition-colors -mb-px", activeTab === tab.key ? "border-[hsl(var(--info))] text-[hsl(var(--info))]" : "border-transparent text-muted-foreground hover:text-foreground")}>{tab.label}</button>
             ))}
           </div>
-          <div className="flex items-center gap-3">
-            <EmailComposerDialog lead={{ clientName: formState.clientName, email: formState.email, phone: formState.phone, destination: destino.join(', '), travelDates: formState.travelDates, pax: formState.pax, status: leadStatus, budgetLevel: formState.budgetLevel, travelStyle: travelStyles, comfortLevel: categoria[0], magicQuestion: lead.magic_question, notes: formState.notes, leadId: lead.id }}>
-              <button className="text-xs text-[hsl(var(--info))] hover:text-foreground transition-colors font-medium flex items-center gap-1"><Mail className="h-3 w-3" /> Email</button>
-            </EmailComposerDialog>
-          </div>
+          <div className="flex items-center gap-3" />
+
         </div>
 
         {/* Dados Gerais */}
@@ -1281,8 +1278,24 @@ const LeadDetailPage = ({ mode = 'lead' }: { mode?: 'lead' | 'booking' } = {}) =
               pax: formState.pax ?? lead.pax,
               sales_owner: formState.salesOwner || lead.sales_owner || '',
             }}
+            leadContext={{
+              clientName: formState.clientName,
+              email: formState.email,
+              phone: formState.phone,
+              destination: destino.join(', '),
+              travelDates: formState.travelDates,
+              pax: formState.pax,
+              status: leadStatus,
+              budgetLevel: formState.budgetLevel,
+              travelStyle: travelStyles,
+              comfortLevel: categoria[0],
+              magicQuestion: lead.magic_question,
+              notes: formState.notes,
+              leadId: lead.id,
+            }}
           />
         )}
+
       </div>
     </AppLayout>
   );
