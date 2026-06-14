@@ -90,24 +90,58 @@ const EmailComposerDialog = ({ lead, children, open: openProp, onOpenChange, ini
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, initialTemplateKey]);
 
-  const logToHistory = async (action: 'copied' | 'gmail') => {
+  const logToHistory = async (action: 'copied' | 'gmail' | 'sent') => {
     if (!lead.leadId) return;
     setLogging(true);
     try {
       const { data: { user } } = await supabase.auth.getUser();
+      const tag = action === 'sent'
+        ? '[Enviado pela App via reservas@yourtours.pt]'
+        : action === 'gmail'
+          ? '[Registado via Email Composer — Aberto no Gmail]'
+          : '[Registado via Email Composer — Copiado para Gmail]';
       await supabase.from('booking_emails_log').insert({
         lead_id: lead.leadId,
         supplier_email: lead.email || null,
         subject: editedSubject,
-        body: editedBody + `\n\n[Registado via Email Composer — ${action === 'gmail' ? 'Aberto no Gmail' : 'Copiado para Gmail'}]`,
+        body: editedBody + `\n\n${tag}`,
         email_category: selectedTemplate,
         sent_by: user?.id || null,
       } as any);
       qc.invalidateQueries({ queryKey: ['comms_log'] });
+      qc.invalidateQueries({ queryKey: ['booking_emails', lead.leadId] });
     } catch (e) {
       console.error('Log to history failed', e);
     } finally {
       setLogging(false);
+    }
+  };
+
+  const handleSendFromApp = async () => {
+    if (!lead.email) {
+      toast({ title: 'Sem email do cliente', description: 'Adiciona um email no lead.', variant: 'destructive' });
+      return;
+    }
+    setSending(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('send-booking-email', {
+        body: {
+          to: lead.email,
+          subject: editedSubject,
+          body: editedBody,
+        },
+      });
+      if (error) throw error;
+      if ((data as any)?.error) throw new Error((data as any).error);
+      setSent(true);
+      toast({ title: 'Email enviado', description: `Enviado para ${lead.email} via reservas@yourtours.pt` });
+      void logToHistory('sent');
+      setTimeout(() => setSent(false), 4000);
+    } catch (e: any) {
+      console.error('Send from app failed', e);
+      toast({ title: 'Falha no envio', description: e?.message || 'Erro desconhecido', variant: 'destructive' });
+    } finally {
+      setSending(false);
     }
   };
 
