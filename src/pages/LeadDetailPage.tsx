@@ -23,7 +23,7 @@ import LeadCostingEditor, { LeadCostingDay, LeadCostItem } from '@/components/tr
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import EmailComposerDialog from '@/components/leads/EmailComposerDialog';
+// EmailComposerDialog now embedded inside CommunicationsTab
 import { PaymentsDialog, usePaymentsSummary } from '@/components/leads/PaymentsDialog';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
