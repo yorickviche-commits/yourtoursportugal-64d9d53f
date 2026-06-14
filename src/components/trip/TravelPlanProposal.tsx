@@ -615,7 +615,7 @@ const TravelPlanProposal = ({
       const paxStr = `${pax} adult${pax > 1 ? 's' : ''}${paxChildren ? ` + ${paxChildren} children` : ''}`;
       await supabase.from('travel_plans').delete().eq('lead_id', leadId);
       // Store cover_image in extra_instructions as JSON metadata
-      const metadata = JSON.stringify({ cover_image: plan.cover_image || null, closing });
+      const metadata = JSON.stringify({ cover_image: plan.cover_image || null, closing, language });
       const { error } = await supabase.from('travel_plans').insert({
         lead_id: leadId, file_id: leadCode, trip_title: plan.trip_title,
         client_name: clientName, start_date: startDate, end_date: endDate,
@@ -627,9 +627,11 @@ const TravelPlanProposal = ({
       // Auto-create/update proposal from travel plan
       const token = `ytp-${leadCode.toLowerCase().replace(/[^a-z0-9]/g, '-')}`;
       const dateRange = startDate && endDate ? `${startDate} — ${endDate}` : startDate || '';
+      const proposalLang = (language || 'EN').toLowerCase().slice(0, 2);
+      const dayLabelByLang: Record<string, string> = { en: 'Day', fr: 'Jour', es: 'Día', pt: 'Dia', it: 'Giorno', de: 'Tag' };
       const proposalDays = plan.days.map((d, i) => ({
         day_number: d.day_number,
-        date_label: d.date || `Jour ${d.day_number}`,
+        date_label: d.date || `${dayLabelByLang[proposalLang] || 'Day'} ${d.day_number}`,
         title: d.title,
         subtitle: d.subtitle || '',
         cover_image_url: d.images?.[0]?.url || '',
@@ -644,8 +646,6 @@ const TravelPlanProposal = ({
         .select('id')
         .eq('lead_id', leadId)
         .maybeSingle();
-
-      const proposalLang = (language || 'EN').toLowerCase().slice(0, 2);
 
       if (existingProposal) {
         await supabase.from('proposals').update({
