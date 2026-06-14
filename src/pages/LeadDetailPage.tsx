@@ -1040,11 +1040,8 @@ const LeadDetailPage = ({ mode = 'lead' }: { mode?: 'lead' | 'booking' } = {}) =
               <button key={tab.key} onClick={() => setActiveTab(tab.key)} className={cn("px-4 py-2 text-xs font-medium border-b-2 transition-colors -mb-px", activeTab === tab.key ? "border-[hsl(var(--info))] text-[hsl(var(--info))]" : "border-transparent text-muted-foreground hover:text-foreground")}>{tab.label}</button>
             ))}
           </div>
-          <div className="flex items-center gap-3">
-            <EmailComposerDialog lead={{ clientName: formState.clientName, email: formState.email, phone: formState.phone, destination: destino.join(', '), travelDates: formState.travelDates, pax: formState.pax, status: leadStatus, budgetLevel: formState.budgetLevel, travelStyle: travelStyles, comfortLevel: categoria[0], magicQuestion: lead.magic_question, notes: formState.notes, leadId: lead.id }}>
-              <button className="text-xs text-[hsl(var(--info))] hover:text-foreground transition-colors font-medium flex items-center gap-1"><Mail className="h-3 w-3" /> Email</button>
-            </EmailComposerDialog>
-          </div>
+          <div className="flex items-center gap-3" />
+
         </div>
 
         {/* Dados Gerais */}
