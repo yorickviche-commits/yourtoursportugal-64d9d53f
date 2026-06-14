@@ -400,7 +400,12 @@ const LeadCostingEditor = ({ costingDays, onChange, onSave, saving, plannerDays,
   const totalPax = (pax || 0) + (paxChildren || 0);
 
   // Editable PVP override (drives margin & per-pax dynamically). NET is read-only.
-  const [pvpOverride, setPvpOverride] = useState<number | null>(null);
+  const [localPvpOverride, setLocalPvpOverride] = useState<number | null>(null);
+  const pvpOverride = pvpOverrideProp !== undefined ? pvpOverrideProp : localPvpOverride;
+  const setPvpOverride = (v: number | null) => {
+    if (onPvpOverrideChange) onPvpOverrideChange(v);
+    else setLocalPvpOverride(v);
+  };
   const effectivePVP = pvpOverride != null ? pvpOverride : computedPVP;
   const grandPVP = effectivePVP;
   const grandProfit = grandPVP - grandNet;
