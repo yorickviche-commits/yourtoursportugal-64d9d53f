@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react';
-import { Mail, Loader2, Copy, Check, ChevronRight, Sparkles, ExternalLink, Send } from 'lucide-react';
+import { useState, useEffect, useMemo } from 'react';
+import { Mail, Loader2, Copy, Check, ChevronRight, Sparkles, ExternalLink, Send, Paperclip } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -8,6 +8,8 @@ import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useQueryClient } from '@tanstack/react-query';
 import { cn } from '@/lib/utils';
+import { buildProposalPdfBase64, type ProposalLite } from '@/lib/proposalPdf';
+
 
 
 interface LeadContext {
@@ -70,8 +72,21 @@ const EmailComposerDialog = ({ lead, children, open: openProp, onOpenChange, ini
   const [sending, setSending] = useState(false);
   const [sent, setSent] = useState(false);
   const [recipientEmail, setRecipientEmail] = useState(lead.email || '');
+  const [proposal, setProposal] = useState<ProposalLite | null>(null);
+  const [proposalLoading, setProposalLoading] = useState(false);
+  const [attachPdf, setAttachPdf] = useState(true);
   const { toast } = useToast();
   const qc = useQueryClient();
+
+  const PROPOSAL_TEMPLATES = ['send_proposal', 'proposal_followup', 'followup_3days', 'followup_7days', 'breakup'];
+  const isProposalTemplate = useMemo(
+    () => !!selectedTemplate && PROPOSAL_TEMPLATES.includes(selectedTemplate),
+    [selectedTemplate],
+  );
+  const weblink = proposal?.public_token
+    ? `${window.location.origin}/proposal/${proposal.public_token}`
+    : '';
+
 
   const reset = () => {
     setStep('select_template');
@@ -96,6 +111,33 @@ const EmailComposerDialog = ({ lead, children, open: openProp, onOpenChange, ini
   useEffect(() => {
     setRecipientEmail(lead.email || '');
   }, [lead.email]);
+
+  // Fetch latest proposal for this lead when a proposal-related template is selected
+  useEffect(() => {
+    if (!open || !isProposalTemplate || !lead.leadId) return;
+    let cancelled = false;
+    (async () => {
+      setProposalLoading(true);
+      try {
+        const { data, error } = await supabase
+          .from('proposals')
+          .select('*')
+          .eq('lead_id', lead.leadId)
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        if (error) throw error;
+        if (!cancelled) setProposal(data as any);
+      } catch (e) {
+        console.error('Fetch proposal failed', e);
+        if (!cancelled) setProposal(null);
+      } finally {
+        if (!cancelled) setProposalLoading(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [open, isProposalTemplate, lead.leadId]);
+
 
   const logToHistory = async (action: 'copied' | 'gmail' | 'sent') => {
     if (!lead.leadId) return;
@@ -124,6 +166,15 @@ const EmailComposerDialog = ({ lead, children, open: openProp, onOpenChange, ini
     }
   };
 
+  const buildFinalBody = () => {
+    let body = editedBody || '';
+    if (isProposalTemplate && weblink && !body.includes(weblink)) {
+      body += `\n\n— Interactive Travel Plan (mobile-friendly):\n${weblink}`;
+      if (attachPdf && proposal) body += `\n\nThe full PDF version is attached for your records.`;
+    }
+    return body;
+  };
+
   const handleSendFromApp = async () => {
     if (!recipientEmail) {
       toast({ title: 'Sem email do destinatário', description: 'Adiciona um email no campo "Para".', variant: 'destructive' });
@@ -131,17 +182,34 @@ const EmailComposerDialog = ({ lead, children, open: openProp, onOpenChange, ini
     }
     setSending(true);
     try {
+      const finalBody = buildFinalBody();
+      const attachments: any[] = [];
+      if (isProposalTemplate && attachPdf && proposal) {
+        try {
+          const { base64, filename } = buildProposalPdfBase64(proposal, weblink);
+          attachments.push({ filename, mimeType: 'application/pdf', contentBase64: base64 });
+        } catch (e) {
+          console.error('PDF build failed', e);
+        }
+      }
       const { data, error } = await supabase.functions.invoke('send-booking-email', {
         body: {
           to: recipientEmail,
           subject: editedSubject,
-          body: editedBody,
+          body: finalBody,
+          attachments: attachments.length ? attachments : undefined,
         },
       });
       if (error) throw error;
       if ((data as any)?.error) throw new Error((data as any).error);
+      setEditedBody(finalBody);
       setSent(true);
-      toast({ title: 'Email enviado', description: `Enviado para ${recipientEmail} via reservas@yourtours.pt` });
+      toast({
+        title: 'Email enviado',
+        description: attachments.length
+          ? `Enviado para ${recipientEmail} com PDF anexado`
+          : `Enviado para ${recipientEmail} via reservas@yourtours.pt`,
+      });
       void logToHistory('sent');
       setTimeout(() => setSent(false), 4000);
     } catch (e: any) {
@@ -151,6 +219,7 @@ const EmailComposerDialog = ({ lead, children, open: openProp, onOpenChange, ini
       setSending(false);
     }
   };
+
 
   const handleSelectTemplate = (key: string) => {
     setSelectedTemplate(key);
@@ -188,8 +257,9 @@ const EmailComposerDialog = ({ lead, children, open: openProp, onOpenChange, ini
   };
 
   const handleCopy = async () => {
+    const finalBody = buildFinalBody();
     // Build Gmail-compatible HTML
-    const htmlBody = editedBody
+    const htmlBody = finalBody
       .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
       .replace(/\n/g, '<br/>');
 
@@ -199,22 +269,27 @@ const EmailComposerDialog = ({ lead, children, open: openProp, onOpenChange, ini
       await navigator.clipboard.write([
         new ClipboardItem({
           'text/html': new Blob([html], { type: 'text/html' }),
-          'text/plain': new Blob([editedBody], { type: 'text/plain' }),
+          'text/plain': new Blob([finalBody], { type: 'text/plain' }),
         }),
       ]);
       setCopied(true);
-      toast({ title: 'Copiado!', description: 'Email pronto para colar no Gmail (Ctrl+V)' });
+      setEditedBody(finalBody);
+      toast({
+        title: 'Copiado!',
+        description: isProposalTemplate && attachPdf && proposal
+          ? 'Email copiado. Lembra-te de anexar o PDF da proposta no Gmail.'
+          : 'Email pronto para colar no Gmail (Ctrl+V)',
+      });
       void logToHistory('copied');
       setTimeout(() => setCopied(false), 3000);
     } catch {
-      // Fallback to plain text
-      await navigator.clipboard.writeText(editedBody);
+      await navigator.clipboard.writeText(finalBody);
       setCopied(true);
+      setEditedBody(finalBody);
       toast({ title: 'Copiado (texto)', description: 'Colado como texto simples' });
       void logToHistory('copied');
       setTimeout(() => setCopied(false), 3000);
     }
-
   };
 
   const handleCopySubject = async () => {
@@ -223,11 +298,19 @@ const EmailComposerDialog = ({ lead, children, open: openProp, onOpenChange, ini
   };
 
   const handleOpenGmail = () => {
-    const url = `https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(recipientEmail || '')}&su=${encodeURIComponent(editedSubject)}&body=${encodeURIComponent(editedBody)}`;
+    const finalBody = buildFinalBody();
+    setEditedBody(finalBody);
+    const url = `https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(recipientEmail || '')}&su=${encodeURIComponent(editedSubject)}&body=${encodeURIComponent(finalBody)}`;
     window.open(url, '_blank', 'noopener,noreferrer');
-    toast({ title: 'Gmail aberto', description: 'Anexa o PDF da proposta antes de enviar.' });
+    toast({
+      title: 'Gmail aberto',
+      description: isProposalTemplate && attachPdf && proposal
+        ? 'Anexa o PDF da proposta antes de enviar.'
+        : 'Pronto para enviar.',
+    });
     void logToHistory('gmail');
   };
+
 
   const selectedTemplateInfo = AI_EMAIL_TEMPLATES.find(t => t.key === selectedTemplate);
 
@@ -360,6 +443,47 @@ const EmailComposerDialog = ({ lead, children, open: openProp, onOpenChange, ini
                 onChange={e => setRecipientEmail(e.target.value)}
               />
             </div>
+
+            {/* Proposal attachment banner */}
+            {isProposalTemplate && (
+              <div className={cn(
+                "rounded-lg border p-3 text-xs flex items-start gap-2",
+                proposal
+                  ? "bg-[hsl(var(--info)/0.06)] border-[hsl(var(--info)/0.25)]"
+                  : "bg-[hsl(var(--warning)/0.08)] border-[hsl(var(--warning)/0.3)]",
+              )}>
+                <Paperclip className="h-3.5 w-3.5 mt-0.5 shrink-0" />
+                <div className="flex-1 min-w-0">
+                  {proposalLoading ? (
+                    <p className="text-muted-foreground">A carregar proposta…</p>
+                  ) : proposal ? (
+                    <>
+                      <p className="font-semibold text-foreground truncate">
+                        Proposta: {proposal.title || proposal.booking_ref || proposal.id}
+                      </p>
+                      <p className="text-muted-foreground truncate">
+                        Weblink: <a href={weblink} target="_blank" rel="noreferrer" className="underline">{weblink}</a>
+                      </p>
+                      <label className="flex items-center gap-1.5 mt-1 cursor-pointer select-none">
+                        <input
+                          type="checkbox"
+                          checked={attachPdf}
+                          onChange={e => setAttachPdf(e.target.checked)}
+                          className="h-3 w-3"
+                        />
+                        <span>Anexar PDF da proposta + adicionar weblink ao corpo</span>
+                      </label>
+                    </>
+                  ) : (
+                    <p className="text-[hsl(var(--warning))]">
+                      Nenhuma proposta encontrada para esta lead. Cria/envia uma proposta primeiro para incluir PDF + weblink.
+                    </p>
+                  )}
+                </div>
+              </div>
+            )}
+
+
 
             {/* Subject */}
             <div>
