@@ -79,6 +79,7 @@ const EmailComposerDialog = ({ lead, children, open: openProp, onOpenChange, ini
     setCustomNotes('');
     setGeneratedEmail(null);
     setCopied(false);
+    setRecipientEmail(lead.email || '');
   };
 
   // When opening via controlled mode with a preselected template, jump straight to confirm.
@@ -90,6 +91,11 @@ const EmailComposerDialog = ({ lead, children, open: openProp, onOpenChange, ini
     if (!open) reset();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, initialTemplateKey]);
+
+  // Sync recipient email when lead changes
+  useEffect(() => {
+    setRecipientEmail(lead.email || '');
+  }, [lead.email]);
 
   const logToHistory = async (action: 'copied' | 'gmail' | 'sent') => {
     if (!lead.leadId) return;
