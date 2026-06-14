@@ -652,34 +652,74 @@ const LeadCostingEditor = ({ costingDays, onChange, onSave, saving, plannerDays,
         })}
       </div>
 
-      {/* Grand Totals */}
+      {/* Grand Totals — editable & dynamic (NET read-only) */}
       {activeItems.length > 0 && (
         <div className="bg-card rounded-lg border p-4">
-          <div className="grid grid-cols-2 md:grid-cols-5 gap-6 text-center">
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-6 text-center items-end">
             <div>
               <p className="text-[10px] text-muted-foreground uppercase font-semibold">Total NET</p>
               <p className="text-lg font-bold">€{grandNet.toFixed(2)}</p>
+              <p className="text-[9px] text-muted-foreground">somatório custos</p>
             </div>
             <div>
               <p className="text-[10px] text-muted-foreground uppercase font-semibold">Margem Média</p>
-              <p className="text-lg font-bold">{grandMargin.toFixed(1)}%</p>
+              <Input
+                type="text"
+                inputMode="decimal"
+                value={editMargin !== '' ? editMargin : grandMargin.toFixed(1)}
+                onFocus={() => setEditMargin(grandMargin.toFixed(1))}
+                onChange={e => setEditMargin(e.target.value)}
+                onBlur={commitMargin}
+                onKeyDown={e => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); }}
+                className="h-9 text-lg font-bold text-center px-1"
+                disabled={grandNet <= 0}
+              />
+              <p className="text-[9px] text-muted-foreground">% sobre NET</p>
             </div>
             <div>
               <p className="text-[10px] text-muted-foreground uppercase font-semibold">Lucro</p>
               <p className="text-lg font-bold text-[hsl(var(--success))]">€{grandProfit.toFixed(2)}</p>
+              <p className="text-[9px] text-muted-foreground">PVP − NET</p>
             </div>
             <div>
               <p className="text-[10px] text-muted-foreground uppercase font-semibold">TOTAL PVP</p>
-              <p className="text-lg font-bold text-[hsl(var(--info))]">€{grandPVP.toFixed(2)}</p>
+              <Input
+                type="text"
+                inputMode="decimal"
+                value={editPVP !== '' ? editPVP : grandPVP.toFixed(2)}
+                onFocus={() => setEditPVP(grandPVP.toFixed(2))}
+                onChange={e => setEditPVP(e.target.value)}
+                onBlur={commitPVP}
+                onKeyDown={e => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); }}
+                className="h-9 text-lg font-bold text-center text-[hsl(var(--info))] px-1"
+              />
+              <p className="text-[9px] text-muted-foreground">preço total</p>
             </div>
             <div>
               <p className="text-[10px] text-muted-foreground uppercase font-semibold">PVP / Pessoa</p>
-              <p className="text-lg font-bold text-[hsl(var(--info))]">€{pvpPerPax.toFixed(2)}</p>
+              <Input
+                type="text"
+                inputMode="decimal"
+                value={editPerPax !== '' ? editPerPax : pvpPerPax.toFixed(2)}
+                onFocus={() => setEditPerPax(pvpPerPax.toFixed(2))}
+                onChange={e => setEditPerPax(e.target.value)}
+                onBlur={commitPerPax}
+                onKeyDown={e => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); }}
+                className="h-9 text-lg font-bold text-center text-[hsl(var(--info))] px-1"
+                disabled={totalPax <= 0}
+              />
               <p className="text-[9px] text-muted-foreground">{totalPax} pax</p>
             </div>
           </div>
+          {pvpOverride != null && (
+            <div className="flex items-center justify-end gap-2 mt-3 pt-2 border-t text-[10px] text-muted-foreground">
+              <span>PVP ajustado manualmente (€{computedPVP.toFixed(2)} calculado)</span>
+              <button onClick={resetOverride} className="text-[hsl(var(--info))] hover:underline font-medium">Repor cálculo</button>
+            </div>
+          )}
         </div>
       )}
+
     </div>
   );
 };
