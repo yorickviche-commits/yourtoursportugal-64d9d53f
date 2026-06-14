@@ -109,7 +109,7 @@ const EmailComposerDialog = ({ lead, children, open: openProp, onOpenChange, ini
           : '[Registado via Email Composer — Copiado para Gmail]';
       await supabase.from('booking_emails_log').insert({
         lead_id: lead.leadId,
-        supplier_email: lead.email || null,
+        supplier_email: recipientEmail || lead.email || null,
         subject: editedSubject,
         body: editedBody + `\n\n${tag}`,
         email_category: selectedTemplate,
