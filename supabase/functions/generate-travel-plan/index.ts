@@ -96,123 +96,164 @@ function calculateDays(ld: RequestBody['leadData']): number {
   return 5;
 }
 
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
 async function callAI(systemPrompt: string, userPrompt: string): Promise<string> {
   const errors: string[] = [];
+  let creditsExhausted = false;
 
-  // 1) Lovable AI Gateway
+  // 1) Lovable AI Gateway — rotate models on 429, skip on 402
   const LOVABLE_KEY = Deno.env.get('LOVABLE_API_KEY');
   if (LOVABLE_KEY) {
-    try {
-      const res = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
-        method: 'POST',
-        headers: { 'Authorization': `Bearer ${LOVABLE_KEY}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          model: 'google/gemini-2.5-pro',
-          messages: [{ role: 'system', content: systemPrompt }, { role: 'user', content: userPrompt }],
-          max_tokens: 32768,
-          response_format: { type: 'json_object' },
-        }),
-      });
-      if (res.ok) {
-        const data = await res.json();
-        const content = data.choices?.[0]?.message?.content;
-        if (content) return content;
+    const lovableModels = ['google/gemini-2.5-pro', 'google/gemini-2.5-flash', 'google/gemini-2.5-flash-lite'];
+    for (const model of lovableModels) {
+      let lastStatus = 0;
+      for (let attempt = 0; attempt < 2; attempt++) {
+        try {
+          const res = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+            method: 'POST',
+            headers: { 'Authorization': `Bearer ${LOVABLE_KEY}`, 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              model,
+              messages: [{ role: 'system', content: systemPrompt }, { role: 'user', content: userPrompt }],
+              max_tokens: 32768,
+              response_format: { type: 'json_object' },
+            }),
+          });
+          if (res.ok) {
+            const data = await res.json();
+            const content = data.choices?.[0]?.message?.content;
+            if (content) return content;
+          }
+          lastStatus = res.status;
+          if (res.status === 402) { creditsExhausted = true; break; }
+          if (res.status !== 429) break;
+          await sleep(1500 * (attempt + 1));
+        } catch (e: any) {
+          errors.push(`Lovable(${model}): ${e.message}`);
+          break;
+        }
       }
-      errors.push(`Lovable AI: ${res.status}`);
-      console.error('Lovable AI failed:', res.status);
-    } catch (e: any) {
-      errors.push(`Lovable AI: ${e.message}`);
-      console.error('Lovable AI error:', e.message);
+      errors.push(`Lovable(${model}): ${lastStatus}`);
+      if (creditsExhausted) break;
     }
   }
 
-  // 2) Gemini Direct
+  // 2) Gemini Direct with retry on 429
   const GEMINI_KEY = Deno.env.get('GEMINI_API_KEY');
   if (GEMINI_KEY) {
-    try {
-      const res = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-pro:generateContent?key=${GEMINI_KEY}`,
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            contents: [{ role: 'user', parts: [{ text: `${systemPrompt}\n\n${userPrompt}` }] }],
-            generationConfig: { maxOutputTokens: 32768, temperature: 0.7, responseMimeType: 'application/json' },
-          }),
+    const geminiModels = ['gemini-2.5-pro', 'gemini-2.5-flash'];
+    for (const model of geminiModels) {
+      let lastStatus = 0;
+      for (let attempt = 0; attempt < 3; attempt++) {
+        try {
+          const res = await fetch(
+            `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${GEMINI_KEY}`,
+            {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                contents: [{ role: 'user', parts: [{ text: `${systemPrompt}\n\n${userPrompt}` }] }],
+                generationConfig: { maxOutputTokens: 32768, temperature: 0.7, responseMimeType: 'application/json' },
+              }),
+            }
+          );
+          if (res.ok) {
+            const data = await res.json();
+            const content = data.candidates?.[0]?.content?.parts?.[0]?.text;
+            if (content) return content;
+          }
+          lastStatus = res.status;
+          if (res.status !== 429 && res.status !== 503) break;
+          await sleep(2000 * (attempt + 1));
+        } catch (e: any) {
+          errors.push(`Gemini(${model}): ${e.message}`);
+          break;
         }
-      );
-      if (res.ok) {
-        const data = await res.json();
-        const content = data.candidates?.[0]?.content?.parts?.[0]?.text;
-        if (content) return content;
       }
-      errors.push(`Gemini: ${res.status}`);
-      console.error('Gemini failed:', res.status);
-    } catch (e: any) {
-      errors.push(`Gemini: ${e.message}`);
-      console.error('Gemini error:', e.message);
+      errors.push(`Gemini(${model}): ${lastStatus}`);
     }
   }
 
-  // 3) OpenAI (ChatGPT)
+  // 3) OpenAI with retry
   const OPENAI_KEY = Deno.env.get('OPENAI_API_KEY');
   if (OPENAI_KEY) {
-    try {
-      const res = await fetch('https://api.openai.com/v1/chat/completions', {
-        method: 'POST',
-        headers: { 'Authorization': `Bearer ${OPENAI_KEY}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          model: 'gpt-4o',
-          messages: [{ role: 'system', content: systemPrompt }, { role: 'user', content: userPrompt }],
-          max_tokens: 16384,
-          temperature: 0.7,
-        }),
-      });
-      if (res.ok) {
-        const data = await res.json();
-        const content = data.choices?.[0]?.message?.content;
-        if (content) return content;
+    const openaiModels = ['gpt-4o', 'gpt-4o-mini'];
+    for (const model of openaiModels) {
+      let lastStatus = 0;
+      for (let attempt = 0; attempt < 3; attempt++) {
+        try {
+          const res = await fetch('https://api.openai.com/v1/chat/completions', {
+            method: 'POST',
+            headers: { 'Authorization': `Bearer ${OPENAI_KEY}`, 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              model,
+              messages: [{ role: 'system', content: systemPrompt }, { role: 'user', content: userPrompt }],
+              max_tokens: 16384,
+              temperature: 0.7,
+              response_format: { type: 'json_object' },
+            }),
+          });
+          if (res.ok) {
+            const data = await res.json();
+            const content = data.choices?.[0]?.message?.content;
+            if (content) return content;
+          }
+          lastStatus = res.status;
+          if (res.status !== 429 && res.status !== 503) break;
+          await sleep(2000 * (attempt + 1));
+        } catch (e: any) {
+          errors.push(`OpenAI(${model}): ${e.message}`);
+          break;
+        }
       }
-      errors.push(`OpenAI: ${res.status}`);
-      console.error('OpenAI failed:', res.status);
-    } catch (e: any) {
-      errors.push(`OpenAI: ${e.message}`);
-      console.error('OpenAI error:', e.message);
+      errors.push(`OpenAI(${model}): ${lastStatus}`);
     }
   }
 
-  // 4) Claude (Anthropic)
+  // 4) Claude (Anthropic) — corrected model names
   const CLAUDE_KEY = Deno.env.get('CLAUDE_API_KEY');
   if (CLAUDE_KEY) {
-    try {
-      const res = await fetch('https://api.anthropic.com/v1/messages', {
-        method: 'POST',
-        headers: {
-          'x-api-key': CLAUDE_KEY,
-          'Content-Type': 'application/json',
-          'anthropic-version': '2023-06-01',
-        },
-        body: JSON.stringify({
-          model: 'claude-sonnet-4-20250514',
-          max_tokens: 16384,
-          system: systemPrompt,
-          messages: [{ role: 'user', content: userPrompt }],
-        }),
-      });
-      if (res.ok) {
-        const data = await res.json();
-        const content = data.content?.[0]?.text;
-        if (content) return content;
+    const claudeModels = ['claude-sonnet-4-5-20250929', 'claude-3-5-sonnet-20241022', 'claude-3-5-haiku-20241022'];
+    for (const model of claudeModels) {
+      let lastStatus = 0;
+      for (let attempt = 0; attempt < 2; attempt++) {
+        try {
+          const res = await fetch('https://api.anthropic.com/v1/messages', {
+            method: 'POST',
+            headers: {
+              'x-api-key': CLAUDE_KEY,
+              'Content-Type': 'application/json',
+              'anthropic-version': '2023-06-01',
+            },
+            body: JSON.stringify({
+              model,
+              max_tokens: 16384,
+              system: systemPrompt,
+              messages: [{ role: 'user', content: userPrompt }],
+            }),
+          });
+          if (res.ok) {
+            const data = await res.json();
+            const content = data.content?.[0]?.text;
+            if (content) return content;
+          }
+          lastStatus = res.status;
+          if (res.status !== 429 && res.status !== 529) break;
+          await sleep(2000 * (attempt + 1));
+        } catch (e: any) {
+          errors.push(`Claude(${model}): ${e.message}`);
+          break;
+        }
       }
-      errors.push(`Claude: ${res.status}`);
-      console.error('Claude failed:', res.status);
-    } catch (e: any) {
-      errors.push(`Claude: ${e.message}`);
-      console.error('Claude error:', e.message);
+      errors.push(`Claude(${model}): ${lastStatus}`);
     }
   }
 
-  throw new Error(`All AI providers failed: ${errors.join(' | ')}`);
+  const hint = creditsExhausted
+    ? ' (Créditos Lovable AI esgotados — adiciona créditos no workspace para reativar o gateway principal)'
+    : '';
+  throw new Error(`Todos os modelos de AI falharam${hint}. Detalhes: ${errors.join(' | ')}`);
 }
 
 serve(async (req) => {
