@@ -1,6 +1,7 @@
 // Sends booking request emails via the connected Gmail account (reservas@yourtours.pt)
 // using the Lovable connector gateway.
-// Supports: HTML body, inline images (data: URIs converted to cid:), and file attachments.
+// Uses Gmail's media upload endpoint (message/rfc822) to avoid double base64 encoding,
+// which previously caused "Memory limit exceeded" on multi-MB PDF attachments.
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { requireInternalUser } from "../_shared/require-auth.ts";
@@ -10,7 +11,8 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
-const GATEWAY_URL = "https://connector-gateway.lovable.dev/google_mail/gmail/v1";
+// Use the Gmail media upload host through the connector gateway.
+const GATEWAY_UPLOAD_URL = "https://connector-gateway.lovable.dev/google_mail/upload/gmail/v1/users/me/messages/send?uploadType=media";
 
 interface Attachment {
   filename: string;
@@ -18,16 +20,6 @@ interface Attachment {
   contentBase64: string; // standard base64
   inline?: boolean;
   cid?: string;
-}
-
-function b64urlFromBytes(bytes: Uint8Array): string {
-  let bin = "";
-  bytes.forEach((b) => (bin += String.fromCharCode(b)));
-  return btoa(bin).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
-}
-
-function chunk76(s: string): string {
-  return s.replace(/.{1,76}/g, "$&\r\n");
 }
 
 function htmlToText(html: string): string {
@@ -46,7 +38,13 @@ function htmlToText(html: string): string {
     .trim();
 }
 
-// Extract data: image URIs from HTML, convert to cid: refs and inline attachments
+// Insert CRLF every 76 chars without piling up huge intermediate strings.
+function chunk76Into(parts: string[], s: string) {
+  for (let i = 0; i < s.length; i += 76) {
+    parts.push(s.slice(i, i + 76), "\r\n");
+  }
+}
+
 function extractInlineImages(html: string): { html: string; inline: Attachment[] } {
   const inline: Attachment[] = [];
   const re = /<img[^>]+src="(data:([^;]+);base64,([^"]+))"[^>]*>/gi;
@@ -73,62 +71,87 @@ function encodeHeader(value: string) {
     : value;
 }
 
-function buildEmail(opts: {
+function buildRawMime(opts: {
   to: string; subject: string; html: string; text: string;
   cc?: string; bcc?: string; fromName?: string;
   inline: Attachment[]; attachments: Attachment[];
-}) {
+}): Uint8Array {
   const mixedB = `mix_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
   const relB = `rel_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
   const altB = `alt_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
 
-  const headers = [
+  const parts: string[] = [];
+  const push = (...ls: string[]) => { for (const l of ls) parts.push(l, "\r\n"); };
+
+  push(
     opts.fromName ? `From: ${encodeHeader(opts.fromName)} <reservas@yourtours.pt>` : "From: reservas@yourtours.pt",
     `To: ${opts.to}`,
-    opts.cc ? `Cc: ${opts.cc}` : undefined,
-    opts.bcc ? `Bcc: ${opts.bcc}` : undefined,
+  );
+  if (opts.cc) push(`Cc: ${opts.cc}`);
+  if (opts.bcc) push(`Bcc: ${opts.bcc}`);
+  push(
     `Subject: ${encodeHeader(opts.subject)}`,
     "MIME-Version: 1.0",
     `Content-Type: multipart/mixed; boundary="${mixedB}"`,
-  ].filter(Boolean) as string[];
+    "",
+    `--${mixedB}`,
+    `Content-Type: multipart/related; boundary="${relB}"`,
+    "",
+    `--${relB}`,
+    `Content-Type: multipart/alternative; boundary="${altB}"`,
+    "",
+    `--${altB}`,
+    'Content-Type: text/plain; charset="UTF-8"',
+    "Content-Transfer-Encoding: 8bit",
+    "",
+    opts.text,
+    `--${altB}`,
+    'Content-Type: text/html; charset="UTF-8"',
+    "Content-Transfer-Encoding: 8bit",
+    "",
+    opts.html,
+    `--${altB}--`,
+    "",
+  );
 
-  const lines: string[] = [];
-  // related (alt + inline images)
-  lines.push(`--${mixedB}`, `Content-Type: multipart/related; boundary="${relB}"`, "");
-  lines.push(`--${relB}`, `Content-Type: multipart/alternative; boundary="${altB}"`, "");
-  // plain
-  lines.push(`--${altB}`, 'Content-Type: text/plain; charset="UTF-8"', "Content-Transfer-Encoding: 8bit", "", opts.text);
-  // html
-  lines.push(`--${altB}`, 'Content-Type: text/html; charset="UTF-8"', "Content-Transfer-Encoding: 8bit", "", opts.html);
-  lines.push(`--${altB}--`, "");
-  // inline images
   for (const att of opts.inline) {
-    lines.push(
+    push(
       `--${relB}`,
       `Content-Type: ${att.mimeType}; name="${att.filename}"`,
       "Content-Transfer-Encoding: base64",
       `Content-ID: <${att.cid}>`,
       `Content-Disposition: inline; filename="${att.filename}"`,
       "",
-      chunk76(att.contentBase64).trimEnd(),
     );
+    chunk76Into(parts, att.contentBase64);
   }
-  lines.push(`--${relB}--`, "");
-  // attachments
+  push(`--${relB}--`, "");
+
   for (const att of opts.attachments) {
-    lines.push(
+    push(
       `--${mixedB}`,
       `Content-Type: ${att.mimeType}; name="${att.filename}"`,
       "Content-Transfer-Encoding: base64",
       `Content-Disposition: attachment; filename="${att.filename}"`,
       "",
-      chunk76(att.contentBase64).trimEnd(),
     );
+    chunk76Into(parts, att.contentBase64);
   }
-  lines.push(`--${mixedB}--`, "");
+  push(`--${mixedB}--`, "");
 
-  const raw = headers.join("\r\n") + "\r\n\r\n" + lines.join("\r\n");
-  return b64urlFromBytes(new TextEncoder().encode(raw));
+  // Encode each part incrementally to keep peak memory low.
+  const enc = new TextEncoder();
+  const chunks: Uint8Array[] = [];
+  let total = 0;
+  for (const p of parts) {
+    const u = enc.encode(p);
+    chunks.push(u);
+    total += u.byteLength;
+  }
+  const out = new Uint8Array(total);
+  let off = 0;
+  for (const c of chunks) { out.set(c, off); off += c.byteLength; }
+  return out;
 }
 
 serve(async (req) => {
@@ -149,7 +172,6 @@ serve(async (req) => {
       });
     }
 
-    // Determine HTML and plain-text representations
     const rawHtml: string = html
       ? String(html)
       : `<div style="font-family:Arial,sans-serif;font-size:14px;white-space:pre-wrap">${String(body)
@@ -160,19 +182,19 @@ serve(async (req) => {
     const atts: Attachment[] = Array.isArray(attachments) ? attachments : [];
     const fromName = "Your Tours Portugal - Reservas";
 
-    const raw = buildEmail({
+    const rawBytes = buildRawMime({
       to, subject, html: htmlWithCids, text, cc, bcc, fromName,
       inline, attachments: atts,
     });
 
-    const res = await fetch(`${GATEWAY_URL}/users/me/messages/send`, {
+    const res = await fetch(GATEWAY_UPLOAD_URL, {
       method: "POST",
       headers: {
         Authorization: `Bearer ${LOVABLE_API_KEY}`,
         "X-Connection-Api-Key": GOOGLE_MAIL_API_KEY,
-        "Content-Type": "application/json",
+        "Content-Type": "message/rfc822",
       },
-      body: JSON.stringify({ raw }),
+      body: rawBytes,
     });
 
     const data = await res.json().catch(() => ({}));
