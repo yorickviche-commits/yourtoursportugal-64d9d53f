@@ -231,7 +231,10 @@ const MobileMenu = ({ open, onClose }: { open: boolean; onClose: () => void }) =
         <button onClick={onClose} className="p-2 hover:bg-muted rounded-lg"><X className="h-5 w-5" /></button>
       </div>
       <nav className="flex-1 overflow-y-auto py-4 px-2 space-y-2">
+        {renderGroup('Visão Geral', overviewItems, overviewOpen, setOverviewOpen)}
         {renderGroup('Dep. Reservas', reservasItems, reservasOpen, setReservasOpen)}
+        {renderGroup('Comercial', comercialItems, comercialOpen, setComercialOpen)}
+        {renderGroup('Administração', adminItems, adminOpen, setAdminOpen)}
         <div className="pt-2">
           <p className="px-4 py-2 text-xs uppercase text-muted-foreground font-semibold tracking-wider">AI Agents</p>
           <NavLink to="/agents" onClick={onClose}
