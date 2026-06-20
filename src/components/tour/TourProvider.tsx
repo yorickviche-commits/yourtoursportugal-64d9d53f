@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useState, useCallback, ReactNode } from 'react';
-import Joyride, { CallBackProps, STATUS, ACTIONS, EVENTS, TooltipRenderProps } from 'react-joyride';
+import { Joyride, STATUS, ACTIONS, EVENTS, type TooltipRenderProps, type TourData } from 'react-joyride';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { Sparkles, X } from 'lucide-react';
@@ -92,7 +92,7 @@ export const TourProvider = ({ children }: { children: ReactNode }) => {
     return () => clearTimeout(t);
   }, [user]);
 
-  const handleCallback = useCallback((data: CallBackProps) => {
+  const handleCallback = useCallback((data: TourData) => {
     const { status, type, index, action } = data;
 
     if (status === STATUS.FINISHED || status === STATUS.SKIPPED || action === ACTIONS.CLOSE) {
