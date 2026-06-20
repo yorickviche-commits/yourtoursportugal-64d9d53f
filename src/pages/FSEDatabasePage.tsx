@@ -7,10 +7,12 @@ import { Badge } from "@/components/ui/badge";
 import {
   FileText, FolderOpen, Plus, Info, ExternalLink, MapPin,
   ChevronDown, ChevronRight, Database, BarChart3, Globe2, Users2, RefreshCw,
+  FolderTree,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { FSE_DESTINATIONS, getFSEStats, type FSEDestination, type FSECategory, type FSEDocument } from "@/data/fseDatabase";
 import FSECreateModal from "@/components/commercial/FSECreateModal";
+import FSEDriveBrowser from "@/components/commercial/FSEDriveBrowser";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
