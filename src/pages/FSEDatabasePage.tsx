@@ -32,6 +32,23 @@ type DriveNode = {
 
 const FOLDER_MIME = "application/vnd.google-apps.folder";
 
+const normalizeText = (value: string) =>
+  value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]+/gi, " ").trim().toLowerCase();
+
+const inferRegion = (value: string | null | undefined) => {
+  const text = normalizeText(value || "");
+  if (text.includes("lisboa") || text.includes("ribatejo")) return "Lisboa & Ribatejo";
+  if (text.includes("porto") || text.includes("douro litoral")) return "Porto e Norte";
+  if (text.includes("douro") || text.includes("tras os montes")) return "Douro & Trás-os-Montes";
+  if (text.includes("alentejo")) return "Alentejo";
+  if (text.includes("algarve")) return "Algarve";
+  if (text.includes("centro") || text.includes("oeste") || text.includes("fatima")) return "Centro";
+  if (text.includes("minho") || text.includes("norte")) return "Porto e Norte";
+  if (text.includes("madeira")) return "Madeira";
+  if (text.includes("acores")) return "Açores";
+  return value || "Geral";
+};
+
 const SyncDriveButton = () => {
   const [loading, setLoading] = useState(false);
   const sync = async () => {
