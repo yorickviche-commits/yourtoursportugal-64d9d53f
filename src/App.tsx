@@ -25,6 +25,26 @@ import SupplierAgentPage from "./pages/agents/SupplierAgentPage";
 import OpsReviewAgentPage from "./pages/agents/OpsReviewAgentPage";
 import MobilePage from "./pages/MobilePage";
 import NotFound from "./pages/NotFound";
+import Dashboard from "./pages/Dashboard";
+import AIWorkOfficePage from "./pages/AIWorkOfficePage";
+import ApprovalsPage from "./pages/ApprovalsPage";
+import TasksPage from "./pages/TasksPage";
+import CRMPage from "./pages/CRMPage";
+import CRMRecordDetailPage from "./pages/CRMRecordDetailPage";
+import ProposalListPage from "./pages/ProposalListPage";
+import ProposalBuilderPage from "./pages/ProposalBuilderPage";
+import PartnersPage from "./pages/PartnersPage";
+import PartnerDetailPage from "./pages/PartnerDetailPage";
+import FSEDatabasePage from "./pages/FSEDatabasePage";
+import AdminSuppliersPage from "./pages/AdminSuppliersPage";
+import AdminSupplierDetailPage from "./pages/AdminSupplierDetailPage";
+import AdminUsersPage from "./pages/AdminUsersPage";
+import AdminPermissionsPage from "./pages/AdminPermissionsPage";
+import AdminSettingsPage from "./pages/AdminSettingsPage";
+import AdminIntegrationsPage from "./pages/AdminIntegrationsPage";
+import AdminKPIPage from "./pages/AdminKPIPage";
+import AdminActivityLogsPage from "./pages/AdminActivityLogsPage";
+import AgentDashboardPage from "./pages/AgentDashboardPage";
 
 const queryClient = new QueryClient();
 
