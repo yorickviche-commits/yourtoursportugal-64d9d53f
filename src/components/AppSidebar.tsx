@@ -1,6 +1,8 @@
 import { NavLink, useLocation } from 'react-router-dom';
 import {
-  Map, Users, CreditCard, Sparkles,
+  Map, Users, CreditCard, Sparkles, LayoutDashboard, CheckSquare, ListChecks,
+  FileText, Handshake, Grid3x3, Truck, Settings, Shield, BarChart3, Plug, ScrollText,
+  Inbox, Briefcase,
   LogOut, ChevronDown, ChevronRight, Menu, X,
 } from 'lucide-react';
 import { useState } from 'react';
@@ -13,10 +15,33 @@ import BrandLogo from './BrandLogo';
 
 interface NavItem { to: string; icon: any; label: string; }
 
+const overviewItems: NavItem[] = [
+  { to: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
+  { to: '/approvals', icon: CheckSquare, label: 'Aprovações' },
+  { to: '/tasks', icon: ListChecks, label: 'Tarefas' },
+];
+
 const reservasItems: NavItem[] = [
   { to: '/leads', icon: Users, label: 'Leads & Files' },
   { to: '/trips', icon: Map, label: 'Bookings & Reservas' },
+  { to: '/proposals', icon: FileText, label: 'Propostas' },
   { to: '/payments', icon: CreditCard, label: 'Pagamentos' },
+  { to: '/crm', icon: Inbox, label: 'CRM / Comunicação' },
+];
+
+const comercialItems: NavItem[] = [
+  { to: '/comercial/matriz', icon: Grid3x3, label: 'Matriz FSE' },
+  { to: '/comercial/suppliers', icon: Truck, label: 'Fornecedores' },
+  { to: '/partners', icon: Handshake, label: 'Parceiros B2B' },
+];
+
+const adminItems: NavItem[] = [
+  { to: '/admin/users', icon: Users, label: 'Utilizadores' },
+  { to: '/admin/permissions', icon: Shield, label: 'Permissões' },
+  { to: '/admin/settings', icon: Settings, label: 'Configurações' },
+  { to: '/admin/integrations', icon: Plug, label: 'Integrações' },
+  { to: '/admin/kpi', icon: BarChart3, label: 'KPI' },
+  { to: '/admin/logs', icon: ScrollText, label: 'Logs' },
 ];
 
 const DesktopSidebar = () => {
