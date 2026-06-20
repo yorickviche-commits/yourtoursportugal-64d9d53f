@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import AppLayout from "@/components/AppLayout";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Card, CardContent } from "@/components/ui/card";
@@ -16,6 +16,21 @@ import FSECreateModal from "@/components/commercial/FSECreateModal";
 import FSEDriveBrowser from "@/components/commercial/FSEDriveBrowser";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+
+type DriveNode = {
+  drive_id: string;
+  parent_drive_id: string | null;
+  name: string;
+  mime_type: string;
+  category: string | null;
+  region: string | null;
+  supplier_name: string | null;
+  path: string | null;
+  web_view_link: string | null;
+  depth: number;
+};
+
+const FOLDER_MIME = "application/vnd.google-apps.folder";
 
 const SyncDriveButton = () => {
   const [loading, setLoading] = useState(false);
