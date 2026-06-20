@@ -65,14 +65,30 @@ const FilePreviewDialog = ({ file, onClose }: { file: DriveNode | null; onClose:
   );
 };
 
-export const FSEDriveBrowser = () => {
+interface FSEDriveBrowserProps {
+  initialCategory?: string | null;
+  initialRegion?: string | null;
+  initialSearch?: string;
+  compact?: boolean;
+}
+
+export const FSEDriveBrowser = ({
+  initialCategory = null,
+  initialRegion = null,
+  initialSearch = "",
+  compact = false,
+}: FSEDriveBrowserProps = {}) => {
   const [nodes, setNodes] = useState<DriveNode[]>([]);
   const [loading, setLoading] = useState(true);
-  const [search, setSearch] = useState("");
-  const [categoryFilter, setCategoryFilter] = useState<string | null>(null);
-  const [regionFilter, setRegionFilter] = useState<string | null>(null);
+  const [search, setSearch] = useState(initialSearch);
+  const [categoryFilter, setCategoryFilter] = useState<string | null>(initialCategory);
+  const [regionFilter, setRegionFilter] = useState<string | null>(initialRegion);
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const [preview, setPreview] = useState<DriveNode | null>(null);
+
+  useEffect(() => { setSearch(initialSearch); }, [initialSearch]);
+  useEffect(() => { setCategoryFilter(initialCategory); }, [initialCategory]);
+  useEffect(() => { setRegionFilter(initialRegion); }, [initialRegion]);
 
   useEffect(() => {
     (async () => {
