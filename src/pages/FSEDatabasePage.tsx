@@ -56,8 +56,27 @@ const SyncDriveButton = () => {
 
 
 // ─── Stats Header ───
-const StatsHeader = () => {
-  const stats = getFSEStats();
+const StatsHeader = ({ destinations = FSE_DESTINATIONS }: { destinations?: FSEDestination[] }) => {
+  const stats = destinations === FSE_DESTINATIONS ? getFSEStats() : (() => {
+    let totalDocs = 0;
+    let filledCats = 0;
+    let totalCats = 0;
+    let activeDestinations = 0;
+    const multiPartnerCount = 0;
+    for (const dest of destinations) {
+      let hasDocs = false;
+      for (const cat of dest.categories) {
+        totalCats++;
+        totalDocs += cat.documents.reduce((sum, doc) => sum + doc.docCount, 0);
+        if (cat.documents.length) {
+          filledCats++;
+          hasDocs = true;
+        }
+      }
+      if (hasDocs) activeDestinations++;
+    }
+    return { totalDocs, filledCats, totalCats, activeDestinations, totalDestinations: destinations.length, multiPartnerCount };
+  })();
   const metrics = [
     { label: "Total Documentos", value: stats.totalDocs, icon: FileText },
     { label: "Categorias Preenchidas", value: `${stats.filledCats}/${stats.totalCats}`, icon: FolderOpen },
@@ -462,7 +481,7 @@ const FSEDatabasePage = () => {
           </div>
         </div>
 
-        <StatsHeader />
+        <StatsHeader destinations={liveDestinations} />
 
         <Tabs defaultValue="map" className="w-full">
           <TabsList>
