@@ -195,10 +195,18 @@ serve(async (req) => {
     if (payload) fetchOpts.body = payload;
 
     const response = await fetch(url, fetchOpts);
-    const data = await response.json();
+    const rawText = await response.text();
+    let data: unknown;
+    try {
+      data = rawText ? JSON.parse(rawText) : null;
+    } catch {
+      // NetHunt returned non-JSON (typically an auth/plain-text error like "Your email or API key is invalid")
+      data = { error: rawText || 'Empty response from NetHunt', status: response.status };
+    }
 
     if (!response.ok) {
-      throw new Error(`NetHunt API error [${response.status}]: ${JSON.stringify(data)}`);
+      const msg = typeof data === 'string' ? data : JSON.stringify(data);
+      throw new Error(`NetHunt API error [${response.status}]: ${msg}`);
     }
 
     return new Response(JSON.stringify(data), {
