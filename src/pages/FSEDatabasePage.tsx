@@ -363,11 +363,56 @@ const FSEDatabasePage = () => {
   const [modalOpen, setModalOpen] = useState(false);
   const [prefillDest, setPrefillDest] = useState<string | undefined>();
   const [prefillCat, setPrefillCat] = useState<string | undefined>();
+  const [driveNodes, setDriveNodes] = useState<DriveNode[]>([]);
 
   // Drive popup state
   const [driveOpen, setDriveOpen] = useState(false);
   const [driveSearch, setDriveSearch] = useState("");
   const [driveTitle, setDriveTitle] = useState("Ficheiros do Drive");
+
+  useEffect(() => {
+    supabase
+      .from("fse_drive_index")
+      .select("drive_id,parent_drive_id,name,mime_type,category,region,supplier_name,path,web_view_link,depth")
+      .order("path")
+      .then(({ data, error }) => {
+        if (!error && data) setDriveNodes(data as DriveNode[]);
+      });
+  }, []);
+
+  const liveDestinations = useMemo<FSEDestination[]>(() => {
+    if (!driveNodes.length) return FSE_DESTINATIONS;
+    const categoryLabels = FSE_DESTINATIONS[0]?.categories ?? [];
+    const byId = new Map(driveNodes.map((n) => [n.drive_id, n]));
+    const grouped = new Map<string, Map<string, Map<string, number>>>();
+    for (const file of driveNodes.filter((n) => n.mime_type !== FOLDER_MIME)) {
+      const destination = file.region || "Sem região";
+      const category = file.category || "Sem categoria";
+      const parent = file.parent_drive_id ? byId.get(file.parent_drive_id) : null;
+      const supplier = parent?.mime_type === FOLDER_MIME && parent.depth >= 2
+        ? parent.name
+        : file.supplier_name || file.name.replace(/\.(xlsx|pdf|docx|pptx|xls|doc)$/i, "");
+      grouped.set(destination, grouped.get(destination) ?? new Map());
+      const cats = grouped.get(destination)!;
+      cats.set(category, cats.get(category) ?? new Map());
+      const suppliers = cats.get(category)!;
+      suppliers.set(supplier, (suppliers.get(supplier) ?? 0) + 1);
+    }
+    return Array.from(grouped.entries()).sort(([a], [b]) => a.localeCompare(b)).map(([name, cats]) => ({
+      name,
+      categories: categoryLabels.map((def) => {
+        const suppliers = cats.get(def.label) ?? new Map();
+        return {
+          ...def,
+          documents: Array.from(suppliers.entries()).sort(([a], [b]) => a.localeCompare(b)).map(([supplier, count]) => ({
+            name: supplier,
+            status: "active" as const,
+            docCount: count,
+          })),
+        };
+      }),
+    }));
+  }, [driveNodes]);
 
   const openModal = (dest?: string, cat?: string) => {
     setPrefillDest(dest);
