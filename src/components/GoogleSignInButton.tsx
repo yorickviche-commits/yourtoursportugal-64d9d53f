@@ -1,9 +1,9 @@
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Loader2 } from 'lucide-react';
-import { lovable } from '@/integrations/lovable';
+import { supabase } from '@/integrations/supabase/client';
+import { signInWithLovableOAuthPopup } from '@/lib/lovableCloudOAuth';
 import { useToast } from '@/hooks/use-toast';
-import { useNavigate } from 'react-router-dom';
 
 const GoogleIcon = () => (
   <svg viewBox="0 0 24 24" className="h-4 w-4" aria-hidden>
@@ -14,22 +14,33 @@ const GoogleIcon = () => (
 const GoogleSignInButton = ({ label = 'Continuar com Google' }: { label?: string }) => {
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
-  const navigate = useNavigate();
 
   const handleGoogle = async () => {
     setLoading(true);
-    const result = await lovable.auth.signInWithOAuth('google', {
-      redirect_uri: window.location.origin,
-    });
+    const result = await signInWithLovableOAuthPopup('google');
+
     if (result.error) {
       setLoading(false);
       toast({ title: 'Erro Google', description: result.error.message, variant: 'destructive' });
       return;
     }
+
     if (result.redirected) return;
+
+    const { data: { session }, error } = await supabase.auth.getSession();
+    if (error || !session) {
+      setLoading(false);
+      toast({
+        title: 'Sessão Google não guardada',
+        description: 'A autenticação abriu corretamente, mas a sessão não ficou ativa. Tenta novamente.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
     const stored = sessionStorage.getItem('postAuthRedirect');
     if (stored) sessionStorage.removeItem('postAuthRedirect');
-    navigate(stored || '/leads');
+    window.location.replace(stored || '/leads');
   };
 
   return (
