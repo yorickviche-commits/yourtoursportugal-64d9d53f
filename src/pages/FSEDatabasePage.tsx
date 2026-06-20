@@ -109,7 +109,17 @@ const DocChip = ({ doc, onBrowse }: { doc: FSEDocument; onBrowse?: (search: stri
 };
 
 // ─── Destination Card ───
-const DestinationCard = ({ dest, onAdd }: { dest: FSEDestination; onAdd: (dest?: string, cat?: string) => void }) => {
+const DestinationCard = ({
+  dest,
+  onAdd,
+  onBrowseCategory,
+  onBrowseDoc,
+}: {
+  dest: FSEDestination;
+  onAdd: (dest?: string, cat?: string) => void;
+  onBrowseCategory: (destName: string, catLabel: string) => void;
+  onBrowseDoc: (search: string) => void;
+}) => {
   const [expanded, setExpanded] = useState(false);
   const [selectedCat, setSelectedCat] = useState<string | null>(null);
 
@@ -171,6 +181,15 @@ const DestinationCard = ({ dest, onAdd }: { dest: FSEDestination; onAdd: (dest?:
                     {catHasMulti && <Badge variant="outline" className="h-4 px-1 text-[9px] font-bold border-amber-500/30 text-amber-600">M</Badge>}
                     <span className="text-muted-foreground font-mono text-[11px]">{docCount}</span>
                   </button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-6 w-6 shrink-0"
+                    title="Ver ficheiros no Drive"
+                    onClick={() => onBrowseCategory(dest.name, cat.label)}
+                  >
+                    <FolderOpen className="h-3 w-3" />
+                  </Button>
                   <Button variant="ghost" size="icon" className="h-6 w-6 shrink-0" onClick={() => onAdd(dest.name, cat.id)} title="Adicionar">
                     <Plus className="h-3 w-3" />
                   </Button>
@@ -178,7 +197,7 @@ const DestinationCard = ({ dest, onAdd }: { dest: FSEDestination; onAdd: (dest?:
 
                 {isSelected && docCount > 0 && (
                   <div className="ml-5 pl-3 border-l-2 border-primary/10 py-2 flex flex-wrap gap-1.5">
-                    {cat.documents.map((doc, i) => <DocChip key={i} doc={doc} />)}
+                    {cat.documents.map((doc, i) => <DocChip key={i} doc={doc} onBrowse={onBrowseDoc} />)}
                     {catHasMulti && (
                       <p className="w-full text-[10px] text-amber-600 mt-1 italic flex items-center gap-1">
                         <ExternalLink className="h-3 w-3" />
@@ -188,8 +207,14 @@ const DestinationCard = ({ dest, onAdd }: { dest: FSEDestination; onAdd: (dest?:
                   </div>
                 )}
                 {isSelected && docCount === 0 && (
-                  <div className="ml-5 pl-3 border-l-2 border-red-200 py-2">
-                    <span className="text-[11px] text-muted-foreground italic">Sem documentos registados</span>
+                  <div className="ml-5 pl-3 border-l-2 border-red-200 py-2 flex items-center gap-2">
+                    <span className="text-[11px] text-muted-foreground italic">Sem documentos registados.</span>
+                    <button
+                      onClick={() => onBrowseCategory(dest.name, cat.label)}
+                      className="text-[11px] text-primary hover:underline"
+                    >
+                      Procurar no Drive →
+                    </button>
                   </div>
                 )}
               </div>
@@ -202,17 +227,31 @@ const DestinationCard = ({ dest, onAdd }: { dest: FSEDestination; onAdd: (dest?:
 };
 
 // ─── Interactive Map Tab ───
-const InteractiveMapTab = ({ onAdd }: { onAdd: (dest?: string, cat?: string) => void }) => (
+const InteractiveMapTab = ({
+  onAdd,
+  onBrowseCategory,
+  onBrowseDoc,
+}: {
+  onAdd: (dest?: string, cat?: string) => void;
+  onBrowseCategory: (destName: string, catLabel: string) => void;
+  onBrowseDoc: (search: string) => void;
+}) => (
   <div className="space-y-4">
     <div className="flex gap-3 p-3 rounded-lg bg-blue-50 border border-blue-200 text-blue-800 text-xs leading-relaxed">
       <Info className="h-4 w-4 shrink-0 mt-0.5" />
       <p>
-        <strong>Regra de arquivo:</strong> parceiros com saídas de múltiplos destinos (ex: Living Tours, 2Feel) têm ficheiros separados por ponto de saída. O serviço com saída Porto arquiva-se em Porto; o serviço com saída Lisboa arquiva-se em Lisboa.
+        <strong>Dica:</strong> clica num FSE ou no ícone <FolderOpen className="h-3 w-3 inline" /> para ver os ficheiros do Drive (PDFs, contratos, fichas técnicas) num popup, sem sair da página.
       </p>
     </div>
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
       {FSE_DESTINATIONS.map(dest => (
-        <DestinationCard key={dest.name} dest={dest} onAdd={onAdd} />
+        <DestinationCard
+          key={dest.name}
+          dest={dest}
+          onAdd={onAdd}
+          onBrowseCategory={onBrowseCategory}
+          onBrowseDoc={onBrowseDoc}
+        />
       ))}
     </div>
   </div>
