@@ -2,12 +2,12 @@ import type { Step } from 'react-joyride';
 
 export type TourTag = 'Sales' | 'Ops' | 'Ambos';
 
-export interface YTStep extends Step {
+export type YTStep = Step & {
   route?: string;
   tag: TourTag;
   ai?: boolean;
   title: string;
-}
+};
 
 export const tourSteps: YTStep[] = [
   {
