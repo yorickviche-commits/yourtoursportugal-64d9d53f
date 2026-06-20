@@ -243,10 +243,12 @@ const DestinationCard = ({
 
 // ─── Interactive Map Tab ───
 const InteractiveMapTab = ({
+  destinations,
   onAdd,
   onBrowseCategory,
   onBrowseDoc,
 }: {
+  destinations: FSEDestination[];
   onAdd: (dest?: string, cat?: string) => void;
   onBrowseCategory: (destName: string, catLabel: string) => void;
   onBrowseDoc: (search: string) => void;
@@ -259,7 +261,7 @@ const InteractiveMapTab = ({
       </p>
     </div>
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-      {FSE_DESTINATIONS.map(dest => (
+      {destinations.map(dest => (
         <DestinationCard
           key={dest.name}
           dest={dest}
@@ -276,12 +278,12 @@ const InteractiveMapTab = ({
 const CAT_ORDER = ["aloj", "anim", "guias", "quintas", "rest", "mar", "terr", "mon"] as const;
 const CAT_HEADERS = ["Alojamento", "Anim. Turística", "Guias Externos", "Quintas & Caves", "Restauração", "Transp. Marítimos", "Transp. Terrestres", "Monumentos"];
 
-const SummaryTableTab = ({ onAdd }: { onAdd: () => void }) => {
+const SummaryTableTab = ({ destinations, onAdd }: { destinations: FSEDestination[]; onAdd: () => void }) => {
   const totals = CAT_ORDER.map(() => ({ count: 0, multi: false }));
   let grandTotal = 0;
   let grandFilledCats = 0;
 
-  const rows = FSE_DESTINATIONS.map(dest => {
+  const rows = destinations.map(dest => {
     let rowTotal = 0;
     let rowFilledCats = 0;
     const cells = CAT_ORDER.map((catId, ci) => {
