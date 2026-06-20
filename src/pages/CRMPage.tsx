@@ -64,6 +64,8 @@ const getShortStageName = (stage: string): string => {
   return parts.length > 1 ? parts.slice(1).join(' - ').trim() : stage;
 };
 
+const normalizeStage = (stage: string): string => stage.replace(/\s+/g, ' ').trim().toUpperCase();
+
 const getDaysSinceEmail = (record: NethuntRecord): number | null => {
   const lastEmail = record.fields?.['Last Email Received'] || record.fields?.['Last Email Sent'];
   if (!lastEmail) return null;
@@ -119,15 +121,18 @@ const CRMPage = () => {
     try {
       const { data, error: fnError } = await supabase.functions.invoke('nethunt-proxy', {
         body: {
-          action: query ? 'find-records' : 'recent-records',
+          action: query ? 'find-records' : 'updated-records',
           folderId: folder.id,
           query: query || undefined,
+          since: query ? undefined : '2026-01-01T00:00:00.000Z',
           limit: 500,
         },
       });
       if (fnError) throw fnError;
       if (data?.error) throw new Error(data.error);
-      const recs = Array.isArray(data) ? data : [];
+      const recs = Array.from(
+        new Map((Array.isArray(data) ? data : []).map((r: NethuntRecord) => [r.recordId, r])).values()
+      ) as NethuntRecord[];
       setRecords(recs);
 
       const stageSet = new Set<string>();
@@ -147,13 +152,18 @@ const CRMPage = () => {
 
   const getStagesForPipeline = (): string[] => {
     const base = pipeline === 'sales' ? SALES_STAGES : OPERATIONS_STAGES;
-    // Include stages from data that match the pipeline prefix but aren't in defaults
     const prefix = pipeline === 'sales' ? 'SALES' : 'OPERATIONS';
-    const extra: string[] = [];
-    detectedStages.forEach(s => {
-      if (s.toUpperCase().startsWith(prefix) && !base.includes(s)) extra.push(s);
-    });
-    return [...base, ...extra].filter(s => detectedStages.has(s) || base.includes(s));
+    const liveStages = Array.from(detectedStages).filter(s => normalizeStage(s).startsWith(prefix));
+    if (!liveStages.length) return base;
+    const ordered = base
+      .map(stage => {
+        const shortStage = normalizeStage(getShortStageName(stage));
+        const meaningful = shortStage.split(' ').find(part => part.length > 3) || shortStage;
+        return liveStages.find(live => normalizeStage(live).includes(meaningful));
+      })
+      .filter(Boolean) as string[];
+    const extras = liveStages.filter(stage => !ordered.includes(stage)).sort((a, b) => a.localeCompare(b));
+    return [...ordered, ...extras];
   };
 
   const getRecordsByStage = (stage: string): NethuntRecord[] => {
@@ -164,7 +174,7 @@ const CRMPage = () => {
     const prefix = pipeline === 'sales' ? 'SALES' : 'OPERATIONS';
     return records.filter(r => {
       const stage = r.fields?.Stage || r.fields?.stage || '';
-      return stage.toUpperCase().startsWith(prefix);
+      return normalizeStage(stage).startsWith(prefix);
     }).length;
   };
 

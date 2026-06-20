@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import AppLayout from "@/components/AppLayout";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Card, CardContent } from "@/components/ui/card";
@@ -16,6 +16,38 @@ import FSECreateModal from "@/components/commercial/FSECreateModal";
 import FSEDriveBrowser from "@/components/commercial/FSEDriveBrowser";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+
+type DriveNode = {
+  drive_id: string;
+  parent_drive_id: string | null;
+  name: string;
+  mime_type: string;
+  category: string | null;
+  region: string | null;
+  supplier_name: string | null;
+  path: string | null;
+  web_view_link: string | null;
+  depth: number;
+};
+
+const FOLDER_MIME = "application/vnd.google-apps.folder";
+
+const normalizeText = (value: string) =>
+  value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]+/gi, " ").trim().toLowerCase();
+
+const inferRegion = (value: string | null | undefined) => {
+  const text = normalizeText(value || "");
+  if (text.includes("lisboa") || text.includes("ribatejo")) return "Lisboa & Ribatejo";
+  if (text.includes("porto") || text.includes("douro litoral")) return "Porto e Norte";
+  if (text.includes("douro") || text.includes("tras os montes")) return "Douro & Trás-os-Montes";
+  if (text.includes("alentejo")) return "Alentejo";
+  if (text.includes("algarve")) return "Algarve";
+  if (text.includes("centro") || text.includes("oeste") || text.includes("fatima")) return "Centro";
+  if (text.includes("minho") || text.includes("norte")) return "Porto e Norte";
+  if (text.includes("madeira")) return "Madeira";
+  if (text.includes("acores")) return "Açores";
+  return value || "Geral";
+};
 
 const SyncDriveButton = () => {
   const [loading, setLoading] = useState(false);
@@ -41,8 +73,27 @@ const SyncDriveButton = () => {
 
 
 // ─── Stats Header ───
-const StatsHeader = () => {
-  const stats = getFSEStats();
+const StatsHeader = ({ destinations = FSE_DESTINATIONS }: { destinations?: FSEDestination[] }) => {
+  const stats = destinations === FSE_DESTINATIONS ? getFSEStats() : (() => {
+    let totalDocs = 0;
+    let filledCats = 0;
+    let totalCats = 0;
+    let activeDestinations = 0;
+    const multiPartnerCount = 0;
+    for (const dest of destinations) {
+      let hasDocs = false;
+      for (const cat of dest.categories) {
+        totalCats++;
+        totalDocs += cat.documents.reduce((sum, doc) => sum + doc.docCount, 0);
+        if (cat.documents.length) {
+          filledCats++;
+          hasDocs = true;
+        }
+      }
+      if (hasDocs) activeDestinations++;
+    }
+    return { totalDocs, filledCats, totalCats, activeDestinations, totalDestinations: destinations.length, multiPartnerCount };
+  })();
   const metrics = [
     { label: "Total Documentos", value: stats.totalDocs, icon: FileText },
     { label: "Categorias Preenchidas", value: `${stats.filledCats}/${stats.totalCats}`, icon: FolderOpen },
@@ -228,10 +279,12 @@ const DestinationCard = ({
 
 // ─── Interactive Map Tab ───
 const InteractiveMapTab = ({
+  destinations,
   onAdd,
   onBrowseCategory,
   onBrowseDoc,
 }: {
+  destinations: FSEDestination[];
   onAdd: (dest?: string, cat?: string) => void;
   onBrowseCategory: (destName: string, catLabel: string) => void;
   onBrowseDoc: (search: string) => void;
@@ -244,7 +297,7 @@ const InteractiveMapTab = ({
       </p>
     </div>
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-      {FSE_DESTINATIONS.map(dest => (
+      {destinations.map(dest => (
         <DestinationCard
           key={dest.name}
           dest={dest}
@@ -261,12 +314,12 @@ const InteractiveMapTab = ({
 const CAT_ORDER = ["aloj", "anim", "guias", "quintas", "rest", "mar", "terr", "mon"] as const;
 const CAT_HEADERS = ["Alojamento", "Anim. Turística", "Guias Externos", "Quintas & Caves", "Restauração", "Transp. Marítimos", "Transp. Terrestres", "Monumentos"];
 
-const SummaryTableTab = ({ onAdd }: { onAdd: () => void }) => {
+const SummaryTableTab = ({ destinations, onAdd }: { destinations: FSEDestination[]; onAdd: () => void }) => {
   const totals = CAT_ORDER.map(() => ({ count: 0, multi: false }));
   let grandTotal = 0;
   let grandFilledCats = 0;
 
-  const rows = FSE_DESTINATIONS.map(dest => {
+  const rows = destinations.map(dest => {
     let rowTotal = 0;
     let rowFilledCats = 0;
     const cells = CAT_ORDER.map((catId, ci) => {
@@ -348,11 +401,61 @@ const FSEDatabasePage = () => {
   const [modalOpen, setModalOpen] = useState(false);
   const [prefillDest, setPrefillDest] = useState<string | undefined>();
   const [prefillCat, setPrefillCat] = useState<string | undefined>();
+  const [driveNodes, setDriveNodes] = useState<DriveNode[]>([]);
 
   // Drive popup state
   const [driveOpen, setDriveOpen] = useState(false);
   const [driveSearch, setDriveSearch] = useState("");
   const [driveTitle, setDriveTitle] = useState("Ficheiros do Drive");
+
+  useEffect(() => {
+    supabase
+      .from("fse_drive_index")
+      .select("drive_id,parent_drive_id,name,mime_type,category,region,supplier_name,path,web_view_link,depth")
+      .order("path")
+      .then(({ data, error }) => {
+        if (!error && data) setDriveNodes(data as DriveNode[]);
+      });
+  }, []);
+
+  const liveDestinations = useMemo<FSEDestination[]>(() => {
+    if (!driveNodes.length) return FSE_DESTINATIONS;
+    const categoryLabels = FSE_DESTINATIONS[0]?.categories ?? [];
+    const byId = new Map(driveNodes.map((n) => [n.drive_id, n]));
+    const grouped = new Map<string, Map<string, Map<string, number>>>();
+    for (const file of driveNodes.filter((n) => n.mime_type !== FOLDER_MIME)) {
+      const pathParts = (file.path || "").split(" / ");
+      const destination = inferRegion(pathParts.length >= 3 ? pathParts[1] : file.region);
+      const category = file.category || "Sem categoria";
+      const parent = file.parent_drive_id ? byId.get(file.parent_drive_id) : null;
+      const supplier = pathParts.length >= 4
+        ? pathParts[pathParts.length - 2]
+        : pathParts.length === 3
+        ? pathParts[1]
+        : parent?.mime_type === FOLDER_MIME && parent.depth >= 2
+        ? parent.name
+        : file.supplier_name || file.name.replace(/\.(xlsx|pdf|docx|pptx|xls|doc)$/i, "");
+      grouped.set(destination, grouped.get(destination) ?? new Map());
+      const cats = grouped.get(destination)!;
+      cats.set(category, cats.get(category) ?? new Map());
+      const suppliers = cats.get(category)!;
+      suppliers.set(supplier, (suppliers.get(supplier) ?? 0) + 1);
+    }
+    return Array.from(grouped.entries()).sort(([a], [b]) => a.localeCompare(b)).map(([name, cats]) => ({
+      name,
+      categories: categoryLabels.map((def) => {
+        const suppliers = cats.get(def.label) ?? new Map();
+        return {
+          ...def,
+          documents: Array.from(suppliers.entries()).sort(([a], [b]) => a.localeCompare(b)).map(([supplier, count]) => ({
+            name: supplier,
+            status: "active" as const,
+            docCount: count,
+          })),
+        };
+      }),
+    }));
+  }, [driveNodes]);
 
   const openModal = (dest?: string, cat?: string) => {
     setPrefillDest(dest);
@@ -400,7 +503,7 @@ const FSEDatabasePage = () => {
           </div>
         </div>
 
-        <StatsHeader />
+        <StatsHeader destinations={liveDestinations} />
 
         <Tabs defaultValue="map" className="w-full">
           <TabsList>
@@ -419,6 +522,7 @@ const FSEDatabasePage = () => {
           </TabsList>
           <TabsContent value="map">
             <InteractiveMapTab
+              destinations={liveDestinations}
               onAdd={openModal}
               onBrowseCategory={handleBrowseCategory}
               onBrowseDoc={handleBrowseDoc}
@@ -428,7 +532,7 @@ const FSEDatabasePage = () => {
             <FSEDriveBrowser />
           </TabsContent>
           <TabsContent value="table">
-            <SummaryTableTab onAdd={() => openModal()} />
+            <SummaryTableTab destinations={liveDestinations} onAdd={() => openModal()} />
           </TabsContent>
         </Tabs>
       </div>
