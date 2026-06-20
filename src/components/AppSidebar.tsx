@@ -48,7 +48,10 @@ const DesktopSidebar = () => {
   const location = useLocation();
   const { profile, signOut } = useAuth();
   const [hovered, setHovered] = useState(false);
+  const [overviewOpen, setOverviewOpen] = useState(true);
   const [reservasOpen, setReservasOpen] = useState(true);
+  const [comercialOpen, setComercialOpen] = useState(true);
+  const [adminOpen, setAdminOpen] = useState(false);
   const unreadCount = useUnreadNotificationCount();
   const { data: actions = [] } = useAgentPendingActions();
   const pendingActions = actions.filter(a => a.status === 'pending').length;
