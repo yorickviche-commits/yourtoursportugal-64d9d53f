@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider } from "@/hooks/useAuth";
 import ProtectedRoute from "@/components/ProtectedRoute";
+import { TourProvider } from "@/components/tour/TourProvider";
 import TripsPage from "./pages/TripsPage";
 import TripDetailPage from "./pages/TripDetailPage";
 import LeadsFilesPage from "./pages/LeadsFilesPage";
@@ -55,6 +56,7 @@ const App = () => (
         <Toaster />
         <Sonner />
         <BrowserRouter>
+          <TourProvider>
           <Routes>
             <Route path="/login" element={<LoginPage />} />
             <Route path="/signup" element={<SignupPage />} />
