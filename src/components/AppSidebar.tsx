@@ -113,7 +113,10 @@ const DesktopSidebar = () => {
       </div>
 
       <nav className="flex-1 py-3 px-2 space-y-1 overflow-y-auto">
+        {renderGroup('Visão Geral', overviewItems, overviewOpen, setOverviewOpen)}
         {renderGroup('Dep. Reservas', reservasItems, reservasOpen, setReservasOpen)}
+        {renderGroup('Comercial', comercialItems, comercialOpen, setComercialOpen)}
+        {renderGroup('Administração', adminItems, adminOpen, setAdminOpen)}
 
         {expanded
           ? <p className="px-3 py-1.5 text-[10px] uppercase text-sidebar-muted font-semibold tracking-wider mt-2">AI Agents</p>
