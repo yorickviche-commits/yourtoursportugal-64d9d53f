@@ -29,6 +29,20 @@ const normalizeText = (value: string) =>
 
 const stripFileExt = (value: string) => value.replace(/\.(xlsx|pdf|docx|pptx|xls|doc)$/i, "");
 
+const inferRegion = (value: string | null | undefined) => {
+  const text = normalizeText(value || "");
+  if (text.includes("lisboa") || text.includes("ribatejo")) return "Lisboa & Ribatejo";
+  if (text.includes("porto") || text.includes("douro litoral")) return "Porto e Norte";
+  if (text.includes("douro") || text.includes("tras os montes")) return "Douro & Trás-os-Montes";
+  if (text.includes("alentejo")) return "Alentejo";
+  if (text.includes("algarve")) return "Algarve";
+  if (text.includes("centro") || text.includes("oeste") || text.includes("fatima")) return "Centro";
+  if (text.includes("minho") || text.includes("norte")) return "Porto e Norte";
+  if (text.includes("madeira")) return "Madeira";
+  if (text.includes("acores")) return "Açores";
+  return value || "Geral";
+};
+
 const fileIcon = (mime: string) => {
   if (mime === FOLDER_MIME) return <Folder className="h-3.5 w-3.5 text-amber-500" />;
   return <FileText className="h-3.5 w-3.5 text-blue-500" />;
@@ -121,13 +135,22 @@ export const FSEDriveBrowser = ({
     const tokens = normalizeText(search).split(" ").filter(Boolean);
     const byId = new Map(nodes.map((n) => [n.drive_id, n]));
     const getSupplier = (n: DriveNode) => {
+      const parts = (n.path || "").split(" / ");
+      if (parts.length >= 4) return parts[parts.length - 2];
+      if (parts.length === 3) return parts[1];
       const parent = n.parent_drive_id ? byId.get(n.parent_drive_id) : null;
       if (parent?.mime_type === FOLDER_MIME && parent.depth >= 2) return parent.name;
       return n.supplier_name || stripFileExt(n.name);
     };
+    const getRegion = (n: DriveNode) => {
+      const parts = (n.path || "").split(" / ");
+      if (parts.length >= 4) return inferRegion(parts[1]);
+      if (parts.length === 3) return inferRegion(parts[1]);
+      return inferRegion(n.region);
+    };
     const matches = (n: DriveNode) => {
       if (!tokens.length) return true;
-      const haystack = normalizeText(`${n.name} ${getSupplier(n)} ${n.category || ""} ${n.region || ""} ${n.path || ""}`);
+      const haystack = normalizeText(`${n.name} ${getSupplier(n)} ${n.category || ""} ${getRegion(n)} ${n.path || ""}`);
       return tokens.every((t) => haystack.includes(t));
     };
 
@@ -142,7 +165,7 @@ export const FSEDriveBrowser = ({
     const byCat: Record<string, Record<string, Record<string, DriveNode[]>>> = {};
     for (const f of files) {
       const cat = f.category || "— Sem categoria";
-      const reg = f.region || "— Sem região";
+      const reg = getRegion(f) || "— Sem região";
       const supplier = getSupplier(f);
       byCat[cat] ??= {};
       byCat[cat][reg] ??= {};
