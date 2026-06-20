@@ -2,6 +2,7 @@ import { ReactNode, useState } from 'react';
 import AppSidebar from './AppSidebar';
 import NewLeadDialog, { NewLeadFAB } from './NewLeadDialog';
 import { useIsMobile } from '@/hooks/use-mobile';
+import BrandLogo from './BrandLogo';
 
 const AppLayout = ({ children }: { children: ReactNode }) => {
   const [newLeadOpen, setNewLeadOpen] = useState(false);
@@ -15,6 +16,9 @@ const AppLayout = ({ children }: { children: ReactNode }) => {
           ? "p-4 pt-14 max-w-full"
           : "ml-[56px] p-6 max-w-[1400px] transition-all duration-200"
       }>
+        <div className="mb-4 hidden justify-end md:flex">
+          <BrandLogo imageClassName="h-8 w-8" className="opacity-80" />
+        </div>
         {children}
       </main>
       <NewLeadFAB onClick={() => setNewLeadOpen(true)} />

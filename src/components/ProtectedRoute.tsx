@@ -1,6 +1,7 @@
 import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { Loader2 } from 'lucide-react';
+import BrandLogo from './BrandLogo';
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
@@ -14,7 +15,8 @@ const ProtectedRoute = ({ children, adminOnly = false }: ProtectedRouteProps) =>
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-screen bg-background">
+      <div className="flex h-screen flex-col items-center justify-center gap-4 bg-background">
+        <BrandLogo imageClassName="h-14 w-14" />
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
       </div>
     );

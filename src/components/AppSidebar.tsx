@@ -1,6 +1,6 @@
 import { NavLink, useLocation } from 'react-router-dom';
 import {
-  Map, Sun, Users, CreditCard, Sparkles,
+  Map, Users, CreditCard, Sparkles,
   LogOut, ChevronDown, ChevronRight, Menu, X,
 } from 'lucide-react';
 import { useState } from 'react';
@@ -9,6 +9,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useUnreadNotificationCount } from '@/hooks/useAgentNotifications';
 import { useAgentPendingActions } from '@/hooks/useAgentPendingActions';
+import BrandLogo from './BrandLogo';
 
 interface NavItem { to: string; icon: any; label: string; }
 
@@ -75,14 +76,12 @@ const DesktopSidebar = () => {
         expanded ? 'w-[220px]' : 'w-[56px]'
       )}
     >
-      <div className="p-3 border-b border-sidebar-border flex items-center gap-2">
-        <Sun className="h-5 w-5 text-[hsl(var(--urgent))] shrink-0" />
-        {expanded && (
-          <div>
-            <span className="font-semibold text-sidebar-primary text-sm tracking-wide">YOUR TOURS</span>
-            <p className="text-[11px] text-sidebar-muted">Operations Center</p>
-          </div>
-        )}
+      <div className={cn('border-b border-sidebar-border flex items-center', expanded ? 'p-3' : 'p-2 justify-center')}>
+        <BrandLogo
+          showText={expanded}
+          imageClassName={expanded ? 'h-10 w-10' : 'h-9 w-9'}
+          className="[&_p:first-child]:text-sidebar-primary [&_p:last-child]:text-sidebar-muted"
+        />
       </div>
 
       <nav className="flex-1 py-3 px-2 space-y-1 overflow-y-auto">
@@ -194,10 +193,7 @@ const MobileMenu = ({ open, onClose }: { open: boolean; onClose: () => void }) =
   return (
     <div className="fixed inset-0 z-50 bg-background/95 backdrop-blur-sm flex flex-col">
       <div className="flex items-center justify-between p-4 border-b border-border">
-        <div className="flex items-center gap-2">
-          <Sun className="h-5 w-5 text-[hsl(var(--urgent))]" />
-          <span className="font-semibold text-primary text-sm">YOUR TOURS</span>
-        </div>
+        <BrandLogo imageClassName="h-10 w-10" />
         <button onClick={onClose} className="p-2 hover:bg-muted rounded-lg"><X className="h-5 w-5" /></button>
       </div>
       <nav className="flex-1 overflow-y-auto py-4 px-2 space-y-2">
