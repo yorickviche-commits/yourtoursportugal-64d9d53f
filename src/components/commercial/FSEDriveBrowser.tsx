@@ -145,7 +145,7 @@ export const FSEDriveBrowser = ({
       const reg = f.region || "— Sem região";
       const supplier = getSupplier(f);
       byCat[cat] ??= {};
-      byCat[cat][reg] ??= [];
+      byCat[cat][reg] ??= {};
       byCat[cat][reg][supplier] ??= [];
       byCat[cat][reg][supplier].push(f);
     }
