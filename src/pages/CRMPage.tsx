@@ -155,11 +155,11 @@ const CRMPage = () => {
     const prefix = pipeline === 'sales' ? 'SALES' : 'OPERATIONS';
     const liveStages = Array.from(detectedStages).filter(s => normalizeStage(s).startsWith(prefix));
     if (!liveStages.length) return base;
-    return liveStages.sort((a, b) => {
-      const ia = base.findIndex(s => normalizeStage(a).includes(normalizeStage(getShortStageName(s)).replace(`${prefix} `, '')));
-      const ib = base.findIndex(s => normalizeStage(b).includes(normalizeStage(getShortStageName(s)).replace(`${prefix} `, '')));
-      return (ia === -1 ? 99 : ia) - (ib === -1 ? 99 : ib) || a.localeCompare(b);
-    });
+    const ordered = base
+      .map(stage => liveStages.find(live => normalizeStage(live).includes(normalizeStage(getShortStageName(stage)).split(' ')[0])))
+      .filter(Boolean) as string[];
+    const extras = liveStages.filter(stage => !ordered.includes(stage)).sort((a, b) => a.localeCompare(b));
+    return [...ordered, ...extras];
   };
 
   const getRecordsByStage = (stage: string): NethuntRecord[] => {
