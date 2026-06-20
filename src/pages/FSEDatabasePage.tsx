@@ -424,10 +424,15 @@ const FSEDatabasePage = () => {
     const byId = new Map(driveNodes.map((n) => [n.drive_id, n]));
     const grouped = new Map<string, Map<string, Map<string, number>>>();
     for (const file of driveNodes.filter((n) => n.mime_type !== FOLDER_MIME)) {
-      const destination = file.region || "Sem região";
+      const pathParts = (file.path || "").split(" / ");
+      const destination = inferRegion(pathParts.length >= 3 ? pathParts[1] : file.region);
       const category = file.category || "Sem categoria";
       const parent = file.parent_drive_id ? byId.get(file.parent_drive_id) : null;
-      const supplier = parent?.mime_type === FOLDER_MIME && parent.depth >= 2
+      const supplier = pathParts.length >= 4
+        ? pathParts[pathParts.length - 2]
+        : pathParts.length === 3
+        ? pathParts[1]
+        : parent?.mime_type === FOLDER_MIME && parent.depth >= 2
         ? parent.name
         : file.supplier_name || file.name.replace(/\.(xlsx|pdf|docx|pptx|xls|doc)$/i, "");
       grouped.set(destination, grouped.get(destination) ?? new Map());
