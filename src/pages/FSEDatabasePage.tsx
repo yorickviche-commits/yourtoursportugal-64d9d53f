@@ -481,6 +481,7 @@ const FSEDatabasePage = () => {
           </TabsList>
           <TabsContent value="map">
             <InteractiveMapTab
+              destinations={liveDestinations}
               onAdd={openModal}
               onBrowseCategory={handleBrowseCategory}
               onBrowseDoc={handleBrowseDoc}
@@ -490,7 +491,7 @@ const FSEDatabasePage = () => {
             <FSEDriveBrowser />
           </TabsContent>
           <TabsContent value="table">
-            <SummaryTableTab onAdd={() => openModal()} />
+            <SummaryTableTab destinations={liveDestinations} onAdd={() => openModal()} />
           </TabsContent>
         </Tabs>
       </div>
