@@ -25,6 +25,26 @@ import SupplierAgentPage from "./pages/agents/SupplierAgentPage";
 import OpsReviewAgentPage from "./pages/agents/OpsReviewAgentPage";
 import MobilePage from "./pages/MobilePage";
 import NotFound from "./pages/NotFound";
+import Dashboard from "./pages/Dashboard";
+import AIWorkOfficePage from "./pages/AIWorkOfficePage";
+import ApprovalsPage from "./pages/ApprovalsPage";
+import TasksPage from "./pages/TasksPage";
+import CRMPage from "./pages/CRMPage";
+import CRMRecordDetailPage from "./pages/CRMRecordDetailPage";
+import ProposalListPage from "./pages/ProposalListPage";
+import ProposalBuilderPage from "./pages/ProposalBuilderPage";
+import PartnersPage from "./pages/PartnersPage";
+import PartnerDetailPage from "./pages/PartnerDetailPage";
+import FSEDatabasePage from "./pages/FSEDatabasePage";
+import AdminSuppliersPage from "./pages/AdminSuppliersPage";
+import AdminSupplierDetailPage from "./pages/AdminSupplierDetailPage";
+import AdminUsersPage from "./pages/AdminUsersPage";
+import AdminPermissionsPage from "./pages/AdminPermissionsPage";
+import AdminSettingsPage from "./pages/AdminSettingsPage";
+import AdminIntegrationsPage from "./pages/AdminIntegrationsPage";
+import AdminKPIPage from "./pages/AdminKPIPage";
+import AdminActivityLogsPage from "./pages/AdminActivityLogsPage";
+import AgentDashboardPage from "./pages/AgentDashboardPage";
 
 const queryClient = new QueryClient();
 
@@ -58,6 +78,26 @@ const App = () => (
             <Route path="/agents/supplier" element={<ProtectedRoute><SupplierAgentPage /></ProtectedRoute>} />
             <Route path="/agents/ops-review" element={<ProtectedRoute><OpsReviewAgentPage /></ProtectedRoute>} />
             <Route path="/mobile" element={<ProtectedRoute><MobilePage /></ProtectedRoute>} />
+            <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+            <Route path="/ai-office" element={<ProtectedRoute><AIWorkOfficePage /></ProtectedRoute>} />
+            <Route path="/agents/dashboard" element={<ProtectedRoute><AgentDashboardPage /></ProtectedRoute>} />
+            <Route path="/approvals" element={<ProtectedRoute><ApprovalsPage /></ProtectedRoute>} />
+            <Route path="/tasks" element={<ProtectedRoute><TasksPage /></ProtectedRoute>} />
+            <Route path="/crm" element={<ProtectedRoute><CRMPage /></ProtectedRoute>} />
+            <Route path="/crm/:id" element={<ProtectedRoute><CRMRecordDetailPage /></ProtectedRoute>} />
+            <Route path="/proposals" element={<ProtectedRoute><ProposalListPage /></ProtectedRoute>} />
+            <Route path="/proposals/new" element={<ProtectedRoute><ProposalBuilderPage /></ProtectedRoute>} />
+            <Route path="/partners" element={<ProtectedRoute><PartnersPage /></ProtectedRoute>} />
+            <Route path="/partners/:id" element={<ProtectedRoute><PartnerDetailPage /></ProtectedRoute>} />
+            <Route path="/comercial/matriz" element={<ProtectedRoute><FSEDatabasePage /></ProtectedRoute>} />
+            <Route path="/comercial/suppliers" element={<ProtectedRoute><AdminSuppliersPage /></ProtectedRoute>} />
+            <Route path="/comercial/suppliers/:id" element={<ProtectedRoute><AdminSupplierDetailPage /></ProtectedRoute>} />
+            <Route path="/admin/users" element={<ProtectedRoute><AdminUsersPage /></ProtectedRoute>} />
+            <Route path="/admin/permissions" element={<ProtectedRoute><AdminPermissionsPage /></ProtectedRoute>} />
+            <Route path="/admin/settings" element={<ProtectedRoute><AdminSettingsPage /></ProtectedRoute>} />
+            <Route path="/admin/integrations" element={<ProtectedRoute><AdminIntegrationsPage /></ProtectedRoute>} />
+            <Route path="/admin/kpi" element={<ProtectedRoute><AdminKPIPage /></ProtectedRoute>} />
+            <Route path="/admin/logs" element={<ProtectedRoute><AdminActivityLogsPage /></ProtectedRoute>} />
 
             <Route path="*" element={<NotFound />} />
           </Routes>

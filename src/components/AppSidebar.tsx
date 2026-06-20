@@ -1,6 +1,8 @@
 import { NavLink, useLocation } from 'react-router-dom';
 import {
-  Map, Users, CreditCard, Sparkles,
+  Map, Users, CreditCard, Sparkles, LayoutDashboard, CheckSquare, ListChecks,
+  FileText, Handshake, Grid3x3, Truck, Settings, Shield, BarChart3, Plug, ScrollText,
+  Inbox, Briefcase,
   LogOut, ChevronDown, ChevronRight, Menu, X,
 } from 'lucide-react';
 import { useState } from 'react';
@@ -13,17 +15,43 @@ import BrandLogo from './BrandLogo';
 
 interface NavItem { to: string; icon: any; label: string; }
 
+const overviewItems: NavItem[] = [
+  { to: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
+  { to: '/approvals', icon: CheckSquare, label: 'Aprovações' },
+  { to: '/tasks', icon: ListChecks, label: 'Tarefas' },
+];
+
 const reservasItems: NavItem[] = [
   { to: '/leads', icon: Users, label: 'Leads & Files' },
   { to: '/trips', icon: Map, label: 'Bookings & Reservas' },
+  { to: '/proposals', icon: FileText, label: 'Propostas' },
   { to: '/payments', icon: CreditCard, label: 'Pagamentos' },
+  { to: '/crm', icon: Inbox, label: 'CRM / Comunicação' },
+];
+
+const comercialItems: NavItem[] = [
+  { to: '/comercial/matriz', icon: Grid3x3, label: 'Matriz FSE' },
+  { to: '/comercial/suppliers', icon: Truck, label: 'Fornecedores' },
+  { to: '/partners', icon: Handshake, label: 'Parceiros B2B' },
+];
+
+const adminItems: NavItem[] = [
+  { to: '/admin/users', icon: Users, label: 'Utilizadores' },
+  { to: '/admin/permissions', icon: Shield, label: 'Permissões' },
+  { to: '/admin/settings', icon: Settings, label: 'Configurações' },
+  { to: '/admin/integrations', icon: Plug, label: 'Integrações' },
+  { to: '/admin/kpi', icon: BarChart3, label: 'KPI' },
+  { to: '/admin/logs', icon: ScrollText, label: 'Logs' },
 ];
 
 const DesktopSidebar = () => {
   const location = useLocation();
   const { profile, signOut } = useAuth();
   const [hovered, setHovered] = useState(false);
+  const [overviewOpen, setOverviewOpen] = useState(true);
   const [reservasOpen, setReservasOpen] = useState(true);
+  const [comercialOpen, setComercialOpen] = useState(true);
+  const [adminOpen, setAdminOpen] = useState(false);
   const unreadCount = useUnreadNotificationCount();
   const { data: actions = [] } = useAgentPendingActions();
   const pendingActions = actions.filter(a => a.status === 'pending').length;
@@ -85,7 +113,10 @@ const DesktopSidebar = () => {
       </div>
 
       <nav className="flex-1 py-3 px-2 space-y-1 overflow-y-auto">
+        {renderGroup('Visão Geral', overviewItems, overviewOpen, setOverviewOpen)}
         {renderGroup('Dep. Reservas', reservasItems, reservasOpen, setReservasOpen)}
+        {renderGroup('Comercial', comercialItems, comercialOpen, setComercialOpen)}
+        {renderGroup('Administração', adminItems, adminOpen, setAdminOpen)}
 
         {expanded
           ? <p className="px-3 py-1.5 text-[10px] uppercase text-sidebar-muted font-semibold tracking-wider mt-2">AI Agents</p>
@@ -154,7 +185,10 @@ const DesktopSidebar = () => {
 const MobileMenu = ({ open, onClose }: { open: boolean; onClose: () => void }) => {
   const location = useLocation();
   const { profile, signOut } = useAuth();
+  const [overviewOpen, setOverviewOpen] = useState(true);
   const [reservasOpen, setReservasOpen] = useState(true);
+  const [comercialOpen, setComercialOpen] = useState(false);
+  const [adminOpen, setAdminOpen] = useState(false);
   const unreadCount = useUnreadNotificationCount();
   const { data: actions = [] } = useAgentPendingActions();
   const totalBadge = unreadCount + actions.filter(a => a.status === 'pending').length;
@@ -197,7 +231,10 @@ const MobileMenu = ({ open, onClose }: { open: boolean; onClose: () => void }) =
         <button onClick={onClose} className="p-2 hover:bg-muted rounded-lg"><X className="h-5 w-5" /></button>
       </div>
       <nav className="flex-1 overflow-y-auto py-4 px-2 space-y-2">
+        {renderGroup('Visão Geral', overviewItems, overviewOpen, setOverviewOpen)}
         {renderGroup('Dep. Reservas', reservasItems, reservasOpen, setReservasOpen)}
+        {renderGroup('Comercial', comercialItems, comercialOpen, setComercialOpen)}
+        {renderGroup('Administração', adminItems, adminOpen, setAdminOpen)}
         <div className="pt-2">
           <p className="px-4 py-2 text-xs uppercase text-muted-foreground font-semibold tracking-wider">AI Agents</p>
           <NavLink to="/agents" onClick={onClose}
