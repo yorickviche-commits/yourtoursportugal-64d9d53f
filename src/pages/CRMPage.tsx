@@ -156,7 +156,11 @@ const CRMPage = () => {
     const liveStages = Array.from(detectedStages).filter(s => normalizeStage(s).startsWith(prefix));
     if (!liveStages.length) return base;
     const ordered = base
-      .map(stage => liveStages.find(live => normalizeStage(live).includes(normalizeStage(getShortStageName(stage)).split(' ')[0])))
+      .map(stage => {
+        const shortStage = normalizeStage(getShortStageName(stage));
+        const meaningful = shortStage.split(' ').find(part => part.length > 3) || shortStage;
+        return liveStages.find(live => normalizeStage(live).includes(meaningful));
+      })
       .filter(Boolean) as string[];
     const extras = liveStages.filter(stage => !ordered.includes(stage)).sort((a, b) => a.localeCompare(b));
     return [...ordered, ...extras];
