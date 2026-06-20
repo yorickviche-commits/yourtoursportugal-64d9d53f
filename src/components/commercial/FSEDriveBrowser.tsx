@@ -24,6 +24,11 @@ interface DriveNode {
 
 const FOLDER_MIME = "application/vnd.google-apps.folder";
 
+const normalizeText = (value: string) =>
+  value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]+/gi, " ").trim().toLowerCase();
+
+const stripFileExt = (value: string) => value.replace(/\.(xlsx|pdf|docx|pptx|xls|doc)$/i, "");
+
 const fileIcon = (mime: string) => {
   if (mime === FOLDER_MIME) return <Folder className="h-3.5 w-3.5 text-amber-500" />;
   return <FileText className="h-3.5 w-3.5 text-blue-500" />;
@@ -111,14 +116,20 @@ export const FSEDriveBrowser = ({
     return Array.from(new Set(filtered.map((n) => n.region).filter(Boolean))).sort() as string[];
   }, [nodes, categoryFilter]);
 
-  // Build grouped tree: Category -> Region -> Files
+  // Build grouped tree: Category -> Region -> Supplier -> Files
   const tree = useMemo(() => {
-    const q = search.trim().toLowerCase();
-    const matches = (n: DriveNode) =>
-      !q ||
-      n.name.toLowerCase().includes(q) ||
-      (n.supplier_name || "").toLowerCase().includes(q) ||
-      (n.path || "").toLowerCase().includes(q);
+    const tokens = normalizeText(search).split(" ").filter(Boolean);
+    const byId = new Map(nodes.map((n) => [n.drive_id, n]));
+    const getSupplier = (n: DriveNode) => {
+      const parent = n.parent_drive_id ? byId.get(n.parent_drive_id) : null;
+      if (parent?.mime_type === FOLDER_MIME && parent.depth >= 2) return parent.name;
+      return n.supplier_name || stripFileExt(n.name);
+    };
+    const matches = (n: DriveNode) => {
+      if (!tokens.length) return true;
+      const haystack = normalizeText(`${n.name} ${getSupplier(n)} ${n.category || ""} ${n.region || ""} ${n.path || ""}`);
+      return tokens.every((t) => haystack.includes(t));
+    };
 
     const files = nodes.filter(
       (n) =>
@@ -128,13 +139,15 @@ export const FSEDriveBrowser = ({
         matches(n)
     );
 
-    const byCat: Record<string, Record<string, DriveNode[]>> = {};
+    const byCat: Record<string, Record<string, Record<string, DriveNode[]>>> = {};
     for (const f of files) {
       const cat = f.category || "— Sem categoria";
       const reg = f.region || "— Sem região";
+      const supplier = getSupplier(f);
       byCat[cat] ??= {};
       byCat[cat][reg] ??= [];
-      byCat[cat][reg].push(f);
+      byCat[cat][reg][supplier] ??= [];
+      byCat[cat][reg][supplier].push(f);
     }
     return byCat;
   }, [nodes, search, categoryFilter, regionFilter]);
@@ -148,7 +161,7 @@ export const FSEDriveBrowser = ({
   };
 
   const totalFiles = Object.values(tree).reduce(
-    (s, regs) => s + Object.values(regs).reduce((ss, fs) => ss + fs.length, 0),
+    (s, regs) => s + Object.values(regs).reduce((ss, suppliers) => ss + Object.values(suppliers).reduce((sss, fs) => sss + fs.length, 0), 0),
     0
   );
 
@@ -221,7 +234,7 @@ export const FSEDriveBrowser = ({
         {Object.entries(tree).sort(([a],[b])=>a.localeCompare(b)).map(([cat, regs]) => {
           const catKey = `cat:${cat}`;
           const catOpen = expanded.has(catKey) || !!search;
-          const catCount = Object.values(regs).reduce((s, f) => s + f.length, 0);
+          const catCount = Object.values(regs).reduce((s, suppliers) => s + Object.values(suppliers).reduce((ss, f) => ss + f.length, 0), 0);
           return (
             <div key={cat}>
               <button
@@ -235,9 +248,10 @@ export const FSEDriveBrowser = ({
               </button>
               {catOpen && (
                 <div className="pl-4 border-l-2 border-muted ml-4">
-                  {Object.entries(regs).sort(([a],[b])=>a.localeCompare(b)).map(([reg, files]) => {
+                  {Object.entries(regs).sort(([a],[b])=>a.localeCompare(b)).map(([reg, suppliers]) => {
                     const regKey = `reg:${cat}:${reg}`;
                     const regOpen = expanded.has(regKey) || !!search;
+                    const regCount = Object.values(suppliers).reduce((s, f) => s + f.length, 0);
                     return (
                       <div key={reg}>
                         <button
@@ -247,32 +261,45 @@ export const FSEDriveBrowser = ({
                           {regOpen ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
                           <Folder className="h-3.5 w-3.5 text-amber-400" />
                           <span className="text-xs flex-1">{reg}</span>
-                          <span className="text-[10px] text-muted-foreground">{files.length}</span>
+                          <span className="text-[10px] text-muted-foreground">{regCount}</span>
                         </button>
                         {regOpen && (
-                          <div className="pl-6 pb-1">
-                            {files.sort((a,b)=>a.name.localeCompare(b.name)).map((f) => (
-                              <button
-                                key={f.drive_id}
-                                onClick={() => setPreview(f)}
-                                className={cn(
-                                  "w-full flex items-center gap-2 px-2 py-1 rounded text-xs",
-                                  "hover:bg-primary/5 hover:text-primary text-left transition-colors"
-                                )}
-                              >
-                                {fileIcon(f.mime_type)}
-                                <span className="flex-1 truncate">{f.name}</span>
-                                {f.web_view_link && (
-                                  <ExternalLink
-                                    className="h-3 w-3 text-muted-foreground hover:text-primary"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      window.open(f.web_view_link!, "_blank");
-                                    }}
-                                  />
-                                )}
-                              </button>
-                            ))}
+                          <div className="pl-6 pb-1 space-y-1">
+                            {Object.entries(suppliers).sort(([a],[b])=>a.localeCompare(b)).map(([supplier, files]) => {
+                              const supplierKey = `supplier:${cat}:${reg}:${supplier}`;
+                              const supplierOpen = expanded.has(supplierKey) || !!search || files.length === 1;
+                              return (
+                                <div key={supplier}>
+                                  <button
+                                    onClick={() => toggle(supplierKey)}
+                                    className="w-full flex items-center gap-2 px-2 py-1.5 rounded text-xs hover:bg-muted/40 text-left"
+                                  >
+                                    {supplierOpen ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
+                                    <Folder className="h-3.5 w-3.5 text-amber-500" />
+                                    <span className="flex-1 truncate font-medium">{supplier}</span>
+                                    <Badge variant="outline" className="h-4 px-1 text-[9px]">{files.length}</Badge>
+                                  </button>
+                                  {supplierOpen && (
+                                    <div className="pl-5">
+                                      {files.sort((a,b)=>a.name.localeCompare(b.name)).map((f) => (
+                                        <button
+                                          key={f.drive_id}
+                                          onClick={() => setPreview(f)}
+                                          className={cn(
+                                            "w-full flex items-center gap-2 px-2 py-1 rounded text-xs",
+                                            "hover:bg-primary/5 hover:text-primary text-left transition-colors"
+                                          )}
+                                        >
+                                          {fileIcon(f.mime_type)}
+                                          <span className="flex-1 truncate">{f.name}</span>
+                                          <span className="text-[10px] text-primary">Ver</span>
+                                        </button>
+                                      ))}
+                                    </div>
+                                  )}
+                                </div>
+                              );
+                            })}
                           </div>
                         )}
                       </div>
