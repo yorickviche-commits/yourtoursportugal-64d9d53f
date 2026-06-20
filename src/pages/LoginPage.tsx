@@ -9,6 +9,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { useToast } from '@/hooks/use-toast';
 import { Loader2 } from 'lucide-react';
 import GoogleSignInButton from '@/components/GoogleSignInButton';
+import BrandLogo from '@/components/BrandLogo';
 
 const LoginPage = () => {
   const [email, setEmail] = useState('');
@@ -58,8 +59,9 @@ const LoginPage = () => {
     <div className="min-h-screen flex items-center justify-center bg-background p-4">
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
-          <CardTitle className="text-2xl font-bold text-foreground">Your Tours Portugal</CardTitle>
-          <CardDescription>Operations Platform — Entrar</CardDescription>
+          <BrandLogo className="mx-auto mb-3 justify-center" imageClassName="h-16 w-16" />
+          <CardTitle className="text-2xl font-bold text-foreground">Operations Center</CardTitle>
+          <CardDescription>Your Tours Portugal — Entrar</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <form onSubmit={handleLogin} className="space-y-4">

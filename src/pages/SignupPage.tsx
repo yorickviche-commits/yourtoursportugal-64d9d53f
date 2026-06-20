@@ -8,6 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { useToast } from '@/hooks/use-toast';
 import { Loader2 } from 'lucide-react';
 import GoogleSignInButton from '@/components/GoogleSignInButton';
+import BrandLogo from '@/components/BrandLogo';
 
 const SignupPage = () => {
   const [fullName, setFullName] = useState('');
@@ -41,8 +42,9 @@ const SignupPage = () => {
     <div className="min-h-screen flex items-center justify-center bg-background p-4">
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
+          <BrandLogo className="mx-auto mb-3 justify-center" imageClassName="h-16 w-16" />
           <CardTitle className="text-2xl font-bold text-foreground">Criar Conta</CardTitle>
-          <CardDescription>Your Tours Portugal — Operations Platform</CardDescription>
+          <CardDescription>Your Tours Portugal — Operations Center</CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSignup} className="space-y-4">
