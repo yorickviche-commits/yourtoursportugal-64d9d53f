@@ -113,10 +113,10 @@ export const tourSteps: YTStep[] = [
   {
     target: 'body',
     placement: 'center',
-    route: '/approvals',
+    route: '/crm',
     tag: 'Ambos',
-    title: 'Aprovações & CRM — pronto!',
+    title: 'CRM & Comunicação — pronto!',
     content:
-      'Aqui aprovas drafts e mudanças críticas. Lembra: conversas com cliente vivem em NetHunt (/crm), execução vive aqui. Estás pronto. Bom trabalho! 🚀',
+      'NetHunt é a camada oficial de comunicação. Em /crm vês cards, emails, notas e tasks sincronizados. Lembra: conversas com cliente vivem no NetHunt, execução vive aqui. Estás pronto. Bom trabalho! 🚀',
   },
 ];
