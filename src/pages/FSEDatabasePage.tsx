@@ -349,15 +349,34 @@ const FSEDatabasePage = () => {
   const [prefillDest, setPrefillDest] = useState<string | undefined>();
   const [prefillCat, setPrefillCat] = useState<string | undefined>();
 
+  // Drive popup state
+  const [driveOpen, setDriveOpen] = useState(false);
+  const [driveSearch, setDriveSearch] = useState("");
+  const [driveTitle, setDriveTitle] = useState("Ficheiros do Drive");
+
   const openModal = (dest?: string, cat?: string) => {
     setPrefillDest(dest);
     setPrefillCat(cat);
     setModalOpen(true);
   };
 
+  const openDriveSearch = (search: string, title: string) => {
+    setDriveSearch(search);
+    setDriveTitle(title);
+    setDriveOpen(true);
+  };
+
+  const handleBrowseCategory = (destName: string, catLabel: string) => {
+    const cleanCat = catLabel.replace(/^\d+\s*-\s*/, "").trim();
+    openDriveSearch(`${cleanCat} ${destName}`, `${cleanCat} • ${destName}`);
+  };
+
+  const handleBrowseDoc = (supplierName: string) => {
+    openDriveSearch(supplierName, supplierName);
+  };
+
   const handleSave = (data: any) => {
     console.log('FSE saved:', data);
-    // Future: write to Supabase fse_suppliers table
   };
 
   return (
@@ -399,7 +418,11 @@ const FSEDatabasePage = () => {
             </TabsTrigger>
           </TabsList>
           <TabsContent value="map">
-            <InteractiveMapTab onAdd={openModal} />
+            <InteractiveMapTab
+              onAdd={openModal}
+              onBrowseCategory={handleBrowseCategory}
+              onBrowseDoc={handleBrowseDoc}
+            />
           </TabsContent>
           <TabsContent value="drive">
             <FSEDriveBrowser />
@@ -409,6 +432,21 @@ const FSEDatabasePage = () => {
           </TabsContent>
         </Tabs>
       </div>
+
+      {/* Drive Popup — opens when clicking on FSE chip or category icon */}
+      <Dialog open={driveOpen} onOpenChange={setDriveOpen}>
+        <DialogContent className="max-w-5xl h-[85vh] flex flex-col p-0">
+          <DialogHeader className="px-4 pt-4 pb-2 border-b">
+            <DialogTitle className="text-sm flex items-center gap-2">
+              <FolderTree className="h-4 w-4 text-primary" />
+              {driveTitle}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="flex-1 overflow-auto p-3">
+            <FSEDriveBrowser initialSearch={driveSearch} />
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* Unified Create Modal */}
       <FSECreateModal
