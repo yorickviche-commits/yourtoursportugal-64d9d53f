@@ -343,6 +343,10 @@ const FSEDatabasePage = () => {
               <MapPin className="h-3.5 w-3.5" />
               Mapa Interativo
             </TabsTrigger>
+            <TabsTrigger value="drive" className="gap-1.5 text-xs">
+              <FolderTree className="h-3.5 w-3.5" />
+              Drive (Ficheiros)
+            </TabsTrigger>
             <TabsTrigger value="table" className="gap-1.5 text-xs">
               <BarChart3 className="h-3.5 w-3.5" />
               Tabela Resumo
@@ -350,6 +354,9 @@ const FSEDatabasePage = () => {
           </TabsList>
           <TabsContent value="map">
             <InteractiveMapTab onAdd={openModal} />
+          </TabsContent>
+          <TabsContent value="drive">
+            <FSEDriveBrowser />
           </TabsContent>
           <TabsContent value="table">
             <SummaryTableTab onAdd={() => openModal()} />
