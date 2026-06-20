@@ -79,26 +79,32 @@ const StatusDot = ({ status }: { status: "active" | "empty" | "multi-destination
 };
 
 // ─── Document Chip ───
-const DocChip = ({ doc }: { doc: FSEDocument }) => {
+const DocChip = ({ doc, onBrowse }: { doc: FSEDocument; onBrowse?: (search: string) => void }) => {
   const base = doc.status === "active"
-    ? "bg-emerald-500/10 text-emerald-700 border-emerald-500/20"
+    ? "bg-emerald-500/10 text-emerald-700 border-emerald-500/20 hover:bg-emerald-500/20"
     : doc.status === "multi-destination"
-    ? "bg-amber-500/10 text-amber-700 border-amber-500/20"
-    : "bg-red-400/10 text-red-500 border-red-400/20";
+    ? "bg-amber-500/10 text-amber-700 border-amber-500/20 hover:bg-amber-500/20"
+    : "bg-red-400/10 text-red-500 border-red-400/20 hover:bg-red-400/20";
 
   return (
-    <span className={cn("inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium border", base)}>
+    <button
+      type="button"
+      onClick={(e) => { e.stopPropagation(); onBrowse?.(doc.name); }}
+      className={cn("inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium border transition-colors cursor-pointer", base)}
+      title="Ver ficheiros no Drive"
+    >
       <StatusDot status={doc.status} />
       {doc.name}
       {doc.status === "multi-destination" && (
         <Badge variant="outline" className="h-4 px-1 text-[9px] font-bold border-amber-500/30 text-amber-600">M</Badge>
       )}
+      <FolderOpen className="h-3 w-3 opacity-60" />
       {doc.googleDriveUrl && (
         <a href={doc.googleDriveUrl} target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()} className="hover:text-primary">
           <ExternalLink className="h-3 w-3" />
         </a>
       )}
-    </span>
+    </button>
   );
 };
 
