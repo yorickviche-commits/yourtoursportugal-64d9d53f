@@ -17,8 +17,6 @@ interface NavItem { to: string; icon: any; label: string; }
 
 const overviewItems: NavItem[] = [
   { to: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
-  { to: '/approvals', icon: CheckSquare, label: 'Aprovações' },
-  { to: '/tasks', icon: ListChecks, label: 'Tarefas' },
 ];
 
 const reservasItems: NavItem[] = [
