@@ -1,96 +1,46 @@
-## Goal
+# Welcome Tour — Operations Cockpit
 
-Transform Spark from a passive dashboard into an **action cockpit**. Each agent gets its own page where it:
-1. Diagnoses what to do (with full context)
-2. Drafts the work (emails, status changes, notes)
-3. Presents it to the human **one item at a time** with **Send / Edit / Skip / Approve / Reject** controls
+Tour guiado unificado (Sales + Ops) que arranca automaticamente no primeiro login, com spotlight no elemento real da UI e tooltip explicativo. Navega entre páginas reais para o user aprender fazendo.
 
-Keep the current `/agents` overview, but every card opens a dedicated page.
+## Comportamento
 
-## Routes
+- **Trigger:** ao montar `AppLayout`, lê `localStorage.yt_tour_completed`. Se ausente → inicia automaticamente após 800ms.
+- **Reabrir:** botão flutuante "?" (canto inferior direito, ao lado do FAB de nova lead) abre o tour a qualquer momento.
+- **Persistência:** `localStorage.yt_tour_completed = "v1"` ao concluir ou saltar. Versão permite re-trigger futuro se mudarmos o tour.
+- **Skip:** botão "Saltar tutorial" sempre visível no tooltip.
 
-```
-/agents                            ← existing overview (unchanged layout, cards become links)
-/agents/qualification              ← New Leads triage
-/agents/itinerary                  ← Proposal builder queue
-/agents/followup                   ← Follow-up email queue
-/agents/supplier                   ← FSE Pre-Booker (the main workflow)
-/agents/ops-review                 ← Daily operations review
-```
+## Os 12 passos (sequência narrativa)
 
-Each sub-page is a focused workspace, full width, large cards.
+Cada passo tem: título PT, 2-3 linhas de descrição, tag `[Sales]` / `[Ops]` / `[Ambos]`, badge "IA" quando a feature envolve agentes.
 
-## Shared UI primitives (new)
+1. **[Ambos] Bem-vindo ao Cockpit** — modal central de abertura. Explica filosofia: NetHunt = comunicação, Lovable = execução. Botão "Começar tour".
+2. **[Ambos] Sidebar — a tua bússola** — spotlight no `AppSidebar`. Mostra que expande on hover e organiza por departamento.
+3. **[Ambos] Dashboard — prioridades do dia** *(navega para `/dashboard`)* — spotlight no bloco D-1/D-3/D-7. Vermelho = urgente, laranja = aviso, verde = estável.
+4. **[Sales] Leads — onde tudo começa** *(navega para `/leads`)* — spotlight no botão "+ Nova Lead". Explica registo manual vs **AI Import** (badge IA) que faz parsing de email natural.
+5. **[Sales] Detalhe da lead — 5 separadores** *(navega para primeira lead disponível ou demo)* — spotlight nos tabs. Scoring 0-100 decide próximo passo; <50 = sem itinerário.
+6. **[Sales][IA] Planner & Costing automáticos** — spotlight nos tabs Planner/Custos. IA gera travel plan e budget 5-tier (Transporte→Guia→Experiências→Alojamento→Refeições) com margem 30%.
+7. **[Sales] Proposta cliente** *(navega para `/proposals`)* — spotlight no "Nova proposta". Inglês premium, 5-7 bullets/dia, >€8k exige aprovação CEO.
+8. **[Ops] Viagens confirmadas** *(navega para `/trips`)* — spotlight num trip card. Workspace de 6 tabs unifica reserva, pagamentos, ops e comunicação.
+9. **[Ops][IA] FSE Supplier Pre-Booker** *(navega para `/agents/supplier`)* — spotlight na queue de emails. IA prepara pré-bookings por fornecedor; humano revê → Enviar/Editar/Saltar.
+10. **[Ops] Mapa FSE & Drive** *(navega para `/comercial/matriz`)* — spotlight no mapa interativo. Filtra por destino/categoria, abre PDFs do Drive em pop-up sem sair.
+11. **[Ambos][IA] AI Work Office** *(navega para `/ai-office`)* — spotlight nos 13 agentes. Cada agente tem página própria com fila de ações para aprovar.
+12. **[Ambos] Aprovações & CRM** *(navega para `/approvals`)* — spotlight na lista. Lembra: comunicação cliente fica em NetHunt (`/crm`), aprovações operacionais ficam aqui. CTA final: "Concluir tour".
 
-`src/components/agents/AgentPageShell.tsx`
-- Header: agent icon + name + role + back link to `/agents`
-- Sidebar (left, ~280px): scrollable list of pending items with status dot, name, urgency. Click selects.
-- Main panel (right): the **active item card** — large, with all context + action zone.
+## Arquitetura técnica
 
-`src/components/agents/ActionApprovalCard.tsx`
-- Renders an "AI suggested action" with:
-  - Reason / explanation block
-  - Target (lead / supplier / email recipient)
-  - Big primary button "Aprovar e Executar"
-  - Secondary "Editar" / "Rejeitar"
+- **Dependência:** `react-joyride` (`bun add react-joyride`) — gere spotlight, overlay escuro, navegação entre passos e cross-page via `continuous` + `disableScrolling=false`.
+- **Novos ficheiros:**
+  - `src/components/tour/TourProvider.tsx` — wrapper com `<Joyride>`, estado dos steps, handler de navegação (`useNavigate` entre passos), persistência localStorage.
+  - `src/components/tour/tourSteps.ts` — array tipado com `target`, `content`, `route?`, `placement`, `tag`, `aiBadge`.
+  - `src/components/tour/TourLauncher.tsx` — botão flutuante "?" que dispara `setRun(true)`.
+- **Integração:** montar `<TourProvider>` dentro de `AuthProvider` em `App.tsx` (envolve `BrowserRouter`). Render `<TourLauncher />` em `AppLayout.tsx`.
+- **Targets:** adicionar `data-tour="sidebar"`, `data-tour="new-lead"`, `data-tour="dashboard-priorities"`, etc. aos componentes existentes (mudança mínima, só atributos).
+- **Estilo tooltip:** custom `tooltipComponent` com cores semânticas do projeto (YT Blue `#0a2540` header, badges IA em accent), tipografia já existente. Tag `[Sales]/[Ops]` como chip colorido, badge "IA" com ícone Sparkles.
+- **Navegação cross-page:** no callback `Joyride` `(data) => { if (step.route) navigate(step.route) }` antes de avançar; pequeno delay para o DOM montar.
 
-`src/components/agents/EmailReviewQueue.tsx`
-- For email batches (FSE pre-bookings, follow-ups)
-- Shows queue: `Email 2 de 7 — Fornecedor X`
-- Pre-filled editor (reuses existing `BookingRequestDialog` HTML editor logic, inline)
-- Buttons: `Enviar` · `Editar` · `Saltar` · `Enviar Todos os Restantes`
-- After send/skip → auto-advance to next email
+## Fora de scope
 
-## Agent-specific behavior
-
-### 1. New Leads & Qualification (`/agents/qualification`)
-- Left list: leads in `new`/`contacted` sorted by budget weight
-- Right card per lead: name, contact, budget, destination, pax, raw simulation text
-- AI suggestions (computed locally from lead data):
-  - "Score = X/100 → Qualificar para `qualified`" → Approve button
-  - "Score < 50 → Rejeitar com email pré-feito" → Email review
-  - "Pedir mais info ao cliente" → Email draft via existing `generate-email` function
-
-### 2. Itinerary Construction & Proposal (`/agents/itinerary`)
-- Left list: qualified leads without proposal + last-minute high-budget
-- Right card: lead context + "Gerar travel plan + proposta" CTA (links to existing builder), or "Acelerar last-minute"
-- Action: status nudge to `negotiation`, or shortcut to `/leads/:id?tab=planner`
-
-### 3. Follow-up Agent (`/agents/followup`)
-- Left list: `proposal_sent`/`negotiation` stale > N days
-- Right: EmailReviewQueue — AI drafts a follow-up email per lead (calls existing `generate-email` function with a "follow-up after proposal" template)
-- Human walks through, sends or edits each
-
-### 4. FSE Supplier Pre-Booker (`/agents/supplier`) — **the headline flow**
-- Left list: leads in `won` or `proposal_sent` with travel ≤ 45d
-- When a lead is selected:
-  1. Pull its `cost_items` (already linked to FSE suppliers) via existing `useCostItemsQuery`
-  2. Filter cost items where: supplier set AND not already requested in `trip_operations`/`lead_operations`
-  3. Show panel: *"Esta lead tem X serviços confirmados sem pedido de reserva enviado. Pedir permissão para enviar pré-bookings a todos os fornecedores?"*
-  4. Big **"Preparar X emails"** button
-  5. Opens EmailReviewQueue: each cost item generates a pre-composed booking email (reuses the same default body as `BookingRequestDialog`)
-  6. Human reviews email #1, clicks Enviar (or Editar), advances to #2, …, until queue done
-  7. Each send updates `trip_operations`/`lead_operations` booking_status='requested' and logs to `booking_emails_log` (same logic as today)
-
-### 5. Operations Wizard Review (`/agents/ops-review`)
-- Left list: won leads with travel D-14 or sooner
-- Right card per lead: checklist
-  - Bookings confirmed: X/Y → action "Reenviar pendentes" (→ EmailReviewQueue)
-  - Payments outstanding: list
-  - Missing pickup times / supplier email gaps
-  - Final voucher status
-- Each row has Approve / Mark Done / Open lead
-
-## Wiring
-
-- `/agents` overview: each card now also has a button "Abrir centro do agente →" pointing to the sub-page.
-- Add 5 routes in `src/App.tsx` (lazy-loaded).
-- No DB changes — all data already exists (`leads`, `cost_items`, `trip_operations`, `lead_operations`, `booking_emails_log`).
-- Email send reuses the existing `send-booking-email` edge function. Follow-up/qualification emails reuse `generate-email` + a generic "send Gmail" path; if no generic send exists, add a minimal `send-generic-email` edge function (small, mirrors `send-booking-email` but with arbitrary subject/body and no operation update).
-
-## Scope decisions
-
-- Build the **shell + overview links + FSE Supplier Pre-Booker page (full flow)** in this iteration since that's the example the user gave.
-- The other 4 sub-pages get the same shell with their lists + a "coming soon" hint for AI email batches, but qualification/follow-up email queues will be wired in a follow-up iteration to keep this change shippable.
-
-If you want all 5 agent flows fully wired in one go (longer, heavier), say so and I'll expand.
+- Tradução EN (PT only, como o resto da UI interna).
+- Tracking analítico de quem completou (só localStorage).
+- Tours contextuais por página (só o welcome global).
+- Vídeos ou screenshots embebidos (só texto + spotlight no elemento real).

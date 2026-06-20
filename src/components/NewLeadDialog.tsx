@@ -229,7 +229,7 @@ const NewLeadDialog = ({ open, onOpenChange }: { open: boolean; onOpenChange: (v
 };
 
 export const NewLeadFAB = ({ onClick }: { onClick: () => void }) => (
-  <button onClick={onClick} className="fixed bottom-6 right-6 z-40 h-12 px-5 bg-[hsl(var(--info))] hover:bg-[hsl(var(--info)/0.9)] text-white rounded-full shadow-lg flex items-center gap-2 transition-all hover:scale-105 active:scale-95" title="Nova Lead">
+  <button data-tour="new-lead" onClick={onClick} className="fixed bottom-6 right-6 z-40 h-12 px-5 bg-[hsl(var(--info))] hover:bg-[hsl(var(--info)/0.9)] text-white rounded-full shadow-lg flex items-center gap-2 transition-all hover:scale-105 active:scale-95" title="Nova Lead">
     <Plus className="h-5 w-5" />
     <span className="text-sm font-medium hidden sm:inline">Nova Lead</span>
   </button>

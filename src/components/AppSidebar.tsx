@@ -98,7 +98,7 @@ const DesktopSidebar = () => {
   const agentActive = isActive('/agents');
 
   return (
-    <aside onMouseEnter={() => setHovered(true)} onMouseLeave={() => setHovered(false)}
+    <aside data-tour="sidebar" onMouseEnter={() => setHovered(true)} onMouseLeave={() => setHovered(false)}
       className={cn(
         'fixed left-0 top-0 bottom-0 bg-sidebar text-sidebar-foreground flex flex-col z-40 transition-all duration-200 ease-in-out shadow-lg',
         expanded ? 'w-[220px]' : 'w-[56px]'
