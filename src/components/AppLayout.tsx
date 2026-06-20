@@ -3,6 +3,7 @@ import AppSidebar from './AppSidebar';
 import NewLeadDialog, { NewLeadFAB } from './NewLeadDialog';
 import { useIsMobile } from '@/hooks/use-mobile';
 import BrandLogo from './BrandLogo';
+import TourLauncher from './tour/TourLauncher';
 
 const AppLayout = ({ children }: { children: ReactNode }) => {
   const [newLeadOpen, setNewLeadOpen] = useState(false);
@@ -22,6 +23,7 @@ const AppLayout = ({ children }: { children: ReactNode }) => {
         {children}
       </main>
       <NewLeadFAB onClick={() => setNewLeadOpen(true)} />
+      <TourLauncher />
       <NewLeadDialog open={newLeadOpen} onOpenChange={setNewLeadOpen} />
     </div>
   );
