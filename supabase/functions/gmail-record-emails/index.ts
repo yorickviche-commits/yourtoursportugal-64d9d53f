@@ -42,9 +42,14 @@ Deno.serve(async (req) => {
   try {
     const body = await req.json().catch(() => ({}));
     const emails: string[] = Array.isArray(body.emails) ? body.emails.filter(Boolean) : (body.email ? [body.email] : []);
+    const extraQueries: string[] = Array.isArray(body.queries) ? body.queries.filter(Boolean) : [];
     const limit = Math.min(Number(body.limit) || 20, 50);
 
-    if (emails.length === 0) {
+    const parts: string[] = [];
+    emails.forEach((e) => parts.push(`(from:${e} OR to:${e})`));
+    extraQueries.forEach((q) => parts.push(`(subject:"${q}" OR "${q}")`));
+
+    if (parts.length === 0) {
       return new Response(JSON.stringify({ emails: [] }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
@@ -55,8 +60,7 @@ Deno.serve(async (req) => {
       'X-Connection-Api-Key': GOOGLE_MAIL_API_KEY,
     };
 
-    // Build Gmail search: messages to or from any of the contact emails
-    const q = emails.map((e) => `(from:${e} OR to:${e})`).join(' OR ');
+    const q = parts.join(' OR ');
     const listUrl = `${GATEWAY}/users/me/messages?maxResults=${limit}&q=${encodeURIComponent(q)}`;
     const listRes = await fetch(listUrl, { headers: gwHeaders });
     const listJson = await listRes.json();
@@ -86,9 +90,9 @@ Deno.serve(async (req) => {
       const subject = getHeader(headers, 'Subject');
       const dateStr = getHeader(headers, 'Date');
       const internalDate = m.internalDate ? new Date(Number(m.internalDate)).toISOString() : (dateStr ? new Date(dateStr).toISOString() : new Date().toISOString());
-      // direction: if From contains any of the contact emails -> IN, else OUT
+      // direction: inbound if From is NOT our internal domain
       const lowerFrom = from.toLowerCase();
-      const isInbound = emails.some((e) => lowerFrom.includes(e.toLowerCase()));
+      const isInbound = !/yourtours\.pt/i.test(lowerFrom);
       return {
         id: m.id,
         threadId: m.threadId,
