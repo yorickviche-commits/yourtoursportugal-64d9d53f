@@ -14,7 +14,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/component
 import {
   ArrowLeft, ExternalLink, Save, RefreshCw, Send,
   Mail, MessageSquare, Clock, FileText, Phone, ChevronDown,
-  GitCommitHorizontal, Settings, BarChart3, StickyNote, CheckSquare, Plus
+  GitCommitHorizontal, Settings, BarChart3, StickyNote, CheckSquare
 } from 'lucide-react';
 
 import { supabase } from '@/integrations/supabase/client';
