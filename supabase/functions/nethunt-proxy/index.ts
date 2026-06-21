@@ -146,6 +146,18 @@ serve(async (req) => {
         break;
       }
 
+      // ── Emails (Gmail integration in NetHunt) ──
+      case 'recent-emails': {
+        if (!body.folderId) throw new Error('folderId required');
+        const ep = new URLSearchParams();
+        if (body.since) ep.set('since', body.since);
+        if (body.limit) ep.set('limit', String(body.limit));
+        url = `${NETHUNT_BASE}/triggers/new-email/${body.folderId}?${ep}`;
+        break;
+      }
+
+
+
       // ── CRUD ──
       case 'create-record': {
         if (!body.folderId || !body.fields) throw new Error('folderId and fields required');

@@ -14,8 +14,9 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/component
 import {
   ArrowLeft, ExternalLink, Save, RefreshCw, Send,
   Mail, MessageSquare, Clock, FileText, Phone, ChevronDown,
-  GitCommitHorizontal, Settings, BarChart3
+  GitCommitHorizontal, Settings, BarChart3, StickyNote, CheckSquare, Plus
 } from 'lucide-react';
+
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 
@@ -29,13 +30,14 @@ interface NethuntRecord {
 
 interface TimelineEvent {
   id: string;
-  type: 'comment' | 'stage_change' | 'email' | 'call_log' | 'file' | 'update';
+  type: 'comment' | 'stage_change' | 'email' | 'call_log' | 'file' | 'update' | 'note' | 'task';
   date: string;
   title: string;
   description?: string;
   user?: string;
   meta?: Record<string, any>;
 }
+
 
 // Fields to show in the left sidebar "Deal Details"
 const DEAL_FIELDS = ['Stage', 'Close date', 'B2B / B2C', 'Source (Site, OTA, Direct)', 'Country/Nationality', 'Sale Potencial', 'Lead to Reactivate'];
@@ -53,9 +55,14 @@ const CRMRecordDetailPage = () => {
   const [fieldMeta, setFieldMeta] = useState<{ name: string }[]>([]);
   const [timeline, setTimeline] = useState<TimelineEvent[]>([]);
   const [newComment, setNewComment] = useState('');
+  const [newNote, setNewNote] = useState('');
+  const [newTask, setNewTask] = useState('');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [sendingComment, setSendingComment] = useState(false);
+  const [addingNote, setAddingNote] = useState(false);
+  const [addingTask, setAddingTask] = useState(false);
+
 
   const [dealOpen, setDealOpen] = useState(true);
   const [statsOpen, setStatsOpen] = useState(true);
@@ -65,14 +72,18 @@ const CRMRecordDetailPage = () => {
     if (!folderId || !recordId) return;
     setLoading(true);
     try {
-      const [recordRes, fieldsRes, commentsRes, changesRes, callLogsRes, driveFilesRes] = await Promise.all([
+      const [recordRes, fieldsRes, commentsRes, changesRes, callLogsRes, driveFilesRes, emailsRes, notesRes, tasksRes] = await Promise.all([
         supabase.functions.invoke('nethunt-proxy', { body: { action: 'find-record-by-id', folderId, recordId } }),
         supabase.functions.invoke('nethunt-proxy', { body: { action: 'folder-fields', folderId } }),
         supabase.functions.invoke('nethunt-proxy', { body: { action: 'recent-comments', folderId, limit: 100 } }),
         supabase.functions.invoke('nethunt-proxy', { body: { action: 'record-changes', folderId, recordId, limit: 100 } }),
         supabase.functions.invoke('nethunt-proxy', { body: { action: 'recent-call-logs', folderId, limit: 50 } }),
         supabase.functions.invoke('nethunt-proxy', { body: { action: 'recent-drive-files', folderId, limit: 50 } }),
+        supabase.functions.invoke('nethunt-proxy', { body: { action: 'recent-emails', folderId, limit: 100 } }),
+        supabase.from('item_notes').select('*').eq('entity_type', 'crm_record').eq('entity_id', recordId).order('created_at', { ascending: false }),
+        supabase.from('tasks').select('*').eq('lead_id', recordId).order('created_at', { ascending: false }),
       ]);
+
 
       if (recordRes.error) throw recordRes.error;
       const records = Array.isArray(recordRes.data) ? recordRes.data : [];
@@ -178,9 +189,57 @@ const CRMRecordDetailPage = () => {
           });
       }
 
+      // Emails (NetHunt Gmail integration)
+      if (emailsRes.data && !emailsRes.data?.error) {
+        const emails = Array.isArray(emailsRes.data) ? emailsRes.data : [];
+        emails
+          .filter((e: any) => e.recordId === recordId || (Array.isArray(e.recordIds) && e.recordIds.includes(recordId)))
+          .forEach((e: any) => {
+            const direction = e.direction || (e.from ? 'IN' : 'OUT');
+            events.push({
+              id: e.emailId || e.id || `${e.subject}-${e.date}`,
+              type: 'email',
+              date: e.date || e.createdAt || e.time,
+              title: `${direction === 'OUT' ? '📤' : '📥'} ${e.subject || '(sem assunto)'}`,
+              description: e.snippet || e.preview || e.body,
+              user: e.from?.name || e.from?.email || e.to?.[0]?.email,
+              meta: { url: e.url, threadId: e.threadId },
+            });
+          });
+      }
+
+      // Notes (local DB)
+      if (notesRes.data && Array.isArray(notesRes.data)) {
+        notesRes.data.forEach((n: any) => {
+          events.push({
+            id: `note-${n.id}`,
+            type: 'note',
+            date: n.created_at,
+            title: 'Nota interna',
+            description: n.note_text || '',
+            meta: { attachment_url: n.attachment_url, attachment_name: n.attachment_name },
+          });
+        });
+      }
+
+      // Tasks (local DB linked by lead_id == recordId)
+      if (tasksRes.data && Array.isArray(tasksRes.data)) {
+        tasksRes.data.forEach((t: any) => {
+          events.push({
+            id: `task-${t.id}`,
+            type: 'task',
+            date: t.created_at,
+            title: `Tarefa: ${t.title}`,
+            description: `${t.status} • ${t.priority}${t.due_date ? ` • due ${new Date(t.due_date).toLocaleDateString('pt-PT')}` : ''}${t.description ? `\n${t.description}` : ''}`,
+            user: t.assigned_to,
+          });
+        });
+      }
+
       // Sort by date desc
       events.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
       setTimeline(events);
+
     } catch (err: any) {
       toast({ title: 'Erro', description: err.message, variant: 'destructive' });
     } finally {
@@ -245,6 +304,69 @@ const CRMRecordDetailPage = () => {
     }
   };
 
+  const handleAddNote = async () => {
+    if (!newNote.trim() || !record) return;
+    setAddingNote(true);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      const { data, error } = await supabase.from('item_notes').insert({
+        entity_type: 'crm_record',
+        entity_id: record.recordId,
+        note_text: newNote,
+        created_by: user?.id || null,
+      } as any).select().single();
+      if (error) throw error;
+      setTimeline(prev => [{
+        id: `note-${data.id}`,
+        type: 'note' as const,
+        date: data.created_at,
+        title: 'Nota interna',
+        description: newNote,
+      }, ...prev]);
+      setNewNote('');
+      toast({ title: 'Nota adicionada' });
+    } catch (err: any) {
+      toast({ title: 'Erro', description: err.message, variant: 'destructive' });
+    } finally {
+      setAddingNote(false);
+    }
+  };
+
+  const handleAddTask = async () => {
+    if (!newTask.trim() || !record) return;
+    setAddingTask(true);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      const { data, error } = await supabase.from('tasks').insert({
+        title: newTask,
+        description: '',
+        category: 'sales',
+        priority: 'medium',
+        status: 'pending',
+        team: 'sales',
+        assigned_to: user?.email || 'unassigned',
+        lead_id: record.recordId,
+        created_by: user?.id || null,
+      } as any).select().single();
+      if (error) throw error;
+      setTimeline(prev => [{
+        id: `task-${data.id}`,
+        type: 'task' as const,
+        date: data.created_at,
+        title: `Tarefa: ${newTask}`,
+        description: 'pending • medium',
+      }, ...prev]);
+      setNewTask('');
+      toast({ title: 'Tarefa criada' });
+    } catch (err: any) {
+      toast({ title: 'Erro', description: err.message, variant: 'destructive' });
+    } finally {
+      setAddingTask(false);
+    }
+  };
+
+
+
   const formatDate = (d: string) => {
     const date = new Date(d);
     if (isNaN(date.getTime())) return d;
@@ -264,9 +386,12 @@ const CRMRecordDetailPage = () => {
       case 'call_log': return <Phone className="h-3.5 w-3.5 text-green-500" />;
       case 'file': return <FileText className="h-3.5 w-3.5 text-purple-500" />;
       case 'update': return <Settings className="h-3.5 w-3.5 text-muted-foreground" />;
+      case 'note': return <StickyNote className="h-3.5 w-3.5 text-amber-500" />;
+      case 'task': return <CheckSquare className="h-3.5 w-3.5 text-emerald-500" />;
       default: return <Clock className="h-3.5 w-3.5 text-muted-foreground" />;
     }
   };
+
 
   const getFieldValue = (name: string) => editedFields[name] ?? record?.fields?.[name] ?? null;
 
@@ -444,6 +569,45 @@ const CRMRecordDetailPage = () => {
                   </div>
                 </CardContent>
               </Card>
+
+              {/* Quick add: Note + Task */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                <Card>
+                  <CardContent className="p-2">
+                    <div className="flex gap-1.5 items-center">
+                      <StickyNote className="h-3.5 w-3.5 text-amber-500 flex-shrink-0" />
+                      <Input
+                        value={newNote}
+                        onChange={e => setNewNote(e.target.value)}
+                        onKeyDown={e => { if (e.key === 'Enter') handleAddNote(); }}
+                        placeholder="Adicionar nota interna..."
+                        className="h-8 text-xs"
+                      />
+                      <Button size="sm" variant="outline" className="h-8" disabled={!newNote.trim() || addingNote} onClick={handleAddNote}>
+                        <Plus className="h-3 w-3" />
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardContent className="p-2">
+                    <div className="flex gap-1.5 items-center">
+                      <CheckSquare className="h-3.5 w-3.5 text-emerald-500 flex-shrink-0" />
+                      <Input
+                        value={newTask}
+                        onChange={e => setNewTask(e.target.value)}
+                        onKeyDown={e => { if (e.key === 'Enter') handleAddTask(); }}
+                        placeholder="Criar tarefa..."
+                        className="h-8 text-xs"
+                      />
+                      <Button size="sm" variant="outline" className="h-8" disabled={!newTask.trim() || addingTask} onClick={handleAddTask}>
+                        <Plus className="h-3 w-3" />
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+
 
               {/* Timeline events */}
               {timeline.length === 0 ? (
