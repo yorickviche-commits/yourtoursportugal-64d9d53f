@@ -570,6 +570,45 @@ const CRMRecordDetailPage = () => {
                 </CardContent>
               </Card>
 
+              {/* Quick add: Note + Task */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                <Card>
+                  <CardContent className="p-2">
+                    <div className="flex gap-1.5 items-center">
+                      <StickyNote className="h-3.5 w-3.5 text-amber-500 flex-shrink-0" />
+                      <Input
+                        value={newNote}
+                        onChange={e => setNewNote(e.target.value)}
+                        onKeyDown={e => { if (e.key === 'Enter') handleAddNote(); }}
+                        placeholder="Adicionar nota interna..."
+                        className="h-8 text-xs"
+                      />
+                      <Button size="sm" variant="outline" className="h-8" disabled={!newNote.trim() || addingNote} onClick={handleAddNote}>
+                        <Plus className="h-3 w-3" />
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardContent className="p-2">
+                    <div className="flex gap-1.5 items-center">
+                      <CheckSquare className="h-3.5 w-3.5 text-emerald-500 flex-shrink-0" />
+                      <Input
+                        value={newTask}
+                        onChange={e => setNewTask(e.target.value)}
+                        onKeyDown={e => { if (e.key === 'Enter') handleAddTask(); }}
+                        placeholder="Criar tarefa..."
+                        className="h-8 text-xs"
+                      />
+                      <Button size="sm" variant="outline" className="h-8" disabled={!newTask.trim() || addingTask} onClick={handleAddTask}>
+                        <Plus className="h-3 w-3" />
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+
+
               {/* Timeline events */}
               {timeline.length === 0 ? (
                 <div className="text-center py-8 text-muted-foreground text-sm">
