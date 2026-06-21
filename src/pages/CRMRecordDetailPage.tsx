@@ -189,9 +189,57 @@ const CRMRecordDetailPage = () => {
           });
       }
 
+      // Emails (NetHunt Gmail integration)
+      if (emailsRes.data && !emailsRes.data?.error) {
+        const emails = Array.isArray(emailsRes.data) ? emailsRes.data : [];
+        emails
+          .filter((e: any) => e.recordId === recordId || (Array.isArray(e.recordIds) && e.recordIds.includes(recordId)))
+          .forEach((e: any) => {
+            const direction = e.direction || (e.from ? 'IN' : 'OUT');
+            events.push({
+              id: e.emailId || e.id || `${e.subject}-${e.date}`,
+              type: 'email',
+              date: e.date || e.createdAt || e.time,
+              title: `${direction === 'OUT' ? '📤' : '📥'} ${e.subject || '(sem assunto)'}`,
+              description: e.snippet || e.preview || e.body,
+              user: e.from?.name || e.from?.email || e.to?.[0]?.email,
+              meta: { url: e.url, threadId: e.threadId },
+            });
+          });
+      }
+
+      // Notes (local DB)
+      if (notesRes.data && Array.isArray(notesRes.data)) {
+        notesRes.data.forEach((n: any) => {
+          events.push({
+            id: `note-${n.id}`,
+            type: 'note',
+            date: n.created_at,
+            title: 'Nota interna',
+            description: n.note_text || '',
+            meta: { attachment_url: n.attachment_url, attachment_name: n.attachment_name },
+          });
+        });
+      }
+
+      // Tasks (local DB linked by lead_id == recordId)
+      if (tasksRes.data && Array.isArray(tasksRes.data)) {
+        tasksRes.data.forEach((t: any) => {
+          events.push({
+            id: `task-${t.id}`,
+            type: 'task',
+            date: t.created_at,
+            title: `Tarefa: ${t.title}`,
+            description: `${t.status} • ${t.priority}${t.due_date ? ` • due ${new Date(t.due_date).toLocaleDateString('pt-PT')}` : ''}${t.description ? `\n${t.description}` : ''}`,
+            user: t.assigned_to,
+          });
+        });
+      }
+
       // Sort by date desc
       events.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
       setTimeline(events);
+
     } catch (err: any) {
       toast({ title: 'Erro', description: err.message, variant: 'destructive' });
     } finally {
