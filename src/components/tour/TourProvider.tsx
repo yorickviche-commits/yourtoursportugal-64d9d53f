@@ -133,7 +133,9 @@ export const TourProvider = ({ children }: { children: ReactNode }) => {
         continuous
         showSkipButton
         scrollToFirstStep
+        scrollOffset={120}
         disableOverlayClose
+        disableScrollParentFix
         spotlightPadding={6}
         tooltipComponent={YTTooltip}
         callback={handleCallback}
@@ -145,7 +147,10 @@ export const TourProvider = ({ children }: { children: ReactNode }) => {
             primaryColor: '#0a2540',
           },
         }}
-        floaterProps={{ disableAnimation: false }}
+        floaterProps={{
+          disableAnimation: false,
+          options: { preventOverflow: { boundariesElement: 'viewport', padding: 16 } },
+        }}
       />
     </TourContext.Provider>
   );
