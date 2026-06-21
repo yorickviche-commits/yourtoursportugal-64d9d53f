@@ -46,7 +46,7 @@ export const tourSteps: YTStep[] = [
   },
   {
     target: '[data-tour="new-lead"]',
-    placement: 'left',
+    placement: 'top-end',
     tag: 'Sales',
     ai: true,
     title: 'Nova Lead · Manual ou IA',

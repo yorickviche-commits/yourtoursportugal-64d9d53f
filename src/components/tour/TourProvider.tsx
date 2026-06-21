@@ -27,42 +27,47 @@ const YTTooltip = ({
   return (
     <div
       {...tooltipProps}
-      className="bg-background border border-border rounded-xl shadow-2xl w-[380px] max-w-[92vw] overflow-hidden"
+      className="bg-background border border-border rounded-xl shadow-2xl w-[380px] max-w-[92vw] max-h-[80vh] flex flex-col overflow-hidden"
     >
-      <div className="bg-[#0a2540] text-white px-4 py-3 flex items-start justify-between gap-3">
-        <div className="min-w-0">
-          <div className="flex items-center gap-2 mb-1">
-            <span className={cn('text-[10px] px-2 py-0.5 rounded-full border font-semibold uppercase tracking-wide', tagColors[s.tag])}>
-              {s.tag}
-            </span>
-            {s.ai && (
-              <span className="text-[10px] px-2 py-0.5 rounded-full bg-violet-500/20 text-violet-200 border border-violet-400/30 font-semibold uppercase tracking-wide inline-flex items-center gap-1">
-                <Sparkles className="h-2.5 w-2.5" /> IA
+      {/* HEADER + AÇÕES (no topo para garantir que estão sempre visíveis) */}
+      <div className="bg-[#0a2540] text-white px-4 pt-3 pb-2 shrink-0">
+        <div className="flex items-start justify-between gap-3 mb-2">
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center gap-2 mb-1 flex-wrap">
+              <span className={cn('text-[10px] px-2 py-0.5 rounded-full border font-semibold uppercase tracking-wide', tagColors[s.tag])}>
+                {s.tag}
               </span>
-            )}
-            <span className="text-[10px] text-white/60 ml-auto">{index + 1} / {size}</span>
+              {s.ai && (
+                <span className="text-[10px] px-2 py-0.5 rounded-full bg-violet-500/20 text-violet-200 border border-violet-400/30 font-semibold uppercase tracking-wide inline-flex items-center gap-1">
+                  <Sparkles className="h-2.5 w-2.5" /> IA
+                </span>
+              )}
+              <span className="text-[10px] text-white/60 ml-auto">{index + 1} / {size}</span>
+            </div>
+            <h3 className="text-sm font-semibold leading-tight">{s.title}</h3>
           </div>
-          <h3 className="text-sm font-semibold leading-tight">{s.title}</h3>
+          <button {...closeProps} className="text-white/60 hover:text-white shrink-0" aria-label="Fechar">
+            <X className="h-4 w-4" />
+          </button>
         </div>
-        <button {...closeProps} className="text-white/60 hover:text-white shrink-0" aria-label="Fechar">
-          <X className="h-4 w-4" />
-        </button>
+        <div className="flex items-center justify-between gap-2 pt-2 border-t border-white/10">
+          <button {...skipProps} className="text-[11px] text-white/60 hover:text-white">
+            Saltar
+          </button>
+          <div className="flex items-center gap-2">
+            {index > 0 && (
+              <Button {...backProps} size="sm" variant="outline" className="h-7 px-3 text-xs bg-transparent text-white border-white/30 hover:bg-white/10 hover:text-white">
+                Anterior
+              </Button>
+            )}
+            <Button {...primaryProps} size="sm" className="h-7 px-3 text-xs bg-white text-[#0a2540] hover:bg-white/90 font-semibold">
+              {isLastStep ? 'Concluir' : 'Próximo →'}
+            </Button>
+          </div>
+        </div>
       </div>
-      <div className="px-4 py-3 text-sm text-foreground leading-relaxed">
+      <div className="px-4 py-3 text-sm text-foreground leading-relaxed overflow-y-auto">
         {step.content}
-      </div>
-      <div className="px-4 py-3 border-t border-border flex items-center justify-between gap-2 bg-muted/30">
-        <button {...skipProps} className="text-xs text-muted-foreground hover:text-foreground">
-          Saltar tutorial
-        </button>
-        <div className="flex items-center gap-2">
-          {index > 0 && (
-            <Button {...backProps} size="sm" variant="outline">Anterior</Button>
-          )}
-          <Button {...primaryProps} size="sm" className="bg-[#0a2540] hover:bg-[#0a2540]/90 text-white">
-            {isLastStep ? 'Concluir' : 'Próximo'}
-          </Button>
-        </div>
       </div>
     </div>
   );
@@ -128,7 +133,9 @@ export const TourProvider = ({ children }: { children: ReactNode }) => {
         continuous
         showSkipButton
         scrollToFirstStep
+        scrollOffset={120}
         disableOverlayClose
+        disableScrollParentFix
         spotlightPadding={6}
         tooltipComponent={YTTooltip}
         callback={handleCallback}
@@ -140,7 +147,10 @@ export const TourProvider = ({ children }: { children: ReactNode }) => {
             primaryColor: '#0a2540',
           },
         }}
-        floaterProps={{ disableAnimation: false }}
+        floaterProps={{
+          disableAnimation: false,
+          options: { preventOverflow: { boundariesElement: 'viewport', padding: 16 } },
+        }}
       />
     </TourContext.Provider>
   );
