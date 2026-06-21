@@ -25,6 +25,7 @@ interface NethuntRecord {
   recordId: string;
   createdAt?: string;
   updatedAt?: string;
+  link?: string;
   fields: Record<string, any>;
 }
 
