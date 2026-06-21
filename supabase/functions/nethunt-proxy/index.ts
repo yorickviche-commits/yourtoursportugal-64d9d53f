@@ -35,6 +35,16 @@ serve(async (req) => {
     const body = await req.json();
     const { action } = body;
 
+    // NetHunt trigger endpoints (new-*, updated-*, record-change) return [] when no `since` is supplied.
+    // Default to a far-past timestamp so we always retrieve the full history per record/folder.
+    const TRIGGER_ACTIONS_NEED_SINCE = [
+      'recent-records', 'updated-records', 'record-changes',
+      'recent-comments', 'recent-call-logs', 'recent-drive-files', 'recent-emails',
+    ];
+    if (TRIGGER_ACTIONS_NEED_SINCE.includes(action) && !body.since) {
+      body.since = '2020-01-01T00:00:00Z';
+    }
+
     let url = '';
     let method = 'GET';
     let payload: string | undefined;
