@@ -386,9 +386,12 @@ const CRMRecordDetailPage = () => {
       case 'call_log': return <Phone className="h-3.5 w-3.5 text-green-500" />;
       case 'file': return <FileText className="h-3.5 w-3.5 text-purple-500" />;
       case 'update': return <Settings className="h-3.5 w-3.5 text-muted-foreground" />;
+      case 'note': return <StickyNote className="h-3.5 w-3.5 text-amber-500" />;
+      case 'task': return <CheckSquare className="h-3.5 w-3.5 text-emerald-500" />;
       default: return <Clock className="h-3.5 w-3.5 text-muted-foreground" />;
     }
   };
+
 
   const getFieldValue = (name: string) => editedFields[name] ?? record?.fields?.[name] ?? null;
 
