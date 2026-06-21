@@ -45,6 +45,29 @@ const STAT_FIELDS = ['Last Email Received', 'Last Email Sent', 'Time Since Last 
 const SYSTEM_FIELDS = ['Updated', 'Created', 'Record ID'];
 const HIDDEN_FIELDS = new Set([...DEAL_FIELDS, ...STAT_FIELDS, ...SYSTEM_FIELDS, 'Name', 'name']);
 
+const EMAIL_REGEX = /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g;
+function extractContactEmails(fields: Record<string, any>): string[] {
+  const found = new Set<string>();
+  const scan = (val: any) => {
+    if (!val) return;
+    if (typeof val === 'string') {
+      const m = val.match(EMAIL_REGEX);
+      if (m) m.forEach((e) => found.add(e.toLowerCase()));
+    } else if (Array.isArray(val)) {
+      val.forEach(scan);
+    } else if (typeof val === 'object') {
+      Object.values(val).forEach(scan);
+    }
+  };
+  Object.entries(fields || {}).forEach(([k, v]) => {
+    // skip obviously non-contact fields
+    if (/yourtours\.pt/i.test(String(v))) return;
+    scan(v);
+  });
+  // filter out internal addresses
+  return Array.from(found).filter((e) => !/yourtours\.pt$/i.test(e)).slice(0, 5);
+}
+
 const CRMRecordDetailPage = () => {
   const { folderId, recordId } = useParams();
   const navigate = useNavigate();
@@ -236,9 +259,42 @@ const CRMRecordDetailPage = () => {
         });
       }
 
-      // Sort by date desc
-      events.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-      setTimeline(events);
+      // Gmail (real emails from reservas@yourtours.pt inbox, filtered by contact email)
+      try {
+        const contactEmails = extractContactEmails(rec.fields);
+        if (contactEmails.length > 0) {
+          const { data: gmailData } = await supabase.functions.invoke('gmail-record-emails', {
+            body: { emails: contactEmails, limit: 30 },
+          });
+          const gmailEmails = Array.isArray(gmailData?.emails) ? gmailData.emails : [];
+          gmailEmails.forEach((e: any) => {
+            events.push({
+              id: `gmail-${e.id}`,
+              type: 'email',
+              date: e.date,
+              title: `${e.direction === 'OUT' ? '📤' : '📥'} ${e.subject || '(sem assunto)'}`,
+              description: e.snippet,
+              user: e.direction === 'OUT' ? e.to : e.from,
+              meta: { url: e.url, threadId: e.threadId, source: 'gmail' },
+            });
+          });
+        }
+      } catch (gmailErr) {
+        console.warn('Gmail fetch failed (non-blocking):', gmailErr);
+      }
+
+      // Sort by date desc, de-dupe by threadId (Gmail takes precedence over NetHunt email events)
+      const seenThreads = new Set<string>();
+      const deduped = events.filter((ev) => {
+        const tid = ev.meta?.threadId;
+        if (ev.type === 'email' && tid) {
+          if (seenThreads.has(tid)) return false;
+          seenThreads.add(tid);
+        }
+        return true;
+      });
+      deduped.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+      setTimeline(deduped);
 
     } catch (err: any) {
       toast({ title: 'Erro', description: err.message, variant: 'destructive' });
