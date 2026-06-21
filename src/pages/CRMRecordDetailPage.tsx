@@ -236,9 +236,42 @@ const CRMRecordDetailPage = () => {
         });
       }
 
-      // Sort by date desc
-      events.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-      setTimeline(events);
+      // Gmail (real emails from reservas@yourtours.pt inbox, filtered by contact email)
+      try {
+        const contactEmails = extractContactEmails(rec.fields);
+        if (contactEmails.length > 0) {
+          const { data: gmailData } = await supabase.functions.invoke('gmail-record-emails', {
+            body: { emails: contactEmails, limit: 30 },
+          });
+          const gmailEmails = Array.isArray(gmailData?.emails) ? gmailData.emails : [];
+          gmailEmails.forEach((e: any) => {
+            events.push({
+              id: `gmail-${e.id}`,
+              type: 'email',
+              date: e.date,
+              title: `${e.direction === 'OUT' ? '📤' : '📥'} ${e.subject || '(sem assunto)'}`,
+              description: e.snippet,
+              user: e.direction === 'OUT' ? e.to : e.from,
+              meta: { url: e.url, threadId: e.threadId, source: 'gmail' },
+            });
+          });
+        }
+      } catch (gmailErr) {
+        console.warn('Gmail fetch failed (non-blocking):', gmailErr);
+      }
+
+      // Sort by date desc, de-dupe by threadId (Gmail takes precedence over NetHunt email events)
+      const seenThreads = new Set<string>();
+      const deduped = events.filter((ev) => {
+        const tid = ev.meta?.threadId;
+        if (ev.type === 'email' && tid) {
+          if (seenThreads.has(tid)) return false;
+          seenThreads.add(tid);
+        }
+        return true;
+      });
+      deduped.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+      setTimeline(deduped);
 
     } catch (err: any) {
       toast({ title: 'Erro', description: err.message, variant: 'destructive' });
