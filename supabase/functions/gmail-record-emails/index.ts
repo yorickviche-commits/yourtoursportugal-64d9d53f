@@ -90,9 +90,9 @@ Deno.serve(async (req) => {
       const subject = getHeader(headers, 'Subject');
       const dateStr = getHeader(headers, 'Date');
       const internalDate = m.internalDate ? new Date(Number(m.internalDate)).toISOString() : (dateStr ? new Date(dateStr).toISOString() : new Date().toISOString());
-      // direction: if From contains any of the contact emails -> IN, else OUT
+      // direction: inbound if From is NOT our internal domain
       const lowerFrom = from.toLowerCase();
-      const isInbound = emails.some((e) => lowerFrom.includes(e.toLowerCase()));
+      const isInbound = !/yourtours\.pt/i.test(lowerFrom);
       return {
         id: m.id,
         threadId: m.threadId,
