@@ -217,8 +217,19 @@ serve(async (req) => {
     }
 
     if (!response.ok) {
+      // Some NetHunt endpoints (e.g. new-email trigger) return 404 if not enabled.
+      // Degrade gracefully so the frontend timeline still renders.
+      const softFailActions = ['recent-emails', 'recent-drive-files', 'recent-comments', 'recent-call-logs'];
+      if (response.status === 404 && softFailActions.includes(action)) {
+        return new Response(JSON.stringify([]), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
       const msg = typeof data === 'string' ? data : JSON.stringify(data);
-      throw new Error(`NetHunt API error [${response.status}]: ${msg}`);
+      return new Response(
+        JSON.stringify({ error: `NetHunt API error [${response.status}]: ${msg}`, status: response.status, fallback: true }),
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+      );
     }
 
     return new Response(JSON.stringify(data), {
@@ -227,8 +238,8 @@ serve(async (req) => {
   } catch (error) {
     console.error('NetHunt proxy error:', error);
     const msg = error instanceof Error ? error.message : 'Unknown error';
-    return new Response(JSON.stringify({ error: msg }), {
-      status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    return new Response(JSON.stringify({ error: msg, fallback: true }), {
+      status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   }
 });
