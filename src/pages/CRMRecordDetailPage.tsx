@@ -45,6 +45,29 @@ const STAT_FIELDS = ['Last Email Received', 'Last Email Sent', 'Time Since Last 
 const SYSTEM_FIELDS = ['Updated', 'Created', 'Record ID'];
 const HIDDEN_FIELDS = new Set([...DEAL_FIELDS, ...STAT_FIELDS, ...SYSTEM_FIELDS, 'Name', 'name']);
 
+const EMAIL_REGEX = /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g;
+function extractContactEmails(fields: Record<string, any>): string[] {
+  const found = new Set<string>();
+  const scan = (val: any) => {
+    if (!val) return;
+    if (typeof val === 'string') {
+      const m = val.match(EMAIL_REGEX);
+      if (m) m.forEach((e) => found.add(e.toLowerCase()));
+    } else if (Array.isArray(val)) {
+      val.forEach(scan);
+    } else if (typeof val === 'object') {
+      Object.values(val).forEach(scan);
+    }
+  };
+  Object.entries(fields || {}).forEach(([k, v]) => {
+    // skip obviously non-contact fields
+    if (/yourtours\.pt/i.test(String(v))) return;
+    scan(v);
+  });
+  // filter out internal addresses
+  return Array.from(found).filter((e) => !/yourtours\.pt$/i.test(e)).slice(0, 5);
+}
+
 const CRMRecordDetailPage = () => {
   const { folderId, recordId } = useParams();
   const navigate = useNavigate();
