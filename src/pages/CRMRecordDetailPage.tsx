@@ -365,67 +365,6 @@ const CRMRecordDetailPage = () => {
     }
   };
 
-  const handleAddNote = async () => {
-    if (!newNote.trim() || !record) return;
-    setAddingNote(true);
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      const { data, error } = await supabase.from('item_notes').insert({
-        entity_type: 'crm_record',
-        entity_id: record.recordId,
-        note_text: newNote,
-        created_by: user?.id || null,
-      } as any).select().single();
-      if (error) throw error;
-      setTimeline(prev => [{
-        id: `note-${data.id}`,
-        type: 'note' as const,
-        date: data.created_at,
-        title: 'Nota interna',
-        description: newNote,
-      }, ...prev]);
-      setNewNote('');
-      toast({ title: 'Nota adicionada' });
-    } catch (err: any) {
-      toast({ title: 'Erro', description: err.message, variant: 'destructive' });
-    } finally {
-      setAddingNote(false);
-    }
-  };
-
-  const handleAddTask = async () => {
-    if (!newTask.trim() || !record) return;
-    setAddingTask(true);
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      const { data, error } = await supabase.from('tasks').insert({
-        title: newTask,
-        description: '',
-        category: 'sales',
-        priority: 'medium',
-        status: 'pending',
-        team: 'sales',
-        assigned_to: user?.email || 'unassigned',
-        lead_id: record.recordId,
-        created_by: user?.id || null,
-      } as any).select().single();
-      if (error) throw error;
-      setTimeline(prev => [{
-        id: `task-${data.id}`,
-        type: 'task' as const,
-        date: data.created_at,
-        title: `Tarefa: ${newTask}`,
-        description: 'pending • medium',
-      }, ...prev]);
-      setNewTask('');
-      toast({ title: 'Tarefa criada' });
-    } catch (err: any) {
-      toast({ title: 'Erro', description: err.message, variant: 'destructive' });
-    } finally {
-      setAddingTask(false);
-    }
-  };
-
 
 
   const formatDate = (d: string) => {
