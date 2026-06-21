@@ -55,9 +55,14 @@ const CRMRecordDetailPage = () => {
   const [fieldMeta, setFieldMeta] = useState<{ name: string }[]>([]);
   const [timeline, setTimeline] = useState<TimelineEvent[]>([]);
   const [newComment, setNewComment] = useState('');
+  const [newNote, setNewNote] = useState('');
+  const [newTask, setNewTask] = useState('');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [sendingComment, setSendingComment] = useState(false);
+  const [addingNote, setAddingNote] = useState(false);
+  const [addingTask, setAddingTask] = useState(false);
+
 
   const [dealOpen, setDealOpen] = useState(true);
   const [statsOpen, setStatsOpen] = useState(true);
