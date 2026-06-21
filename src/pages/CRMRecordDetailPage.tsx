@@ -30,13 +30,14 @@ interface NethuntRecord {
 
 interface TimelineEvent {
   id: string;
-  type: 'comment' | 'stage_change' | 'email' | 'call_log' | 'file' | 'update';
+  type: 'comment' | 'stage_change' | 'email' | 'call_log' | 'file' | 'update' | 'note' | 'task';
   date: string;
   title: string;
   description?: string;
   user?: string;
   meta?: Record<string, any>;
 }
+
 
 // Fields to show in the left sidebar "Deal Details"
 const DEAL_FIELDS = ['Stage', 'Close date', 'B2B / B2C', 'Source (Site, OTA, Direct)', 'Country/Nationality', 'Sale Potencial', 'Lead to Reactivate'];
