@@ -14,7 +14,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/component
 import {
   ArrowLeft, ExternalLink, Save, RefreshCw, Send,
   Mail, MessageSquare, Clock, FileText, Phone, ChevronDown,
-  GitCommitHorizontal, Settings, BarChart3, StickyNote, CheckSquare, Plus
+  GitCommitHorizontal, Settings, BarChart3, StickyNote, CheckSquare
 } from 'lucide-react';
 
 import { supabase } from '@/integrations/supabase/client';
@@ -79,13 +79,9 @@ const CRMRecordDetailPage = () => {
   const [fieldMeta, setFieldMeta] = useState<{ name: string }[]>([]);
   const [timeline, setTimeline] = useState<TimelineEvent[]>([]);
   const [newComment, setNewComment] = useState('');
-  const [newNote, setNewNote] = useState('');
-  const [newTask, setNewTask] = useState('');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [sendingComment, setSendingComment] = useState(false);
-  const [addingNote, setAddingNote] = useState(false);
-  const [addingTask, setAddingTask] = useState(false);
 
 
   const [dealOpen, setDealOpen] = useState(true);
@@ -369,67 +365,6 @@ const CRMRecordDetailPage = () => {
     }
   };
 
-  const handleAddNote = async () => {
-    if (!newNote.trim() || !record) return;
-    setAddingNote(true);
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      const { data, error } = await supabase.from('item_notes').insert({
-        entity_type: 'crm_record',
-        entity_id: record.recordId,
-        note_text: newNote,
-        created_by: user?.id || null,
-      } as any).select().single();
-      if (error) throw error;
-      setTimeline(prev => [{
-        id: `note-${data.id}`,
-        type: 'note' as const,
-        date: data.created_at,
-        title: 'Nota interna',
-        description: newNote,
-      }, ...prev]);
-      setNewNote('');
-      toast({ title: 'Nota adicionada' });
-    } catch (err: any) {
-      toast({ title: 'Erro', description: err.message, variant: 'destructive' });
-    } finally {
-      setAddingNote(false);
-    }
-  };
-
-  const handleAddTask = async () => {
-    if (!newTask.trim() || !record) return;
-    setAddingTask(true);
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      const { data, error } = await supabase.from('tasks').insert({
-        title: newTask,
-        description: '',
-        category: 'sales',
-        priority: 'medium',
-        status: 'pending',
-        team: 'sales',
-        assigned_to: user?.email || 'unassigned',
-        lead_id: record.recordId,
-        created_by: user?.id || null,
-      } as any).select().single();
-      if (error) throw error;
-      setTimeline(prev => [{
-        id: `task-${data.id}`,
-        type: 'task' as const,
-        date: data.created_at,
-        title: `Tarefa: ${newTask}`,
-        description: 'pending • medium',
-      }, ...prev]);
-      setNewTask('');
-      toast({ title: 'Tarefa criada' });
-    } catch (err: any) {
-      toast({ title: 'Erro', description: err.message, variant: 'destructive' });
-    } finally {
-      setAddingTask(false);
-    }
-  };
-
 
 
   const formatDate = (d: string) => {
@@ -645,43 +580,6 @@ const CRMRecordDetailPage = () => {
                 </CardContent>
               </Card>
 
-              {/* Quick add: Note + Task */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                <Card>
-                  <CardContent className="p-2">
-                    <div className="flex gap-1.5 items-center">
-                      <StickyNote className="h-3.5 w-3.5 text-amber-500 flex-shrink-0" />
-                      <Input
-                        value={newNote}
-                        onChange={e => setNewNote(e.target.value)}
-                        onKeyDown={e => { if (e.key === 'Enter') handleAddNote(); }}
-                        placeholder="Adicionar nota interna..."
-                        className="h-8 text-xs"
-                      />
-                      <Button size="sm" variant="outline" className="h-8" disabled={!newNote.trim() || addingNote} onClick={handleAddNote}>
-                        <Plus className="h-3 w-3" />
-                      </Button>
-                    </div>
-                  </CardContent>
-                </Card>
-                <Card>
-                  <CardContent className="p-2">
-                    <div className="flex gap-1.5 items-center">
-                      <CheckSquare className="h-3.5 w-3.5 text-emerald-500 flex-shrink-0" />
-                      <Input
-                        value={newTask}
-                        onChange={e => setNewTask(e.target.value)}
-                        onKeyDown={e => { if (e.key === 'Enter') handleAddTask(); }}
-                        placeholder="Criar tarefa..."
-                        className="h-8 text-xs"
-                      />
-                      <Button size="sm" variant="outline" className="h-8" disabled={!newTask.trim() || addingTask} onClick={handleAddTask}>
-                        <Plus className="h-3 w-3" />
-                      </Button>
-                    </div>
-                  </CardContent>
-                </Card>
-              </div>
 
 
               {/* Timeline events */}
