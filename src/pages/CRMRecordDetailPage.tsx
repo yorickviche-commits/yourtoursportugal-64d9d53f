@@ -259,12 +259,20 @@ const CRMRecordDetailPage = () => {
         });
       }
 
-      // Gmail (real emails from reservas@yourtours.pt inbox, filtered by contact email)
+      // Gmail (real emails from reservas@yourtours.pt inbox)
       try {
         const contactEmails = extractContactEmails(rec.fields);
-        if (contactEmails.length > 0) {
+        const queries: string[] = [];
+        const ytId = rec.fields?.['YT ID/Referencia'];
+        if (ytId) queries.push(`YT${ytId}`, `YT-${ytId}`, `YT ${ytId}`);
+        // Extract client name from "DS - YT4885 - Chris Douglas - Tour" pattern
+        const name = String(rec.fields?.Name || '');
+        const nameMatch = name.match(/YT\d+\s*-\s*([^-]+?)(?:\s*-|$)/i);
+        if (nameMatch) queries.push(nameMatch[1].trim());
+
+        if (contactEmails.length > 0 || queries.length > 0) {
           const { data: gmailData } = await supabase.functions.invoke('gmail-record-emails', {
-            body: { emails: contactEmails, limit: 30 },
+            body: { emails: contactEmails, queries, limit: 30 },
           });
           const gmailEmails = Array.isArray(gmailData?.emails) ? gmailData.emails : [];
           gmailEmails.forEach((e: any) => {
