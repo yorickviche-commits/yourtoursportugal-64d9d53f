@@ -72,14 +72,18 @@ const CRMRecordDetailPage = () => {
     if (!folderId || !recordId) return;
     setLoading(true);
     try {
-      const [recordRes, fieldsRes, commentsRes, changesRes, callLogsRes, driveFilesRes] = await Promise.all([
+      const [recordRes, fieldsRes, commentsRes, changesRes, callLogsRes, driveFilesRes, emailsRes, notesRes, tasksRes] = await Promise.all([
         supabase.functions.invoke('nethunt-proxy', { body: { action: 'find-record-by-id', folderId, recordId } }),
         supabase.functions.invoke('nethunt-proxy', { body: { action: 'folder-fields', folderId } }),
         supabase.functions.invoke('nethunt-proxy', { body: { action: 'recent-comments', folderId, limit: 100 } }),
         supabase.functions.invoke('nethunt-proxy', { body: { action: 'record-changes', folderId, recordId, limit: 100 } }),
         supabase.functions.invoke('nethunt-proxy', { body: { action: 'recent-call-logs', folderId, limit: 50 } }),
         supabase.functions.invoke('nethunt-proxy', { body: { action: 'recent-drive-files', folderId, limit: 50 } }),
+        supabase.functions.invoke('nethunt-proxy', { body: { action: 'recent-emails', folderId, limit: 100 } }),
+        supabase.from('item_notes').select('*').eq('entity_type', 'crm_record').eq('entity_id', recordId).order('created_at', { ascending: false }),
+        supabase.from('tasks').select('*').eq('lead_id', recordId).order('created_at', { ascending: false }),
       ]);
+
 
       if (recordRes.error) throw recordRes.error;
       const records = Array.isArray(recordRes.data) ? recordRes.data : [];
