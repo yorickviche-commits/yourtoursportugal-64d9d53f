@@ -604,6 +604,16 @@ const CRMRecordDetailPage = () => {
                 </TabsTrigger>
               </TabsList>
               <div className="flex gap-2">
+                {record?.link && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => window.open(record.link, '_blank', 'noopener')}
+                    className="text-[#0a2540] border-[#0a2540]/30 hover:bg-[#0a2540]/5"
+                  >
+                    <ExternalLink className="h-3 w-3 mr-1" /> Abrir no NetHunt
+                  </Button>
+                )}
                 <Button variant="outline" size="sm" onClick={fetchAll}>
                   <RefreshCw className="h-3 w-3 mr-1" /> Atualizar
                 </Button>
