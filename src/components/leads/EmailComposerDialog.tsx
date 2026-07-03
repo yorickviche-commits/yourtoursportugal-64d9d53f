@@ -133,7 +133,17 @@ const EmailComposerDialog = ({ lead, children, open: openProp, onOpenChange, ini
           .limit(1)
           .maybeSingle();
         if (error) throw error;
-        if (!cancelled) setProposal(data as any);
+        let proposalData: any = data;
+        // Prefer the manual PVP override from the lead if present
+        try {
+          const { data: leadRow } = await supabase
+            .from('leads').select('pvp_override').eq('id', lead.leadId).maybeSingle();
+          const ov = (leadRow as any)?.pvp_override;
+          if (proposalData && ov != null && Number(ov) > 0) {
+            proposalData = { ...proposalData, total_value_eur: Number(ov) };
+          }
+        } catch { /* ignore */ }
+        if (!cancelled) setProposal(proposalData);
       } catch (e) {
         console.error('Fetch proposal failed', e);
         if (!cancelled) setProposal(null);

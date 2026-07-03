@@ -856,6 +856,8 @@ const LeadDetailPage = ({ mode = 'lead' }: { mode?: 'lead' | 'booking' } = {}) =
     setOrigem(lead.source === 'ai_simulation' ? ['AI Simulation'] : lead.source ? [lead.source] : []);
     setTravelStyles(Array.isArray(lead.travel_style) ? lead.travel_style : []);
     setActiveVersion(lead.active_version || 0);
+    const savedOverride = (lead as any).pvp_override;
+    setPvpOverride(savedOverride != null ? Number(savedOverride) : null);
   }, [lead]);
 
   const updateFormField = (key: string, value: any) => {
@@ -1257,7 +1259,15 @@ const LeadDetailPage = ({ mode = 'lead' }: { mode?: 'lead' | 'booking' } = {}) =
               destination={destino.join(', ') || lead?.destination || ''}
               leadId={lead?.id}
               pvpOverride={pvpOverride}
-              onPvpOverrideChange={setPvpOverride}
+              onPvpOverrideChange={async (v) => {
+                setPvpOverride(v);
+                if (lead?.id) {
+                  try {
+                    await supabase.from('leads').update({ pvp_override: v } as any).eq('id', lead.id);
+                    queryClient.invalidateQueries({ queryKey: ['lead', lead.id] });
+                  } catch (e) { console.error('Failed to persist pvp_override', e); }
+                }
+              }}
             />
           </div>
         )}

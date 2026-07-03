@@ -1023,6 +1023,7 @@ export type Database = {
           pax_children: number | null
           pax_infants: number | null
           phone: string | null
+          pvp_override: number | null
           sales_owner: string | null
           source: string
           status: string
@@ -1051,6 +1052,7 @@ export type Database = {
           pax_children?: number | null
           pax_infants?: number | null
           phone?: string | null
+          pvp_override?: number | null
           sales_owner?: string | null
           source?: string
           status?: string
@@ -1079,6 +1081,7 @@ export type Database = {
           pax_children?: number | null
           pax_infants?: number | null
           phone?: string | null
+          pvp_override?: number | null
           sales_owner?: string | null
           source?: string
           status?: string
@@ -2408,6 +2411,7 @@ export type Database = {
         Args: { message_id: number; queue_name: string }
         Returns: boolean
       }
+      email_queue_dispatch: { Args: never; Returns: undefined }
       enqueue_email: {
         Args: { payload: Json; queue_name: string }
         Returns: number
