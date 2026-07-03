@@ -566,15 +566,53 @@ const TravelPlanProposal = ({
     if (!plan) throw new Error('No plan');
     setSectionLoading(section);
     try {
-      // Build context-aware instruction
-      let contextInfo = '';
+      // Fast path: single-day regen via dedicated edge function
       if (section.startsWith('day_')) {
         const dayNum = parseInt(section.replace('day_', ''));
         const day = plan.days.find(d => d.day_number === dayNum);
-        if (day) {
-          contextInfo = `\nCurrent Day ${dayNum} content:\nTitle: "${day.title}"\nSubtitle: "${day.subtitle}"\nBullets: ${day.bullets.map(b => toBulletObj(b).text).join(' | ')}\nOvernight: ${day.overnight}`;
-        }
-      } else if (section === 'narrative') {
+        if (!day) return;
+
+        const excludePhotoIds = plan.days
+          .flatMap(d => d.images || [])
+          .map(img => extractPhotoId(img.url))
+          .filter(Boolean) as string[];
+
+        const { data, error } = await supabase.functions.invoke('regenerate-day', {
+          body: {
+            day,
+            instruction: userMessage,
+            language,
+            destination: leadData.destination,
+            clientContext: `${leadData.pax} pax, ${leadData.comfortLevel || ''} ${leadData.budgetLevel || ''}, styles: ${(leadData.travelStyles || []).join(', ')}`,
+            excludePhotoIds,
+            imageCount: Math.max(2, day.images?.length || 2),
+          },
+        });
+        if (error) throw error;
+        if (data?.error) throw new Error(data.error);
+        const r = data.result;
+        setPlan(p => {
+          if (!p) return p;
+          return {
+            ...p,
+            days: p.days.map(d => d.day_number === dayNum ? {
+              ...d,
+              title: r.title || d.title,
+              subtitle: r.subtitle || d.subtitle,
+              bullets: r.bullets || d.bullets,
+              overnight: r.overnight || d.overnight,
+              images: (r.images && r.images.length > 0)
+                ? r.images.map((img: any) => ({ url: img.url, caption: img.caption || '' }))
+                : d.images,
+            } : d),
+          };
+        });
+        return;
+      }
+
+      // Narrative / summary → still use full generate-travel-plan
+      let contextInfo = '';
+      if (section === 'narrative') {
         contextInfo = `\nCurrent title: "${plan.trip_title}"\nCurrent narrative: "${plan.narrative}"`;
       }
 
@@ -582,9 +620,7 @@ const TravelPlanProposal = ({
         ? `Regenerate ONLY the trip_title and narrative based on this instruction: "${userMessage}". Keep all days exactly as they are.${contextInfo}`
         : section === 'summary'
           ? `Regenerate ONLY the day titles and subtitles based on this instruction: "${userMessage}". Keep all bullet content.`
-          : section.startsWith('day_')
-            ? `Regenerate ONLY Day ${section.replace('day_', '')} based on this instruction: "${userMessage}". Keep all other days exactly as they are.${contextInfo}`
-            : userMessage;
+          : userMessage;
 
       const { data, error } = await supabase.functions.invoke('generate-travel-plan', {
         body: { leadData, extraInstructions: sectionInstruction },
@@ -606,20 +642,12 @@ const TravelPlanProposal = ({
           }));
           return { ...p, days: newDays };
         });
-      } else if (section.startsWith('day_')) {
-        const dayNum = parseInt(section.replace('day_', ''));
-        const newDay = result.days.find(d => d.day_number === dayNum);
-        if (newDay) {
-          setPlan(p => {
-            if (!p) return p;
-            return { ...p, days: p.days.map(d => d.day_number === dayNum ? { ...d, ...newDay } : d) };
-          });
-        }
       }
     } finally {
       setSectionLoading(null);
     }
-  }, [plan, leadData]);
+  }, [plan, leadData, language]);
+
 
   // Save
   const handleSave = useCallback(async () => {
