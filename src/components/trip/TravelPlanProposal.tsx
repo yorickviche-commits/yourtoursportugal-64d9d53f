@@ -391,7 +391,20 @@ const TravelPlanProposal = ({
     enabled: !!leadId,
   });
 
+  // Load lead-level PVP override (manual price adjustment)
+  const { data: leadPvpOverride } = useQuery({
+    queryKey: ['lead_pvp_override', leadId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('leads').select('pvp_override').eq('id', leadId).maybeSingle();
+      if (error) throw error;
+      return (data as any)?.pvp_override != null ? Number((data as any).pvp_override) : null;
+    },
+    enabled: !!leadId,
+  });
+
   const totalPVP = (() => {
+    if (leadPvpOverride != null && leadPvpOverride > 0) return Math.round(leadPvpOverride);
     if (!costingDaysData || costingDaysData.length === 0) return 0;
     // Use latest version only
     const latestVersion = costingDaysData[0]?.version ?? 0;
@@ -400,7 +413,7 @@ const TravelPlanProposal = ({
     rows.forEach((d: any) => {
       const items = Array.isArray(d.items) ? d.items : [];
       items.forEach((it: any) => {
-        if (it.status === 'inactive' || it.status === 'rejected') return;
+        if (it.status === 'inactive' || it.status === 'rejected' || it.status === 'eliminar') return;
         total += Number(it.pvpTotal || 0);
       });
     });
