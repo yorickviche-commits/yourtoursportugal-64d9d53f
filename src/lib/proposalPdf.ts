@@ -358,6 +358,14 @@ export async function buildProposalPdfBase64(p: ProposalLite, weblink: string): 
 
   const dataUri = doc.output('datauristring');
   const base64 = dataUri.split(',')[1] || '';
-  const safeTitle = (p.title || 'travel-plan').replace(/[^a-z0-9-_]+/gi, '-').slice(0, 60);
-  return { base64, filename: `${safeTitle}.pdf` };
+
+  const sanitize = (s: string) => s.replace(/[\\/:*?"<>|]+/g, ' ').replace(/\s+/g, ' ').trim();
+  const ytCode = sanitize(p.booking_ref || (p.id ? `YT-${String(p.id).slice(0, 4).toUpperCase()}` : 'YT'));
+  const client = sanitize(p.client_name || 'Client');
+  const dates = sanitize(p.date_range || '');
+  const program = sanitize(p.title || 'Travel Plan');
+  const parts = [ytCode, client, dates, program].filter(Boolean);
+  const filename = `${parts.join(' - ').slice(0, 180)}.pdf`;
+  return { base64, filename };
 }
+
