@@ -199,6 +199,23 @@ export async function buildProposalPdfBase64(p: ProposalLite, weblink: string): 
     y += 22;
   }
 
+  // Total price banner
+  if (p.total_value_eur && Number(p.total_value_eur) > 0) {
+    ensureSpace(56);
+    doc.setDrawColor(220, 220, 220);
+    doc.setFillColor(245, 247, 250);
+    doc.rect(margin, y, pageW - margin * 2, 48, 'F');
+    doc.setTextColor(100, 100, 100);
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(9);
+    doc.text('TOTAL PRICE', pageW / 2, y + 16, { align: 'center' });
+    doc.setTextColor(10, 37, 64);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(18);
+    doc.text(`€ ${Number(p.total_value_eur).toLocaleString('en-US')}`, pageW / 2, y + 38, { align: 'center' });
+    y += 56;
+  }
+
   if (weblink) {
     ensureSpace(20);
     doc.setTextColor(10, 37, 64);
