@@ -856,6 +856,8 @@ const LeadDetailPage = ({ mode = 'lead' }: { mode?: 'lead' | 'booking' } = {}) =
     setOrigem(lead.source === 'ai_simulation' ? ['AI Simulation'] : lead.source ? [lead.source] : []);
     setTravelStyles(Array.isArray(lead.travel_style) ? lead.travel_style : []);
     setActiveVersion(lead.active_version || 0);
+    const savedOverride = (lead as any).pvp_override;
+    setPvpOverride(savedOverride != null ? Number(savedOverride) : null);
   }, [lead]);
 
   const updateFormField = (key: string, value: any) => {
