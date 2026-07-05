@@ -1411,7 +1411,7 @@ const TravelPlanProposal = ({
               <div className="space-y-2.5">
                 {displayPlan.days.map(d => (
                   <div key={d.day_number} className="text-xs text-slate-700">
-                    <p className="font-semibold text-slate-800">Day {d.day_number} — {d.title}</p>
+                    <p className="font-semibold text-slate-800">{t.day} {d.day_number} — {d.title}</p>
                     <ul className="mt-1 ml-3 space-y-0.5">
                       {d.bullets.slice(0, 6).map((b, i) => {
                         const obj = toBulletObj(b);
