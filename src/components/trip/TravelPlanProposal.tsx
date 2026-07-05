@@ -1454,7 +1454,7 @@ const TravelPlanProposal = ({
 
           {/* Important Notes */}
           <div>
-            <h3 className="text-base font-serif font-bold text-slate-800 mb-2">Important Notes</h3>
+            <h3 className="text-base font-serif font-bold text-slate-800 mb-2">{t.importantNotes}</h3>
             {viewMode === 'edit' ? (
               <Textarea
                 className="text-xs min-h-[120px]"
