@@ -1388,7 +1388,7 @@ const TravelPlanProposal = ({
           {/* What's Included — Day by Day Summary or override */}
           <div>
             <div className="flex items-center justify-between mb-2">
-              <h3 className="text-base font-serif font-bold text-slate-800">What's Included</h3>
+              <h3 className="text-base font-serif font-bold text-slate-800">{t.whatsIncluded}</h3>
               {viewMode === 'edit' && (
                 <button
                   type="button"
