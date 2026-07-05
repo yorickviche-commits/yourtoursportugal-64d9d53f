@@ -1293,7 +1293,7 @@ const TravelPlanProposal = ({
                       </div>
                       {day.overnight && (
                         <p className="text-sm font-medium text-slate-600 mt-4 pt-3 border-t border-dashed border-slate-200">
-                          {day.day_number === displayPlan.days.length ? `Departure from ${day.overnight}` : `Night in ${day.overnight}`}
+                          {day.day_number === displayPlan.days.length ? t.departureFrom(day.overnight) : t.nightIn(day.overnight)}
                         </p>
                       )}
                     </div>
