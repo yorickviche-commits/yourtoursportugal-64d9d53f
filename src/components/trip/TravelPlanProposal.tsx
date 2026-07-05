@@ -1477,8 +1477,8 @@ const TravelPlanProposal = ({
             ) : (
               <div className="whitespace-pre-wrap">{closing.closingMessage}</div>
             )}
-            <p className="italic text-slate-500">*No reservation has been made at this time.</p>
-            <p className="font-serif font-semibold text-slate-800 pt-2">Best regards from Portugal,<br/>Your Tours Portugal</p>
+            <p className="italic text-slate-500">{t.noReservationNote}</p>
+            <p className="font-serif font-semibold text-slate-800 pt-2 whitespace-pre-line">{t.bestRegards}</p>
           </div>
         </div>
       </div>
