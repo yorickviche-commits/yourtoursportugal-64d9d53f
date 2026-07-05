@@ -1271,7 +1271,7 @@ const TravelPlanProposal = ({
                         <p className="text-sm italic text-slate-600 mt-1">{day.subtitle}</p>
                       </div>
                       <div className="mb-3">
-                        <p className="text-xs font-bold uppercase text-slate-400 mb-2">Itinerary & Included:</p>
+                        <p className="text-xs font-bold uppercase text-slate-400 mb-2">{t.itineraryIncluded}:</p>
                         <ul className="space-y-1.5">
                           {day.bullets.map((bullet, bi) => {
                             const obj = toBulletObj(bullet);
