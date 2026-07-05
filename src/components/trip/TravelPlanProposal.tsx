@@ -1440,7 +1440,7 @@ const TravelPlanProposal = ({
 
           {/* Cancellations */}
           <div>
-            <h3 className="text-base font-serif font-bold text-slate-800 mb-2">Cancellations & Refund Conditions</h3>
+            <h3 className="text-base font-serif font-bold text-slate-800 mb-2">{t.cancellationConditions}</h3>
             {viewMode === 'edit' ? (
               <Textarea
                 className="text-xs min-h-[90px]"
