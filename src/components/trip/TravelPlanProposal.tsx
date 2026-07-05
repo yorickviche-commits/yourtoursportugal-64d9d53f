@@ -1144,9 +1144,9 @@ const TravelPlanProposal = ({
                 <h1 className="text-2xl md:text-3xl font-serif font-bold tracking-tight">{displayPlan.trip_title}</h1>
                 <p className="text-lg text-white/80 mt-1">{clientName}</p>
                 <div className="flex items-center gap-3 mt-4 text-sm text-white/60">
-                  <span>ID: {leadCode}</span><span>·</span>
+                  <span>ID: {displayId}</span><span>·</span>
                   <span>{displayPlan.days[0]?.date} – {displayPlan.days[displayPlan.days.length - 1]?.date}</span><span>·</span>
-                  <span>{pax} adult{pax > 1 ? 's' : ''}{paxChildren ? ` + ${paxChildren} children` : ''}</span>
+                  <span>{t.adult(pax)}{paxChildren ? ` + ${t.child(paxChildren)}` : ''}{paxInfants ? ` + ${t.infant(paxInfants)}` : ''}</span>
                 </div>
                 <p className="text-sm text-white/80 mt-4 leading-relaxed max-w-3xl">{displayPlan.narrative}</p>
               </div>
