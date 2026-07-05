@@ -1035,6 +1035,8 @@ const TravelPlanProposal = ({
   })() : null);
 
   if (!displayPlan) return null;
+  const t = getLabels(language);
+  const displayId = ytId || leadCode;
 
   return (
     <div className="space-y-4 print:space-y-6">
