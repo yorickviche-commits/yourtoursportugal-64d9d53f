@@ -89,6 +89,102 @@ const LANGUAGE_OPTIONS: { value: string; label: string }[] = [
   { value: 'FR', label: 'FR' },
 ];
 
+type ProposalLabels = {
+  summaryDayByDay: string;
+  day: string;
+  itineraryIncluded: string;
+  nightIn: (city: string) => string;
+  departureFrom: (city: string) => string;
+  totalPrice: string;
+  dayUnit: (n: number) => string;
+  adult: (n: number) => string;
+  child: (n: number) => string;
+  infant: (n: number) => string;
+  whatsIncluded: string;
+  paymentConditions: string;
+  cancellationConditions: string;
+  importantNotes: string;
+  noReservationNote: string;
+  bestRegards: string;
+};
+
+const LABELS: Record<string, ProposalLabels> = {
+  EN: {
+    summaryDayByDay: 'Summary & Day-by-Day',
+    day: 'Day',
+    itineraryIncluded: 'Itinerary & Included',
+    nightIn: (c) => `Night in ${c}`,
+    departureFrom: (c) => `Departure from ${c}`,
+    totalPrice: 'Total Price',
+    dayUnit: (n) => `${n} day${n > 1 ? 's' : ''}`,
+    adult: (n) => `${n} adult${n > 1 ? 's' : ''}`,
+    child: (n) => `${n} child${n > 1 ? 'ren' : ''}`,
+    infant: (n) => `${n} infant${n > 1 ? 's' : ''}`,
+    whatsIncluded: "What's Included",
+    paymentConditions: 'Reservation & Payment Conditions',
+    cancellationConditions: 'Cancellations & Refund Conditions',
+    importantNotes: 'Important Notes',
+    noReservationNote: '*No reservation has been made at this time.',
+    bestRegards: 'Best regards from Portugal,\nYour Tours Portugal',
+  },
+  PT: {
+    summaryDayByDay: 'Resumo e Dia-a-Dia',
+    day: 'Dia',
+    itineraryIncluded: 'Itinerário e Incluído',
+    nightIn: (c) => `Noite em ${c}`,
+    departureFrom: (c) => `Partida de ${c}`,
+    totalPrice: 'Preço Total',
+    dayUnit: (n) => `${n} dia${n > 1 ? 's' : ''}`,
+    adult: (n) => `${n} adulto${n > 1 ? 's' : ''}`,
+    child: (n) => `${n} criança${n > 1 ? 's' : ''}`,
+    infant: (n) => `${n} bebé${n > 1 ? 's' : ''}`,
+    whatsIncluded: 'O Que Está Incluído',
+    paymentConditions: 'Condições de Reserva e Pagamento',
+    cancellationConditions: 'Condições de Cancelamento e Reembolso',
+    importantNotes: 'Notas Importantes',
+    noReservationNote: '*Nenhuma reserva foi efetuada nesta fase.',
+    bestRegards: 'Cumprimentos de Portugal,\nYour Tours Portugal',
+  },
+  ES: {
+    summaryDayByDay: 'Resumen y Día a Día',
+    day: 'Día',
+    itineraryIncluded: 'Itinerario e Incluido',
+    nightIn: (c) => `Noche en ${c}`,
+    departureFrom: (c) => `Salida desde ${c}`,
+    totalPrice: 'Precio Total',
+    dayUnit: (n) => `${n} día${n > 1 ? 's' : ''}`,
+    adult: (n) => `${n} adulto${n > 1 ? 's' : ''}`,
+    child: (n) => `${n} niño${n > 1 ? 's' : ''}`,
+    infant: (n) => `${n} bebé${n > 1 ? 's' : ''}`,
+    whatsIncluded: 'Qué Está Incluido',
+    paymentConditions: 'Condiciones de Reserva y Pago',
+    cancellationConditions: 'Condiciones de Cancelación y Reembolso',
+    importantNotes: 'Notas Importantes',
+    noReservationNote: '*No se ha realizado ninguna reserva en esta fase.',
+    bestRegards: 'Saludos desde Portugal,\nYour Tours Portugal',
+  },
+  FR: {
+    summaryDayByDay: 'Résumé et Jour par Jour',
+    day: 'Jour',
+    itineraryIncluded: 'Itinéraire et Inclus',
+    nightIn: (c) => `Nuit à ${c}`,
+    departureFrom: (c) => `Départ de ${c}`,
+    totalPrice: 'Prix Total',
+    dayUnit: (n) => `${n} jour${n > 1 ? 's' : ''}`,
+    adult: (n) => `${n} adulte${n > 1 ? 's' : ''}`,
+    child: (n) => `${n} enfant${n > 1 ? 's' : ''}`,
+    infant: (n) => `${n} bébé${n > 1 ? 's' : ''}`,
+    whatsIncluded: 'Ce Qui Est Inclus',
+    paymentConditions: 'Conditions de Réservation et Paiement',
+    cancellationConditions: 'Conditions d’Annulation et Remboursement',
+    importantNotes: 'Notes Importantes',
+    noReservationNote: '*Aucune réservation n’a été effectuée à ce stade.',
+    bestRegards: 'Cordialement du Portugal,\nYour Tours Portugal',
+  },
+};
+
+const getLabels = (lang: string): ProposalLabels => LABELS[lang?.toUpperCase()] || LABELS.EN;
+
 interface ChatMessage {
   role: 'user' | 'assistant';
   content: string;
