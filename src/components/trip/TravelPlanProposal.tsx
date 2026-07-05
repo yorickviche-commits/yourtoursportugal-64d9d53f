@@ -1426,7 +1426,7 @@ const TravelPlanProposal = ({
 
           {/* Reservation & Payment */}
           <div>
-            <h3 className="text-base font-serif font-bold text-slate-800 mb-2">Reservation & Payment Conditions</h3>
+            <h3 className="text-base font-serif font-bold text-slate-800 mb-2">{t.paymentConditions}</h3>
             {viewMode === 'edit' ? (
               <Textarea
                 className="text-xs min-h-[90px]"
