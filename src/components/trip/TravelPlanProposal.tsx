@@ -1166,11 +1166,11 @@ const TravelPlanProposal = ({
         {/* SUMMARY INDEX */}
         <div className="relative border-b p-6 bg-slate-50">
           <div className="pr-16">
-            <h2 className="text-lg font-serif font-bold text-slate-800 mb-3">Summary & Day-by-Day</h2>
+            <h2 className="text-lg font-serif font-bold text-slate-800 mb-3">{t.summaryDayByDay}</h2>
             <div className="space-y-1">
               {displayPlan.days.map(d => (
                 <p key={d.day_number} className="text-sm text-slate-600">
-                  <span className="font-medium text-slate-800">Day {d.day_number}</span> — {d.title}
+                  <span className="font-medium text-slate-800">{t.day} {d.day_number}</span> — {d.title}
                 </p>
               ))}
             </div>
