@@ -89,6 +89,102 @@ const LANGUAGE_OPTIONS: { value: string; label: string }[] = [
   { value: 'FR', label: 'FR' },
 ];
 
+type ProposalLabels = {
+  summaryDayByDay: string;
+  day: string;
+  itineraryIncluded: string;
+  nightIn: (city: string) => string;
+  departureFrom: (city: string) => string;
+  totalPrice: string;
+  dayUnit: (n: number) => string;
+  adult: (n: number) => string;
+  child: (n: number) => string;
+  infant: (n: number) => string;
+  whatsIncluded: string;
+  paymentConditions: string;
+  cancellationConditions: string;
+  importantNotes: string;
+  noReservationNote: string;
+  bestRegards: string;
+};
+
+const LABELS: Record<string, ProposalLabels> = {
+  EN: {
+    summaryDayByDay: 'Summary & Day-by-Day',
+    day: 'Day',
+    itineraryIncluded: 'Itinerary & Included',
+    nightIn: (c) => `Night in ${c}`,
+    departureFrom: (c) => `Departure from ${c}`,
+    totalPrice: 'Total Price',
+    dayUnit: (n) => `${n} day${n > 1 ? 's' : ''}`,
+    adult: (n) => `${n} adult${n > 1 ? 's' : ''}`,
+    child: (n) => `${n} child${n > 1 ? 'ren' : ''}`,
+    infant: (n) => `${n} infant${n > 1 ? 's' : ''}`,
+    whatsIncluded: "What's Included",
+    paymentConditions: 'Reservation & Payment Conditions',
+    cancellationConditions: 'Cancellations & Refund Conditions',
+    importantNotes: 'Important Notes',
+    noReservationNote: '*No reservation has been made at this time.',
+    bestRegards: 'Best regards from Portugal,\nYour Tours Portugal',
+  },
+  PT: {
+    summaryDayByDay: 'Resumo e Dia-a-Dia',
+    day: 'Dia',
+    itineraryIncluded: 'Itinerário e Incluído',
+    nightIn: (c) => `Noite em ${c}`,
+    departureFrom: (c) => `Partida de ${c}`,
+    totalPrice: 'Preço Total',
+    dayUnit: (n) => `${n} dia${n > 1 ? 's' : ''}`,
+    adult: (n) => `${n} adulto${n > 1 ? 's' : ''}`,
+    child: (n) => `${n} criança${n > 1 ? 's' : ''}`,
+    infant: (n) => `${n} bebé${n > 1 ? 's' : ''}`,
+    whatsIncluded: 'O Que Está Incluído',
+    paymentConditions: 'Condições de Reserva e Pagamento',
+    cancellationConditions: 'Condições de Cancelamento e Reembolso',
+    importantNotes: 'Notas Importantes',
+    noReservationNote: '*Nenhuma reserva foi efetuada nesta fase.',
+    bestRegards: 'Cumprimentos de Portugal,\nYour Tours Portugal',
+  },
+  ES: {
+    summaryDayByDay: 'Resumen y Día a Día',
+    day: 'Día',
+    itineraryIncluded: 'Itinerario e Incluido',
+    nightIn: (c) => `Noche en ${c}`,
+    departureFrom: (c) => `Salida desde ${c}`,
+    totalPrice: 'Precio Total',
+    dayUnit: (n) => `${n} día${n > 1 ? 's' : ''}`,
+    adult: (n) => `${n} adulto${n > 1 ? 's' : ''}`,
+    child: (n) => `${n} niño${n > 1 ? 's' : ''}`,
+    infant: (n) => `${n} bebé${n > 1 ? 's' : ''}`,
+    whatsIncluded: 'Qué Está Incluido',
+    paymentConditions: 'Condiciones de Reserva y Pago',
+    cancellationConditions: 'Condiciones de Cancelación y Reembolso',
+    importantNotes: 'Notas Importantes',
+    noReservationNote: '*No se ha realizado ninguna reserva en esta fase.',
+    bestRegards: 'Saludos desde Portugal,\nYour Tours Portugal',
+  },
+  FR: {
+    summaryDayByDay: 'Résumé et Jour par Jour',
+    day: 'Jour',
+    itineraryIncluded: 'Itinéraire et Inclus',
+    nightIn: (c) => `Nuit à ${c}`,
+    departureFrom: (c) => `Départ de ${c}`,
+    totalPrice: 'Prix Total',
+    dayUnit: (n) => `${n} jour${n > 1 ? 's' : ''}`,
+    adult: (n) => `${n} adulte${n > 1 ? 's' : ''}`,
+    child: (n) => `${n} enfant${n > 1 ? 's' : ''}`,
+    infant: (n) => `${n} bébé${n > 1 ? 's' : ''}`,
+    whatsIncluded: 'Ce Qui Est Inclus',
+    paymentConditions: 'Conditions de Réservation et Paiement',
+    cancellationConditions: 'Conditions d’Annulation et Remboursement',
+    importantNotes: 'Notes Importantes',
+    noReservationNote: '*Aucune réservation n’a été effectuée à ce stade.',
+    bestRegards: 'Cordialement du Portugal,\nYour Tours Portugal',
+  },
+};
+
+const getLabels = (lang: string): ProposalLabels => LABELS[lang?.toUpperCase()] || LABELS.EN;
+
 interface ChatMessage {
   role: 'user' | 'assistant';
   content: string;
@@ -939,6 +1035,8 @@ const TravelPlanProposal = ({
   })() : null);
 
   if (!displayPlan) return null;
+  const t = getLabels(language);
+  const displayId = ytId || leadCode;
 
   return (
     <div className="space-y-4 print:space-y-6">
@@ -1046,9 +1144,9 @@ const TravelPlanProposal = ({
                 <h1 className="text-2xl md:text-3xl font-serif font-bold tracking-tight">{displayPlan.trip_title}</h1>
                 <p className="text-lg text-white/80 mt-1">{clientName}</p>
                 <div className="flex items-center gap-3 mt-4 text-sm text-white/60">
-                  <span>ID: {leadCode}</span><span>·</span>
+                  <span>ID: {displayId}</span><span>·</span>
                   <span>{displayPlan.days[0]?.date} – {displayPlan.days[displayPlan.days.length - 1]?.date}</span><span>·</span>
-                  <span>{pax} adult{pax > 1 ? 's' : ''}{paxChildren ? ` + ${paxChildren} children` : ''}</span>
+                  <span>{t.adult(pax)}{paxChildren ? ` + ${t.child(paxChildren)}` : ''}{paxInfants ? ` + ${t.infant(paxInfants)}` : ''}</span>
                 </div>
                 <p className="text-sm text-white/80 mt-4 leading-relaxed max-w-3xl">{displayPlan.narrative}</p>
               </div>
@@ -1068,11 +1166,11 @@ const TravelPlanProposal = ({
         {/* SUMMARY INDEX */}
         <div className="relative border-b p-6 bg-slate-50">
           <div className="pr-16">
-            <h2 className="text-lg font-serif font-bold text-slate-800 mb-3">Summary & Day-by-Day</h2>
+            <h2 className="text-lg font-serif font-bold text-slate-800 mb-3">{t.summaryDayByDay}</h2>
             <div className="space-y-1">
               {displayPlan.days.map(d => (
                 <p key={d.day_number} className="text-sm text-slate-600">
-                  <span className="font-medium text-slate-800">Day {d.day_number}</span> — {d.title}
+                  <span className="font-medium text-slate-800">{t.day} {d.day_number}</span> — {d.title}
                 </p>
               ))}
             </div>
@@ -1162,7 +1260,7 @@ const TravelPlanProposal = ({
                     <div className="pr-16">
                       <div className="mb-4">
                         <div className="flex items-center gap-3">
-                          <h3 className="text-lg font-serif font-bold text-slate-800">Day {day.day_number} — {day.title}</h3>
+                          <h3 className="text-lg font-serif font-bold text-slate-800">{t.day} {day.day_number} — {day.title}</h3>
                           {dayDuration && (
                             <span className="flex items-center gap-1 text-[10px] text-muted-foreground bg-muted px-2 py-0.5 rounded-full">
                               <Clock className="h-3 w-3" /> {dayDuration}
@@ -1173,7 +1271,7 @@ const TravelPlanProposal = ({
                         <p className="text-sm italic text-slate-600 mt-1">{day.subtitle}</p>
                       </div>
                       <div className="mb-3">
-                        <p className="text-xs font-bold uppercase text-slate-400 mb-2">Itinerary & Included:</p>
+                        <p className="text-xs font-bold uppercase text-slate-400 mb-2">{t.itineraryIncluded}:</p>
                         <ul className="space-y-1.5">
                           {day.bullets.map((bullet, bi) => {
                             const obj = toBulletObj(bullet);
@@ -1195,7 +1293,7 @@ const TravelPlanProposal = ({
                       </div>
                       {day.overnight && (
                         <p className="text-sm font-medium text-slate-600 mt-4 pt-3 border-t border-dashed border-slate-200">
-                          {day.day_number === displayPlan.days.length ? `Departure from ${day.overnight}` : `Night in ${day.overnight}`}
+                          {day.day_number === displayPlan.days.length ? t.departureFrom(day.overnight) : t.nightIn(day.overnight)}
                         </p>
                       )}
                     </div>
@@ -1274,23 +1372,23 @@ const TravelPlanProposal = ({
         <div className="border-t-2 border-slate-200 bg-slate-50 p-6 md:p-10 space-y-6 print:break-before-page">
           {/* Price Header */}
           <div className="text-center pb-4 border-b border-slate-200">
-            <p className="text-[10px] uppercase tracking-widest text-slate-500 mb-2">Total Price</p>
+            <p className="text-[10px] uppercase tracking-widest text-slate-500 mb-2">{t.totalPrice}</p>
             <p className="text-4xl font-serif font-bold text-slate-900">
               {totalPVP > 0 ? `€ ${totalPVP.toLocaleString('en-US')}` : '— € —'}
             </p>
             <div className="flex items-center justify-center gap-3 mt-3 text-xs text-slate-600">
-              <span>{pax} adult{pax > 1 ? 's' : ''}{paxChildren ? ` + ${paxChildren} child${paxChildren > 1 ? 'ren' : ''}` : ''}{paxInfants ? ` + ${paxInfants} infant${paxInfants > 1 ? 's' : ''}` : ''}</span>
+              <span>{t.adult(pax)}{paxChildren ? ` + ${t.child(paxChildren)}` : ''}{paxInfants ? ` + ${t.infant(paxInfants)}` : ''}</span>
               <span className="text-slate-300">·</span>
               <span>{displayPlan.days[0]?.date} – {displayPlan.days[displayPlan.days.length - 1]?.date}</span>
               <span className="text-slate-300">·</span>
-              <span>{displayPlan.days.length} day{displayPlan.days.length > 1 ? 's' : ''}</span>
+              <span>{t.dayUnit(displayPlan.days.length)}</span>
             </div>
           </div>
 
           {/* What's Included — Day by Day Summary or override */}
           <div>
             <div className="flex items-center justify-between mb-2">
-              <h3 className="text-base font-serif font-bold text-slate-800">What's Included</h3>
+              <h3 className="text-base font-serif font-bold text-slate-800">{t.whatsIncluded}</h3>
               {viewMode === 'edit' && (
                 <button
                   type="button"
@@ -1313,7 +1411,7 @@ const TravelPlanProposal = ({
               <div className="space-y-2.5">
                 {displayPlan.days.map(d => (
                   <div key={d.day_number} className="text-xs text-slate-700">
-                    <p className="font-semibold text-slate-800">Day {d.day_number} — {d.title}</p>
+                    <p className="font-semibold text-slate-800">{t.day} {d.day_number} — {d.title}</p>
                     <ul className="mt-1 ml-3 space-y-0.5">
                       {d.bullets.slice(0, 6).map((b, i) => {
                         const obj = toBulletObj(b);
@@ -1328,7 +1426,7 @@ const TravelPlanProposal = ({
 
           {/* Reservation & Payment */}
           <div>
-            <h3 className="text-base font-serif font-bold text-slate-800 mb-2">Reservation & Payment Conditions</h3>
+            <h3 className="text-base font-serif font-bold text-slate-800 mb-2">{t.paymentConditions}</h3>
             {viewMode === 'edit' ? (
               <Textarea
                 className="text-xs min-h-[90px]"
@@ -1342,7 +1440,7 @@ const TravelPlanProposal = ({
 
           {/* Cancellations */}
           <div>
-            <h3 className="text-base font-serif font-bold text-slate-800 mb-2">Cancellations & Refund Conditions</h3>
+            <h3 className="text-base font-serif font-bold text-slate-800 mb-2">{t.cancellationConditions}</h3>
             {viewMode === 'edit' ? (
               <Textarea
                 className="text-xs min-h-[90px]"
@@ -1356,7 +1454,7 @@ const TravelPlanProposal = ({
 
           {/* Important Notes */}
           <div>
-            <h3 className="text-base font-serif font-bold text-slate-800 mb-2">Important Notes</h3>
+            <h3 className="text-base font-serif font-bold text-slate-800 mb-2">{t.importantNotes}</h3>
             {viewMode === 'edit' ? (
               <Textarea
                 className="text-xs min-h-[120px]"
@@ -1379,8 +1477,8 @@ const TravelPlanProposal = ({
             ) : (
               <div className="whitespace-pre-wrap">{closing.closingMessage}</div>
             )}
-            <p className="italic text-slate-500">*No reservation has been made at this time.</p>
-            <p className="font-serif font-semibold text-slate-800 pt-2">Best regards from Portugal,<br/>Your Tours Portugal</p>
+            <p className="italic text-slate-500">{t.noReservationNote}</p>
+            <p className="font-serif font-semibold text-slate-800 pt-2 whitespace-pre-line">{t.bestRegards}</p>
           </div>
         </div>
       </div>
