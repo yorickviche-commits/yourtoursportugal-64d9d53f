@@ -1372,16 +1372,16 @@ const TravelPlanProposal = ({
         <div className="border-t-2 border-slate-200 bg-slate-50 p-6 md:p-10 space-y-6 print:break-before-page">
           {/* Price Header */}
           <div className="text-center pb-4 border-b border-slate-200">
-            <p className="text-[10px] uppercase tracking-widest text-slate-500 mb-2">Total Price</p>
+            <p className="text-[10px] uppercase tracking-widest text-slate-500 mb-2">{t.totalPrice}</p>
             <p className="text-4xl font-serif font-bold text-slate-900">
               {totalPVP > 0 ? `€ ${totalPVP.toLocaleString('en-US')}` : '— € —'}
             </p>
             <div className="flex items-center justify-center gap-3 mt-3 text-xs text-slate-600">
-              <span>{pax} adult{pax > 1 ? 's' : ''}{paxChildren ? ` + ${paxChildren} child${paxChildren > 1 ? 'ren' : ''}` : ''}{paxInfants ? ` + ${paxInfants} infant${paxInfants > 1 ? 's' : ''}` : ''}</span>
+              <span>{t.adult(pax)}{paxChildren ? ` + ${t.child(paxChildren)}` : ''}{paxInfants ? ` + ${t.infant(paxInfants)}` : ''}</span>
               <span className="text-slate-300">·</span>
               <span>{displayPlan.days[0]?.date} – {displayPlan.days[displayPlan.days.length - 1]?.date}</span>
               <span className="text-slate-300">·</span>
-              <span>{displayPlan.days.length} day{displayPlan.days.length > 1 ? 's' : ''}</span>
+              <span>{t.dayUnit(displayPlan.days.length)}</span>
             </div>
           </div>
 
