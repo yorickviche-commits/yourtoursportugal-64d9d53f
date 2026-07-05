@@ -546,20 +546,42 @@ const TravelPlanProposal = ({
     }
   }, [leadData, leadId, language, toast, clearUsedPhotos, autoFetchImages]);
 
-  // Language change with confirmation + auto-regenerate
-  const handleLanguageChange = useCallback((newLang: string) => {
+  // Language change with confirmation + fast translation (preserves structure & images)
+  const handleLanguageChange = useCallback(async (newLang: string) => {
     if (newLang === language) return;
-    const hasPlan = !!(plan || savedPlan);
-    if (!hasPlan) {
+    const currentPlan = plan || (savedPlan ? {
+      trip_title: savedPlan.trip_title || '',
+      narrative: savedPlan.narrative || '',
+      cover_image: undefined,
+      days: (Array.isArray(savedPlan.days) ? savedPlan.days : []) as unknown as ProposalDay[],
+    } as TravelPlanData : null);
+
+    if (!currentPlan || !currentPlan.days?.length) {
       setLanguage(newLang);
       return;
     }
     const labelMap: Record<string, string> = { PT: 'Português', EN: 'Inglês', ES: 'Espanhol', FR: 'Francês' };
-    const ok = window.confirm(`Mudar idioma para ${labelMap[newLang] || newLang}?\n\nTodo o conteúdo do plano (e do PDF) será regenerado neste idioma.`);
+    const ok = window.confirm(`Mudar idioma para ${labelMap[newLang] || newLang}?\n\nTodo o conteúdo textual (planner + PDF) será traduzido, mantendo estrutura e imagens.`);
     if (!ok) return;
+
     setLanguage(newLang);
-    handleGenerate(undefined, newLang);
-  }, [language, plan, savedPlan, handleGenerate]);
+    setGenerating(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('translate-plan', {
+        body: { plan: currentPlan, closing, language: newLang },
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      const r = data.result;
+      if (r?.plan) setPlan(r.plan);
+      if (r?.closing) setClosing((c) => ({ ...c, ...r.closing }));
+      toast({ title: '✓ Traduzido', description: `Conteúdo em ${labelMap[newLang] || newLang}. Guarda para persistir.` });
+    } catch (e: any) {
+      toast({ title: 'Erro na tradução', description: e.message, variant: 'destructive' });
+    } finally {
+      setGenerating(false);
+    }
+  }, [language, plan, savedPlan, closing, toast]);
 
   // Section regen via chat
   const handleSectionChat = useCallback(async (section: string, userMessage: string) => {
