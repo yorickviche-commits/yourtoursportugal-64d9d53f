@@ -1260,7 +1260,7 @@ const TravelPlanProposal = ({
                     <div className="pr-16">
                       <div className="mb-4">
                         <div className="flex items-center gap-3">
-                          <h3 className="text-lg font-serif font-bold text-slate-800">Day {day.day_number} — {day.title}</h3>
+                          <h3 className="text-lg font-serif font-bold text-slate-800">{t.day} {day.day_number} — {day.title}</h3>
                           {dayDuration && (
                             <span className="flex items-center gap-1 text-[10px] text-muted-foreground bg-muted px-2 py-0.5 rounded-full">
                               <Clock className="h-3 w-3" /> {dayDuration}
