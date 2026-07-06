@@ -11,6 +11,7 @@ import { cn } from '@/lib/utils';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Input } from '@/components/ui/input';
 import { Search } from 'lucide-react';
+import { displayLeadCode } from '@/lib/leadCode';
 
 const urgencyFilters: { label: string; value: UrgencyLevel | 'all' }[] = [
   { label: 'Todas', value: 'all' },
