@@ -27,3 +27,5 @@ project_id = "jufqscczzmioauzkqztj"
     verify_jwt = false
   [functions.wetravel-proxy]
     verify_jwt = false
+  [functions.proposal-preview]
+    verify_jwt = false
