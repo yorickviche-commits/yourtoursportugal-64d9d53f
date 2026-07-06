@@ -169,7 +169,7 @@ const LeadsFilesPage = () => {
                   return (
                     <tr key={lead.id} onClick={() => navigate(`/leads/${lead.id}`)}
                       className="border-b border-border last:border-0 hover:bg-muted/30 transition-colors cursor-pointer">
-                      <td className="px-3 py-3 text-xs text-muted-foreground whitespace-nowrap">{lead.lead_code}</td>
+                      <td className="px-3 py-3 text-xs text-muted-foreground whitespace-nowrap">{displayLeadCode(lead)}</td>
                       <td className="px-3 py-3"><p className="text-xs font-medium text-[hsl(var(--info))] hover:underline">{lead.client_name}</p></td>
                       <td className="px-3 py-3 text-xs text-foreground">{lead.destination}</td>
                       <td className="px-2 py-3 text-xs text-center text-foreground">{lead.number_of_days || '—'}</td>
