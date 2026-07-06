@@ -9,6 +9,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useQueryClient } from '@tanstack/react-query';
 import { cn } from '@/lib/utils';
 import { buildProposalPdfBase64, type ProposalLite } from '@/lib/proposalPdf';
+import { getProposalShareUrl } from '@/lib/proposalShare';
 
 
 
@@ -90,7 +91,7 @@ const EmailComposerDialog = ({ lead, children, open: openProp, onOpenChange, ini
     [selectedTemplate],
   );
   const weblink = proposal?.public_token
-    ? `${window.location.origin}/proposal/${proposal.public_token}`
+    ? getProposalShareUrl(proposal.public_token)
     : '';
 
 

@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Plus, ExternalLink, Copy } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
+import { getProposalShareUrl } from '@/lib/proposalShare';
 
 const statusColors: Record<string, string> = {
   draft: 'bg-stone-100 text-stone-600',
@@ -41,7 +42,7 @@ const ProposalListPage = () => {
   const filtered = filter === 'all' ? proposals : proposals.filter(p => p.status === filter);
 
   const copyLink = (token: string) => {
-    navigator.clipboard.writeText(`${window.location.origin}/proposal/${token}`);
+    navigator.clipboard.writeText(getProposalShareUrl(token));
     toast.success('Link copiado!');
   };
 
