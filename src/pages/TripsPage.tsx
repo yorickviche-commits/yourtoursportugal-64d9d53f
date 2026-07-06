@@ -57,7 +57,7 @@ const TripsPage = () => {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('leads')
-        .select('id, lead_code, client_name, destination, travel_dates, travel_end_date, status, sales_owner, budget_level, pax')
+        .select('id, lead_code, yt_id, client_name, destination, travel_dates, travel_end_date, status, sales_owner, budget_level, pax')
         .eq('status', 'won')
         .order('travel_dates', { ascending: true });
       if (error) throw error;
