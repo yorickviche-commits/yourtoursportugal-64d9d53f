@@ -174,7 +174,7 @@ const TripsPage = () => {
                   const urgency = computeUrgency(lead.travel_dates);
                   return (
                     <tr key={lead.id} className="border-b last:border-0 hover:bg-muted/30 transition-colors">
-                      <td className="py-3 px-4 text-xs text-muted-foreground font-mono">{lead.lead_code}</td>
+                      <td className="py-3 px-4 text-xs text-muted-foreground font-mono">{displayLeadCode(lead)}</td>
                       <td className="py-3 px-4">
                         <Link to={`/bookings/${lead.id}`} className="font-medium text-foreground hover:text-[hsl(var(--info))] transition-colors">{lead.client_name}</Link>
                       </td>
