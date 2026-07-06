@@ -87,7 +87,7 @@ const ProposalDetailPage = () => {
   const displayAnns = tab === 'unresolved' ? unresolvedAnns : rootAnnotations;
 
   const copyLink = () => {
-    navigator.clipboard.writeText(`${window.location.origin}/proposal/${proposal.public_token}`);
+    navigator.clipboard.writeText(getProposalShareUrl(proposal.public_token));
     toast.success('Link copiado!');
   };
 
