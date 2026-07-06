@@ -206,7 +206,7 @@ const MobileLeadDetail = ({ leadId, onBack }: { leadId: string; onBack: () => vo
           <button onClick={onBack} className="p-2 -ml-2 rounded-full hover:bg-white/10">
             <ArrowLeft className="h-4 w-4" />
           </button>
-          <span className="text-[10px] font-mono text-white/60">{lead.lead_code}</span>
+          <span className="text-[10px] font-mono text-white/60">{displayLeadCode(lead)}</span>
         </div>
         <h1 className="text-lg font-semibold truncate">{lead.client_name}</h1>
         <p className="text-xs text-white/70 truncate">{lead.destination} · {lead.pax} pax · {lead.travel_dates}</p>
