@@ -118,7 +118,7 @@ const ProposalDetailPage = () => {
               <Button variant="outline" size="sm" onClick={copyLink}>
                 <Copy className="h-4 w-4 mr-1" /> Link
               </Button>
-              <a href={`/proposal/${proposal.public_token}`} target="_blank" rel="noopener">
+              <a href={getProposalShareUrl(proposal.public_token)} target="_blank" rel="noopener">
                 <Button variant="outline" size="sm">
                   <ExternalLink className="h-4 w-4 mr-1" /> Ver
                 </Button>

@@ -8,6 +8,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Plus, Trash2, Save, ExternalLink, GripVertical, MapPin, Hotel } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
+import { getProposalShareUrl } from '@/lib/proposalShare';
 
 const emptyDay: ProposalDay = {
   day_number: 1,
@@ -120,7 +121,7 @@ const ProposalBuilderPage = () => {
           <h1 className="text-xl font-bold">{isNew ? 'Nova Proposta' : 'Editar Proposta'}</h1>
           <div className="flex gap-2">
             {!isNew && form.public_token && (
-              <a href={`/proposal/${form.public_token}`} target="_blank" rel="noopener">
+              <a href={getProposalShareUrl(form.public_token)} target="_blank" rel="noopener">
                 <Button variant="outline" size="sm"><ExternalLink className="h-4 w-4 mr-1" /> Preview</Button>
               </a>
             )}
