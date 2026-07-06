@@ -11,6 +11,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { cn } from '@/lib/utils';
+import { displayLeadCode } from '@/lib/leadCode';
 
 /**
  * Minimal mobile-first cockpit for the team in the field.
@@ -33,6 +34,7 @@ const MobilePage = () => {
           !search ||
           l.client_name?.toLowerCase().includes(search.toLowerCase()) ||
           l.lead_code?.toLowerCase().includes(search.toLowerCase()) ||
+          l.yt_id?.toLowerCase().includes(search.toLowerCase()) ||
           l.destination?.toLowerCase().includes(search.toLowerCase()),
       ),
     [leads, search],
@@ -116,7 +118,7 @@ const LeadCard = ({ lead, onOpen }: { lead: DbLead; onOpen: () => void }) => (
   >
     <div className="flex-1 min-w-0">
       <div className="flex items-center gap-2 mb-0.5">
-        <span className="text-[10px] font-mono text-slate-400">{lead.lead_code}</span>
+        <span className="text-[10px] font-mono text-slate-400">{displayLeadCode(lead)}</span>
         <span className={cn('text-[10px] px-1.5 py-0.5 rounded-full font-medium', STATUS_COLOR[lead.status] || 'bg-slate-100 text-slate-600')}>
           {lead.status}
         </span>
@@ -204,7 +206,7 @@ const MobileLeadDetail = ({ leadId, onBack }: { leadId: string; onBack: () => vo
           <button onClick={onBack} className="p-2 -ml-2 rounded-full hover:bg-white/10">
             <ArrowLeft className="h-4 w-4" />
           </button>
-          <span className="text-[10px] font-mono text-white/60">{lead.lead_code}</span>
+          <span className="text-[10px] font-mono text-white/60">{displayLeadCode(lead)}</span>
         </div>
         <h1 className="text-lg font-semibold truncate">{lead.client_name}</h1>
         <p className="text-xs text-white/70 truncate">{lead.destination} · {lead.pax} pax · {lead.travel_dates}</p>

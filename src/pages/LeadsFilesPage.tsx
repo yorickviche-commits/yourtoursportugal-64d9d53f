@@ -11,6 +11,7 @@ import NewLeadDialog from '@/components/NewLeadDialog';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { Skeleton } from '@/components/ui/skeleton';
 import StatusBadge from '@/components/StatusBadge';
+import { displayLeadCode } from '@/lib/leadCode';
 
 // Aligned 1:1 with LEAD_STATUSES in LeadDetailPage.tsx — same labels users can assign inside a lead.
 type LeadStatusFilter = 'all' | 'new' | 'contacted' | 'qualified' | 'proposal_sent' | 'negotiation' | 'won' | 'lost';
@@ -57,7 +58,9 @@ const LeadsFilesPage = () => {
       if (statusFilter !== 'all' && l.status !== statusFilter) return false;
       if (!q) return true;
       const haystack = [
+        displayLeadCode(l),
         l.lead_code,
+        l.yt_id,
         l.client_name,
         l.destination,
         l.travel_dates,
@@ -121,7 +124,7 @@ const LeadsFilesPage = () => {
                     <StatusBadge label={badge.label} className={badge.className} />
                   </div>
                   <div className="flex items-center justify-between mt-2 text-[11px]">
-                    <span className="text-muted-foreground">{lead.lead_code}</span>
+                    <span className="text-muted-foreground">{displayLeadCode(lead)}</span>
                     <span className="font-medium">
                       PVP: <span className={cn(!hasPvp && "text-muted-foreground")}>{hasPvp ? fmtMoney(cs.pvp) : '—'}</span>
                       <span className="mx-1.5 text-muted-foreground">·</span>
@@ -166,7 +169,7 @@ const LeadsFilesPage = () => {
                   return (
                     <tr key={lead.id} onClick={() => navigate(`/leads/${lead.id}`)}
                       className="border-b border-border last:border-0 hover:bg-muted/30 transition-colors cursor-pointer">
-                      <td className="px-3 py-3 text-xs text-muted-foreground whitespace-nowrap">{lead.lead_code}</td>
+                      <td className="px-3 py-3 text-xs text-muted-foreground whitespace-nowrap">{displayLeadCode(lead)}</td>
                       <td className="px-3 py-3"><p className="text-xs font-medium text-[hsl(var(--info))] hover:underline">{lead.client_name}</p></td>
                       <td className="px-3 py-3 text-xs text-foreground">{lead.destination}</td>
                       <td className="px-2 py-3 text-xs text-center text-foreground">{lead.number_of_days || '—'}</td>

@@ -11,6 +11,7 @@ import { cn } from '@/lib/utils';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Input } from '@/components/ui/input';
 import { Search } from 'lucide-react';
+import { displayLeadCode } from '@/lib/leadCode';
 
 const urgencyFilters: { label: string; value: UrgencyLevel | 'all' }[] = [
   { label: 'Todas', value: 'all' },
@@ -23,6 +24,7 @@ const urgencyFilters: { label: string; value: UrgencyLevel | 'all' }[] = [
 interface WonLead {
   id: string;
   lead_code: string;
+  yt_id: string | null;
   client_name: string;
   destination: string;
   travel_dates: string | null;
@@ -56,7 +58,7 @@ const TripsPage = () => {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('leads')
-        .select('id, lead_code, client_name, destination, travel_dates, travel_end_date, status, sales_owner, budget_level, pax')
+        .select('id, lead_code, yt_id, client_name, destination, travel_dates, travel_end_date, status, sales_owner, budget_level, pax')
         .eq('status', 'won')
         .order('travel_dates', { ascending: true });
       if (error) throw error;
@@ -75,7 +77,7 @@ const TripsPage = () => {
       if (ownerFilter !== 'all' && l.sales_owner !== ownerFilter) return false;
       if (budgetFilter !== 'all' && l.budget_level !== budgetFilter) return false;
       if (q) {
-        const hay = `${l.client_name} ${l.destination} ${l.lead_code}`.toLowerCase();
+        const hay = `${l.client_name} ${l.destination} ${l.lead_code} ${l.yt_id || ''}`.toLowerCase();
         if (!hay.includes(q)) return false;
       }
       return true;
@@ -139,7 +141,7 @@ const TripsPage = () => {
                   <div className="flex items-start justify-between">
                     <div className="min-w-0 flex-1">
                       <p className="text-sm font-semibold truncate">{lead.client_name}</p>
-                      <p className="text-xs text-muted-foreground mt-0.5">{lead.destination} · {lead.pax || 0} pax · {lead.lead_code}</p>
+                      <p className="text-xs text-muted-foreground mt-0.5">{lead.destination} · {lead.pax || 0} pax · {displayLeadCode(lead)}</p>
                     </div>
                     <StatusBadge {...(urgencyConfig[urgency as keyof typeof urgencyConfig] || urgencyConfig['future'])} />
                   </div>
@@ -172,7 +174,7 @@ const TripsPage = () => {
                   const urgency = computeUrgency(lead.travel_dates);
                   return (
                     <tr key={lead.id} className="border-b last:border-0 hover:bg-muted/30 transition-colors">
-                      <td className="py-3 px-4 text-xs text-muted-foreground font-mono">{lead.lead_code}</td>
+                      <td className="py-3 px-4 text-xs text-muted-foreground font-mono">{displayLeadCode(lead)}</td>
                       <td className="py-3 px-4">
                         <Link to={`/bookings/${lead.id}`} className="font-medium text-foreground hover:text-[hsl(var(--info))] transition-colors">{lead.client_name}</Link>
                       </td>

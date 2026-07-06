@@ -34,6 +34,7 @@ import { useLeadOperationsQuery, useUpsertLeadOperation, DbLeadOperation } from 
 import BookingEmailHistory from '@/components/trip/BookingEmailHistory';
 import CommunicationsTab from '@/components/communications/CommunicationsTab';
 import { getProposalShareUrl } from '@/lib/proposalShare';
+import { displayLeadCode } from '@/lib/leadCode';
 
 type DetailTab = 'dados_gerais' | 'travel_planner' | 'custos' | 'propostas' | 'operacoes' | 'comunicacoes';
 
@@ -1023,7 +1024,7 @@ const LeadDetailPage = ({ mode = 'lead' }: { mode?: 'lead' | 'booking' } = {}) =
           <div className="flex items-start justify-between">
             <div>
               <h1 className="text-lg font-bold text-foreground">
-                {lead.lead_code} - {formState.email} - {destino.join(', ') || lead.destination} - adt:{formState.pax} - chl:{formState.paxChildren} - inf:{formState.paxInfants}
+                {displayLeadCode(lead)} - {formState.email} - {destino.join(', ') || lead.destination} - adt:{formState.pax} - chl:{formState.paxChildren} - inf:{formState.paxInfants}
               </h1>
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
@@ -1085,8 +1086,8 @@ const LeadDetailPage = ({ mode = 'lead' }: { mode?: 'lead' | 'booking' } = {}) =
                   />
                 </div>
                 <div>
-                  <label className="text-[10px] text-muted-foreground uppercase">Nº VI</label>
-                  <Input className="h-8 text-xs mt-1 bg-muted/50" defaultValue={lead.lead_code} readOnly />
+                  <label className="text-[10px] text-muted-foreground uppercase">ID Interno (auto)</label>
+                  <Input className="h-8 text-xs mt-1 bg-muted/50 font-mono" defaultValue={lead.lead_code} readOnly title="Referência interna auto-gerada — não usada em partilhas nem PDFs" />
                 </div>
                 <div>
                   <label className="text-[10px] text-muted-foreground uppercase">Criador da Simulação</label>
