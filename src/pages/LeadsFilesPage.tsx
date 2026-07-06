@@ -58,7 +58,9 @@ const LeadsFilesPage = () => {
       if (statusFilter !== 'all' && l.status !== statusFilter) return false;
       if (!q) return true;
       const haystack = [
+        displayLeadCode(l),
         l.lead_code,
+        l.yt_id,
         l.client_name,
         l.destination,
         l.travel_dates,
