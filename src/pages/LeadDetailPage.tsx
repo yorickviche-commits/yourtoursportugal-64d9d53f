@@ -623,7 +623,7 @@ const LeadProposalsTab = ({ leadId, clientName }: { leadId: string; clientName: 
               {/* Public link — prominent */}
               <div className="mt-3 flex items-center gap-2 bg-primary/5 border border-primary/20 rounded-lg p-2.5">
                 <ExternalLink className="h-4 w-4 text-primary shrink-0" />
-                <code className="text-[11px] text-primary truncate flex-1 font-medium">{window.location.origin}/proposal/{p.public_token}</code>
+                <code className="text-[11px] text-primary truncate flex-1 font-medium">{getProposalShareUrl(p.public_token)}</code>
                 <button onClick={() => copyLink(p.public_token)} className="p-1.5 hover:bg-primary/10 rounded-md shrink-0" title="Copiar link">
                   <Copy className="h-3.5 w-3.5 text-primary" />
                 </button>
