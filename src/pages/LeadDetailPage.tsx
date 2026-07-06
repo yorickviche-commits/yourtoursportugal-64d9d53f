@@ -34,6 +34,7 @@ import { useLeadOperationsQuery, useUpsertLeadOperation, DbLeadOperation } from 
 import BookingEmailHistory from '@/components/trip/BookingEmailHistory';
 import CommunicationsTab from '@/components/communications/CommunicationsTab';
 import { getProposalShareUrl } from '@/lib/proposalShare';
+import { displayLeadCode } from '@/lib/leadCode';
 
 type DetailTab = 'dados_gerais' | 'travel_planner' | 'custos' | 'propostas' | 'operacoes' | 'comunicacoes';
 
