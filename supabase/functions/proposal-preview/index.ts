@@ -1,0 +1,110 @@
+// Public OG-preview endpoint for shared proposal links.
+// Serves HTML with proper Open Graph / Twitter meta tags (image, title, description)
+// so WhatsApp / Slack / iMessage / Facebook crawlers render a rich card.
+// Human visitors are redirected immediately to the SPA at /proposal/:token.
+
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
+
+const APP_ORIGIN = "https://yourtoursportugal.lovable.app";
+
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "content-type",
+};
+
+function esc(s: string): string {
+  return String(s ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
+function stripHtml(s: string): string {
+  return String(s ?? "").replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim();
+}
+
+Deno.serve(async (req) => {
+  if (req.method === "OPTIONS") {
+    return new Response(null, { headers: corsHeaders });
+  }
+
+  const url = new URL(req.url);
+  // Token is provided as ?t=... OR as the last path segment
+  const parts = url.pathname.split("/").filter(Boolean);
+  const token = url.searchParams.get("t") || parts[parts.length - 1] || "";
+
+  const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+  const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+  const sb = createClient(supabaseUrl, serviceKey);
+
+  let title = "Your Tours Portugal — Private Tour Proposal";
+  let description = "Your custom private tour in Portugal, crafted by Your Tours Portugal.";
+  let image = `${APP_ORIGIN}/placeholder.svg`;
+  const targetUrl = `${APP_ORIGIN}/proposal/${encodeURIComponent(token)}`;
+
+  if (token && token !== "proposal-preview") {
+    try {
+      const { data } = await sb
+        .from("proposals")
+        .select("title, client_name, date_range, hero_image_url, summary_text, booking_ref")
+        .eq("public_token", token)
+        .maybeSingle();
+      if (data) {
+        const ref = data.booking_ref ? `${data.booking_ref} — ` : "";
+        title = `${ref}${data.title || "Private Tour"}${data.client_name ? ` · ${data.client_name}` : ""}`;
+        const parts: string[] = [];
+        if (data.date_range) parts.push(data.date_range);
+        if (data.summary_text) parts.push(stripHtml(data.summary_text));
+        description = (parts.join(" — ") || description).slice(0, 300);
+        if (data.hero_image_url) image = data.hero_image_url;
+      }
+    } catch (e) {
+      console.error("proposal-preview lookup failed:", e);
+    }
+  }
+
+  const html = `<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>${esc(title)}</title>
+<meta name="description" content="${esc(description)}" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<link rel="canonical" href="${esc(targetUrl)}" />
+
+<meta property="og:type" content="website" />
+<meta property="og:site_name" content="Your Tours Portugal" />
+<meta property="og:title" content="${esc(title)}" />
+<meta property="og:description" content="${esc(description)}" />
+<meta property="og:image" content="${esc(image)}" />
+<meta property="og:image:secure_url" content="${esc(image)}" />
+<meta property="og:image:width" content="1200" />
+<meta property="og:image:height" content="630" />
+<meta property="og:url" content="${esc(targetUrl)}" />
+
+<meta name="twitter:card" content="summary_large_image" />
+<meta name="twitter:title" content="${esc(title)}" />
+<meta name="twitter:description" content="${esc(description)}" />
+<meta name="twitter:image" content="${esc(image)}" />
+
+<meta http-equiv="refresh" content="0;url=${esc(targetUrl)}" />
+<script>window.location.replace(${JSON.stringify(targetUrl)});</script>
+<style>body{font-family:system-ui;padding:40px;text-align:center;color:#0a2540}</style>
+</head>
+<body>
+<p>Opening your proposal…</p>
+<p><a href="${esc(targetUrl)}">Click here if you are not redirected</a></p>
+</body>
+</html>`;
+
+  return new Response(html, {
+    status: 200,
+    headers: {
+      ...corsHeaders,
+      "Content-Type": "text/html; charset=utf-8",
+      "Cache-Control": "public, max-age=300, s-maxage=300",
+    },
+  });
+});
