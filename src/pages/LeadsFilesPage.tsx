@@ -124,7 +124,7 @@ const LeadsFilesPage = () => {
                     <StatusBadge label={badge.label} className={badge.className} />
                   </div>
                   <div className="flex items-center justify-between mt-2 text-[11px]">
-                    <span className="text-muted-foreground">{lead.lead_code}</span>
+                    <span className="text-muted-foreground">{displayLeadCode(lead)}</span>
                     <span className="font-medium">
                       PVP: <span className={cn(!hasPvp && "text-muted-foreground")}>{hasPvp ? fmtMoney(cs.pvp) : '—'}</span>
                       <span className="mx-1.5 text-muted-foreground">·</span>
