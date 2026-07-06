@@ -33,6 +33,7 @@ import BookingRequestDialog from '@/components/trip/BookingRequestDialog';
 import { useLeadOperationsQuery, useUpsertLeadOperation, DbLeadOperation } from '@/hooks/useLeadOperationsQuery';
 import BookingEmailHistory from '@/components/trip/BookingEmailHistory';
 import CommunicationsTab from '@/components/communications/CommunicationsTab';
+import { getProposalShareUrl } from '@/lib/proposalShare';
 
 type DetailTab = 'dados_gerais' | 'travel_planner' | 'custos' | 'propostas' | 'operacoes' | 'comunicacoes';
 
