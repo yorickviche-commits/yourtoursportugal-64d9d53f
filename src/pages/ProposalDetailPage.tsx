@@ -9,6 +9,7 @@ import { Check, Reply, ExternalLink, Copy, Clock, MessageSquare, Send, CheckCirc
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
+import { getProposalShareUrl } from '@/lib/proposalShare';
 
 const statusColors: Record<string, string> = {
   draft: 'bg-stone-100 text-stone-600',
