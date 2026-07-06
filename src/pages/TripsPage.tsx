@@ -141,7 +141,7 @@ const TripsPage = () => {
                   <div className="flex items-start justify-between">
                     <div className="min-w-0 flex-1">
                       <p className="text-sm font-semibold truncate">{lead.client_name}</p>
-                      <p className="text-xs text-muted-foreground mt-0.5">{lead.destination} · {lead.pax || 0} pax · {lead.lead_code}</p>
+                      <p className="text-xs text-muted-foreground mt-0.5">{lead.destination} · {lead.pax || 0} pax · {displayLeadCode(lead)}</p>
                     </div>
                     <StatusBadge {...(urgencyConfig[urgency as keyof typeof urgencyConfig] || urgencyConfig['future'])} />
                   </div>
