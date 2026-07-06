@@ -90,7 +90,7 @@ const EmailComposerDialog = ({ lead, children, open: openProp, onOpenChange, ini
     [selectedTemplate],
   );
   const weblink = proposal?.public_token
-    ? `${window.location.origin}/proposal/${proposal.public_token}`
+    ? getProposalShareUrl(proposal.public_token)
     : '';
 
 
