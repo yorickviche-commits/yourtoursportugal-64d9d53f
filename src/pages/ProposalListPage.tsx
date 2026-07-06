@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Plus, ExternalLink, Copy } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
+import { getProposalShareUrl } from '@/lib/proposalShare';
 
 const statusColors: Record<string, string> = {
   draft: 'bg-stone-100 text-stone-600',
