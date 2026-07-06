@@ -23,6 +23,7 @@ const urgencyFilters: { label: string; value: UrgencyLevel | 'all' }[] = [
 interface WonLead {
   id: string;
   lead_code: string;
+  yt_id: string | null;
   client_name: string;
   destination: string;
   travel_dates: string | null;
