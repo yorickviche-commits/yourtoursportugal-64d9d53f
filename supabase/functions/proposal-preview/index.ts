@@ -74,7 +74,6 @@ Deno.serve(async (req) => {
   let description = "Your custom private tour in Portugal, crafted by Your Tours Portugal.";
   let image = FALLBACK_IMAGE;
   const targetUrl = `${APP_ORIGIN}/proposal/${encodeURIComponent(token)}`;
-  const shareUrl = `${url.origin}${url.pathname}${url.search}`;
 
   if (token && token !== "proposal-preview") {
     try {
@@ -137,7 +136,7 @@ Deno.serve(async (req) => {
 <meta property="og:image:secure_url" content="${esc(image)}" />
 <meta property="og:image:width" content="1200" />
 <meta property="og:image:height" content="630" />
-<meta property="og:url" content="${esc(shareUrl)}" />
+<meta property="og:url" content="${esc(targetUrl)}" />
 
 <meta name="twitter:card" content="summary_large_image" />
 <meta name="twitter:title" content="${esc(title)}" />
