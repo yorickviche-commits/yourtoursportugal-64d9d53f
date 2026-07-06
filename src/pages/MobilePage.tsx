@@ -118,7 +118,7 @@ const LeadCard = ({ lead, onOpen }: { lead: DbLead; onOpen: () => void }) => (
   >
     <div className="flex-1 min-w-0">
       <div className="flex items-center gap-2 mb-0.5">
-        <span className="text-[10px] font-mono text-slate-400">{lead.lead_code}</span>
+        <span className="text-[10px] font-mono text-slate-400">{displayLeadCode(lead)}</span>
         <span className={cn('text-[10px] px-1.5 py-0.5 rounded-full font-medium', STATUS_COLOR[lead.status] || 'bg-slate-100 text-slate-600')}>
           {lead.status}
         </span>
