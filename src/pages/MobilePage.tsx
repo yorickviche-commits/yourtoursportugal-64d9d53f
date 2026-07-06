@@ -34,6 +34,7 @@ const MobilePage = () => {
           !search ||
           l.client_name?.toLowerCase().includes(search.toLowerCase()) ||
           l.lead_code?.toLowerCase().includes(search.toLowerCase()) ||
+          l.yt_id?.toLowerCase().includes(search.toLowerCase()) ||
           l.destination?.toLowerCase().includes(search.toLowerCase()),
       ),
     [leads, search],
