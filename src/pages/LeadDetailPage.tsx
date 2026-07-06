@@ -1023,7 +1023,7 @@ const LeadDetailPage = ({ mode = 'lead' }: { mode?: 'lead' | 'booking' } = {}) =
           <div className="flex items-start justify-between">
             <div>
               <h1 className="text-lg font-bold text-foreground">
-                {lead.lead_code} - {formState.email} - {destino.join(', ') || lead.destination} - adt:{formState.pax} - chl:{formState.paxChildren} - inf:{formState.paxInfants}
+                {displayLeadCode(lead)} - {formState.email} - {destino.join(', ') || lead.destination} - adt:{formState.pax} - chl:{formState.paxChildren} - inf:{formState.paxInfants}
               </h1>
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
