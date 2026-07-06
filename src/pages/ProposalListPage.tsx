@@ -42,7 +42,7 @@ const ProposalListPage = () => {
   const filtered = filter === 'all' ? proposals : proposals.filter(p => p.status === filter);
 
   const copyLink = (token: string) => {
-    navigator.clipboard.writeText(`${window.location.origin}/proposal/${token}`);
+    navigator.clipboard.writeText(getProposalShareUrl(token));
     toast.success('Link copiado!');
   };
 
