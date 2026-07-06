@@ -39,16 +39,39 @@ Deno.serve(async (req) => {
   const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
   const sb = createClient(supabaseUrl, serviceKey);
 
+  // Fallback OG image MUST be an absolute https URL. WhatsApp/Facebook/iMessage
+  // silently drop data: URIs and relative paths, which is why previews rendered
+  // no thumbnail before.
+  const FALLBACK_IMAGE =
+    "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/acc08188-4f2f-47be-af30-078f450e2573/id-preview-394b5f40--28f0c46d-500d-4af4-968d-f0395e1bb34b.lovable.app-1772150124040.png";
+
+  const isHttpUrl = (u: unknown): u is string =>
+    typeof u === "string" && /^https?:\/\//i.test(u.trim());
+
+  const pickImageFromDays = (days: unknown): string | null => {
+    if (!Array.isArray(days)) return null;
+    for (const d of days) {
+      if (d && isHttpUrl((d as any).cover_image_url)) return (d as any).cover_image_url;
+      const imgs = (d as any)?.images;
+      if (Array.isArray(imgs)) {
+        for (const im of imgs) {
+          if (im && isHttpUrl(im.url)) return im.url;
+        }
+      }
+    }
+    return null;
+  };
+
   let title = "Your Tours Portugal — Private Tour Proposal";
   let description = "Your custom private tour in Portugal, crafted by Your Tours Portugal.";
-  let image = `${APP_ORIGIN}/placeholder.svg`;
+  let image = FALLBACK_IMAGE;
   const targetUrl = `${APP_ORIGIN}/proposal/${encodeURIComponent(token)}`;
 
   if (token && token !== "proposal-preview") {
     try {
       const { data } = await sb
         .from("proposals")
-        .select("title, client_name, date_range, hero_image_url, summary_text, booking_ref")
+        .select("title, client_name, date_range, hero_image_url, summary_text, booking_ref, days")
         .eq("public_token", token)
         .maybeSingle();
       if (data) {
@@ -58,7 +81,15 @@ Deno.serve(async (req) => {
         if (data.date_range) parts.push(data.date_range);
         if (data.summary_text) parts.push(stripHtml(data.summary_text));
         description = (parts.join(" — ") || description).slice(0, 300);
-        if (data.hero_image_url) image = data.hero_image_url;
+        // Only use hero_image_url if it's a real http(s) URL. Some proposals
+        // store base64 data: URIs, which crawlers ignore. Fall back to the
+        // first http image inside days[], then to the site logo.
+        if (isHttpUrl(data.hero_image_url)) {
+          image = data.hero_image_url as string;
+        } else {
+          const fromDays = pickImageFromDays((data as any).days);
+          if (fromDays) image = fromDays;
+        }
       }
     } catch (e) {
       console.error("proposal-preview lookup failed:", e);
