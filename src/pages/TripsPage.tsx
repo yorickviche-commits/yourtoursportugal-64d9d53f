@@ -77,7 +77,7 @@ const TripsPage = () => {
       if (ownerFilter !== 'all' && l.sales_owner !== ownerFilter) return false;
       if (budgetFilter !== 'all' && l.budget_level !== budgetFilter) return false;
       if (q) {
-        const hay = `${l.client_name} ${l.destination} ${l.lead_code}`.toLowerCase();
+        const hay = `${l.client_name} ${l.destination} ${l.lead_code} ${l.yt_id || ''}`.toLowerCase();
         if (!hay.includes(q)) return false;
       }
       return true;
