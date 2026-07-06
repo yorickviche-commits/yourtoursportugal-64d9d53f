@@ -628,7 +628,7 @@ const LeadProposalsTab = ({ leadId, clientName }: { leadId: string; clientName: 
                 <button onClick={() => copyLink(p.public_token)} className="p-1.5 hover:bg-primary/10 rounded-md shrink-0" title="Copiar link">
                   <Copy className="h-3.5 w-3.5 text-primary" />
                 </button>
-                <a href={`/proposal/${p.public_token}`} target="_blank" rel="noopener" className="p-1.5 hover:bg-primary/10 rounded-md shrink-0" title="Abrir proposta">
+                <a href={getProposalShareUrl(p.public_token)} target="_blank" rel="noopener" className="p-1.5 hover:bg-primary/10 rounded-md shrink-0" title="Abrir proposta">
                   <Eye className="h-3.5 w-3.5 text-primary" />
                 </a>
               </div>

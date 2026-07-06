@@ -112,7 +112,7 @@ const ProposalListPage = () => {
                       <Copy className="h-4 w-4 text-muted-foreground" />
                     </button>
                     <a
-                      href={`/proposal/${p.public_token}`}
+                      href={getProposalShareUrl(p.public_token)}
                       target="_blank"
                       rel="noopener"
                       onClick={e => e.stopPropagation()}
