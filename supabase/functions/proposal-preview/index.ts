@@ -1,7 +1,9 @@
 // Public OG-preview endpoint for shared proposal links.
 // Serves HTML with proper Open Graph / Twitter meta tags (image, title, description)
 // so WhatsApp / Slack / iMessage / Facebook crawlers render a rich card.
-// Human visitors are redirected immediately to the SPA at /proposal/:token.
+// Social crawlers receive this HTML. Human visitors are redirected to the SPA
+// at /proposal/:token with a real HTTP redirect so crawlers do not follow a
+// meta-refresh and lose the proposal-specific tags.
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
 
@@ -23,6 +25,12 @@ function esc(s: string): string {
 
 function stripHtml(s: string): string {
   return String(s ?? "").replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim();
+}
+
+function isSocialCrawler(userAgent: string): boolean {
+  return /facebookexternalhit|facebot|whatsapp|twitterbot|linkedinbot|slackbot|telegrambot|discordbot|pinterest|embedly|quora link preview|vkshare|skypeuripreview|applebot/i.test(
+    userAgent,
+  );
 }
 
 Deno.serve(async (req) => {
@@ -66,16 +74,26 @@ Deno.serve(async (req) => {
   let description = "Your custom private tour in Portugal, crafted by Your Tours Portugal.";
   let image = FALLBACK_IMAGE;
   const targetUrl = `${APP_ORIGIN}/proposal/${encodeURIComponent(token)}`;
+  const shareUrl = `${url.origin}${url.pathname}${url.search}`;
 
   if (token && token !== "proposal-preview") {
     try {
       const { data } = await sb
         .from("proposals")
-        .select("title, client_name, date_range, hero_image_url, summary_text, booking_ref, days")
+        .select("title, client_name, date_range, hero_image_url, summary_text, booking_ref, days, lead_id")
         .eq("public_token", token)
         .maybeSingle();
       if (data) {
-        const ref = data.booking_ref ? `${data.booking_ref} — ` : "";
+        let publicRef = data.booking_ref || "";
+        if (!publicRef && data.lead_id) {
+          const { data: lead } = await sb
+            .from("leads")
+            .select("lead_code")
+            .eq("id", data.lead_id)
+            .maybeSingle();
+          publicRef = lead?.lead_code || "";
+        }
+        const ref = publicRef ? `${publicRef} — ` : "";
         title = `${ref}${data.title || "Private Tour"}${data.client_name ? ` · ${data.client_name}` : ""}`;
         const parts: string[] = [];
         if (data.date_range) parts.push(data.date_range);
@@ -96,6 +114,12 @@ Deno.serve(async (req) => {
     }
   }
 
+  const userAgent = req.headers.get("user-agent") || "";
+  const debug = url.searchParams.get("debug") === "1";
+  if (!debug && token && !isSocialCrawler(userAgent)) {
+    return Response.redirect(targetUrl, 302);
+  }
+
   const html = `<!doctype html>
 <html lang="en">
 <head>
@@ -113,15 +137,13 @@ Deno.serve(async (req) => {
 <meta property="og:image:secure_url" content="${esc(image)}" />
 <meta property="og:image:width" content="1200" />
 <meta property="og:image:height" content="630" />
-<meta property="og:url" content="${esc(targetUrl)}" />
+<meta property="og:url" content="${esc(shareUrl)}" />
 
 <meta name="twitter:card" content="summary_large_image" />
 <meta name="twitter:title" content="${esc(title)}" />
 <meta name="twitter:description" content="${esc(description)}" />
 <meta name="twitter:image" content="${esc(image)}" />
 
-<meta http-equiv="refresh" content="0;url=${esc(targetUrl)}" />
-<script>window.location.replace(${JSON.stringify(targetUrl)});</script>
 <style>body{font-family:system-ui;padding:40px;text-align:center;color:#0a2540}</style>
 </head>
 <body>
