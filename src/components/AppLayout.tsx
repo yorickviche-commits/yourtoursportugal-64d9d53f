@@ -14,8 +14,8 @@ const AppLayout = ({ children }: { children: ReactNode }) => {
       <AppSidebar />
       <main className={
         isMobile
-          ? "p-4 pt-14 max-w-full"
-          : "ml-[56px] p-6 max-w-[1400px] transition-all duration-200"
+          ? "p-4 pt-14 pb-28 max-w-full"
+          : "ml-[56px] p-6 pb-28 max-w-[1400px] transition-all duration-200"
       }>
         <div className="mb-4 hidden justify-end md:flex">
           <BrandLogo imageClassName="h-8 w-8" className="opacity-80" />
