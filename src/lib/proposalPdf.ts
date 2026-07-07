@@ -1,5 +1,5 @@
 import jsPDF from 'jspdf';
-import reviewsCoverUrl from '@/assets/proposal-reviews-cover.jpg';
+import reviewsCoverUrl from '@/assets/proposal-reviews-cover.png';
 
 const ALL_REVIEWS_URL = 'https://yourtoursportugal.com/our-reviews/';
 
