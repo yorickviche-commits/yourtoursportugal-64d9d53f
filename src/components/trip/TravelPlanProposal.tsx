@@ -533,6 +533,28 @@ const TravelPlanProposal = ({
     setPlan({ trip_title: savedPlan.trip_title || '', narrative: savedPlan.narrative || '', cover_image, days });
   }
 
+  // Auto-sync per-day dates when concrete travel dates change in "Dados Gerais".
+  // Ensures the Travel Planner + generated PDF reflect the latest dates.
+  useEffect(() => {
+    if (!plan || !plan.days || plan.days.length === 0) return;
+    if (datesType !== 'concrete' || !travelDates) return;
+    // Parse ISO YYYY-MM-DD in UTC to avoid timezone shifts
+    const iso = travelDates.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    if (!iso) return;
+    const startUTC = Date.UTC(+iso[1], +iso[2] - 1, +iso[3]);
+    const fmt = (d: Date) => {
+      const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+      return `${String(d.getUTCDate()).padStart(2,'0')} ${months[d.getUTCMonth()]} ${d.getUTCFullYear()}`;
+    };
+    const newDays = plan.days.map((d, i) => {
+      const dt = new Date(startUTC + i * 86400000);
+      const computed = fmt(dt);
+      return d.date === computed ? d : { ...d, date: computed };
+    });
+    const changed = newDays.some((d, i) => d.date !== plan.days[i].date);
+    if (changed) setPlan({ ...plan, days: newDays });
+  }, [plan, travelDates, datesType]);
+
   const missingFields: string[] = [];
   if (!destination) missingFields.push('Destino');
   if (!numberOfDays && !travelEndDate) missingFields.push('Nº de dias ou data fim');
