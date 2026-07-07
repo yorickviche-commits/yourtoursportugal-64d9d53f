@@ -441,19 +441,8 @@ const PublicProposalPage = () => {
         {/* ─── REVIEWS ─── */}
         <section id="reviews">
           <h2 className="text-2xl font-serif text-slate-800 mb-4">{dict.travellersSay}</h2>
-          <div className="grid md:grid-cols-2 gap-4 mb-6">
-            {dict.reviewsList.map((review, i) => (
-              <div key={i} className="bg-white rounded-xl border border-slate-200 p-5">
-                <div className="flex gap-1 mb-2">
-                  {Array.from({ length: review.stars }).map((_, j) => (
-                    <Star key={j} className="h-4 w-4 fill-sky-400 text-sky-400" />
-                  ))}
-                </div>
-                <p className="text-sm text-slate-600 mb-3 italic">"{review.text}"</p>
-                <p className="text-xs font-medium text-slate-800">{review.name}</p>
-              </div>
-            ))}
-          </div>
+
+
 
           {/* Elfsight Reviews Widget */}
           <div className="bg-white rounded-2xl border border-slate-200 p-4 md:p-6">
