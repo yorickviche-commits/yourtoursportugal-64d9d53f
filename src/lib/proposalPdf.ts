@@ -345,6 +345,55 @@ export async function buildProposalPdfBase64(p: ProposalLite, weblink: string): 
     }
   });
 
+  // ─── Final page: What Our Clients Say ───
+  try {
+    const reviewsImg = await fetchImageAsDataUrl(reviewsCoverUrl);
+    doc.addPage();
+    // full-bleed cover image, aspect 1536x1920 → fit width, keep aspect, top aligned
+    if (reviewsImg) {
+      const imgW = pageW;
+      const imgH = Math.min(pageH - 120, (imgW * 1920) / 1536);
+      try {
+        doc.addImage(reviewsImg.dataUrl, reviewsImg.format, 0, 0, imgW, imgH, undefined, 'FAST');
+      } catch (e) { console.warn('reviews img failed', e); }
+      // Button below image
+      const btnW = 220;
+      const btnH = 40;
+      const btnX = (pageW - btnW) / 2;
+      const btnY = Math.min(imgH + 24, pageH - 80);
+      doc.setFillColor(10, 37, 64);
+      doc.roundedRect(btnX, btnY, btnW, btnH, 20, 20, 'F');
+      doc.setTextColor(255, 255, 255);
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(12);
+      doc.textWithLink('Read All Reviews  →', pageW / 2, btnY + 25, {
+        align: 'center',
+        url: ALL_REVIEWS_URL,
+      });
+      // Make image also clickable
+      doc.link(0, 0, imgW, imgH, { url: ALL_REVIEWS_URL });
+    } else {
+      // Fallback text-only page
+      doc.setTextColor(10, 37, 64);
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(28);
+      doc.text('What Our Clients Say', pageW / 2, pageH / 2 - 20, { align: 'center' });
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(11);
+      doc.setTextColor(80, 80, 80);
+      doc.text('Trusted by hundreds of travellers exploring Portugal.', pageW / 2, pageH / 2 + 6, { align: 'center' });
+      doc.setTextColor(10, 37, 64);
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(12);
+      doc.textWithLink('Read All Reviews  →', pageW / 2, pageH / 2 + 50, {
+        align: 'center',
+        url: ALL_REVIEWS_URL,
+      });
+    }
+  } catch (e) {
+    console.warn('reviews page failed', e);
+  }
+
   // Footer
   const pageCount = doc.getNumberOfPages();
   for (let i = 1; i <= pageCount; i++) {
