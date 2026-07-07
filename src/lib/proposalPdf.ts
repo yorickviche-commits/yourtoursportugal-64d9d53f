@@ -1,4 +1,7 @@
 import jsPDF from 'jspdf';
+import reviewsCoverUrl from '@/assets/proposal-reviews-cover.jpg';
+
+const ALL_REVIEWS_URL = 'https://yourtoursportugal.com/our-reviews/';
 
 interface ProposalDayImage { url?: string; caption?: string }
 interface ProposalDay {
