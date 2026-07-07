@@ -56,6 +56,15 @@ const PublicProposalPage = () => {
     // eslint-disable-next-line
   }, [proposal?.id]);
 
+  // Load Elfsight platform script once for reviews widget
+  useEffect(() => {
+    if (document.querySelector('script[src="https://elfsightcdn.com/platform.js"]')) return;
+    const s = document.createElement('script');
+    s.src = 'https://elfsightcdn.com/platform.js';
+    s.async = true;
+    document.body.appendChild(s);
+  }, []);
+
   const effectiveLang = resolveProposalLang(proposal);
   const dict = getProposalDict(effectiveLang);
 
@@ -432,7 +441,7 @@ const PublicProposalPage = () => {
         {/* ─── REVIEWS ─── */}
         <section id="reviews">
           <h2 className="text-2xl font-serif text-slate-800 mb-4">{dict.travellersSay}</h2>
-          <div className="grid md:grid-cols-2 gap-4">
+          <div className="grid md:grid-cols-2 gap-4 mb-6">
             {dict.reviewsList.map((review, i) => (
               <div key={i} className="bg-white rounded-xl border border-slate-200 p-5">
                 <div className="flex gap-1 mb-2">
@@ -444,6 +453,22 @@ const PublicProposalPage = () => {
                 <p className="text-xs font-medium text-slate-800">{review.name}</p>
               </div>
             ))}
+          </div>
+
+          {/* Elfsight Reviews Widget */}
+          <div className="bg-white rounded-2xl border border-slate-200 p-4 md:p-6">
+            <div className="elfsight-app-a04148b9-a03c-4993-a99a-2ee0f39b2406" data-elfsight-app-lazy />
+            <div className="flex justify-center mt-4">
+              <a
+                href="https://yourtoursportugal.com/our-reviews/"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-sky-600 text-white text-sm font-medium hover:bg-sky-700 transition-colors shadow-sm"
+              >
+                <Star className="h-4 w-4 fill-white text-white" />
+                Read all reviews
+              </a>
+            </div>
           </div>
         </section>
 
