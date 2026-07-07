@@ -56,6 +56,15 @@ const PublicProposalPage = () => {
     // eslint-disable-next-line
   }, [proposal?.id]);
 
+  // Load Elfsight platform script once for reviews widget
+  useEffect(() => {
+    if (document.querySelector('script[src="https://elfsightcdn.com/platform.js"]')) return;
+    const s = document.createElement('script');
+    s.src = 'https://elfsightcdn.com/platform.js';
+    s.async = true;
+    document.body.appendChild(s);
+  }, []);
+
   const effectiveLang = resolveProposalLang(proposal);
   const dict = getProposalDict(effectiveLang);
 
