@@ -346,16 +346,33 @@ export async function buildProposalPdfBase64(p: ProposalLite, weblink: string): 
   });
 
   // ─── Final page: What Our Clients Say ───
+  // Loads the bundled reviews screenshot via <img> + canvas so the image is
+  // GUARANTEED to embed (no CORS/fetch dependency). Falls back to text page.
+  const loadReviewsImage = (): Promise<{ dataUrl: string; w: number; h: number } | null> =>
+    new Promise((resolve) => {
+      try {
+        const img = new Image();
+        img.crossOrigin = 'anonymous';
+        img.onload = () => {
+          try {
+            const canvas = document.createElement('canvas');
+            canvas.width = img.naturalWidth;
+            canvas.height = img.naturalHeight;
+            const ctx = canvas.getContext('2d');
+            if (!ctx) return resolve(null);
+            ctx.drawImage(img, 0, 0);
+            resolve({ dataUrl: canvas.toDataURL('image/jpeg', 0.9), w: img.naturalWidth, h: img.naturalHeight });
+          } catch { resolve(null); }
+        };
+        img.onerror = () => resolve(null);
+        img.src = reviewsCoverUrl;
+      } catch { resolve(null); }
+    });
+
   try {
     doc.addPage();
-    let reviewsImg: { dataUrl: string; format: 'JPEG' | 'PNG' } | null = null;
-    try {
-      reviewsImg = await fetchImageAsDataUrl(reviewsCoverUrl);
-    } catch (e) {
-      console.warn('reviews image fetch failed', e);
-    }
+    const reviewsImg = await loadReviewsImage();
 
-    // Title on top
     doc.setTextColor(10, 37, 64);
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(24);
@@ -365,14 +382,13 @@ export async function buildProposalPdfBase64(p: ProposalLite, weblink: string): 
     doc.setTextColor(90, 90, 90);
     doc.text('Trusted by hundreds of travellers exploring Portugal.', pageW / 2, 82, { align: 'center' });
 
-    // Image (if loaded), sized to leave room for button
     const imageTop = 100;
     const buttonReservedH = 90;
     const maxImgH = pageH - imageTop - buttonReservedH;
-    const availableW = pageW - 80;
+    const availableW = pageW - 60;
     let imgBottom = imageTop;
     if (reviewsImg) {
-      const aspect = 1920 / 1536; // h/w
+      const aspect = reviewsImg.h / reviewsImg.w;
       let imgW = availableW;
       let imgH = imgW * aspect;
       if (imgH > maxImgH) {
@@ -381,31 +397,30 @@ export async function buildProposalPdfBase64(p: ProposalLite, weblink: string): 
       }
       const imgX = (pageW - imgW) / 2;
       try {
-        doc.addImage(reviewsImg.dataUrl, reviewsImg.format, imgX, imageTop, imgW, imgH, undefined, 'FAST');
+        doc.addImage(reviewsImg.dataUrl, 'JPEG', imgX, imageTop, imgW, imgH, undefined, 'FAST');
         doc.link(imgX, imageTop, imgW, imgH, { url: ALL_REVIEWS_URL });
         imgBottom = imageTop + imgH;
-      } catch (e) {
-        console.warn('reviews addImage failed', e);
-      }
+      } catch (e) { console.warn('reviews addImage failed', e); }
     }
 
-    // Button under image (or under title if no image)
-    const btnW = 220;
-    const btnH = 40;
+    const btnW = 260;
+    const btnH = 42;
     const btnX = (pageW - btnW) / 2;
     const btnY = Math.min(imgBottom + 24, pageH - 60);
     doc.setFillColor(10, 37, 64);
-    doc.roundedRect(btnX, btnY, btnW, btnH, 20, 20, 'F');
+    doc.roundedRect(btnX, btnY, btnW, btnH, 21, 21, 'F');
     doc.setTextColor(255, 255, 255);
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(12);
-    doc.textWithLink('Read All Reviews  \u2192', pageW / 2, btnY + 25, {
+    doc.textWithLink('See All Reviews  \u2192', pageW / 2, btnY + 26, {
       align: 'center',
       url: ALL_REVIEWS_URL,
     });
   } catch (e) {
     console.warn('reviews page failed', e);
   }
+
+
 
 
   // Footer
