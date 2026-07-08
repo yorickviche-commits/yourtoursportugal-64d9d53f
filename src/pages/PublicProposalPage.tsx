@@ -455,10 +455,6 @@ const PublicProposalPage = () => {
             />
           </a>
 
-          <h2 className="text-2xl font-serif text-slate-800 mb-4">{dict.travellersSay}</h2>
-
-
-
           {/* Elfsight Reviews Widget */}
           <div className="bg-white rounded-2xl border border-slate-200 p-4 md:p-6">
             <div className="elfsight-app-a04148b9-a03c-4993-a99a-2ee0f39b2406" data-elfsight-app-lazy />
