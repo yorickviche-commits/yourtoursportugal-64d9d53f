@@ -210,7 +210,6 @@ const PublicProposalPage = () => {
               </a>
             ))}
             <a href="#reviews" className="shrink-0 px-3 py-1.5 rounded-full hover:bg-sky-50 text-slate-600">{dict.reviews}</a>
-            <a href="#reviews" className="shrink-0 px-3 py-1.5 rounded-full hover:bg-sky-50 text-slate-600">{dict.reviews}</a>
             <a href="#about" className="shrink-0 px-3 py-1.5 rounded-full hover:bg-sky-50 text-slate-600">{dict.about}</a>
           </div>
         </div>
