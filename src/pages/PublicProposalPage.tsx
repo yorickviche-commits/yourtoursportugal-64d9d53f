@@ -4,6 +4,7 @@ import { useState, useEffect, useRef, lazy, Suspense, Component, ReactNode } fro
 import { MessageSquare, Check, Star, Phone, Mail, Globe, ChevronDown, ChevronUp, Send, X, Clock, MapPin, Hotel, ThumbsUp, ThumbsDown } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { getProposalDict, resolveProposalLang, encodeSentiment, decodeSentiment, Sentiment } from '@/lib/proposalI18n';
+import reviewsBanner from '@/assets/our-reviews-banner.png.asset.json';
 
 
 // Lazy load map to avoid react-leaflet context crash
