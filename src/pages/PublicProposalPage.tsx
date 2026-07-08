@@ -210,7 +210,6 @@ const PublicProposalPage = () => {
               </a>
             ))}
             <a href="#reviews" className="shrink-0 px-3 py-1.5 rounded-full hover:bg-sky-50 text-slate-600">{dict.reviews}</a>
-            <a href="#reviews" className="shrink-0 px-3 py-1.5 rounded-full hover:bg-sky-50 text-slate-600">{dict.reviews}</a>
             <a href="#about" className="shrink-0 px-3 py-1.5 rounded-full hover:bg-sky-50 text-slate-600">{dict.about}</a>
           </div>
         </div>
@@ -455,10 +454,6 @@ const PublicProposalPage = () => {
               className="w-full h-auto aspect-[16/9] object-cover transition-transform duration-500 group-hover:scale-[1.02]"
             />
           </a>
-
-          <h2 className="text-2xl font-serif text-slate-800 mb-4">{dict.travellersSay}</h2>
-
-
 
           {/* Elfsight Reviews Widget */}
           <div className="bg-white rounded-2xl border border-slate-200 p-4 md:p-6">
