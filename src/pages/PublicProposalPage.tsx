@@ -4,6 +4,7 @@ import { useState, useEffect, useRef, lazy, Suspense, Component, ReactNode } fro
 import { MessageSquare, Check, Star, Phone, Mail, Globe, ChevronDown, ChevronUp, Send, X, Clock, MapPin, Hotel, ThumbsUp, ThumbsDown } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { getProposalDict, resolveProposalLang, encodeSentiment, decodeSentiment, Sentiment } from '@/lib/proposalI18n';
+import reviewsBanner from '@/assets/our-reviews-banner.png.asset.json';
 
 
 // Lazy load map to avoid react-leaflet context crash
@@ -440,6 +441,21 @@ const PublicProposalPage = () => {
 
         {/* ─── REVIEWS ─── */}
         <section id="reviews">
+          {/* Banner image above reviews */}
+          <a
+            href="https://yourtoursportugal.com/our-reviews/"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="block mb-6 rounded-2xl overflow-hidden border border-slate-200 shadow-sm group"
+          >
+            <img
+              src={reviewsBanner.url}
+              alt="Our Reviews — real moments from Your Tours travellers"
+              loading="lazy"
+              className="w-full h-auto aspect-[16/9] object-cover transition-transform duration-500 group-hover:scale-[1.02]"
+            />
+          </a>
+
           <h2 className="text-2xl font-serif text-slate-800 mb-4">{dict.travellersSay}</h2>
 
 
