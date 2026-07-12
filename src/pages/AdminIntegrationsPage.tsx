@@ -5,8 +5,10 @@ import AppLayout from '@/components/AppLayout';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Switch } from '@/components/ui/switch';
 import { useToast } from '@/hooks/use-toast';
-import { Plug, RefreshCw, AlertTriangle } from 'lucide-react';
+import { Plug, RefreshCw, AlertTriangle, Calendar as CalendarIcon } from 'lucide-react';
 import { format } from 'date-fns';
 
 interface Integration {
