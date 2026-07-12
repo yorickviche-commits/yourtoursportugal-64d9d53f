@@ -6,7 +6,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
-import { ShieldCheck, Save } from 'lucide-react';
+import { ShieldCheck, Save, LayoutGrid } from 'lucide-react';
+import { PAGES, permKey } from '@/lib/pagePermissions';
 
 const ROLES = ['super_admin', 'admin', 'sales_agent', 'operations_agent', 'finance', 'b2b_manager', 'viewer'] as const;
 const ROLE_LABELS: Record<string, string> = {
