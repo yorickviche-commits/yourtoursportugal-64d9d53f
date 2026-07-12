@@ -46,6 +46,7 @@ import AdminIntegrationsPage from "./pages/AdminIntegrationsPage";
 import AdminKPIPage from "./pages/AdminKPIPage";
 import AdminActivityLogsPage from "./pages/AdminActivityLogsPage";
 import AgentDashboardPage from "./pages/AgentDashboardPage";
+import ProfilePage from "./pages/ProfilePage";
 
 const queryClient = new QueryClient();
 
