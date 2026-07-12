@@ -42,6 +42,7 @@ const AdminPermissionsPage = () => {
   const [changes, setChanges] = useState<Record<string, boolean>>({});
   const [saving, setSaving] = useState(false);
   const { toast } = useToast();
+  const queryClient = useQueryClient();
 
   const fetchPerms = async () => {
     setLoading(true);
