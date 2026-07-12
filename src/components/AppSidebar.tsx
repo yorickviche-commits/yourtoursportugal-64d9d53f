@@ -90,18 +90,21 @@ const DesktopSidebar = () => {
     );
   };
 
-  const renderGroup = (label: string, items: NavItem[], open: boolean, setOpen: (v: boolean) => void) => (
-    <div>
-      {expanded ? (
-        <button onClick={() => setOpen(!open)}
-          className="flex items-center justify-between w-full px-3 py-1.5 text-[10px] uppercase text-sidebar-muted font-semibold tracking-wider hover:text-sidebar-foreground transition-colors">
-          {label}
-          {open ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
-        </button>
-      ) : <div className="border-t border-sidebar-border my-2" />}
-      {(expanded ? open : true) && <div className="space-y-0.5">{items.map(renderNavItem)}</div>}
-    </div>
-  );
+  const renderGroup = (label: string, items: NavItem[], open: boolean, setOpen: (v: boolean) => void) => {
+    if (items.length === 0) return null;
+    return (
+      <div>
+        {expanded ? (
+          <button onClick={() => setOpen(!open)}
+            className="flex items-center justify-between w-full px-3 py-1.5 text-[10px] uppercase text-sidebar-muted font-semibold tracking-wider hover:text-sidebar-foreground transition-colors">
+            {label}
+            {open ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
+          </button>
+        ) : <div className="border-t border-sidebar-border my-2" />}
+        {(expanded ? open : true) && <div className="space-y-0.5">{items.map(renderNavItem)}</div>}
+      </div>
+    );
+  };
 
   const agentActive = isActive('/agents');
 
