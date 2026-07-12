@@ -702,6 +702,9 @@ const LeadCostingEditor = ({ costingDays, onChange, onSave, saving, plannerDays,
           );
         })}
       </div>
+      </DragDropContext>
+
+
 
       {/* Grand Totals — editable & dynamic (NET read-only) */}
       {activeItems.length > 0 && (
