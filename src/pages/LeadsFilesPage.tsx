@@ -12,6 +12,7 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import { Skeleton } from '@/components/ui/skeleton';
 import StatusBadge from '@/components/StatusBadge';
 import { displayLeadCode } from '@/lib/leadCode';
+import LeadAgentsCell from '@/components/LeadAgentsCell';
 
 // Aligned 1:1 with LEAD_STATUSES in LeadDetailPage.tsx — same labels users can assign inside a lead.
 type LeadStatusFilter = 'all' | 'new' | 'contacted' | 'qualified' | 'proposal_sent' | 'negotiation' | 'won' | 'lost';
@@ -131,6 +132,9 @@ const LeadsFilesPage = () => {
                       Margem: <span className={cn(!hasPvp && "text-muted-foreground")}>{hasPvp ? `${cs.marginPct.toFixed(0)}%` : '—'}</span>
                     </span>
                   </div>
+                  <div className="mt-2" onClick={e => e.stopPropagation()}>
+                    <LeadAgentsCell leadId={lead.id} value={(lead as any).assigned_agents} />
+                  </div>
                 </div>
               );
             })}
@@ -150,6 +154,7 @@ const LeadsFilesPage = () => {
                   <th className="text-center px-2 py-2.5 font-medium text-muted-foreground text-xs">Pax</th>
                   <th className="text-right px-3 py-2.5 font-medium text-muted-foreground text-xs">PVP / Margem</th>
                   <th className="text-left px-3 py-2.5 font-medium text-muted-foreground text-xs">Data Criação</th>
+                  <th className="text-left px-3 py-2.5 font-medium text-muted-foreground text-xs">Agentes</th>
                   <th className="text-center px-3 py-2.5 font-medium text-muted-foreground text-xs">Estado</th>
                   <th className="text-center px-2 py-2.5 font-medium text-muted-foreground text-xs">Ver</th>
                 </tr>
@@ -188,13 +193,16 @@ const LeadsFilesPage = () => {
                       <td className="px-3 py-3 text-xs text-muted-foreground whitespace-nowrap">
                         {new Date(lead.created_at).toLocaleDateString('pt-PT')} {new Date(lead.created_at).toLocaleTimeString('pt-PT', { hour: '2-digit', minute: '2-digit' })}
                       </td>
+                      <td className="px-3 py-3" onClick={e => e.stopPropagation()}>
+                        <LeadAgentsCell leadId={lead.id} value={(lead as any).assigned_agents} />
+                      </td>
                       <td className="px-3 py-3 text-center"><StatusBadge label={badge.label} className={badge.className} /></td>
                       <td className="px-2 py-3 text-center"><Eye className="h-4 w-4 text-muted-foreground mx-auto" /></td>
                     </tr>
                   );
                 })}
                 {filteredLeads.length === 0 && (
-                  <tr><td colSpan={10} className="px-4 py-8 text-center text-sm text-muted-foreground">Sem simulações encontradas</td></tr>
+                  <tr><td colSpan={11} className="px-4 py-8 text-center text-sm text-muted-foreground">Sem simulações encontradas</td></tr>
                 )}
               </tbody>
             </table>
