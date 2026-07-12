@@ -12,6 +12,7 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import { Skeleton } from '@/components/ui/skeleton';
 import StatusBadge from '@/components/StatusBadge';
 import { displayLeadCode } from '@/lib/leadCode';
+import LeadAgentsCell from '@/components/LeadAgentsCell';
 
 // Aligned 1:1 with LEAD_STATUSES in LeadDetailPage.tsx — same labels users can assign inside a lead.
 type LeadStatusFilter = 'all' | 'new' | 'contacted' | 'qualified' | 'proposal_sent' | 'negotiation' | 'won' | 'lost';
