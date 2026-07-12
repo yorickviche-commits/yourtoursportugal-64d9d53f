@@ -293,4 +293,10 @@ const Dashboard = () => {
   );
 };
 
+const TeamKPIsGate = () => {
+  const { isAdmin } = useAuth();
+  if (!isAdmin) return null;
+  return <div className="mt-4"><TeamKPISection /></div>;
+};
+
 export default Dashboard;
