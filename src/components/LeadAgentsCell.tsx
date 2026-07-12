@@ -50,6 +50,7 @@ export default function LeadAgentsCell({ leadId, value, compact }: Props) {
     else {
       qc.invalidateQueries({ queryKey: ['leads'] });
       toast({ title: 'Agentes guardados', duration: 1500 });
+      import('@/hooks/useCalendarSync').then(m => m.triggerCalendarSync(leadId, 'update'));
     }
   };
 
