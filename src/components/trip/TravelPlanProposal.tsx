@@ -430,7 +430,13 @@ const TravelPlanProposal = ({
   const [generating, setGenerating] = useState(false);
   const [saving, setSaving] = useState(false);
   const [viewMode, setViewMode] = useState<'preview' | 'edit'>('preview');
-  const [plan, setPlan] = useState<TravelPlanData | null>(null);
+  const planUndo = useUndoable<TravelPlanData | null>(null, {
+    bindKeyboard: true,
+    onUndo: () => sonnerToast.info('Alteração desfeita', { description: 'Ctrl+Shift+Z para refazer' }),
+    onRedo: () => sonnerToast.info('Alteração refeita'),
+  });
+  const plan = planUndo.state;
+  const setPlan = planUndo.set;
   const [closing, setClosing] = useState<ClosingTerms>(DEFAULT_CLOSING);
   const [extraInstructions, setExtraInstructions] = useState('');
   const [showRegenInput, setShowRegenInput] = useState(false);
