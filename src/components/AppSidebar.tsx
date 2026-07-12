@@ -19,6 +19,7 @@ interface NavItem { to: string; icon: any; label: string; pageKey: PageKey; }
 
 const overviewItems: NavItem[] = [
   { to: '/dashboard', icon: LayoutDashboard, label: 'Dashboard', pageKey: 'dashboard' },
+  { to: '/profile/me', icon: Users, label: 'O Meu Perfil', pageKey: 'profile' },
 ];
 
 const reservasItems: NavItem[] = [
