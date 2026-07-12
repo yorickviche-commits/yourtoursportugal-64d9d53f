@@ -190,13 +190,16 @@ const LeadsFilesPage = () => {
                       <td className="px-3 py-3 text-xs text-muted-foreground whitespace-nowrap">
                         {new Date(lead.created_at).toLocaleDateString('pt-PT')} {new Date(lead.created_at).toLocaleTimeString('pt-PT', { hour: '2-digit', minute: '2-digit' })}
                       </td>
+                      <td className="px-3 py-3" onClick={e => e.stopPropagation()}>
+                        <LeadAgentsCell leadId={lead.id} value={(lead as any).assigned_agents} />
+                      </td>
                       <td className="px-3 py-3 text-center"><StatusBadge label={badge.label} className={badge.className} /></td>
                       <td className="px-2 py-3 text-center"><Eye className="h-4 w-4 text-muted-foreground mx-auto" /></td>
                     </tr>
                   );
                 })}
                 {filteredLeads.length === 0 && (
-                  <tr><td colSpan={10} className="px-4 py-8 text-center text-sm text-muted-foreground">Sem simulações encontradas</td></tr>
+                  <tr><td colSpan={11} className="px-4 py-8 text-center text-sm text-muted-foreground">Sem simulações encontradas</td></tr>
                 )}
               </tbody>
             </table>
