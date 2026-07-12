@@ -912,6 +912,7 @@ const LeadDetailPage = ({ mode = 'lead' }: { mode?: 'lead' | 'booking' } = {}) =
       });
       await logActivity('lead_updated', 'lead', lead.id, { client_name: formState.clientName });
       toast({ title: 'Simulação guardada!', description: `${formState.clientName} atualizado com sucesso.` });
+      if (leadStatus === 'won') triggerCalendarSync(lead.id, 'update');
     } catch (err: any) {
       toast({ title: 'Erro ao guardar', description: err.message, variant: 'destructive' });
     }
