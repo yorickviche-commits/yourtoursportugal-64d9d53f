@@ -11,6 +11,7 @@ export type PageKey =
   | 'comercial_matriz'
   | 'comercial_suppliers'
   | 'partners'
+  | 'profile'
   | 'admin_users'
   | 'admin_permissions'
   | 'admin_settings'
@@ -18,6 +19,7 @@ export type PageKey =
   | 'admin_kpi'
   | 'admin_logs'
   | 'agents';
+
 
 export interface PageDef {
   key: PageKey;
