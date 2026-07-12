@@ -667,8 +667,8 @@ const LeadDetailPage = ({ mode = 'lead' }: { mode?: 'lead' | 'booking' } = {}) =
   const [plannerDays, setPlannerDays] = useState<PlannerDay[]>([]);
   const costingUndo = useUndoable<LeadCostingDay[]>([], {
     bindKeyboard: activeTab === 'custos',
-    onUndo: () => toast.info('Alteração desfeita', { description: 'Ctrl+Shift+Z para refazer' }),
-    onRedo: () => toast.info('Alteração refeita'),
+    onUndo: () => sonnerToast.info('Alteração desfeita', { description: 'Ctrl+Shift+Z para refazer' }),
+    onRedo: () => sonnerToast.info('Alteração refeita'),
   });
   const costingDays = costingUndo.state;
   const setCostingDays = costingUndo.set;
