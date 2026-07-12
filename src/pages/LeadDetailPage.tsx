@@ -913,6 +913,35 @@ const LeadDetailPage = ({ mode = 'lead' }: { mode?: 'lead' | 'booking' } = {}) =
     }
   }, [lead, formState, leadStatus, destino, categoria, travelStyles, origem, activeVersion, updateLeadMutation, toast]);
 
+  // Dirty tracking — deteta alterações por gravar no formulário / tags / versão
+  const isDirty = useMemo(() => {
+    if (!lead) return false;
+    const l: any = lead;
+    if ((l.yt_id || '') !== formState.ytId) return true;
+    if ((l.client_name || '') !== formState.clientName) return true;
+    if ((l.email || '') !== formState.email) return true;
+    if ((l.phone || '') !== formState.phone) return true;
+    if ((l.travel_dates || '') !== formState.travelDates) return true;
+    if ((l.travel_end_date || '') !== formState.travelEndDate) return true;
+    if ((l.number_of_days || 0) !== formState.numberOfDays) return true;
+    if ((l.dates_type || 'estimated') !== formState.datesType) return true;
+    if ((l.pax || 2) !== formState.pax) return true;
+    if ((l.pax_children || 0) !== formState.paxChildren) return true;
+    if ((l.pax_infants || 0) !== formState.paxInfants) return true;
+    if ((l.budget_level || '') !== formState.budgetLevel) return true;
+    if ((l.notes || '') !== formState.notes) return true;
+    if ((l.sales_owner || '') !== formState.salesOwner) return true;
+    if ((l.comfort_level || '') !== (categoria[0] || '')) return true;
+    const savedDest = (l.destination ? String(l.destination).split(', ').filter(Boolean) : []).join('|');
+    if (savedDest !== destino.join('|')) return true;
+    const savedStyles = Array.isArray(l.travel_style) ? l.travel_style.join('|') : '';
+    if (savedStyles !== travelStyles.join('|')) return true;
+    if ((l.active_version || 0) !== activeVersion) return true;
+    return false;
+  }, [lead, formState, categoria, destino, travelStyles, activeVersion]);
+
+  const guard = useUnsavedChangesGuard(isDirty, handleSave);
+
   const handleDuplicate = useCallback(async () => {
     if (!lead) return;
     try {
