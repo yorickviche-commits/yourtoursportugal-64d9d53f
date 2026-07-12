@@ -20,7 +20,7 @@ interface Integration {
 }
 
 const INTEGRATION_ICONS: Record<string, string> = {
-  wetravel: '🌍', nethunt: '📋', stripe: '💳', email_service: '✉️',
+  wetravel: '🌍', nethunt: '📋', stripe: '💳', email_service: '✉️', google_calendar: '📅',
 };
 
 const AdminIntegrationsPage = () => {
