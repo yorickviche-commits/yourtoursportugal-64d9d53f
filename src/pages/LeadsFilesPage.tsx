@@ -151,6 +151,7 @@ const LeadsFilesPage = () => {
                   <th className="text-center px-2 py-2.5 font-medium text-muted-foreground text-xs">Pax</th>
                   <th className="text-right px-3 py-2.5 font-medium text-muted-foreground text-xs">PVP / Margem</th>
                   <th className="text-left px-3 py-2.5 font-medium text-muted-foreground text-xs">Data Criação</th>
+                  <th className="text-left px-3 py-2.5 font-medium text-muted-foreground text-xs">Agentes</th>
                   <th className="text-center px-3 py-2.5 font-medium text-muted-foreground text-xs">Estado</th>
                   <th className="text-center px-2 py-2.5 font-medium text-muted-foreground text-xs">Ver</th>
                 </tr>
