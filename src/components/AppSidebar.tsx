@@ -235,16 +235,19 @@ const MobileMenu = ({ open, onClose }: { open: boolean; onClose: () => void }) =
     </NavLink>
   );
 
-  const renderGroup = (label: string, items: NavItem[], groupOpen: boolean, setGroupOpen: (v: boolean) => void) => (
-    <div>
-      <button onClick={() => setGroupOpen(!groupOpen)}
-        className="flex items-center justify-between w-full px-4 py-2 text-xs uppercase text-muted-foreground font-semibold tracking-wider">
-        {label}
-        {groupOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
-      </button>
-      {groupOpen && <div className="space-y-0.5">{items.map(renderItem)}</div>}
-    </div>
-  );
+  const renderGroup = (label: string, items: NavItem[], groupOpen: boolean, setGroupOpen: (v: boolean) => void) => {
+    if (items.length === 0) return null;
+    return (
+      <div>
+        <button onClick={() => setGroupOpen(!groupOpen)}
+          className="flex items-center justify-between w-full px-4 py-2 text-xs uppercase text-muted-foreground font-semibold tracking-wider">
+          {label}
+          {groupOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+        </button>
+        {groupOpen && <div className="space-y-0.5">{items.map(renderItem)}</div>}
+      </div>
+    );
+  };
 
   return (
     <div className="fixed inset-0 z-50 bg-background/95 backdrop-blur-sm flex flex-col">
