@@ -1,5 +1,6 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
-import { Sparkles, RefreshCw, Save, FileText, ArrowRight, Loader2, Edit3, Eye, AlertTriangle, Clock, Plus, X, Send, MessageSquare, ChevronDown, CreditCard } from 'lucide-react';
+import { Sparkles, RefreshCw, Save, FileText, ArrowRight, Loader2, Edit3, Eye, AlertTriangle, Clock, Plus, X, Send, MessageSquare, ChevronDown, CreditCard, GripVertical } from 'lucide-react';
+import { DragDropContext, Droppable, Draggable, type DropResult } from '@hello-pangea/dnd';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -953,6 +954,20 @@ const TravelPlanProposal = ({
     setPlan({ ...plan, days: newDays });
   };
 
+  const onBulletDragEnd = (result: DropResult) => {
+    if (!plan) return;
+    const { source, destination } = result;
+    if (!destination) return;
+    if (source.droppableId === destination.droppableId && source.index === destination.index) return;
+    const srcDay = parseInt(source.droppableId.replace('day-', ''), 10);
+    const dstDay = parseInt(destination.droppableId.replace('day-', ''), 10);
+    if (isNaN(srcDay) || isNaN(dstDay)) return;
+    const newDays = plan.days.map(d => ({ ...d, bullets: [...d.bullets] }));
+    const [moved] = newDays[srcDay].bullets.splice(source.index, 1);
+    newDays[dstDay].bullets.splice(destination.index, 0, moved);
+    setPlan({ ...plan, days: newDays });
+  };
+
   const toggleChat = (section: string) => {
     setActiveChat(prev => prev === section ? null : section);
   };
@@ -1209,7 +1224,9 @@ const TravelPlanProposal = ({
         )}
 
         {/* FULL DAY-BY-DAY */}
+        <DragDropContext onDragEnd={onBulletDragEnd}>
         <div className="divide-y">
+
           {displayPlan.days.map((day, dayIdx) => {
             const dayDuration = getDayDuration(day);
             const chatKey = `day_${day.day_number}`;
@@ -1250,27 +1267,49 @@ const TravelPlanProposal = ({
                           <span className="w-16 text-center">Fim</span>
                           <span className="w-5" />
                         </div>
-                        {day.bullets.map((bullet, bi) => {
-                          const obj = toBulletObj(bullet);
-                          return (
-                            <div key={bi} className="flex items-center gap-1.5">
-                              <span className="text-xs text-muted-foreground w-4 text-center shrink-0">{bi + 1}.</span>
-                              <Input className="h-7 text-xs flex-1" value={obj.text}
-                                onChange={e => updateBulletField(dayIdx, bi, 'text', e.target.value)} placeholder="Experience..." />
-                              <DurationSelector
-                                value={obj.durationValue}
-                                unit={obj.durationUnit || 'hours'}
-                                onValueChange={v => updateBulletField(dayIdx, bi, 'durationValue', v)}
-                                onUnitChange={u => updateBulletField(dayIdx, bi, 'durationUnit', u)}
-                              />
-                              <Input className="h-7 text-xs w-16" value={obj.startTime || ''} type="time"
-                                onChange={e => updateBulletField(dayIdx, bi, 'startTime', e.target.value)} />
-                              <Input className="h-7 text-xs w-16" value={obj.endTime || ''} type="time"
-                                onChange={e => updateBulletField(dayIdx, bi, 'endTime', e.target.value)} />
-                              <button onClick={() => removeBullet(dayIdx, bi)} className="text-destructive hover:text-destructive/80 shrink-0"><X className="h-3 w-3" /></button>
+                        <Droppable droppableId={`day-${dayIdx}`}>
+                          {(dropProvided, dropSnapshot) => (
+                            <div
+                              ref={dropProvided.innerRef}
+                              {...dropProvided.droppableProps}
+                              className={cn("space-y-1.5 rounded transition-colors", dropSnapshot.isDraggingOver && "bg-[hsl(var(--info)/0.06)]")}
+                            >
+                              {day.bullets.map((bullet, bi) => {
+                                const obj = toBulletObj(bullet);
+                                return (
+                                  <Draggable key={bi} draggableId={`d${dayIdx}-b${bi}`} index={bi}>
+                                    {(dragProvided, dragSnapshot) => (
+                                      <div
+                                        ref={dragProvided.innerRef}
+                                        {...dragProvided.draggableProps}
+                                        className={cn("flex items-center gap-1.5 bg-background", dragSnapshot.isDragging && "shadow-lg ring-1 ring-[hsl(var(--info)/0.3)] rounded")}
+                                      >
+                                        <span {...dragProvided.dragHandleProps} className="text-muted-foreground/50 hover:text-[hsl(var(--info))] cursor-grab active:cursor-grabbing shrink-0" title="Arrastar">
+                                          <GripVertical className="h-3.5 w-3.5" />
+                                        </span>
+                                        <span className="text-xs text-muted-foreground w-4 text-center shrink-0">{bi + 1}.</span>
+                                        <Input className="h-7 text-xs flex-1" value={obj.text}
+                                          onChange={e => updateBulletField(dayIdx, bi, 'text', e.target.value)} placeholder="Experience..." />
+                                        <DurationSelector
+                                          value={obj.durationValue}
+                                          unit={obj.durationUnit || 'hours'}
+                                          onValueChange={v => updateBulletField(dayIdx, bi, 'durationValue', v)}
+                                          onUnitChange={u => updateBulletField(dayIdx, bi, 'durationUnit', u)}
+                                        />
+                                        <Input className="h-7 text-xs w-16" value={obj.startTime || ''} type="time"
+                                          onChange={e => updateBulletField(dayIdx, bi, 'startTime', e.target.value)} />
+                                        <Input className="h-7 text-xs w-16" value={obj.endTime || ''} type="time"
+                                          onChange={e => updateBulletField(dayIdx, bi, 'endTime', e.target.value)} />
+                                        <button onClick={() => removeBullet(dayIdx, bi)} className="text-destructive hover:text-destructive/80 shrink-0"><X className="h-3 w-3" /></button>
+                                      </div>
+                                    )}
+                                  </Draggable>
+                                );
+                              })}
+                              {dropProvided.placeholder}
                             </div>
-                          );
-                        })}
+                          )}
+                        </Droppable>
                         <button onClick={() => addBullet(dayIdx)} className="text-[10px] text-[hsl(var(--info))] hover:underline flex items-center gap-1">
                           <Plus className="h-3 w-3" /> Adicionar item
                         </button>
@@ -1389,6 +1428,8 @@ const TravelPlanProposal = ({
             );
           })}
         </div>
+        </DragDropContext>
+
 
         {/* PRICING & CONDITIONS — Client-facing closing section */}
         <div className="border-t-2 border-slate-200 bg-slate-50 p-6 md:p-10 space-y-6 print:break-before-page">

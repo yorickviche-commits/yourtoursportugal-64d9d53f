@@ -1,5 +1,6 @@
 import { useState, useMemo, useCallback } from 'react';
-import { ChevronDown, ChevronRight, Plus, CheckCircle2, MinusCircle, XCircle, Sparkles, Pencil, Trash2, Save, Loader2, Wand2 } from 'lucide-react';
+import { ChevronDown, ChevronRight, Plus, CheckCircle2, MinusCircle, XCircle, Sparkles, Pencil, Trash2, Save, Loader2, Wand2, GripVertical } from 'lucide-react';
+import { DragDropContext, Droppable, Draggable, type DropResult } from '@hello-pangea/dnd';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -351,6 +352,19 @@ const LeadCostingEditor = ({ costingDays, onChange, onSave, saving, plannerDays,
     onChange(updated);
   };
 
+  const onCostDragEnd = (result: DropResult) => {
+    const { source, destination } = result;
+    if (!destination) return;
+    if (source.droppableId === destination.droppableId && source.index === destination.index) return;
+    const srcDay = parseInt(source.droppableId.replace('cost-day-', ''), 10);
+    const dstDay = parseInt(destination.droppableId.replace('cost-day-', ''), 10);
+    if (isNaN(srcDay) || isNaN(dstDay)) return;
+    const updated = costingDays.map(d => ({ ...d, items: [...d.items] }));
+    const [moved] = updated[srcDay].items.splice(source.index, 1);
+    updated[dstDay].items.splice(destination.index, 0, moved);
+    onChange(updated);
+  };
+
   // Auto-Fulfill Budget via AI
   const autoFulfillBudget = async () => {
     const allItems = costingDays.flatMap((d, di) => 
@@ -497,6 +511,7 @@ const LeadCostingEditor = ({ costingDays, onChange, onSave, saving, plannerDays,
       )}
 
       {/* Days */}
+      <DragDropContext onDragEnd={onCostDragEnd}>
       <div className="bg-card rounded-lg border overflow-hidden divide-y">
         {costingDays.map((day, dayIdx) => {
           const expanded = expandedDays.includes(day.day);
@@ -532,6 +547,7 @@ const LeadCostingEditor = ({ costingDays, onChange, onSave, saving, plannerDays,
                     <table className="w-full text-[10px]">
                       <thead>
                         <tr className="bg-muted/30 text-muted-foreground uppercase">
+                          <th className="w-[18px]"></th>
                           <th className="text-left px-1.5 py-1.5 font-medium w-[50px]">Camada</th>
                           <th className="text-left px-1.5 py-1.5 font-medium min-w-[140px]">Atividade</th>
                           <th className="text-left px-1.5 py-1.5 font-medium w-[110px]">Fornecedor</th>
@@ -547,89 +563,117 @@ const LeadCostingEditor = ({ costingDays, onChange, onSave, saving, plannerDays,
                           <th className="w-[55px]"></th>
                         </tr>
                       </thead>
-                      <tbody>
-                        {day.items.map((item, itemIdx) => {
-                          const statusCfg = STATUS_OPTIONS.find(s => s.value === item.status) || STATUS_OPTIONS[0];
-                          const StatusIcon = statusCfg.icon;
-                          const isDeleted = item.status === 'eliminar';
-                          const layer = item.costLayer && LAYER_CONFIG[item.costLayer] ? LAYER_CONFIG[item.costLayer] : null;
+                      <Droppable droppableId={`cost-day-${dayIdx}`}>
+                        {(dropProvided, dropSnapshot) => (
+                          <tbody
+                            ref={dropProvided.innerRef}
+                            {...dropProvided.droppableProps}
+                            className={cn(dropSnapshot.isDraggingOver && "bg-[hsl(var(--info)/0.05)]")}
+                          >
+                            {day.items.map((item, itemIdx) => {
+                              const statusCfg = STATUS_OPTIONS.find(s => s.value === item.status) || STATUS_OPTIONS[0];
+                              const StatusIcon = statusCfg.icon;
+                              const isDeleted = item.status === 'eliminar';
+                              const layer = item.costLayer && LAYER_CONFIG[item.costLayer] ? LAYER_CONFIG[item.costLayer] : null;
 
-                          return (
-                            <tr key={item.id} className={cn("border-t border-border/30 hover:bg-muted/10 transition-colors", isDeleted && "opacity-40 line-through")}>
-                              <td className="px-1 py-1">
-                                {layer ? (
-                                  <span className={cn("inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[9px] font-medium", layer.bg, layer.text)} title={layer.label}>
-                                    {layer.emoji}
-                                    {item.isFixedRate && <span className="ml-0.5 text-[8px]">🔒</span>}
-                                    {item.isProtocol && <span className="ml-0.5 text-[8px]">✓</span>}
-                                  </span>
-                                ) : <span className="text-[9px] text-muted-foreground">—</span>}
-                              </td>
-                              <td className="px-1 py-1">
-                                <Input className="h-7 text-xs border-0 bg-transparent shadow-none focus-visible:ring-1 px-1" defaultValue={item.description} onBlur={e => updateItem(dayIdx, itemIdx, { description: e.target.value })} placeholder="Atividade..." />
-                              </td>
-                              <td className="px-1 py-1">
-                                <SupplierSearchDropdown value={item.supplier} onChange={v => updateItem(dayIdx, itemIdx, { supplier: v })} />
-                              </td>
-                              <td className="px-1 py-1">
-                                <Select defaultValue={item.pricingType} onValueChange={v => updateItem(dayIdx, itemIdx, { pricingType: v as any })}>
-                                  <SelectTrigger className="h-7 text-[10px] border-0 bg-transparent shadow-none"><SelectValue /></SelectTrigger>
-                                  <SelectContent>
-                                    <SelectItem value="total" className="text-xs">TOTAL</SelectItem>
-                                    <SelectItem value="per_person" className="text-xs">POR PESSOA</SelectItem>
-                                  </SelectContent>
-                                </Select>
-                              </td>
-                              <td className="px-1 py-1">
-                                <Input className="h-7 text-xs text-center border-0 bg-muted/30 shadow-none focus-visible:ring-1 px-1" type="number" defaultValue={item.numAdults} onBlur={e => updateItem(dayIdx, itemIdx, { numAdults: Number(e.target.value) })} />
-                              </td>
-                              <td className="px-1 py-1">
-                                <Input className="h-7 text-xs text-center border-0 bg-muted/30 shadow-none focus-visible:ring-1 px-1" type="number" defaultValue={item.priceAdults} onBlur={e => updateItem(dayIdx, itemIdx, { priceAdults: Number(e.target.value) })} />
-                              </td>
-                              <td className="px-1 py-1">
-                                <Input className="h-7 text-xs text-center border-0 bg-muted/30 shadow-none focus-visible:ring-1 px-1" type="number" defaultValue={item.numChildren} onBlur={e => updateItem(dayIdx, itemIdx, { numChildren: Number(e.target.value) })} />
-                              </td>
-                              <td className="px-1 py-1">
-                                <Input className="h-7 text-xs text-center border-0 bg-muted/30 shadow-none focus-visible:ring-1 px-1" type="number" defaultValue={item.priceChildren} onBlur={e => updateItem(dayIdx, itemIdx, { priceChildren: Number(e.target.value) })} />
-                              </td>
-                              <td className="px-1 py-1 text-center text-xs font-semibold">{item.netTotal.toFixed(0)}€</td>
-                              <td className="px-1 py-1">
-                                <Input className="h-7 text-xs text-center border-0 bg-transparent shadow-none focus-visible:ring-1 px-1" type="number" defaultValue={item.marginPercent} onBlur={e => updateItem(dayIdx, itemIdx, { marginPercent: Number(e.target.value) })} />
-                              </td>
-                              <td className="px-1 py-1 text-center text-xs font-medium">{item.pvpTotal.toFixed(1)}</td>
-                              <td className="px-1 py-1 text-center text-xs font-medium text-[hsl(var(--success))]">{item.profit.toFixed(1)}</td>
-                              <td className="px-1 py-1">
-                                <div className="flex items-center gap-0.5">
-                                  <Select defaultValue={item.status} onValueChange={v => updateItem(dayIdx, itemIdx, { status: v as any })}>
-                                    <SelectTrigger className="h-6 w-auto text-[10px] border-0 bg-transparent shadow-none gap-0 px-0.5">
-                                      <StatusIcon className={cn("h-3.5 w-3.5", statusCfg.className)} />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                      {STATUS_OPTIONS.map(opt => (
-                                        <SelectItem key={opt.value} value={opt.value} className="text-xs">
-                                          <div className="flex items-center gap-1.5">
-                                            <opt.icon className={cn("h-3.5 w-3.5", opt.className)} />
-                                            {opt.label}
-                                          </div>
-                                        </SelectItem>
-                                      ))}
-                                    </SelectContent>
-                                  </Select>
-                                  <CostNoteDialog
-                                    item={item}
-                                    onUpdate={(notes) => updateItem(dayIdx, itemIdx, { notes })}
-                                  />
-                                  <button onClick={() => removeItem(dayIdx, itemIdx)} className="p-0.5 text-destructive/50 hover:text-destructive transition-colors">
-                                    <Trash2 className="h-3 w-3" />
-                                  </button>
-                                </div>
-                              </td>
-                            </tr>
-                          );
-                        })}
-                      </tbody>
+                              return (
+                                <Draggable key={item.id} draggableId={item.id} index={itemIdx}>
+                                  {(dragProvided, dragSnapshot) => (
+                                    <tr
+                                      ref={dragProvided.innerRef}
+                                      {...dragProvided.draggableProps}
+                                      style={dragProvided.draggableProps.style}
+                                      className={cn(
+                                        "border-t border-border/30 hover:bg-muted/10 transition-colors",
+                                        isDeleted && "opacity-40 line-through",
+                                        dragSnapshot.isDragging && "bg-background shadow-lg ring-1 ring-[hsl(var(--info)/0.3)]",
+                                      )}
+                                    >
+                                      <td className="px-0.5 py-1 align-middle">
+                                        <span {...dragProvided.dragHandleProps} className="flex items-center justify-center text-muted-foreground/50 hover:text-[hsl(var(--info))] cursor-grab active:cursor-grabbing" title="Arrastar">
+                                          <GripVertical className="h-3.5 w-3.5" />
+                                        </span>
+                                      </td>
+                                      <td className="px-1 py-1">
+                                        {layer ? (
+                                          <span className={cn("inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[9px] font-medium", layer.bg, layer.text)} title={layer.label}>
+                                            {layer.emoji}
+                                            {item.isFixedRate && <span className="ml-0.5 text-[8px]">🔒</span>}
+                                            {item.isProtocol && <span className="ml-0.5 text-[8px]">✓</span>}
+                                          </span>
+                                        ) : <span className="text-[9px] text-muted-foreground">—</span>}
+                                      </td>
+                                      <td className="px-1 py-1">
+                                        <Input className="h-7 text-xs border-0 bg-transparent shadow-none focus-visible:ring-1 px-1" defaultValue={item.description} onBlur={e => updateItem(dayIdx, itemIdx, { description: e.target.value })} placeholder="Atividade..." />
+                                      </td>
+                                      <td className="px-1 py-1">
+                                        <SupplierSearchDropdown value={item.supplier} onChange={v => updateItem(dayIdx, itemIdx, { supplier: v })} />
+                                      </td>
+                                      <td className="px-1 py-1">
+                                        <Select defaultValue={item.pricingType} onValueChange={v => updateItem(dayIdx, itemIdx, { pricingType: v as any })}>
+                                          <SelectTrigger className="h-7 text-[10px] border-0 bg-transparent shadow-none"><SelectValue /></SelectTrigger>
+                                          <SelectContent>
+                                            <SelectItem value="total" className="text-xs">TOTAL</SelectItem>
+                                            <SelectItem value="per_person" className="text-xs">POR PESSOA</SelectItem>
+                                          </SelectContent>
+                                        </Select>
+                                      </td>
+                                      <td className="px-1 py-1">
+                                        <Input className="h-7 text-xs text-center border-0 bg-muted/30 shadow-none focus-visible:ring-1 px-1" type="number" defaultValue={item.numAdults} onBlur={e => updateItem(dayIdx, itemIdx, { numAdults: Number(e.target.value) })} />
+                                      </td>
+                                      <td className="px-1 py-1">
+                                        <Input className="h-7 text-xs text-center border-0 bg-muted/30 shadow-none focus-visible:ring-1 px-1" type="number" defaultValue={item.priceAdults} onBlur={e => updateItem(dayIdx, itemIdx, { priceAdults: Number(e.target.value) })} />
+                                      </td>
+                                      <td className="px-1 py-1">
+                                        <Input className="h-7 text-xs text-center border-0 bg-muted/30 shadow-none focus-visible:ring-1 px-1" type="number" defaultValue={item.numChildren} onBlur={e => updateItem(dayIdx, itemIdx, { numChildren: Number(e.target.value) })} />
+                                      </td>
+                                      <td className="px-1 py-1">
+                                        <Input className="h-7 text-xs text-center border-0 bg-muted/30 shadow-none focus-visible:ring-1 px-1" type="number" defaultValue={item.priceChildren} onBlur={e => updateItem(dayIdx, itemIdx, { priceChildren: Number(e.target.value) })} />
+                                      </td>
+                                      <td className="px-1 py-1 text-center text-xs font-semibold">{item.netTotal.toFixed(0)}€</td>
+                                      <td className="px-1 py-1">
+                                        <Input className="h-7 text-xs text-center border-0 bg-transparent shadow-none focus-visible:ring-1 px-1" type="number" defaultValue={item.marginPercent} onBlur={e => updateItem(dayIdx, itemIdx, { marginPercent: Number(e.target.value) })} />
+                                      </td>
+                                      <td className="px-1 py-1 text-center text-xs font-medium">{item.pvpTotal.toFixed(1)}</td>
+                                      <td className="px-1 py-1 text-center text-xs font-medium text-[hsl(var(--success))]">{item.profit.toFixed(1)}</td>
+                                      <td className="px-1 py-1">
+                                        <div className="flex items-center gap-0.5">
+                                          <Select defaultValue={item.status} onValueChange={v => updateItem(dayIdx, itemIdx, { status: v as any })}>
+                                            <SelectTrigger className="h-6 w-auto text-[10px] border-0 bg-transparent shadow-none gap-0 px-0.5">
+                                              <StatusIcon className={cn("h-3.5 w-3.5", statusCfg.className)} />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                              {STATUS_OPTIONS.map(opt => (
+                                                <SelectItem key={opt.value} value={opt.value} className="text-xs">
+                                                  <div className="flex items-center gap-1.5">
+                                                    <opt.icon className={cn("h-3.5 w-3.5", opt.className)} />
+                                                    {opt.label}
+                                                  </div>
+                                                </SelectItem>
+                                              ))}
+                                            </SelectContent>
+                                          </Select>
+                                          <CostNoteDialog
+                                            item={item}
+                                            onUpdate={(notes) => updateItem(dayIdx, itemIdx, { notes })}
+                                          />
+                                          <button onClick={() => removeItem(dayIdx, itemIdx)} className="p-0.5 text-destructive/50 hover:text-destructive transition-colors">
+                                            <Trash2 className="h-3 w-3" />
+                                          </button>
+                                        </div>
+                                      </td>
+                                    </tr>
+                                  )}
+                                </Draggable>
+                              );
+                            })}
+                            {dropProvided.placeholder}
+                          </tbody>
+                        )}
+                      </Droppable>
                     </table>
                   </div>
+
 
                   {/* Day Subtotals */}
                   {dayActiveItems.length > 0 && (
@@ -658,6 +702,9 @@ const LeadCostingEditor = ({ costingDays, onChange, onSave, saving, plannerDays,
           );
         })}
       </div>
+      </DragDropContext>
+
+
 
       {/* Grand Totals — editable & dynamic (NET read-only) */}
       {activeItems.length > 0 && (
