@@ -547,6 +547,7 @@ const LeadCostingEditor = ({ costingDays, onChange, onSave, saving, plannerDays,
                     <table className="w-full text-[10px]">
                       <thead>
                         <tr className="bg-muted/30 text-muted-foreground uppercase">
+                          <th className="w-[18px]"></th>
                           <th className="text-left px-1.5 py-1.5 font-medium w-[50px]">Camada</th>
                           <th className="text-left px-1.5 py-1.5 font-medium min-w-[140px]">Atividade</th>
                           <th className="text-left px-1.5 py-1.5 font-medium w-[110px]">Fornecedor</th>
