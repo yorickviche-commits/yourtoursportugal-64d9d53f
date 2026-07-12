@@ -1,6 +1,8 @@
 import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
-import { Loader2 } from 'lucide-react';
+import { usePagePermissions } from '@/hooks/usePagePermissions';
+import { resolvePageKey } from '@/lib/pagePermissions';
+import { Loader2, ShieldAlert } from 'lucide-react';
 import BrandLogo from './BrandLogo';
 
 interface ProtectedRouteProps {
@@ -11,6 +13,7 @@ interface ProtectedRouteProps {
 
 const ProtectedRoute = ({ children, adminOnly = false }: ProtectedRouteProps) => {
   const { user, loading, isAdmin } = useAuth();
+  const { canAccess, loading: permLoading } = usePagePermissions();
   const location = useLocation();
 
   if (loading) {
@@ -24,6 +27,21 @@ const ProtectedRoute = ({ children, adminOnly = false }: ProtectedRouteProps) =>
 
   if (!user) return <Navigate to="/login" replace state={{ from: location.pathname + location.search }} />;
   if (adminOnly && !isAdmin) return <Navigate to="/" replace />;
+
+  // Enforce page-level permissions matrix (skips admins).
+  const pageKey = resolvePageKey(location.pathname);
+  if (pageKey && !permLoading && !canAccess(pageKey)) {
+    return (
+      <div className="flex h-screen flex-col items-center justify-center gap-3 bg-background p-6 text-center">
+        <ShieldAlert className="h-10 w-10 text-destructive" />
+        <h1 className="text-lg font-semibold">Sem acesso a esta página</h1>
+        <p className="text-sm text-muted-foreground max-w-md">
+          O teu papel atual não tem permissão para <code className="bg-muted px-1 rounded">{location.pathname}</code>.
+          Pede a um administrador para atualizar as permissões em <strong>Administração › Permissões</strong>.
+        </p>
+      </div>
+    );
+  }
 
   return <>{children}</>;
 };

@@ -11,40 +11,43 @@ import { useAuth } from '@/hooks/useAuth';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useUnreadNotificationCount } from '@/hooks/useAgentNotifications';
 import { useAgentPendingActions } from '@/hooks/useAgentPendingActions';
+import { usePagePermissions } from '@/hooks/usePagePermissions';
+import { PageKey } from '@/lib/pagePermissions';
 import BrandLogo from './BrandLogo';
 
-interface NavItem { to: string; icon: any; label: string; }
+interface NavItem { to: string; icon: any; label: string; pageKey: PageKey; }
 
 const overviewItems: NavItem[] = [
-  { to: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
+  { to: '/dashboard', icon: LayoutDashboard, label: 'Dashboard', pageKey: 'dashboard' },
 ];
 
 const reservasItems: NavItem[] = [
-  { to: '/leads', icon: Users, label: 'Leads & Files' },
-  { to: '/trips', icon: Map, label: 'Bookings & Reservas' },
-  { to: '/proposals', icon: FileText, label: 'Propostas' },
-  { to: '/payments', icon: CreditCard, label: 'Pagamentos' },
-  { to: '/crm', icon: Inbox, label: 'CRM / Comunicação' },
+  { to: '/leads', icon: Users, label: 'Leads & Files', pageKey: 'leads' },
+  { to: '/trips', icon: Map, label: 'Bookings & Reservas', pageKey: 'trips' },
+  { to: '/proposals', icon: FileText, label: 'Propostas', pageKey: 'proposals' },
+  { to: '/payments', icon: CreditCard, label: 'Pagamentos', pageKey: 'payments' },
+  { to: '/crm', icon: Inbox, label: 'CRM / Comunicação', pageKey: 'crm' },
 ];
 
 const comercialItems: NavItem[] = [
-  { to: '/comercial/matriz', icon: Grid3x3, label: 'Matriz FSE' },
-  { to: '/comercial/suppliers', icon: Truck, label: 'Fornecedores' },
-  { to: '/partners', icon: Handshake, label: 'Parceiros B2B' },
+  { to: '/comercial/matriz', icon: Grid3x3, label: 'Matriz FSE', pageKey: 'comercial_matriz' },
+  { to: '/comercial/suppliers', icon: Truck, label: 'Fornecedores', pageKey: 'comercial_suppliers' },
+  { to: '/partners', icon: Handshake, label: 'Parceiros B2B', pageKey: 'partners' },
 ];
 
 const adminItems: NavItem[] = [
-  { to: '/admin/users', icon: Users, label: 'Utilizadores' },
-  { to: '/admin/permissions', icon: Shield, label: 'Permissões' },
-  { to: '/admin/settings', icon: Settings, label: 'Configurações' },
-  { to: '/admin/integrations', icon: Plug, label: 'Integrações' },
-  { to: '/admin/kpi', icon: BarChart3, label: 'KPI' },
-  { to: '/admin/logs', icon: ScrollText, label: 'Logs' },
+  { to: '/admin/users', icon: Users, label: 'Utilizadores', pageKey: 'admin_users' },
+  { to: '/admin/permissions', icon: Shield, label: 'Permissões', pageKey: 'admin_permissions' },
+  { to: '/admin/settings', icon: Settings, label: 'Configurações', pageKey: 'admin_settings' },
+  { to: '/admin/integrations', icon: Plug, label: 'Integrações', pageKey: 'admin_integrations' },
+  { to: '/admin/kpi', icon: BarChart3, label: 'KPI', pageKey: 'admin_kpi' },
+  { to: '/admin/logs', icon: ScrollText, label: 'Logs', pageKey: 'admin_logs' },
 ];
 
 const DesktopSidebar = () => {
   const location = useLocation();
   const { profile, signOut } = useAuth();
+  const { canAccess } = usePagePermissions();
   const [hovered, setHovered] = useState(false);
   const [overviewOpen, setOverviewOpen] = useState(true);
   const [reservasOpen, setReservasOpen] = useState(true);
@@ -55,6 +58,13 @@ const DesktopSidebar = () => {
   const pendingActions = actions.filter(a => a.status === 'pending').length;
   const totalBadge = unreadCount + pendingActions;
   const expanded = hovered;
+
+  const filter = (items: NavItem[]) => items.filter(i => canAccess(i.pageKey));
+  const visibleOverview = filter(overviewItems);
+  const visibleReservas = filter(reservasItems);
+  const visibleComercial = filter(comercialItems);
+  const visibleAdmin = filter(adminItems);
+  const showAgents = canAccess('agents');
 
   const initials = profile?.full_name
     ? profile.full_name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()
@@ -80,18 +90,21 @@ const DesktopSidebar = () => {
     );
   };
 
-  const renderGroup = (label: string, items: NavItem[], open: boolean, setOpen: (v: boolean) => void) => (
-    <div>
-      {expanded ? (
-        <button onClick={() => setOpen(!open)}
-          className="flex items-center justify-between w-full px-3 py-1.5 text-[10px] uppercase text-sidebar-muted font-semibold tracking-wider hover:text-sidebar-foreground transition-colors">
-          {label}
-          {open ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
-        </button>
-      ) : <div className="border-t border-sidebar-border my-2" />}
-      {(expanded ? open : true) && <div className="space-y-0.5">{items.map(renderNavItem)}</div>}
-    </div>
-  );
+  const renderGroup = (label: string, items: NavItem[], open: boolean, setOpen: (v: boolean) => void) => {
+    if (items.length === 0) return null;
+    return (
+      <div>
+        {expanded ? (
+          <button onClick={() => setOpen(!open)}
+            className="flex items-center justify-between w-full px-3 py-1.5 text-[10px] uppercase text-sidebar-muted font-semibold tracking-wider hover:text-sidebar-foreground transition-colors">
+            {label}
+            {open ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
+          </button>
+        ) : <div className="border-t border-sidebar-border my-2" />}
+        {(expanded ? open : true) && <div className="space-y-0.5">{items.map(renderNavItem)}</div>}
+      </div>
+    );
+  };
 
   const agentActive = isActive('/agents');
 
@@ -111,43 +124,47 @@ const DesktopSidebar = () => {
       </div>
 
       <nav className="flex-1 py-3 px-2 space-y-1 overflow-y-auto">
-        {renderGroup('Visão Geral', overviewItems, overviewOpen, setOverviewOpen)}
-        {renderGroup('Dep. Reservas', reservasItems, reservasOpen, setReservasOpen)}
-        {renderGroup('Comercial', comercialItems, comercialOpen, setComercialOpen)}
-        {renderGroup('Administração', adminItems, adminOpen, setAdminOpen)}
+        {renderGroup('Visão Geral', visibleOverview, overviewOpen, setOverviewOpen)}
+        {renderGroup('Dep. Reservas', visibleReservas, reservasOpen, setReservasOpen)}
+        {renderGroup('Comercial', visibleComercial, comercialOpen, setComercialOpen)}
+        {renderGroup('Administração', visibleAdmin, adminOpen, setAdminOpen)}
 
-        {expanded
-          ? <p className="px-3 py-1.5 text-[10px] uppercase text-sidebar-muted font-semibold tracking-wider mt-2">AI Agents</p>
-          : <div className="border-t border-sidebar-border my-2" />
-        }
+        {showAgents && (
+          <>
+            {expanded
+              ? <p className="px-3 py-1.5 text-[10px] uppercase text-sidebar-muted font-semibold tracking-wider mt-2">AI Agents</p>
+              : <div className="border-t border-sidebar-border my-2" />
+            }
 
-        <NavLink to="/agents" title="Spark Agent Center"
-          className={cn(
-            'flex items-center gap-3 rounded-md text-sm transition-colors relative',
-            expanded ? 'px-3 py-2' : 'justify-center px-2 py-2',
-            agentActive ? 'bg-sidebar-accent text-sidebar-accent-foreground font-medium'
-                        : 'text-sidebar-foreground hover:bg-sidebar-accent/50'
-          )}
-        >
-          <div className="relative shrink-0">
-            <Sparkles className="h-4 w-4 text-violet-400" />
-            {!expanded && totalBadge > 0 && (
-              <span className="absolute -top-1 -right-1 h-3.5 w-3.5 rounded-full bg-violet-500 text-white text-[8px] font-bold flex items-center justify-center">
-                {totalBadge > 9 ? '9+' : totalBadge}
-              </span>
-            )}
-          </div>
-          {expanded && (
-            <>
-              <span className="truncate text-xs">Spark · Agents</span>
-              {totalBadge > 0 && (
-                <span className="ml-auto text-[10px] bg-violet-500 text-white px-1.5 py-0.5 rounded-full font-bold">
-                  {totalBadge}
-                </span>
+            <NavLink to="/agents" title="Spark Agent Center"
+              className={cn(
+                'flex items-center gap-3 rounded-md text-sm transition-colors relative',
+                expanded ? 'px-3 py-2' : 'justify-center px-2 py-2',
+                agentActive ? 'bg-sidebar-accent text-sidebar-accent-foreground font-medium'
+                            : 'text-sidebar-foreground hover:bg-sidebar-accent/50'
               )}
-            </>
-          )}
-        </NavLink>
+            >
+              <div className="relative shrink-0">
+                <Sparkles className="h-4 w-4 text-violet-400" />
+                {!expanded && totalBadge > 0 && (
+                  <span className="absolute -top-1 -right-1 h-3.5 w-3.5 rounded-full bg-violet-500 text-white text-[8px] font-bold flex items-center justify-center">
+                    {totalBadge > 9 ? '9+' : totalBadge}
+                  </span>
+                )}
+              </div>
+              {expanded && (
+                <>
+                  <span className="truncate text-xs">Spark · Agents</span>
+                  {totalBadge > 0 && (
+                    <span className="ml-auto text-[10px] bg-violet-500 text-white px-1.5 py-0.5 rounded-full font-bold">
+                      {totalBadge}
+                    </span>
+                  )}
+                </>
+              )}
+            </NavLink>
+          </>
+        )}
       </nav>
 
       <div className={cn('border-t border-sidebar-border', expanded ? 'p-3' : 'p-2')}>
@@ -183,6 +200,7 @@ const DesktopSidebar = () => {
 const MobileMenu = ({ open, onClose }: { open: boolean; onClose: () => void }) => {
   const location = useLocation();
   const { profile, signOut } = useAuth();
+  const { canAccess } = usePagePermissions();
   const [overviewOpen, setOverviewOpen] = useState(true);
   const [reservasOpen, setReservasOpen] = useState(true);
   const [comercialOpen, setComercialOpen] = useState(false);
@@ -190,6 +208,12 @@ const MobileMenu = ({ open, onClose }: { open: boolean; onClose: () => void }) =
   const unreadCount = useUnreadNotificationCount();
   const { data: actions = [] } = useAgentPendingActions();
   const totalBadge = unreadCount + actions.filter(a => a.status === 'pending').length;
+  const filter = (items: NavItem[]) => items.filter(i => canAccess(i.pageKey));
+  const visibleOverview = filter(overviewItems);
+  const visibleReservas = filter(reservasItems);
+  const visibleComercial = filter(comercialItems);
+  const visibleAdmin = filter(adminItems);
+  const showAgents = canAccess('agents');
 
   const initials = profile?.full_name
     ? profile.full_name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()
@@ -211,16 +235,19 @@ const MobileMenu = ({ open, onClose }: { open: boolean; onClose: () => void }) =
     </NavLink>
   );
 
-  const renderGroup = (label: string, items: NavItem[], groupOpen: boolean, setGroupOpen: (v: boolean) => void) => (
-    <div>
-      <button onClick={() => setGroupOpen(!groupOpen)}
-        className="flex items-center justify-between w-full px-4 py-2 text-xs uppercase text-muted-foreground font-semibold tracking-wider">
-        {label}
-        {groupOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
-      </button>
-      {groupOpen && <div className="space-y-0.5">{items.map(renderItem)}</div>}
-    </div>
-  );
+  const renderGroup = (label: string, items: NavItem[], groupOpen: boolean, setGroupOpen: (v: boolean) => void) => {
+    if (items.length === 0) return null;
+    return (
+      <div>
+        <button onClick={() => setGroupOpen(!groupOpen)}
+          className="flex items-center justify-between w-full px-4 py-2 text-xs uppercase text-muted-foreground font-semibold tracking-wider">
+          {label}
+          {groupOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+        </button>
+        {groupOpen && <div className="space-y-0.5">{items.map(renderItem)}</div>}
+      </div>
+    );
+  };
 
   return (
     <div className="fixed inset-0 z-50 bg-background/95 backdrop-blur-sm flex flex-col">
@@ -229,25 +256,27 @@ const MobileMenu = ({ open, onClose }: { open: boolean; onClose: () => void }) =
         <button onClick={onClose} className="p-2 hover:bg-muted rounded-lg"><X className="h-5 w-5" /></button>
       </div>
       <nav className="flex-1 overflow-y-auto py-4 px-2 space-y-2">
-        {renderGroup('Visão Geral', overviewItems, overviewOpen, setOverviewOpen)}
-        {renderGroup('Dep. Reservas', reservasItems, reservasOpen, setReservasOpen)}
-        {renderGroup('Comercial', comercialItems, comercialOpen, setComercialOpen)}
-        {renderGroup('Administração', adminItems, adminOpen, setAdminOpen)}
-        <div className="pt-2">
-          <p className="px-4 py-2 text-xs uppercase text-muted-foreground font-semibold tracking-wider">AI Agents</p>
-          <NavLink to="/agents" onClick={onClose}
-            className={cn(
-              'flex items-center gap-3 px-4 py-3 text-sm rounded-lg min-h-[48px] transition-colors',
-              isActive('/agents') ? 'bg-primary/10 text-primary font-medium' : 'text-foreground hover:bg-muted'
-            )}
-          >
-            <Sparkles className="h-5 w-5 shrink-0 text-violet-500" />
-            <span>Spark · Agents</span>
-            {totalBadge > 0 && (
-              <span className="ml-auto px-2 py-0.5 text-xs font-bold bg-violet-500 text-white rounded-full">{totalBadge}</span>
-            )}
-          </NavLink>
-        </div>
+        {renderGroup('Visão Geral', visibleOverview, overviewOpen, setOverviewOpen)}
+        {renderGroup('Dep. Reservas', visibleReservas, reservasOpen, setReservasOpen)}
+        {renderGroup('Comercial', visibleComercial, comercialOpen, setComercialOpen)}
+        {renderGroup('Administração', visibleAdmin, adminOpen, setAdminOpen)}
+        {showAgents && (
+          <div className="pt-2">
+            <p className="px-4 py-2 text-xs uppercase text-muted-foreground font-semibold tracking-wider">AI Agents</p>
+            <NavLink to="/agents" onClick={onClose}
+              className={cn(
+                'flex items-center gap-3 px-4 py-3 text-sm rounded-lg min-h-[48px] transition-colors',
+                isActive('/agents') ? 'bg-primary/10 text-primary font-medium' : 'text-foreground hover:bg-muted'
+              )}
+            >
+              <Sparkles className="h-5 w-5 shrink-0 text-violet-500" />
+              <span>Spark · Agents</span>
+              {totalBadge > 0 && (
+                <span className="ml-auto px-2 py-0.5 text-xs font-bold bg-violet-500 text-white rounded-full">{totalBadge}</span>
+              )}
+            </NavLink>
+          </div>
+        )}
       </nav>
       <div className="p-4 border-t border-border">
         <div className="flex items-center gap-3">

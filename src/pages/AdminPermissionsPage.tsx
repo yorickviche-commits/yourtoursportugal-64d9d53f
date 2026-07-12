@@ -1,12 +1,14 @@
-import { useEffect, useState } from 'react';
+import { Fragment, useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
+import { useQueryClient } from '@tanstack/react-query';
 import AppLayout from '@/components/AppLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
-import { ShieldCheck, Save } from 'lucide-react';
+import { ShieldCheck, Save, LayoutGrid } from 'lucide-react';
+import { PAGES, permKey } from '@/lib/pagePermissions';
 
 const ROLES = ['super_admin', 'admin', 'sales_agent', 'operations_agent', 'finance', 'b2b_manager', 'viewer'] as const;
 const ROLE_LABELS: Record<string, string> = {
@@ -40,6 +42,7 @@ const AdminPermissionsPage = () => {
   const [changes, setChanges] = useState<Record<string, boolean>>({});
   const [saving, setSaving] = useState(false);
   const { toast } = useToast();
+  const queryClient = useQueryClient();
 
   const fetchPerms = async () => {
     setLoading(true);
@@ -76,6 +79,7 @@ const AdminPermissionsPage = () => {
     setChanges({});
     toast({ title: 'Permissões guardadas' });
     fetchPerms();
+    queryClient.invalidateQueries({ queryKey: ['permissions_matrix'] });
     setSaving(false);
   };
 
@@ -99,7 +103,13 @@ const AdminPermissionsPage = () => {
         {loading ? (
           <p className="text-muted-foreground">A carregar...</p>
         ) : (
+          <>
           <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm flex items-center gap-2">
+                <ShieldCheck className="h-4 w-4" /> Ações & Funcionalidades
+              </CardTitle>
+            </CardHeader>
             <CardContent className="p-0 overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
@@ -128,6 +138,69 @@ const AdminPermissionsPage = () => {
               </table>
             </CardContent>
           </Card>
+
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm flex items-center gap-2">
+                <LayoutGrid className="h-4 w-4" /> Páginas & Menus
+              </CardTitle>
+              <p className="text-xs text-muted-foreground">
+                Novos utilizadores começam como <strong>Viewer</strong> (só Dashboard). Só Super Admin / Admin conseguem editar esta matriz.
+                Marca as páginas que cada papel pode ver — o menu lateral e as rotas escondem tudo o que não estiver ativo.
+              </p>
+            </CardHeader>
+            <CardContent className="p-0 overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b bg-muted/20">
+                    <th className="text-left p-3 font-medium text-muted-foreground sticky left-0 bg-card">Página</th>
+                    {ROLES.map(r => (
+                      <th key={r} className="p-3 text-center font-medium text-muted-foreground text-xs">{ROLE_LABELS[r]}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {(['Visão Geral','Dep. Reservas','Comercial','Administração','AI Agents'] as const).map(group => {
+                    const groupPages = PAGES.filter(p => p.group === group);
+                    if (groupPages.length === 0) return null;
+                    return (
+                      <Fragment key={group}>
+                        <tr key={`h-${group}`} className="bg-muted/40">
+                          <td colSpan={ROLES.length + 1} className="px-3 py-1.5 text-[10px] uppercase font-semibold tracking-wider text-muted-foreground sticky left-0 bg-muted/40">
+                            {group}
+                          </td>
+                        </tr>
+                        {groupPages.map(page => {
+                          const perm = permKey(page.key);
+                          return (
+                            <tr key={page.key} className="border-b last:border-0 hover:bg-muted/30">
+                              <td className="p-3 font-medium sticky left-0 bg-card">
+                                {page.label}
+                                <span className="ml-2 text-[10px] text-muted-foreground">{page.path}</span>
+                              </td>
+                              {ROLES.map(role => {
+                                const readOnly = role === 'super_admin' || role === 'admin';
+                                return (
+                                  <td key={role} className="p-3 text-center">
+                                    <Checkbox
+                                      checked={readOnly ? true : isGranted(role, perm)}
+                                      disabled={readOnly}
+                                      onCheckedChange={() => !readOnly && toggle(role, perm)}
+                                    />
+                                  </td>
+                                );
+                              })}
+                            </tr>
+                          );
+                        })}
+                      </Fragment>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </CardContent>
+          </Card>
+          </>
         )}
       </div>
     </AppLayout>
