@@ -586,7 +586,7 @@ const LeadProposalsTab = ({ leadId, clientName }: { leadId: string; clientName: 
 
   const copyLink = (token: string) => {
     navigator.clipboard.writeText(getProposalShareUrl(token));
-    toast.success('Link copiado!');
+    sonnerToast.success('Link copiado!');
   };
 
   return (
