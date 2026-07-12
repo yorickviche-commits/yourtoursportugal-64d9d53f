@@ -5,8 +5,10 @@ import AppLayout from '@/components/AppLayout';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Switch } from '@/components/ui/switch';
 import { useToast } from '@/hooks/use-toast';
-import { Plug, RefreshCw, AlertTriangle } from 'lucide-react';
+import { Plug, RefreshCw, AlertTriangle, Calendar as CalendarIcon } from 'lucide-react';
 import { format } from 'date-fns';
 
 interface Integration {
@@ -20,7 +22,7 @@ interface Integration {
 }
 
 const INTEGRATION_ICONS: Record<string, string> = {
-  wetravel: '🌍', nethunt: '📋', stripe: '💳', email_service: '✉️',
+  wetravel: '🌍', nethunt: '📋', stripe: '💳', email_service: '✉️', google_calendar: '📅',
 };
 
 const AdminIntegrationsPage = () => {
@@ -58,6 +60,8 @@ const AdminIntegrationsPage = () => {
     return <AppLayout><div className="flex items-center justify-center h-64 text-muted-foreground">Acesso restrito.</div></AppLayout>;
   }
 
+  const gcal = integrations.find(i => i.name === 'google_calendar');
+
   return (
     <AppLayout>
       <div className="space-y-6">
@@ -65,6 +69,8 @@ const AdminIntegrationsPage = () => {
           <Plug className="h-6 w-6 text-primary" />
           <h1 className="text-2xl font-bold text-foreground">Integrações</h1>
         </div>
+
+        {gcal && <GoogleCalendarPanel integ={gcal} onChange={fetchIntegrations} />}
 
         {loading ? <p className="text-muted-foreground">A carregar...</p> : (
           <div className="grid gap-4 sm:grid-cols-2">
@@ -114,5 +120,71 @@ const AdminIntegrationsPage = () => {
     </AppLayout>
   );
 };
+
+function GoogleCalendarPanel({ integ, onChange }: { integ: Integration; onChange: () => void }) {
+  const { toast } = useToast();
+  const [calendarId, setCalendarId] = useState<string>(integ.config?.calendar_id || 'primary');
+  const [enabled, setEnabled] = useState<boolean>(!!integ.config?.enabled);
+  const [saving, setSaving] = useState(false);
+  const [testing, setTesting] = useState(false);
+
+  const save = async () => {
+    setSaving(true);
+    const { error } = await supabase.from('integration_settings').update({
+      status: enabled ? 'active' : 'disabled',
+      config: { ...(integ.config || {}), calendar_id: calendarId.trim() || 'primary', enabled },
+    } as any).eq('id', integ.id);
+    setSaving(false);
+    if (error) toast({ title: 'Erro ao guardar', description: error.message, variant: 'destructive' });
+    else { toast({ title: 'Configuração guardada' }); onChange(); }
+  };
+
+  const test = async () => {
+    setTesting(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('calendar-sync', { body: { lead_id: '00000000-0000-0000-0000-000000000000', mode: 'update' } });
+      if (error) throw error;
+      toast({ title: 'Ligação OK', description: JSON.stringify(data).slice(0, 100) });
+    } catch (e: any) {
+      toast({ title: 'Erro na ligação', description: e.message, variant: 'destructive' });
+    } finally {
+      setTesting(false);
+    }
+  };
+
+  return (
+    <Card>
+      <CardContent className="pt-4 space-y-4">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <CalendarIcon className="h-5 w-5 text-primary" />
+            <div>
+              <p className="font-semibold text-foreground">Google Calendar — Operações YT</p>
+              <p className="text-xs text-muted-foreground">Sincroniza automaticamente cada dia das leads em estado "Ganho" para o calendário partilhado.</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-xs">{enabled ? 'Ativo' : 'Desativado'}</span>
+            <Switch checked={enabled} onCheckedChange={setEnabled} />
+          </div>
+        </div>
+
+        <div className="grid gap-3 sm:grid-cols-[1fr_auto] items-end">
+          <div>
+            <label className="text-xs font-medium text-muted-foreground">ID do calendário</label>
+            <Input value={calendarId} onChange={e => setCalendarId(e.target.value)} placeholder="primary ou c_abc123@group.calendar.google.com" className="text-sm" />
+            <p className="text-[10px] text-muted-foreground mt-1">Use "primary" para o calendário principal da conta ligada, ou copie o ID de um calendário partilhado.</p>
+          </div>
+          <div className="flex gap-2">
+            <Button size="sm" variant="outline" onClick={test} disabled={testing}>
+              {testing ? 'A testar...' : 'Testar'}
+            </Button>
+            <Button size="sm" onClick={save} disabled={saving}>{saving ? 'A guardar...' : 'Guardar'}</Button>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
 
 export default AdminIntegrationsPage;

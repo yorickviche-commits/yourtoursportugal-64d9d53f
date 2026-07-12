@@ -47,6 +47,7 @@ export default function LeadAgentsAssignment({ leadId, initial }: Props) {
     setAgents(list);
     setOpen(false);
     toast({ title: 'Agentes atualizados' });
+    import('@/hooks/useCalendarSync').then(m => m.triggerCalendarSync(leadId, 'update'));
   };
 
   return (

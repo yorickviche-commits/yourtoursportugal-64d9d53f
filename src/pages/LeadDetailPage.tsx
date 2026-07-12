@@ -38,6 +38,8 @@ import CommunicationsTab from '@/components/communications/CommunicationsTab';
 import { getProposalShareUrl } from '@/lib/proposalShare';
 import { displayLeadCode } from '@/lib/leadCode';
 import { useUnsavedChangesGuard } from '@/hooks/useUnsavedChangesGuard';
+import { triggerCalendarSync } from '@/hooks/useCalendarSync';
+import CalendarSyncBadge from '@/components/CalendarSyncBadge';
 import {
   AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter,
 } from '@/components/ui/alert-dialog';
@@ -227,6 +229,7 @@ const OperacoesTab = ({ activeVersion, leadId, leadCode }: { activeVersion: numb
         day_number: dayNumber,
         [field]: value,
       });
+      triggerCalendarSync(leadId, 'update');
     } catch (err: any) {
       opsToast({ title: 'Erro ao guardar', description: err.message, variant: 'destructive' });
     }
@@ -250,6 +253,7 @@ const OperacoesTab = ({ activeVersion, leadId, leadCode }: { activeVersion: numb
         invoice_file_name: file.name,
         invoice_status: 'invoice_received',
       });
+      triggerCalendarSync(leadId, 'update');
 
       opsToast({ title: 'Fatura carregada com sucesso' });
     } catch (err: any) {
@@ -908,6 +912,7 @@ const LeadDetailPage = ({ mode = 'lead' }: { mode?: 'lead' | 'booking' } = {}) =
       });
       await logActivity('lead_updated', 'lead', lead.id, { client_name: formState.clientName });
       toast({ title: 'Simulação guardada!', description: `${formState.clientName} atualizado com sucesso.` });
+      if (leadStatus === 'won') triggerCalendarSync(lead.id, 'update');
     } catch (err: any) {
       toast({ title: 'Erro ao guardar', description: err.message, variant: 'destructive' });
     }
@@ -1082,6 +1087,9 @@ const LeadDetailPage = ({ mode = 'lead' }: { mode?: 'lead' | 'booking' } = {}) =
                         await updateLeadMutation.mutateAsync({ id: lead.id, updates: { status: s.value } });
                         await logActivity('lead_status_changed', 'lead', lead.id, { from: prev, to: s.value });
                         toast({ title: 'Estado atualizado', description: s.label });
+                        // Trigger calendar sync on status transition
+                        if (s.value === 'won') triggerCalendarSync(lead.id, 'create', 500);
+                        else if (prev === 'won') triggerCalendarSync(lead.id, 'delete', 500);
                       } catch (err: any) {
                         setLeadStatus(prev);
                         toast({ title: 'Erro ao atualizar estado', description: err.message, variant: 'destructive' });
@@ -1090,6 +1098,7 @@ const LeadDetailPage = ({ mode = 'lead' }: { mode?: 'lead' | 'booking' } = {}) =
                   ))}
                 </DropdownMenuContent>
               </DropdownMenu>
+              <div className="mt-1"><CalendarSyncBadge leadId={lead.id} leadStatus={leadStatus} /></div>
             </div>
             <PaymentSummaryBar leadId={lead.id} totalPVP={costingTotalPVP} />
 
