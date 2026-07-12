@@ -38,6 +38,8 @@ import CommunicationsTab from '@/components/communications/CommunicationsTab';
 import { getProposalShareUrl } from '@/lib/proposalShare';
 import { displayLeadCode } from '@/lib/leadCode';
 import { useUnsavedChangesGuard } from '@/hooks/useUnsavedChangesGuard';
+import { triggerCalendarSync } from '@/hooks/useCalendarSync';
+import CalendarSyncBadge from '@/components/CalendarSyncBadge';
 import {
   AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter,
 } from '@/components/ui/alert-dialog';
