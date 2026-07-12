@@ -19,6 +19,8 @@ import { useQueryClient } from '@tanstack/react-query';
 import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
+import { useAuth } from '@/hooks/useAuth';
+import TeamKPISection from '@/components/kpi/TeamKPISection';
 
 type DashboardSubPage = 'overview' | 'calendar_reservas' | 'calendar_tasks';
 
