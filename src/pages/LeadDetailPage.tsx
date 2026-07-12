@@ -665,7 +665,13 @@ const LeadDetailPage = ({ mode = 'lead' }: { mode?: 'lead' | 'booking' } = {}) =
   const [aiLoading, setAiLoading] = useState<string | null>(null);
   const [aiResults, setAiResults] = useState<Record<string, any>>({});
   const [plannerDays, setPlannerDays] = useState<PlannerDay[]>([]);
-  const [costingDays, setCostingDays] = useState<LeadCostingDay[]>([]);
+  const costingUndo = useUndoable<LeadCostingDay[]>([], {
+    bindKeyboard: activeTab === 'custos',
+    onUndo: () => toast.info('Alteração desfeita', { description: 'Ctrl+Shift+Z para refazer' }),
+    onRedo: () => toast.info('Alteração refeita'),
+  });
+  const costingDays = costingUndo.state;
+  const setCostingDays = costingUndo.set;
   const [pvpOverride, setPvpOverride] = useState<number | null>(null);
   const costingTotalPVP = useMemo(() => {
     if (pvpOverride != null) return pvpOverride;
