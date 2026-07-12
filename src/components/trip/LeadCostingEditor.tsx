@@ -511,6 +511,7 @@ const LeadCostingEditor = ({ costingDays, onChange, onSave, saving, plannerDays,
       )}
 
       {/* Days */}
+      <DragDropContext onDragEnd={onCostDragEnd}>
       <div className="bg-card rounded-lg border overflow-hidden divide-y">
         {costingDays.map((day, dayIdx) => {
           const expanded = expandedDays.includes(day.day);
