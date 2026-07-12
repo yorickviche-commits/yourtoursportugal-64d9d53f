@@ -1224,7 +1224,9 @@ const TravelPlanProposal = ({
         )}
 
         {/* FULL DAY-BY-DAY */}
+        <DragDropContext onDragEnd={onBulletDragEnd}>
         <div className="divide-y">
+
           {displayPlan.days.map((day, dayIdx) => {
             const dayDuration = getDayDuration(day);
             const chatKey = `day_${day.day_number}`;
