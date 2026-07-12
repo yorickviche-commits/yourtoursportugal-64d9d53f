@@ -200,6 +200,7 @@ const DesktopSidebar = () => {
 const MobileMenu = ({ open, onClose }: { open: boolean; onClose: () => void }) => {
   const location = useLocation();
   const { profile, signOut } = useAuth();
+  const { canAccess } = usePagePermissions();
   const [overviewOpen, setOverviewOpen] = useState(true);
   const [reservasOpen, setReservasOpen] = useState(true);
   const [comercialOpen, setComercialOpen] = useState(false);
@@ -207,6 +208,12 @@ const MobileMenu = ({ open, onClose }: { open: boolean; onClose: () => void }) =
   const unreadCount = useUnreadNotificationCount();
   const { data: actions = [] } = useAgentPendingActions();
   const totalBadge = unreadCount + actions.filter(a => a.status === 'pending').length;
+  const filter = (items: NavItem[]) => items.filter(i => canAccess(i.pageKey));
+  const visibleOverview = filter(overviewItems);
+  const visibleReservas = filter(reservasItems);
+  const visibleComercial = filter(comercialItems);
+  const visibleAdmin = filter(adminItems);
+  const showAgents = canAccess('agents');
 
   const initials = profile?.full_name
     ? profile.full_name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()
