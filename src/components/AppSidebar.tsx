@@ -124,8 +124,6 @@ const DesktopSidebar = () => {
       </div>
 
       <nav className="flex-1 py-3 px-2 space-y-1 overflow-y-auto">
-        {renderGroup('Visão Geral', overviewItems, overviewOpen, setOverviewOpen)}
-        {renderGroup('Dep. Reservas', reservasItems, reservasOpen, setReservasOpen)}
         {renderGroup('Visão Geral', visibleOverview, overviewOpen, setOverviewOpen)}
         {renderGroup('Dep. Reservas', visibleReservas, reservasOpen, setReservasOpen)}
         {renderGroup('Comercial', visibleComercial, comercialOpen, setComercialOpen)}
