@@ -171,23 +171,23 @@ const DesktopSidebar = () => {
       <div className={cn('border-t border-sidebar-border', expanded ? 'p-3' : 'p-2')}>
         {expanded ? (
           <div className="flex items-center gap-2">
-            <div className="h-7 w-7 rounded-full bg-sidebar-accent flex items-center justify-center text-xs font-medium text-sidebar-accent-foreground shrink-0">
-              {initials}
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-xs font-medium text-sidebar-accent-foreground truncate">
+            <NavLink to="/profile/me" className="h-7 w-7 rounded-full bg-sidebar-accent flex items-center justify-center text-xs font-medium text-sidebar-accent-foreground shrink-0 overflow-hidden">
+              {profile?.avatar_url ? <img src={profile.avatar_url} alt="" className="h-full w-full object-cover" /> : initials}
+            </NavLink>
+            <NavLink to="/profile/me" className="flex-1 min-w-0">
+              <p className="text-xs font-medium text-sidebar-accent-foreground truncate hover:underline">
                 {profile?.full_name || profile?.email || 'Utilizador'}
               </p>
-            </div>
+            </NavLink>
             <button onClick={signOut} title="Sair" className="p-1 hover:bg-sidebar-accent rounded">
               <LogOut className="h-3.5 w-3.5 text-sidebar-muted" />
             </button>
           </div>
         ) : (
           <div className="flex flex-col items-center gap-2">
-            <div className="h-7 w-7 rounded-full bg-sidebar-accent flex items-center justify-center text-xs font-medium text-sidebar-accent-foreground">
-              {initials}
-            </div>
+            <NavLink to="/profile/me" className="h-7 w-7 rounded-full bg-sidebar-accent flex items-center justify-center text-xs font-medium text-sidebar-accent-foreground overflow-hidden">
+              {profile?.avatar_url ? <img src={profile.avatar_url} alt="" className="h-full w-full object-cover" /> : initials}
+            </NavLink>
             <button onClick={signOut} title="Sair" className="p-1 hover:bg-sidebar-accent rounded">
               <LogOut className="h-3.5 w-3.5 text-sidebar-muted" />
             </button>
