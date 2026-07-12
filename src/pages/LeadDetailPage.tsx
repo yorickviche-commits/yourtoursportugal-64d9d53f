@@ -16,10 +16,11 @@ import { LeadStatus } from '@/types/leads';
 import TravelPlannerEditor, { PlannerDay, PlannerItem, PeriodKey, emptyPeriods, genId } from '@/components/trip/TravelPlannerEditor';
 import TravelPlanProposal from '@/components/trip/TravelPlanProposal';
 import { useProposalsQuery, useProposalAnnotations } from '@/hooks/useProposalsQuery';
-import { toast } from 'sonner';
+import { toast as sonnerToast } from 'sonner';
 // ItineraryEditor removed — replaced by Propostas tab
 import EditableCostingTable, { CostingDayData, CostingItem } from '@/components/trip/EditableCostingTable';
 import LeadCostingEditor, { LeadCostingDay, LeadCostItem } from '@/components/trip/LeadCostingEditor';
+import { useUndoable } from '@/hooks/useUndoable';
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
@@ -585,7 +586,7 @@ const LeadProposalsTab = ({ leadId, clientName }: { leadId: string; clientName: 
 
   const copyLink = (token: string) => {
     navigator.clipboard.writeText(getProposalShareUrl(token));
-    toast.success('Link copiado!');
+    sonnerToast.success('Link copiado!');
   };
 
   return (
@@ -664,7 +665,13 @@ const LeadDetailPage = ({ mode = 'lead' }: { mode?: 'lead' | 'booking' } = {}) =
   const [aiLoading, setAiLoading] = useState<string | null>(null);
   const [aiResults, setAiResults] = useState<Record<string, any>>({});
   const [plannerDays, setPlannerDays] = useState<PlannerDay[]>([]);
-  const [costingDays, setCostingDays] = useState<LeadCostingDay[]>([]);
+  const costingUndo = useUndoable<LeadCostingDay[]>([], {
+    bindKeyboard: activeTab === 'custos',
+    onUndo: () => sonnerToast.info('Alteração desfeita', { description: 'Ctrl+Shift+Z para refazer' }),
+    onRedo: () => sonnerToast.info('Alteração refeita'),
+  });
+  const costingDays = costingUndo.state;
+  const setCostingDays = costingUndo.set;
   const [pvpOverride, setPvpOverride] = useState<number | null>(null);
   const costingTotalPVP = useMemo(() => {
     if (pvpOverride != null) return pvpOverride;
@@ -749,7 +756,7 @@ const LeadDetailPage = ({ mode = 'lead' }: { mode?: 'lead' | 'booking' } = {}) =
   // Hydrate costing from DB
   useEffect(() => {
     if (savedCostingDays && savedCostingDays.length > 0 && costingDays.length === 0) {
-      setCostingDays(savedCostingDays.map((d: any) => ({
+      costingUndo.reset(savedCostingDays.map((d: any) => ({
         day: d.day_number,
         title: d.title || `Dia ${d.day_number}`,
         date: d.description || '',

@@ -1,6 +1,8 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { Sparkles, RefreshCw, Save, FileText, ArrowRight, Loader2, Edit3, Eye, AlertTriangle, Clock, Plus, X, Send, MessageSquare, ChevronDown, CreditCard, GripVertical } from 'lucide-react';
 import { DragDropContext, Droppable, Draggable, type DropResult } from '@hello-pangea/dnd';
+import { toast as sonnerToast } from 'sonner';
+import { useUndoable } from '@/hooks/useUndoable';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -430,7 +432,13 @@ const TravelPlanProposal = ({
   const [generating, setGenerating] = useState(false);
   const [saving, setSaving] = useState(false);
   const [viewMode, setViewMode] = useState<'preview' | 'edit'>('preview');
-  const [plan, setPlan] = useState<TravelPlanData | null>(null);
+  const planUndo = useUndoable<TravelPlanData | null>(null, {
+    bindKeyboard: true,
+    onUndo: () => sonnerToast.info('Alteração desfeita', { description: 'Ctrl+Shift+Z para refazer' }),
+    onRedo: () => sonnerToast.info('Alteração refeita'),
+  });
+  const plan = planUndo.state;
+  const setPlan = planUndo.set;
   const [closing, setClosing] = useState<ClosingTerms>(DEFAULT_CLOSING);
   const [extraInstructions, setExtraInstructions] = useState('');
   const [showRegenInput, setShowRegenInput] = useState(false);
