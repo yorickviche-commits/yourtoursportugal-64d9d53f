@@ -756,7 +756,7 @@ const LeadDetailPage = ({ mode = 'lead' }: { mode?: 'lead' | 'booking' } = {}) =
   // Hydrate costing from DB
   useEffect(() => {
     if (savedCostingDays && savedCostingDays.length > 0 && costingDays.length === 0) {
-      setCostingDays(savedCostingDays.map((d: any) => ({
+      costingUndo.reset(savedCostingDays.map((d: any) => ({
         day: d.day_number,
         title: d.title || `Dia ${d.day_number}`,
         date: d.description || '',
