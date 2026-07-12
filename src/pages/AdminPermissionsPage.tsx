@@ -16,17 +16,8 @@ const ROLE_LABELS: Record<string, string> = {
   finance: 'Finance', b2b_manager: 'B2B', viewer: 'Viewer',
 };
 
-const PERMISSIONS = [
-  'create_proposal', 'approve_proposal', 'create_wetravel_draft', 'edit_pricing',
-  'access_financial_reports', 'export_data', 'modify_settings', 'manage_users',
-];
 
-const PERM_LABELS: Record<string, string> = {
-  create_proposal: 'Criar Proposta', approve_proposal: 'Aprovar Proposta',
-  create_wetravel_draft: 'WeTravel Draft', edit_pricing: 'Editar Preços',
-  access_financial_reports: 'Relatórios Financeiros', export_data: 'Exportar Dados',
-  modify_settings: 'Modificar Definições', manage_users: 'Gerir Utilizadores',
-};
+
 
 interface PermRow {
   id: string;
