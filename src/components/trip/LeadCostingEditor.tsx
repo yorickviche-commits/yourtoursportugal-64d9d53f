@@ -352,6 +352,19 @@ const LeadCostingEditor = ({ costingDays, onChange, onSave, saving, plannerDays,
     onChange(updated);
   };
 
+  const onCostDragEnd = (result: DropResult) => {
+    const { source, destination } = result;
+    if (!destination) return;
+    if (source.droppableId === destination.droppableId && source.index === destination.index) return;
+    const srcDay = parseInt(source.droppableId.replace('cost-day-', ''), 10);
+    const dstDay = parseInt(destination.droppableId.replace('cost-day-', ''), 10);
+    if (isNaN(srcDay) || isNaN(dstDay)) return;
+    const updated = costingDays.map(d => ({ ...d, items: [...d.items] }));
+    const [moved] = updated[srcDay].items.splice(source.index, 1);
+    updated[dstDay].items.splice(destination.index, 0, moved);
+    onChange(updated);
+  };
+
   // Auto-Fulfill Budget via AI
   const autoFulfillBudget = async () => {
     const allItems = costingDays.flatMap((d, di) => 
