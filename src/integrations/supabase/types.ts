@@ -294,6 +294,53 @@ export type Database = {
           },
         ]
       }
+      calendar_events: {
+        Row: {
+          created_at: string
+          day_date: string
+          google_event_id: string | null
+          id: string
+          last_payload_hash: string | null
+          last_synced_at: string | null
+          lead_id: string
+          status: string | null
+          sync_error: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          day_date: string
+          google_event_id?: string | null
+          id?: string
+          last_payload_hash?: string | null
+          last_synced_at?: string | null
+          lead_id: string
+          status?: string | null
+          sync_error?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          day_date?: string
+          google_event_id?: string | null
+          id?: string
+          last_payload_hash?: string | null
+          last_synced_at?: string | null
+          lead_id?: string
+          status?: string | null
+          sync_error?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "calendar_events_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       ceo_approval_queue: {
         Row: {
           agent_id: string
