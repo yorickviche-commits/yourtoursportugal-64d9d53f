@@ -101,6 +101,9 @@ const App = () => (
             <Route path="/admin/integrations" element={<ProtectedRoute><AdminIntegrationsPage /></ProtectedRoute>} />
             <Route path="/admin/kpi" element={<ProtectedRoute><AdminKPIPage /></ProtectedRoute>} />
             <Route path="/admin/logs" element={<ProtectedRoute><AdminActivityLogsPage /></ProtectedRoute>} />
+            <Route path="/profile" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
+            <Route path="/profile/:userId" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
+
 
             <Route path="*" element={<NotFound />} />
           </Routes>
