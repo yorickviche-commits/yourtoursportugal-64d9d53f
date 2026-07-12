@@ -103,42 +103,6 @@ const AdminPermissionsPage = () => {
         {loading ? (
           <p className="text-muted-foreground">A carregar...</p>
         ) : (
-          <>
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm flex items-center gap-2">
-                <ShieldCheck className="h-4 w-4" /> Ações & Funcionalidades
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="p-0 overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b">
-                    <th className="text-left p-3 font-medium text-muted-foreground sticky left-0 bg-card">Permissão</th>
-                    {ROLES.map(r => (
-                      <th key={r} className="p-3 text-center font-medium text-muted-foreground text-xs">{ROLE_LABELS[r]}</th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {PERMISSIONS.map(perm => (
-                    <tr key={perm} className="border-b last:border-0 hover:bg-muted/30">
-                      <td className="p-3 font-medium sticky left-0 bg-card">{PERM_LABELS[perm] || perm}</td>
-                      {ROLES.map(role => (
-                        <td key={role} className="p-3 text-center">
-                          <Checkbox
-                            checked={isGranted(role, perm)}
-                            onCheckedChange={() => toggle(role, perm)}
-                          />
-                        </td>
-                      ))}
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </CardContent>
-          </Card>
-
           <Card>
             <CardHeader className="pb-2">
               <CardTitle className="text-sm flex items-center gap-2">
@@ -200,7 +164,7 @@ const AdminPermissionsPage = () => {
               </table>
             </CardContent>
           </Card>
-          </>
+
         )}
       </div>
     </AppLayout>
