@@ -1050,6 +1050,10 @@ const LeadDetailPage = ({ mode = 'lead' }: { mode?: 'lead' | 'booking' } = {}) =
             <PaymentSummaryBar leadId={lead.id} totalPVP={costingTotalPVP} />
 
           </div>
+          <div className="mt-2">
+            <LeadAgentsAssignment leadId={lead.id} initial={(lead as any).assigned_agents} />
+          </div>
+
         </div>
 
         {/* Tabs */}
