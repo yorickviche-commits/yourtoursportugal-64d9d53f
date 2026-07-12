@@ -132,6 +132,9 @@ const LeadsFilesPage = () => {
                       Margem: <span className={cn(!hasPvp && "text-muted-foreground")}>{hasPvp ? `${cs.marginPct.toFixed(0)}%` : '—'}</span>
                     </span>
                   </div>
+                  <div className="mt-2" onClick={e => e.stopPropagation()}>
+                    <LeadAgentsCell leadId={lead.id} value={(lead as any).assigned_agents} />
+                  </div>
                 </div>
               );
             })}
