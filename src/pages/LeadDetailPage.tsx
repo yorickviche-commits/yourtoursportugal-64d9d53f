@@ -1042,7 +1042,18 @@ const LeadDetailPage = ({ mode = 'lead' }: { mode?: 'lead' | 'booking' } = {}) =
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="start">
                   {LEAD_STATUSES.map(s => (
-                    <DropdownMenuItem key={s.value} onClick={() => setLeadStatus(s.value)} className={cn("text-xs cursor-pointer", leadStatus === s.value && "font-bold")}>{s.label}</DropdownMenuItem>
+                    <DropdownMenuItem key={s.value} onClick={async () => {
+                      const prev = leadStatus;
+                      setLeadStatus(s.value);
+                      try {
+                        await updateLeadMutation.mutateAsync({ id: lead.id, updates: { status: s.value } });
+                        await logActivity('lead_status_changed', 'lead', lead.id, { from: prev, to: s.value });
+                        toast({ title: 'Estado atualizado', description: s.label });
+                      } catch (err: any) {
+                        setLeadStatus(prev);
+                        toast({ title: 'Erro ao atualizar estado', description: err.message, variant: 'destructive' });
+                      }
+                    }} className={cn("text-xs cursor-pointer", leadStatus === s.value && "font-bold")}>{s.label}</DropdownMenuItem>
                   ))}
                 </DropdownMenuContent>
               </DropdownMenu>
