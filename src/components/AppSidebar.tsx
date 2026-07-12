@@ -47,6 +47,7 @@ const adminItems: NavItem[] = [
 const DesktopSidebar = () => {
   const location = useLocation();
   const { profile, signOut } = useAuth();
+  const { canAccess } = usePagePermissions();
   const [hovered, setHovered] = useState(false);
   const [overviewOpen, setOverviewOpen] = useState(true);
   const [reservasOpen, setReservasOpen] = useState(true);
@@ -57,6 +58,13 @@ const DesktopSidebar = () => {
   const pendingActions = actions.filter(a => a.status === 'pending').length;
   const totalBadge = unreadCount + pendingActions;
   const expanded = hovered;
+
+  const filter = (items: NavItem[]) => items.filter(i => canAccess(i.pageKey));
+  const visibleOverview = filter(overviewItems);
+  const visibleReservas = filter(reservasItems);
+  const visibleComercial = filter(comercialItems);
+  const visibleAdmin = filter(adminItems);
+  const showAgents = canAccess('agents');
 
   const initials = profile?.full_name
     ? profile.full_name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()
