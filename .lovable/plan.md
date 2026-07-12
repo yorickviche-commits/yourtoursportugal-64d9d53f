@@ -1,42 +1,83 @@
-## Diagnóstico
 
-O link que aparece no WhatsApp na imagem é:
+# Plano: Perfil de Utilizador, Atribuição de Agentes e Dashboards KPI
 
-`https://yourtoursportugal.lovable.app/proposal/ytp-yt-2026-4237`
+## 1. Base de dados (migration)
 
-Esse é o link direto da app. WhatsApp não executa JavaScript, por isso só lê os metadados genéricos do `index.html` e mostra o título geral da Your Tours Portugal.
+**Leads — atribuição de até 2 agentes**
+- Adicionar coluna `assigned_agents uuid[]` em `public.leads` (limite lógico de 2 aplicado na UI + trigger).
+- Manter `assigned_to` existente como agente principal (compatibilidade) e sincronizar com `assigned_agents[0]`.
+- Índice GIN em `assigned_agents` para queries "minhas leads".
+- Policy adicional: utilizador pode ler leads onde `auth.uid() = ANY(assigned_agents)`.
 
-A função de preview já consegue gerar os dados certos para esta proposta:
+**Activity logs**
+- Já existe `activity_logs`. Vamos usá-la para "histórico" no perfil (filtrar por `user_id`).
 
-- título do programa correto
-- resumo correto
-- imagem hero `https://...`
+## 2. Atribuição de agentes na Lead (topo do LeadDetailPage)
 
-O problema principal é que o link partilhado continua a ser o URL direto `/proposal/...`, não um URL público que devolva HTML com os metadados específicos antes de abrir a proposta.
+- No header do `LeadDetailPage`, novo bloco "Agentes atribuídos":
+  - Mostra até 2 avatares + nomes.
+  - Botão "Editar" → popover com 2 selects (agente 1, agente 2) listando utilizadores internos (via `profiles` + `user_roles`).
+  - Botão "Guardar" faz `update` em `leads.assigned_agents` e sincroniza `assigned_to`.
+- Validação: máximo 2, sem duplicados.
 
-## Plano de correção
+## 3. Nova página `/profile/:userId` (e `/profile/me`)
 
-1. **Fazer o URL público da proposta funcionar diretamente em `/proposal/:token`**
-   - Ajustar o fluxo para que links como `yourtoursportugal.lovable.app/proposal/ytp-...` possam devolver metadados específicos de WhatsApp/Facebook/LinkedIn.
-   - Evitar depender de links técnicos da função backend na interface do utilizador.
+Rota protegida. Layout com tabs:
 
-2. **Manter a experiência normal para clientes**
-   - Quando uma pessoa abre o link no browser, continua a ver a página pública da proposta normalmente.
-   - Quando WhatsApp/crawlers leem o link, recebem `og:title`, `og:description` e `og:image` da proposta.
+### Tab 1 — Informações Gerais
+- Foto (upload para bucket `avatars` — criar bucket público), nome, email, role(s), estado, telefone (opcional novo campo em `profiles`).
+- Editável pelo próprio utilizador e por admin.
 
-3. **Garantir os dados usados no preview**
-   - Título: título real do programa, com ID/código visível quando existir.
-   - Descrição: resumo do programa + datas quando disponíveis.
-   - Imagem: hero image da proposta; se não for URL `https`, usar a primeira imagem válida do programa.
+### Tab 2 — Histórico & Logs
+- Lista dinâmica de `activity_logs` do utilizador (paginada, filtro por tipo e período).
 
-4. **Atualizar os botões/links visíveis na app**
-   - O botão “Copiar link” deve copiar o link público limpo: `https://yourtoursportugal.lovable.app/proposal/...`.
-   - Não mostrar/copiar links técnicos de backend na listagem.
+### Tab 3 — Minhas Leads
+- Tabela idêntica à lista de leads (`LeadsListPage`), filtrada por `assigned_agents @> [userId]`.
+- Colunas: ID (link para lead), nome cliente, status, valor, data. Ordenação e pesquisa.
 
-5. **Validar**
-   - Testar o HTML devolvido para o link `ytp-yt-2026-4237` e confirmar que contém os metadados esperados.
-   - Confirmar que o link direto continua a abrir a proposta para utilizadores normais.
+### Tab 4 — Dashboard KPIs
+Cards + gráficos, tudo dinâmico via query em `leads` e `proposals`:
+- Propostas enviadas / ganhas / perdidas / em espera (contagem)
+- Volume total propostas (€) e volume confirmado (€)
+- Margem média (%)
+- Taxa de conversão
+- Gráfico linha "propostas por mês"
+- **Filtros**: período (hoje, 7d, 30d, 90d, ano, custom range), estado, destino
+- **Ordenação** por qualquer coluna
+- **Exportação**: botões "Export PDF" (jsPDF + autoTable) e "Export Excel" (xlsx / SheetJS)
 
-## Nota importante
+## 4. Sidebar / Navegação
+- Adicionar entrada "O Meu Perfil" no menu (link para `/profile/me`).
+- Nome/avatar do utilizador no rodapé da sidebar já linka para `/profile/me`.
 
-Depois da correção e publicação, o WhatsApp pode continuar a mostrar o preview antigo durante algum tempo por cache. Para testar imediatamente, deve ser usado um URL ainda não partilhado antes ou uma versão com parâmetro novo, por exemplo `?v=3`.
+## 5. Super Admin Dashboard — "KPIs Equipa"
+- Novo secção no dashboard principal (visível apenas a `super_admin`/`admin`):
+  - Tabela com uma linha por utilizador interno.
+  - Colunas: agente, propostas enviadas, ganhas, perdidas, em espera, volume total, volume confirmado, margem média, taxa conversão.
+  - Mesmos filtros de período e ordenação por qualquer coluna.
+  - Export PDF + Excel.
+  - Cada linha clicável → abre `/profile/:userId` do agente.
+
+## 6. Componentes reutilizáveis
+- `KPICards.tsx` — cards de métricas.
+- `KPIFilters.tsx` — filtros período + estado + destino.
+- `KPIExport.tsx` — botões PDF/Excel usando dados atuais.
+- `useUserKPIs(userId, filters)` hook — devolve todas as métricas.
+- `useTeamKPIs(filters)` hook — mesmo mas agrupado por agente.
+
+## 7. Dependências novas
+- `jspdf`, `jspdf-autotable`, `xlsx` — para exportações.
+
+## 8. Detalhes técnicos
+- Fotos: bucket `avatars` público, path `${userId}/avatar.<ext>`, coluna `profiles.avatar_url`.
+- KPIs calculados client-side após fetch filtrado (volume manageable) — se crescer, mover para RPC.
+- Margem: usar `lead_costing_data` (campo margem) quando existir, senão `(price - cost)/price`.
+- Todas as queries respeitam RLS existente; super admin já vê tudo.
+
+## 9. Ordem de execução
+1. Migration (assigned_agents, avatar_url, phone, avatars bucket)
+2. Hook + UI de atribuição de agentes no LeadDetail
+3. Página Profile com 4 tabs
+4. Hooks de KPI + export utilities
+5. Secção "KPIs Equipa" no dashboard super admin
+6. Entrada de menu + sidebar
