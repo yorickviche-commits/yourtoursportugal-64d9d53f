@@ -954,6 +954,20 @@ const TravelPlanProposal = ({
     setPlan({ ...plan, days: newDays });
   };
 
+  const onBulletDragEnd = (result: DropResult) => {
+    if (!plan) return;
+    const { source, destination } = result;
+    if (!destination) return;
+    if (source.droppableId === destination.droppableId && source.index === destination.index) return;
+    const srcDay = parseInt(source.droppableId.replace('day-', ''), 10);
+    const dstDay = parseInt(destination.droppableId.replace('day-', ''), 10);
+    if (isNaN(srcDay) || isNaN(dstDay)) return;
+    const newDays = plan.days.map(d => ({ ...d, bullets: [...d.bullets] }));
+    const [moved] = newDays[srcDay].bullets.splice(source.index, 1);
+    newDays[dstDay].bullets.splice(destination.index, 0, moved);
+    setPlan({ ...plan, days: newDays });
+  };
+
   const toggleChat = (section: string) => {
     setActiveChat(prev => prev === section ? null : section);
   };
