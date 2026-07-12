@@ -164,7 +164,7 @@ const AdminPermissionsPage = () => {
                     const groupPages = PAGES.filter(p => p.group === group);
                     if (groupPages.length === 0) return null;
                     return (
-                      <>
+                      <Fragment key={group}>
                         <tr key={`h-${group}`} className="bg-muted/40">
                           <td colSpan={ROLES.length + 1} className="px-3 py-1.5 text-[10px] uppercase font-semibold tracking-wider text-muted-foreground sticky left-0 bg-muted/40">
                             {group}
