@@ -79,6 +79,7 @@ const AdminPermissionsPage = () => {
     setChanges({});
     toast({ title: 'Permissões guardadas' });
     fetchPerms();
+    queryClient.invalidateQueries({ queryKey: ['permissions_matrix'] });
     setSaving(false);
   };
 
