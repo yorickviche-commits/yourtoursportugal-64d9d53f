@@ -37,6 +37,10 @@ import BookingEmailHistory from '@/components/trip/BookingEmailHistory';
 import CommunicationsTab from '@/components/communications/CommunicationsTab';
 import { getProposalShareUrl } from '@/lib/proposalShare';
 import { displayLeadCode } from '@/lib/leadCode';
+import { useUnsavedChangesGuard } from '@/hooks/useUnsavedChangesGuard';
+import {
+  AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter,
+} from '@/components/ui/alert-dialog';
 
 type DetailTab = 'dados_gerais' | 'travel_planner' | 'custos' | 'propostas' | 'operacoes' | 'comunicacoes';
 
@@ -909,6 +913,35 @@ const LeadDetailPage = ({ mode = 'lead' }: { mode?: 'lead' | 'booking' } = {}) =
     }
   }, [lead, formState, leadStatus, destino, categoria, travelStyles, origem, activeVersion, updateLeadMutation, toast]);
 
+  // Dirty tracking — deteta alterações por gravar no formulário / tags / versão
+  const isDirty = useMemo(() => {
+    if (!lead) return false;
+    const l: any = lead;
+    if ((l.yt_id || '') !== formState.ytId) return true;
+    if ((l.client_name || '') !== formState.clientName) return true;
+    if ((l.email || '') !== formState.email) return true;
+    if ((l.phone || '') !== formState.phone) return true;
+    if ((l.travel_dates || '') !== formState.travelDates) return true;
+    if ((l.travel_end_date || '') !== formState.travelEndDate) return true;
+    if ((l.number_of_days || 0) !== formState.numberOfDays) return true;
+    if ((l.dates_type || 'estimated') !== formState.datesType) return true;
+    if ((l.pax || 2) !== formState.pax) return true;
+    if ((l.pax_children || 0) !== formState.paxChildren) return true;
+    if ((l.pax_infants || 0) !== formState.paxInfants) return true;
+    if ((l.budget_level || '') !== formState.budgetLevel) return true;
+    if ((l.notes || '') !== formState.notes) return true;
+    if ((l.sales_owner || '') !== formState.salesOwner) return true;
+    if ((l.comfort_level || '') !== (categoria[0] || '')) return true;
+    const savedDest = (l.destination ? String(l.destination).split(', ').filter(Boolean) : []).join('|');
+    if (savedDest !== destino.join('|')) return true;
+    const savedStyles = Array.isArray(l.travel_style) ? l.travel_style.join('|') : '';
+    if (savedStyles !== travelStyles.join('|')) return true;
+    if ((l.active_version || 0) !== activeVersion) return true;
+    return false;
+  }, [lead, formState, categoria, destino, travelStyles, activeVersion]);
+
+  const guard = useUnsavedChangesGuard(isDirty, handleSave);
+
   const handleDuplicate = useCallback(async () => {
     if (!lead) return;
     try {
@@ -1042,7 +1075,18 @@ const LeadDetailPage = ({ mode = 'lead' }: { mode?: 'lead' | 'booking' } = {}) =
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="start">
                   {LEAD_STATUSES.map(s => (
-                    <DropdownMenuItem key={s.value} onClick={() => setLeadStatus(s.value)} className={cn("text-xs cursor-pointer", leadStatus === s.value && "font-bold")}>{s.label}</DropdownMenuItem>
+                    <DropdownMenuItem key={s.value} onClick={async () => {
+                      const prev = leadStatus;
+                      setLeadStatus(s.value);
+                      try {
+                        await updateLeadMutation.mutateAsync({ id: lead.id, updates: { status: s.value } });
+                        await logActivity('lead_status_changed', 'lead', lead.id, { from: prev, to: s.value });
+                        toast({ title: 'Estado atualizado', description: s.label });
+                      } catch (err: any) {
+                        setLeadStatus(prev);
+                        toast({ title: 'Erro ao atualizar estado', description: err.message, variant: 'destructive' });
+                      }
+                    }} className={cn("text-xs cursor-pointer", leadStatus === s.value && "font-bold")}>{s.label}</DropdownMenuItem>
                   ))}
                 </DropdownMenuContent>
               </DropdownMenu>
@@ -1330,6 +1374,25 @@ const LeadDetailPage = ({ mode = 'lead' }: { mode?: 'lead' | 'booking' } = {}) =
         )}
 
       </div>
+
+      <AlertDialog open={guard.open}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Tem alterações por gravar</AlertDialogTitle>
+            <AlertDialogDescription>
+              Alterou dados desta simulação que ainda não foram guardados. O que pretende fazer?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="gap-2 sm:gap-2">
+            <Button variant="outline" onClick={guard.cancel} disabled={guard.saving}>Cancelar</Button>
+            <Button variant="ghost" onClick={guard.discard} disabled={guard.saving}>Sair sem guardar</Button>
+            <Button onClick={guard.saveAndLeave} disabled={guard.saving}>
+              {guard.saving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Save className="h-4 w-4 mr-2" />}
+              Guardar e sair
+            </Button>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </AppLayout>
   );
 };
