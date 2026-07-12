@@ -1374,6 +1374,25 @@ const LeadDetailPage = ({ mode = 'lead' }: { mode?: 'lead' | 'booking' } = {}) =
         )}
 
       </div>
+
+      <AlertDialog open={guard.open}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Tem alterações por gravar</AlertDialogTitle>
+            <AlertDialogDescription>
+              Alterou dados desta simulação que ainda não foram guardados. O que pretende fazer?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="gap-2 sm:gap-2">
+            <Button variant="outline" onClick={guard.cancel} disabled={guard.saving}>Cancelar</Button>
+            <Button variant="ghost" onClick={guard.discard} disabled={guard.saving}>Sair sem guardar</Button>
+            <Button onClick={guard.saveAndLeave} disabled={guard.saving}>
+              {guard.saving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Save className="h-4 w-4 mr-2" />}
+              Guardar e sair
+            </Button>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </AppLayout>
   );
 };
