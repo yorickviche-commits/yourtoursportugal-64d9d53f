@@ -60,6 +60,8 @@ const AdminIntegrationsPage = () => {
     return <AppLayout><div className="flex items-center justify-center h-64 text-muted-foreground">Acesso restrito.</div></AppLayout>;
   }
 
+  const gcal = integrations.find(i => i.name === 'google_calendar');
+
   return (
     <AppLayout>
       <div className="space-y-6">
@@ -67,6 +69,8 @@ const AdminIntegrationsPage = () => {
           <Plug className="h-6 w-6 text-primary" />
           <h1 className="text-2xl font-bold text-foreground">Integrações</h1>
         </div>
+
+        {gcal && <GoogleCalendarPanel integ={gcal} onChange={fetchIntegrations} />}
 
         {loading ? <p className="text-muted-foreground">A carregar...</p> : (
           <div className="grid gap-4 sm:grid-cols-2">
