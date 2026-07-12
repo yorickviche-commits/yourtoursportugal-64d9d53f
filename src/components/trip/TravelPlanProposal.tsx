@@ -1428,6 +1428,8 @@ const TravelPlanProposal = ({
             );
           })}
         </div>
+        </DragDropContext>
+
 
         {/* PRICING & CONDITIONS — Client-facing closing section */}
         <div className="border-t-2 border-slate-200 bg-slate-50 p-6 md:p-10 space-y-6 print:break-before-page">
