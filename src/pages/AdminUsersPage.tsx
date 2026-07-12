@@ -7,7 +7,9 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
-import { Shield, UserPlus, Trash2 } from 'lucide-react';
+import { Shield, UserPlus, Trash2, Power, UserX } from 'lucide-react';
+import { Switch } from '@/components/ui/switch';
+
 
 const ROLES = ['super_admin', 'admin', 'sales_agent', 'operations_agent', 'finance', 'b2b_manager', 'viewer'] as const;
 
@@ -86,6 +88,29 @@ const AdminUsersPage = () => {
       fetchUsers();
     }
   };
+  const toggleStatus = async (userId: string, current: string) => {
+    const next = current === 'active' ? 'inactive' : 'active';
+    const { error } = await supabase.from('profiles').update({ status: next } as any).eq('id', userId);
+    if (error) {
+      toast({ title: 'Erro', description: error.message, variant: 'destructive' });
+    } else {
+      toast({ title: `Utilizador ${next === 'active' ? 'ativado' : 'desativado'}` });
+      fetchUsers();
+    }
+  };
+
+  const deleteUser = async (userId: string, name: string) => {
+    if (!window.confirm(`Eliminar ${name}? Esta ação remove o perfil e as roles do utilizador.`)) return;
+    await supabase.from('user_roles').delete().eq('user_id', userId);
+    const { error } = await supabase.from('profiles').delete().eq('id', userId);
+    if (error) {
+      toast({ title: 'Erro', description: error.message, variant: 'destructive' });
+    } else {
+      toast({ title: 'Utilizador eliminado' });
+      fetchUsers();
+    }
+  };
+
 
   if (!isAdmin) {
     return (
@@ -118,10 +143,27 @@ const AdminUsersPage = () => {
                     <div>
                       <p className="font-semibold text-foreground">{user.full_name || 'Sem nome'}</p>
                       <p className="text-sm text-muted-foreground">{user.email}</p>
-                      <p className="text-xs text-muted-foreground mt-1">
-                        Status: <span className={user.status === 'active' ? 'text-green-600' : 'text-destructive'}>{user.status}</span>
-                      </p>
+                      <div className="flex items-center gap-3 mt-2">
+                        <div className="flex items-center gap-2">
+                          <Switch
+                            checked={user.status === 'active'}
+                            onCheckedChange={() => toggleStatus(user.id, user.status)}
+                          />
+                          <span className={`text-xs ${user.status === 'active' ? 'text-green-600' : 'text-destructive'}`}>
+                            {user.status === 'active' ? 'Ativo' : 'Inativo'}
+                          </span>
+                        </div>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="h-7 px-2 text-destructive hover:text-destructive hover:bg-destructive/10"
+                          onClick={() => deleteUser(user.id, user.full_name || user.email || 'utilizador')}
+                        >
+                          <UserX className="h-3 w-3 mr-1" /> Eliminar
+                        </Button>
+                      </div>
                     </div>
+
 
                     <div className="flex flex-col gap-2">
                       <div className="flex flex-wrap gap-1">
