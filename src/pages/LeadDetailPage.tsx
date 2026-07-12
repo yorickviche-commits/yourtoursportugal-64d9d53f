@@ -253,6 +253,7 @@ const OperacoesTab = ({ activeVersion, leadId, leadCode }: { activeVersion: numb
         invoice_file_name: file.name,
         invoice_status: 'invoice_received',
       });
+      triggerCalendarSync(leadId, 'update');
 
       opsToast({ title: 'Fatura carregada com sucesso' });
     } catch (err: any) {
