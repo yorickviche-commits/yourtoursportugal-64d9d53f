@@ -285,6 +285,7 @@ const Dashboard = () => {
           </>
         )}
 
+        {subPage === 'overview' && <TeamKPIsGate />}
         {subPage === 'calendar_reservas' && <MonthlyCalendar events={calendarEvents} />}
         {subPage === 'calendar_tasks' && <TasksBoard />}
       </div>
