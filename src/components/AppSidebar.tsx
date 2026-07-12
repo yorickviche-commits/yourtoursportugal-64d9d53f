@@ -11,6 +11,8 @@ import { useAuth } from '@/hooks/useAuth';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useUnreadNotificationCount } from '@/hooks/useAgentNotifications';
 import { useAgentPendingActions } from '@/hooks/useAgentPendingActions';
+import { usePagePermissions } from '@/hooks/usePagePermissions';
+import { PageKey } from '@/lib/pagePermissions';
 import BrandLogo from './BrandLogo';
 
 interface NavItem { to: string; icon: any; label: string; }
