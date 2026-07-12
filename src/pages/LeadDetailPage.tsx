@@ -229,6 +229,7 @@ const OperacoesTab = ({ activeVersion, leadId, leadCode }: { activeVersion: numb
         day_number: dayNumber,
         [field]: value,
       });
+      triggerCalendarSync(leadId, 'update');
     } catch (err: any) {
       opsToast({ title: 'Erro ao guardar', description: err.message, variant: 'destructive' });
     }
