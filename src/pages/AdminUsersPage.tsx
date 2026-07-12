@@ -143,10 +143,27 @@ const AdminUsersPage = () => {
                     <div>
                       <p className="font-semibold text-foreground">{user.full_name || 'Sem nome'}</p>
                       <p className="text-sm text-muted-foreground">{user.email}</p>
-                      <p className="text-xs text-muted-foreground mt-1">
-                        Status: <span className={user.status === 'active' ? 'text-green-600' : 'text-destructive'}>{user.status}</span>
-                      </p>
+                      <div className="flex items-center gap-3 mt-2">
+                        <div className="flex items-center gap-2">
+                          <Switch
+                            checked={user.status === 'active'}
+                            onCheckedChange={() => toggleStatus(user.id, user.status)}
+                          />
+                          <span className={`text-xs ${user.status === 'active' ? 'text-green-600' : 'text-destructive'}`}>
+                            {user.status === 'active' ? 'Ativo' : 'Inativo'}
+                          </span>
+                        </div>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="h-7 px-2 text-destructive hover:text-destructive hover:bg-destructive/10"
+                          onClick={() => deleteUser(user.id, user.full_name || user.email || 'utilizador')}
+                        >
+                          <UserX className="h-3 w-3 mr-1" /> Eliminar
+                        </Button>
+                      </div>
                     </div>
+
 
                     <div className="flex flex-col gap-2">
                       <div className="flex flex-wrap gap-1">
