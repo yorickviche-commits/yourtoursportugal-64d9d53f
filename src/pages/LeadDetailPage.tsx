@@ -1084,6 +1084,9 @@ const LeadDetailPage = ({ mode = 'lead' }: { mode?: 'lead' | 'booking' } = {}) =
                         await updateLeadMutation.mutateAsync({ id: lead.id, updates: { status: s.value } });
                         await logActivity('lead_status_changed', 'lead', lead.id, { from: prev, to: s.value });
                         toast({ title: 'Estado atualizado', description: s.label });
+                        // Trigger calendar sync on status transition
+                        if (s.value === 'won') triggerCalendarSync(lead.id, 'create', 500);
+                        else if (prev === 'won') triggerCalendarSync(lead.id, 'delete', 500);
                       } catch (err: any) {
                         setLeadStatus(prev);
                         toast({ title: 'Erro ao atualizar estado', description: err.message, variant: 'destructive' });
@@ -1092,6 +1095,7 @@ const LeadDetailPage = ({ mode = 'lead' }: { mode?: 'lead' | 'booking' } = {}) =
                   ))}
                 </DropdownMenuContent>
               </DropdownMenu>
+              <div className="mt-1"><CalendarSyncBadge leadId={lead.id} leadStatus={leadStatus} /></div>
             </div>
             <PaymentSummaryBar leadId={lead.id} totalPVP={costingTotalPVP} />
 
