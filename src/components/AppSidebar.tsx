@@ -256,25 +256,27 @@ const MobileMenu = ({ open, onClose }: { open: boolean; onClose: () => void }) =
         <button onClick={onClose} className="p-2 hover:bg-muted rounded-lg"><X className="h-5 w-5" /></button>
       </div>
       <nav className="flex-1 overflow-y-auto py-4 px-2 space-y-2">
-        {renderGroup('Visão Geral', overviewItems, overviewOpen, setOverviewOpen)}
-        {renderGroup('Dep. Reservas', reservasItems, reservasOpen, setReservasOpen)}
-        {renderGroup('Comercial', comercialItems, comercialOpen, setComercialOpen)}
-        {renderGroup('Administração', adminItems, adminOpen, setAdminOpen)}
-        <div className="pt-2">
-          <p className="px-4 py-2 text-xs uppercase text-muted-foreground font-semibold tracking-wider">AI Agents</p>
-          <NavLink to="/agents" onClick={onClose}
-            className={cn(
-              'flex items-center gap-3 px-4 py-3 text-sm rounded-lg min-h-[48px] transition-colors',
-              isActive('/agents') ? 'bg-primary/10 text-primary font-medium' : 'text-foreground hover:bg-muted'
-            )}
-          >
-            <Sparkles className="h-5 w-5 shrink-0 text-violet-500" />
-            <span>Spark · Agents</span>
-            {totalBadge > 0 && (
-              <span className="ml-auto px-2 py-0.5 text-xs font-bold bg-violet-500 text-white rounded-full">{totalBadge}</span>
-            )}
-          </NavLink>
-        </div>
+        {renderGroup('Visão Geral', visibleOverview, overviewOpen, setOverviewOpen)}
+        {renderGroup('Dep. Reservas', visibleReservas, reservasOpen, setReservasOpen)}
+        {renderGroup('Comercial', visibleComercial, comercialOpen, setComercialOpen)}
+        {renderGroup('Administração', visibleAdmin, adminOpen, setAdminOpen)}
+        {showAgents && (
+          <div className="pt-2">
+            <p className="px-4 py-2 text-xs uppercase text-muted-foreground font-semibold tracking-wider">AI Agents</p>
+            <NavLink to="/agents" onClick={onClose}
+              className={cn(
+                'flex items-center gap-3 px-4 py-3 text-sm rounded-lg min-h-[48px] transition-colors',
+                isActive('/agents') ? 'bg-primary/10 text-primary font-medium' : 'text-foreground hover:bg-muted'
+              )}
+            >
+              <Sparkles className="h-5 w-5 shrink-0 text-violet-500" />
+              <span>Spark · Agents</span>
+              {totalBadge > 0 && (
+                <span className="ml-auto px-2 py-0.5 text-xs font-bold bg-violet-500 text-white rounded-full">{totalBadge}</span>
+              )}
+            </NavLink>
+          </div>
+        )}
       </nav>
       <div className="p-4 border-t border-border">
         <div className="flex items-center gap-3">
