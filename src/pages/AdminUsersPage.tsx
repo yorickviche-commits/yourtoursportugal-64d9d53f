@@ -7,7 +7,9 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
-import { Shield, UserPlus, Trash2 } from 'lucide-react';
+import { Shield, UserPlus, Trash2, Power, UserX } from 'lucide-react';
+import { Switch } from '@/components/ui/switch';
+
 
 const ROLES = ['super_admin', 'admin', 'sales_agent', 'operations_agent', 'finance', 'b2b_manager', 'viewer'] as const;
 
