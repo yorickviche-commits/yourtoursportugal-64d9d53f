@@ -43,7 +43,7 @@ interface UserWithRoles {
 }
 
 const AdminUsersPage = () => {
-  const { isAdmin } = useAuth();
+  const { isAdmin, user: currentUser } = useAuth();
   const [users, setUsers] = useState<UserWithRoles[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedRole, setSelectedRole] = useState<string>('');
@@ -100,12 +100,36 @@ const AdminUsersPage = () => {
   };
 
   const deleteUser = async (userId: string, name: string) => {
+    if (userId === currentUser?.id) {
+      toast({ title: 'Ação bloqueada', description: 'Não podes eliminar o teu próprio utilizador.', variant: 'destructive' });
+      return;
+    }
+
     if (!window.confirm(`Eliminar ${name}? Esta ação remove o perfil e as roles do utilizador.`)) return;
-    await supabase.from('user_roles').delete().eq('user_id', userId);
-    const { error } = await supabase.from('profiles').delete().eq('id', userId);
-    if (error) {
-      toast({ title: 'Erro', description: error.message, variant: 'destructive' });
+
+    const { error: rolesError } = await supabase
+      .from('user_roles')
+      .delete()
+      .eq('user_id', userId);
+
+    if (rolesError) {
+      toast({ title: 'Erro ao remover acessos', description: rolesError.message, variant: 'destructive' });
+      return;
+    }
+
+    const { data: deletedProfile, error: profileError } = await supabase
+      .from('profiles')
+      .delete()
+      .eq('id', userId)
+      .select('id')
+      .maybeSingle();
+
+    if (profileError) {
+      toast({ title: 'Erro ao eliminar utilizador', description: profileError.message, variant: 'destructive' });
+    } else if (!deletedProfile) {
+      toast({ title: 'Utilizador não eliminado', description: 'A base de dados não confirmou a remoção do perfil.', variant: 'destructive' });
     } else {
+      setUsers(prev => prev.filter(user => user.id !== userId));
       toast({ title: 'Utilizador eliminado' });
       fetchUsers();
     }
