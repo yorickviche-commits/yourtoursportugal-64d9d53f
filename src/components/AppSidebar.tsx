@@ -126,41 +126,47 @@ const DesktopSidebar = () => {
       <nav className="flex-1 py-3 px-2 space-y-1 overflow-y-auto">
         {renderGroup('Visão Geral', overviewItems, overviewOpen, setOverviewOpen)}
         {renderGroup('Dep. Reservas', reservasItems, reservasOpen, setReservasOpen)}
-        {renderGroup('Comercial', comercialItems, comercialOpen, setComercialOpen)}
-        {renderGroup('Administração', adminItems, adminOpen, setAdminOpen)}
+        {renderGroup('Visão Geral', visibleOverview, overviewOpen, setOverviewOpen)}
+        {renderGroup('Dep. Reservas', visibleReservas, reservasOpen, setReservasOpen)}
+        {renderGroup('Comercial', visibleComercial, comercialOpen, setComercialOpen)}
+        {renderGroup('Administração', visibleAdmin, adminOpen, setAdminOpen)}
 
-        {expanded
-          ? <p className="px-3 py-1.5 text-[10px] uppercase text-sidebar-muted font-semibold tracking-wider mt-2">AI Agents</p>
-          : <div className="border-t border-sidebar-border my-2" />
-        }
+        {showAgents && (
+          <>
+            {expanded
+              ? <p className="px-3 py-1.5 text-[10px] uppercase text-sidebar-muted font-semibold tracking-wider mt-2">AI Agents</p>
+              : <div className="border-t border-sidebar-border my-2" />
+            }
 
-        <NavLink to="/agents" title="Spark Agent Center"
-          className={cn(
-            'flex items-center gap-3 rounded-md text-sm transition-colors relative',
-            expanded ? 'px-3 py-2' : 'justify-center px-2 py-2',
-            agentActive ? 'bg-sidebar-accent text-sidebar-accent-foreground font-medium'
-                        : 'text-sidebar-foreground hover:bg-sidebar-accent/50'
-          )}
-        >
-          <div className="relative shrink-0">
-            <Sparkles className="h-4 w-4 text-violet-400" />
-            {!expanded && totalBadge > 0 && (
-              <span className="absolute -top-1 -right-1 h-3.5 w-3.5 rounded-full bg-violet-500 text-white text-[8px] font-bold flex items-center justify-center">
-                {totalBadge > 9 ? '9+' : totalBadge}
-              </span>
-            )}
-          </div>
-          {expanded && (
-            <>
-              <span className="truncate text-xs">Spark · Agents</span>
-              {totalBadge > 0 && (
-                <span className="ml-auto text-[10px] bg-violet-500 text-white px-1.5 py-0.5 rounded-full font-bold">
-                  {totalBadge}
-                </span>
+            <NavLink to="/agents" title="Spark Agent Center"
+              className={cn(
+                'flex items-center gap-3 rounded-md text-sm transition-colors relative',
+                expanded ? 'px-3 py-2' : 'justify-center px-2 py-2',
+                agentActive ? 'bg-sidebar-accent text-sidebar-accent-foreground font-medium'
+                            : 'text-sidebar-foreground hover:bg-sidebar-accent/50'
               )}
-            </>
-          )}
-        </NavLink>
+            >
+              <div className="relative shrink-0">
+                <Sparkles className="h-4 w-4 text-violet-400" />
+                {!expanded && totalBadge > 0 && (
+                  <span className="absolute -top-1 -right-1 h-3.5 w-3.5 rounded-full bg-violet-500 text-white text-[8px] font-bold flex items-center justify-center">
+                    {totalBadge > 9 ? '9+' : totalBadge}
+                  </span>
+                )}
+              </div>
+              {expanded && (
+                <>
+                  <span className="truncate text-xs">Spark · Agents</span>
+                  {totalBadge > 0 && (
+                    <span className="ml-auto text-[10px] bg-violet-500 text-white px-1.5 py-0.5 rounded-full font-bold">
+                      {totalBadge}
+                    </span>
+                  )}
+                </>
+              )}
+            </NavLink>
+          </>
+        )}
       </nav>
 
       <div className={cn('border-t border-sidebar-border', expanded ? 'p-3' : 'p-2')}>
