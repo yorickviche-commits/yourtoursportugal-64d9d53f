@@ -88,6 +88,29 @@ const AdminUsersPage = () => {
       fetchUsers();
     }
   };
+  const toggleStatus = async (userId: string, current: string) => {
+    const next = current === 'active' ? 'inactive' : 'active';
+    const { error } = await supabase.from('profiles').update({ status: next } as any).eq('id', userId);
+    if (error) {
+      toast({ title: 'Erro', description: error.message, variant: 'destructive' });
+    } else {
+      toast({ title: `Utilizador ${next === 'active' ? 'ativado' : 'desativado'}` });
+      fetchUsers();
+    }
+  };
+
+  const deleteUser = async (userId: string, name: string) => {
+    if (!window.confirm(`Eliminar ${name}? Esta ação remove o perfil e as roles do utilizador.`)) return;
+    await supabase.from('user_roles').delete().eq('user_id', userId);
+    const { error } = await supabase.from('profiles').delete().eq('id', userId);
+    if (error) {
+      toast({ title: 'Erro', description: error.message, variant: 'destructive' });
+    } else {
+      toast({ title: 'Utilizador eliminado' });
+      fetchUsers();
+    }
+  };
+
 
   if (!isAdmin) {
     return (
