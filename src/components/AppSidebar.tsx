@@ -15,33 +15,33 @@ import { usePagePermissions } from '@/hooks/usePagePermissions';
 import { PageKey } from '@/lib/pagePermissions';
 import BrandLogo from './BrandLogo';
 
-interface NavItem { to: string; icon: any; label: string; }
+interface NavItem { to: string; icon: any; label: string; pageKey: PageKey; }
 
 const overviewItems: NavItem[] = [
-  { to: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
+  { to: '/dashboard', icon: LayoutDashboard, label: 'Dashboard', pageKey: 'dashboard' },
 ];
 
 const reservasItems: NavItem[] = [
-  { to: '/leads', icon: Users, label: 'Leads & Files' },
-  { to: '/trips', icon: Map, label: 'Bookings & Reservas' },
-  { to: '/proposals', icon: FileText, label: 'Propostas' },
-  { to: '/payments', icon: CreditCard, label: 'Pagamentos' },
-  { to: '/crm', icon: Inbox, label: 'CRM / Comunicação' },
+  { to: '/leads', icon: Users, label: 'Leads & Files', pageKey: 'leads' },
+  { to: '/trips', icon: Map, label: 'Bookings & Reservas', pageKey: 'trips' },
+  { to: '/proposals', icon: FileText, label: 'Propostas', pageKey: 'proposals' },
+  { to: '/payments', icon: CreditCard, label: 'Pagamentos', pageKey: 'payments' },
+  { to: '/crm', icon: Inbox, label: 'CRM / Comunicação', pageKey: 'crm' },
 ];
 
 const comercialItems: NavItem[] = [
-  { to: '/comercial/matriz', icon: Grid3x3, label: 'Matriz FSE' },
-  { to: '/comercial/suppliers', icon: Truck, label: 'Fornecedores' },
-  { to: '/partners', icon: Handshake, label: 'Parceiros B2B' },
+  { to: '/comercial/matriz', icon: Grid3x3, label: 'Matriz FSE', pageKey: 'comercial_matriz' },
+  { to: '/comercial/suppliers', icon: Truck, label: 'Fornecedores', pageKey: 'comercial_suppliers' },
+  { to: '/partners', icon: Handshake, label: 'Parceiros B2B', pageKey: 'partners' },
 ];
 
 const adminItems: NavItem[] = [
-  { to: '/admin/users', icon: Users, label: 'Utilizadores' },
-  { to: '/admin/permissions', icon: Shield, label: 'Permissões' },
-  { to: '/admin/settings', icon: Settings, label: 'Configurações' },
-  { to: '/admin/integrations', icon: Plug, label: 'Integrações' },
-  { to: '/admin/kpi', icon: BarChart3, label: 'KPI' },
-  { to: '/admin/logs', icon: ScrollText, label: 'Logs' },
+  { to: '/admin/users', icon: Users, label: 'Utilizadores', pageKey: 'admin_users' },
+  { to: '/admin/permissions', icon: Shield, label: 'Permissões', pageKey: 'admin_permissions' },
+  { to: '/admin/settings', icon: Settings, label: 'Configurações', pageKey: 'admin_settings' },
+  { to: '/admin/integrations', icon: Plug, label: 'Integrações', pageKey: 'admin_integrations' },
+  { to: '/admin/kpi', icon: BarChart3, label: 'KPI', pageKey: 'admin_kpi' },
+  { to: '/admin/logs', icon: ScrollText, label: 'Logs', pageKey: 'admin_logs' },
 ];
 
 const DesktopSidebar = () => {
