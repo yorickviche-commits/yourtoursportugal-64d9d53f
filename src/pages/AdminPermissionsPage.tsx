@@ -193,7 +193,7 @@ const AdminPermissionsPage = () => {
                             </tr>
                           );
                         })}
-                      </>
+                      </Fragment>
                     );
                   })}
                 </tbody>
