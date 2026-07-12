@@ -1006,6 +1006,7 @@ export type Database = {
       leads: {
         Row: {
           active_version: number | null
+          assigned_agents: string[]
           budget_level: string | null
           client_name: string
           comfort_level: string | null
@@ -1035,6 +1036,7 @@ export type Database = {
         }
         Insert: {
           active_version?: number | null
+          assigned_agents?: string[]
           budget_level?: string | null
           client_name?: string
           comfort_level?: string | null
@@ -1064,6 +1066,7 @@ export type Database = {
         }
         Update: {
           active_version?: number | null
+          assigned_agents?: string[]
           budget_level?: string | null
           client_name?: string
           comfort_level?: string | null
@@ -1435,6 +1438,7 @@ export type Database = {
           full_name: string | null
           id: string
           last_login_at: string | null
+          phone: string | null
           status: string
           updated_at: string
         }
@@ -1445,6 +1449,7 @@ export type Database = {
           full_name?: string | null
           id: string
           last_login_at?: string | null
+          phone?: string | null
           status?: string
           updated_at?: string
         }
@@ -1455,6 +1460,7 @@ export type Database = {
           full_name?: string | null
           id?: string
           last_login_at?: string | null
+          phone?: string | null
           status?: string
           updated_at?: string
         }

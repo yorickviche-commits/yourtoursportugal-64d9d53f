@@ -19,6 +19,8 @@ import { useQueryClient } from '@tanstack/react-query';
 import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
+import { useAuth } from '@/hooks/useAuth';
+import TeamKPISection from '@/components/kpi/TeamKPISection';
 
 type DashboardSubPage = 'overview' | 'calendar_reservas' | 'calendar_tasks';
 
@@ -283,11 +285,18 @@ const Dashboard = () => {
           </>
         )}
 
+        {subPage === 'overview' && <TeamKPIsGate />}
         {subPage === 'calendar_reservas' && <MonthlyCalendar events={calendarEvents} />}
         {subPage === 'calendar_tasks' && <TasksBoard />}
       </div>
     </AppLayout>
   );
+};
+
+const TeamKPIsGate = () => {
+  const { isAdmin } = useAuth();
+  if (!isAdmin) return null;
+  return <div className="mt-4"><TeamKPISection /></div>;
 };
 
 export default Dashboard;

@@ -11,6 +11,7 @@ export type PageKey =
   | 'comercial_matriz'
   | 'comercial_suppliers'
   | 'partners'
+  | 'profile'
   | 'admin_users'
   | 'admin_permissions'
   | 'admin_settings'
@@ -18,6 +19,7 @@ export type PageKey =
   | 'admin_kpi'
   | 'admin_logs'
   | 'agents';
+
 
 export interface PageDef {
   key: PageKey;
@@ -36,6 +38,7 @@ export const PAGES: PageDef[] = [
   { key: 'comercial_matriz',    label: 'Matriz FSE',           path: '/comercial/matriz',     group: 'Comercial' },
   { key: 'comercial_suppliers', label: 'Fornecedores',         path: '/comercial/suppliers',  group: 'Comercial' },
   { key: 'partners',            label: 'Parceiros B2B',        path: '/partners',             group: 'Comercial' },
+  { key: 'profile',             label: 'O Meu Perfil',         path: '/profile',              group: 'Visão Geral' },
   { key: 'admin_users',         label: 'Utilizadores',         path: '/admin/users',          group: 'Administração' },
   { key: 'admin_permissions',   label: 'Permissões',           path: '/admin/permissions',    group: 'Administração' },
   { key: 'admin_settings',      label: 'Configurações',        path: '/admin/settings',       group: 'Administração' },
