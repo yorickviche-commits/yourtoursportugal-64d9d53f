@@ -323,7 +323,7 @@ Deno.serve(async (req) => {
         summary: title,
         description,
         location: lead.destination || '',
-        colorId: summary.colorId,
+        colorId: '3', // Violeta (Grape) — default automático; humano pode alterar manualmente
         start: { date: day.day_date, timeZone: 'Europe/Lisbon' },
         end: { date: ymd(addDays(new Date(day.day_date + 'T00:00:00Z'), 1)), timeZone: 'Europe/Lisbon' },
         extendedProperties: {
