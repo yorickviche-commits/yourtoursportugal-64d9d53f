@@ -294,6 +294,39 @@ export type Database = {
           },
         ]
       }
+      brand_formulas: {
+        Row: {
+          category: string
+          created_at: string | null
+          id: string
+          notes: string | null
+          text_en: string | null
+          text_es: string | null
+          text_pt: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          category: string
+          created_at?: string | null
+          id?: string
+          notes?: string | null
+          text_en?: string | null
+          text_es?: string | null
+          text_pt?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          category?: string
+          created_at?: string | null
+          id?: string
+          notes?: string | null
+          text_en?: string | null
+          text_es?: string | null
+          text_pt?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       calendar_events: {
         Row: {
           created_at: string
@@ -517,6 +550,48 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      day_modules: {
+        Row: {
+          avg_rating: number | null
+          canonical_text: string
+          code: string
+          created_at: string | null
+          id: string
+          name: string
+          region: string
+          segment_fit: string[]
+          updated_at: string | null
+          usage_count: number | null
+          win_count: number | null
+        }
+        Insert: {
+          avg_rating?: number | null
+          canonical_text: string
+          code: string
+          created_at?: string | null
+          id?: string
+          name: string
+          region: string
+          segment_fit?: string[]
+          updated_at?: string | null
+          usage_count?: number | null
+          win_count?: number | null
+        }
+        Update: {
+          avg_rating?: number | null
+          canonical_text?: string
+          code?: string
+          created_at?: string | null
+          id?: string
+          name?: string
+          region?: string
+          segment_fit?: string[]
+          updated_at?: string | null
+          usage_count?: number | null
+          win_count?: number | null
+        }
+        Relationships: []
       }
       documents: {
         Row: {
@@ -1409,6 +1484,33 @@ export type Database = {
         }
         Relationships: []
       }
+      pricing_patterns: {
+        Row: {
+          active: boolean | null
+          created_at: string | null
+          id: string
+          item: string
+          price: string
+          updated_at: string | null
+        }
+        Insert: {
+          active?: boolean | null
+          created_at?: string | null
+          id?: string
+          item: string
+          price: string
+          updated_at?: string | null
+        }
+        Update: {
+          active?: boolean | null
+          created_at?: string | null
+          id?: string
+          item?: string
+          price?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       products: {
         Row: {
           category: string
@@ -1611,6 +1713,89 @@ export type Database = {
           },
         ]
       }
+      proposal_feedback: {
+        Row: {
+          client_reaction: string | null
+          created_at: string | null
+          edits_made: Json | null
+          id: string
+          learnings: string | null
+          module_ratings: Json | null
+          outcome: string
+          proposal_id: string
+          recorded_by: string | null
+        }
+        Insert: {
+          client_reaction?: string | null
+          created_at?: string | null
+          edits_made?: Json | null
+          id?: string
+          learnings?: string | null
+          module_ratings?: Json | null
+          outcome: string
+          proposal_id: string
+          recorded_by?: string | null
+        }
+        Update: {
+          client_reaction?: string | null
+          created_at?: string | null
+          edits_made?: Json | null
+          id?: string
+          learnings?: string | null
+          module_ratings?: Json | null
+          outcome?: string
+          proposal_id?: string
+          recorded_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "proposal_feedback_proposal_id_fkey"
+            columns: ["proposal_id"]
+            isOneToOne: false
+            referencedRelation: "proposals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      proposal_references: {
+        Row: {
+          created_at: string | null
+          day_module_ids: string[] | null
+          id: string
+          proposal_id: string
+          reference_program_id: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          day_module_ids?: string[] | null
+          id?: string
+          proposal_id: string
+          reference_program_id?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          day_module_ids?: string[] | null
+          id?: string
+          proposal_id?: string
+          reference_program_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "proposal_references_proposal_id_fkey"
+            columns: ["proposal_id"]
+            isOneToOne: false
+            referencedRelation: "proposals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "proposal_references_reference_program_id_fkey"
+            columns: ["reference_program_id"]
+            isOneToOne: false
+            referencedRelation: "reference_programs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       proposals: {
         Row: {
           approved_at: string | null
@@ -1698,6 +1883,105 @@ export type Database = {
           wetravel_checkout_url?: string | null
           wetravel_trip_url?: string | null
           wetravel_trip_uuid?: string | null
+        }
+        Relationships: []
+      }
+      reference_programs: {
+        Row: {
+          channel: string | null
+          client_name: string | null
+          created_at: string | null
+          dates: string | null
+          days: Json
+          doc_type: string | null
+          duration_days: number
+          id: string
+          is_best_of: boolean | null
+          language: string
+          notes: string | null
+          pax: number | null
+          segment: string
+          signature_elements: string[] | null
+          title: string
+          updated_at: string | null
+          usage_count: number | null
+          wetravel_url: string | null
+          win_count: number | null
+          yt_id: string | null
+        }
+        Insert: {
+          channel?: string | null
+          client_name?: string | null
+          created_at?: string | null
+          dates?: string | null
+          days: Json
+          doc_type?: string | null
+          duration_days: number
+          id?: string
+          is_best_of?: boolean | null
+          language: string
+          notes?: string | null
+          pax?: number | null
+          segment: string
+          signature_elements?: string[] | null
+          title: string
+          updated_at?: string | null
+          usage_count?: number | null
+          wetravel_url?: string | null
+          win_count?: number | null
+          yt_id?: string | null
+        }
+        Update: {
+          channel?: string | null
+          client_name?: string | null
+          created_at?: string | null
+          dates?: string | null
+          days?: Json
+          doc_type?: string | null
+          duration_days?: number
+          id?: string
+          is_best_of?: boolean | null
+          language?: string
+          notes?: string | null
+          pax?: number | null
+          segment?: string
+          signature_elements?: string[] | null
+          title?: string
+          updated_at?: string | null
+          usage_count?: number | null
+          wetravel_url?: string | null
+          win_count?: number | null
+          yt_id?: string | null
+        }
+        Relationships: []
+      }
+      signature_elements: {
+        Row: {
+          code: string
+          created_at: string | null
+          description: string
+          id: string
+          name: string
+          segments: string[] | null
+          updated_at: string | null
+        }
+        Insert: {
+          code: string
+          created_at?: string | null
+          description: string
+          id?: string
+          name: string
+          segments?: string[] | null
+          updated_at?: string | null
+        }
+        Update: {
+          code?: string
+          created_at?: string | null
+          description?: string
+          id?: string
+          name?: string
+          segments?: string[] | null
+          updated_at?: string | null
         }
         Relationships: []
       }
