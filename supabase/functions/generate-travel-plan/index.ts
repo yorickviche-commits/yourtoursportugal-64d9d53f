@@ -106,10 +106,33 @@ async function callAI(systemPrompt: string, userPrompt: string, attachments: Att
   const errors: string[] = [];
   let creditsExhausted = false;
 
+  // Build multimodal user content blocks (if attachments present).
+  // Only used by Lovable AI Gateway / direct Gemini — text-capable fallbacks ignore attachments.
+  const userContentBlocks: any[] = [{ type: 'text', text: userPrompt }];
+  for (const att of attachments) {
+    if (att.kind === 'image') {
+      userContentBlocks.push({
+        type: 'image_url',
+        image_url: { url: `data:${att.mime};base64,${att.base64}` },
+      });
+    } else if (att.kind === 'pdf') {
+      userContentBlocks.push({
+        type: 'file',
+        file: {
+          filename: att.filename || 'exact-itinerary.pdf',
+          file_data: `data:${att.mime};base64,${att.base64}`,
+        },
+      });
+    }
+  }
+  const useMultimodal = attachments.length > 0;
+
   // 1) Lovable AI Gateway — rotate models on 429, skip on 402
   const LOVABLE_KEY = Deno.env.get('LOVABLE_API_KEY');
   if (LOVABLE_KEY) {
-    const lovableModels = ['google/gemini-2.5-pro', 'google/gemini-2.5-flash', 'google/gemini-2.5-flash-lite'];
+    const lovableModels = useMultimodal
+      ? ['google/gemini-2.5-pro', 'google/gemini-2.5-flash']
+      : ['google/gemini-2.5-pro', 'google/gemini-2.5-flash', 'google/gemini-2.5-flash-lite'];
     for (const model of lovableModels) {
       let lastStatus = 0;
       for (let attempt = 0; attempt < 2; attempt++) {
@@ -119,7 +142,10 @@ async function callAI(systemPrompt: string, userPrompt: string, attachments: Att
             headers: { 'Authorization': `Bearer ${LOVABLE_KEY}`, 'Content-Type': 'application/json' },
             body: JSON.stringify({
               model,
-              messages: [{ role: 'system', content: systemPrompt }, { role: 'user', content: userPrompt }],
+              messages: [
+                { role: 'system', content: systemPrompt },
+                { role: 'user', content: useMultimodal ? userContentBlocks : userPrompt },
+              ],
               max_tokens: 32768,
               response_format: { type: 'json_object' },
             }),
