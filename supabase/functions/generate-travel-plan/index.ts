@@ -100,7 +100,9 @@ function calculateDays(ld: RequestBody['leadData']): number {
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
-async function callAI(systemPrompt: string, userPrompt: string): Promise<string> {
+interface Attachment { kind: 'image' | 'pdf'; mime: string; base64: string; filename?: string; }
+
+async function callAI(systemPrompt: string, userPrompt: string, attachments: Attachment[] = []): Promise<string> {
   const errors: string[] = [];
   let creditsExhausted = false;
 
