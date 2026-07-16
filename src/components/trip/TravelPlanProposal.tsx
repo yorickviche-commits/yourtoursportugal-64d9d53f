@@ -659,7 +659,11 @@ const TravelPlanProposal = ({
       if (leadId) await clearUsedPhotos();
       const effectiveLang = langOverride || language;
       const { data, error } = await supabase.functions.invoke('generate-travel-plan', {
-        body: { leadData: { ...leadData, language: effectiveLang }, extraInstructions: extra || undefined },
+        body: {
+          leadData: { ...leadData, language: effectiveLang },
+          extraInstructions: extra || undefined,
+          routeMapPath, exactItineraryPdfPath,
+        },
       });
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
