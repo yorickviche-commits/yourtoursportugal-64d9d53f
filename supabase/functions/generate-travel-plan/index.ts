@@ -70,7 +70,9 @@ interface RequestBody {
     language?: string;
   };
   extraInstructions?: string;
-}
+  routeMapPath?: string;
+  exactItineraryPdfPath?: string;
+};
 
 const LANGUAGE_MAP: Record<string, string> = {
   EN: 'English (premium DMC tone)',
