@@ -427,6 +427,7 @@ const TravelPlanProposal = ({
   numberOfDays, datesType, pax, paxChildren, paxInfants,
   travelStyles, comfortLevel, budgetLevel, magicQuestion, notes,
   defaultLanguage,
+  routeMapPath, exactItineraryPdfPath,
   onGoToCosting,
 }: TravelPlanProposalProps) => {
   const { toast } = useToast();
