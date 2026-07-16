@@ -16,6 +16,7 @@ import { LeadStatus } from '@/types/leads';
 import TravelPlannerEditor, { PlannerDay, PlannerItem, PeriodKey, emptyPeriods, genId } from '@/components/trip/TravelPlannerEditor';
 import TravelPlanProposal from '@/components/trip/TravelPlanProposal';
 import LeadAgentsAssignment from '@/components/LeadAgentsAssignment';
+import { LeadContextAttachments } from '@/components/leads/LeadContextAttachments';
 import { useProposalsQuery, useProposalAnnotations } from '@/hooks/useProposalsQuery';
 import { toast as sonnerToast } from 'sonner';
 // ItineraryEditor removed — replaced by Propostas tab
