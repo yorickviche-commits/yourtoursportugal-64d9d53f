@@ -70,7 +70,9 @@ interface RequestBody {
     language?: string;
   };
   extraInstructions?: string;
-}
+  routeMapPath?: string;
+  exactItineraryPdfPath?: string;
+};
 
 const LANGUAGE_MAP: Record<string, string> = {
   EN: 'English (premium DMC tone)',
@@ -98,14 +100,39 @@ function calculateDays(ld: RequestBody['leadData']): number {
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
-async function callAI(systemPrompt: string, userPrompt: string): Promise<string> {
+interface Attachment { kind: 'image' | 'pdf'; mime: string; base64: string; filename?: string; }
+
+async function callAI(systemPrompt: string, userPrompt: string, attachments: Attachment[] = []): Promise<string> {
   const errors: string[] = [];
   let creditsExhausted = false;
+
+  // Build multimodal user content blocks (if attachments present).
+  // Only used by Lovable AI Gateway / direct Gemini — text-capable fallbacks ignore attachments.
+  const userContentBlocks: any[] = [{ type: 'text', text: userPrompt }];
+  for (const att of attachments) {
+    if (att.kind === 'image') {
+      userContentBlocks.push({
+        type: 'image_url',
+        image_url: { url: `data:${att.mime};base64,${att.base64}` },
+      });
+    } else if (att.kind === 'pdf') {
+      userContentBlocks.push({
+        type: 'file',
+        file: {
+          filename: att.filename || 'exact-itinerary.pdf',
+          file_data: `data:${att.mime};base64,${att.base64}`,
+        },
+      });
+    }
+  }
+  const useMultimodal = attachments.length > 0;
 
   // 1) Lovable AI Gateway — rotate models on 429, skip on 402
   const LOVABLE_KEY = Deno.env.get('LOVABLE_API_KEY');
   if (LOVABLE_KEY) {
-    const lovableModels = ['google/gemini-2.5-pro', 'google/gemini-2.5-flash', 'google/gemini-2.5-flash-lite'];
+    const lovableModels = useMultimodal
+      ? ['google/gemini-2.5-pro', 'google/gemini-2.5-flash']
+      : ['google/gemini-2.5-pro', 'google/gemini-2.5-flash', 'google/gemini-2.5-flash-lite'];
     for (const model of lovableModels) {
       let lastStatus = 0;
       for (let attempt = 0; attempt < 2; attempt++) {
@@ -115,7 +142,10 @@ async function callAI(systemPrompt: string, userPrompt: string): Promise<string>
             headers: { 'Authorization': `Bearer ${LOVABLE_KEY}`, 'Content-Type': 'application/json' },
             body: JSON.stringify({
               model,
-              messages: [{ role: 'system', content: systemPrompt }, { role: 'user', content: userPrompt }],
+              messages: [
+                { role: 'system', content: systemPrompt },
+                { role: 'user', content: useMultimodal ? userContentBlocks : userPrompt },
+              ],
               max_tokens: 32768,
               response_format: { type: 'json_object' },
             }),
@@ -153,7 +183,13 @@ async function callAI(systemPrompt: string, userPrompt: string): Promise<string>
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({
-                contents: [{ role: 'user', parts: [{ text: `${systemPrompt}\n\n${userPrompt}` }] }],
+                contents: [{
+                  role: 'user',
+                  parts: [
+                    { text: `${systemPrompt}\n\n${userPrompt}` },
+                    ...attachments.map(a => ({ inlineData: { mimeType: a.mime, data: a.base64 } })),
+                  ],
+                }],
                 generationConfig: { maxOutputTokens: 32768, temperature: 0.7, responseMimeType: 'application/json' },
               }),
             }
@@ -263,11 +299,48 @@ serve(async (req) => {
 
 
   try {
-    const { leadData, extraInstructions } = (await req.json()) as RequestBody;
+    const { leadData, extraInstructions, routeMapPath, exactItineraryPdfPath } = (await req.json()) as RequestBody;
     const numDays = calculateDays(leadData);
     const dateRange = formatDateRange(leadData, numDays);
 
     const paxStr = `${leadData.pax} adult${leadData.pax > 1 ? 's' : ''}${leadData.paxChildren ? ` + ${leadData.paxChildren} children` : ''}${leadData.paxInfants ? ` + ${leadData.paxInfants} infants` : ''}`;
+
+    // ── Fetch context attachments (map screenshot / exact-itinerary PDF) ──
+    const attachments: Attachment[] = [];
+    const SUPA_URL = Deno.env.get('SUPABASE_URL');
+    const SUPA_SR = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+    async function fetchAttachment(path: string, kind: 'image' | 'pdf'): Promise<Attachment | null> {
+      if (!SUPA_URL || !SUPA_SR) return null;
+      try {
+        const res = await fetch(`${SUPA_URL}/storage/v1/object/lead-context/${path}`, {
+          headers: { 'Authorization': `Bearer ${SUPA_SR}`, 'apikey': SUPA_SR },
+        });
+        if (!res.ok) { console.warn(`Fetch attachment ${path} failed: ${res.status}`); return null; }
+        const buf = new Uint8Array(await res.arrayBuffer());
+        // base64 encode
+        let bin = '';
+        for (let i = 0; i < buf.byteLength; i++) bin += String.fromCharCode(buf[i]);
+        const base64 = btoa(bin);
+        const mime = kind === 'pdf'
+          ? 'application/pdf'
+          : (path.endsWith('.png') ? 'image/png' : path.endsWith('.webp') ? 'image/webp' : 'image/jpeg');
+        return { kind, mime, base64, filename: path.split('/').pop() };
+      } catch (e) {
+        console.warn(`Attachment fetch error ${path}:`, e);
+        return null;
+      }
+    }
+    if (routeMapPath) {
+      const a = await fetchAttachment(routeMapPath, 'image');
+      if (a) attachments.push(a);
+    }
+    if (exactItineraryPdfPath) {
+      const a = await fetchAttachment(exactItineraryPdfPath, 'pdf');
+      if (a) attachments.push(a);
+    }
+
+    const hasMap = attachments.some(a => a.kind === 'image');
+    const hasExact = attachments.some(a => a.kind === 'pdf');
 
     const userPrompt = `Generate a ${numDays}-day travel plan proposal for:
 
@@ -283,6 +356,8 @@ Budget: ${leadData.budgetLevel || 'Medium'}
 ${leadData.magicQuestion ? `What would make this trip unforgettable: ${leadData.magicQuestion}` : ''}
 ${leadData.notes ? `Additional notes: ${leadData.notes}` : ''}
 ${extraInstructions ? `\nADDITIONAL INSTRUCTIONS FROM TEAM: ${extraInstructions}` : ''}
+${hasMap ? `\nATTACHED: a Google Maps route screenshot showing the intended geographic flow.` : ''}
+${hasExact ? `\nATTACHED: an EXACT ITINERARY PDF that defines the day-by-day skeleton to follow literally.` : ''}
 
 Format dates as DD-Mon-YYYY (e.g. 02-Aug-2026). If exact dates aren't provided, use placeholder dates starting from a reasonable near-future date.`;
 
@@ -290,11 +365,18 @@ Format dates as DD-Mon-YYYY (e.g. 02-Aug-2026). If exact dates aren't provided, 
     const langInstruction = LANGUAGE_MAP[langCode] || LANGUAGE_MAP.EN;
     const languageDirective = `\n\nOUTPUT LANGUAGE: Generate ALL text fields (trip_title, narrative, day title, subtitle, bullets, overnight) in ${langInstruction}. Keep JSON keys in English. Keep proper nouns (city names, hotel names) untranslated.`;
 
+    const exactDirective = hasExact
+      ? `\n\nEXACT-ITINERARY MODE (STRICT): An EXACT ITINERARY PDF is attached. You MUST follow its day-by-day structure, destinations, order and overnight cities literally. Do not invent new days, do not reorder, do not add or remove stops. Only rewrite bullets in YTP premium tone following the style rules above. If a day is unclear in the PDF, keep it minimal instead of inventing content. Override the numeric "EXACT NUMBER OF DAYS" hint if it conflicts with the PDF — the PDF is the source of truth.`
+      : '';
+    const routeDirective = hasMap
+      ? `\n\nROUTE-MAP CONTEXT: A Google Maps route screenshot is attached showing the intended geographic flow. Respect this sequence of stops/regions when structuring the days.`
+      : '';
+
     const systemWithExtra = (extraInstructions
       ? `${SYSTEM_PROMPT}\n\nIMPORTANT ADDITIONAL INSTRUCTIONS: ${extraInstructions}`
-      : SYSTEM_PROMPT) + languageDirective;
+      : SYSTEM_PROMPT) + exactDirective + routeDirective + languageDirective;
 
-    const raw = await callAI(systemWithExtra, userPrompt);
+    const raw = await callAI(systemWithExtra, userPrompt, attachments);
 
     // Parse JSON from response — strip code fences, then try greedy match + partial repair
     let parsed: any = null;

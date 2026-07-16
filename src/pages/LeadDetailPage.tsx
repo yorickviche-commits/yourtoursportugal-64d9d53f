@@ -16,6 +16,7 @@ import { LeadStatus } from '@/types/leads';
 import TravelPlannerEditor, { PlannerDay, PlannerItem, PeriodKey, emptyPeriods, genId } from '@/components/trip/TravelPlannerEditor';
 import TravelPlanProposal from '@/components/trip/TravelPlanProposal';
 import LeadAgentsAssignment from '@/components/LeadAgentsAssignment';
+import { LeadContextAttachments } from '@/components/leads/LeadContextAttachments';
 import { useProposalsQuery, useProposalAnnotations } from '@/hooks/useProposalsQuery';
 import { toast as sonnerToast } from 'sonner';
 // ItineraryEditor removed — replaced by Propostas tab
@@ -1266,6 +1267,12 @@ const LeadDetailPage = ({ mode = 'lead' }: { mode?: 'lead' | 'booking' } = {}) =
 
             <div><label className="text-[10px] text-muted-foreground uppercase">Preferências / Notas</label><Textarea className="mt-1 text-xs" rows={3} value={formState.notes} onChange={e => updateFormField('notes', e.target.value)} /></div>
 
+            <LeadContextAttachments
+              leadId={lead.id}
+              routeMapPath={(lead as any).route_map_path}
+              exactItineraryPdfPath={(lead as any).exact_itinerary_pdf_path}
+            />
+
             <div className="flex items-center justify-between border-t pt-4">
               <Button variant="destructive" size="sm" className="text-xs gap-1" onClick={handleRemove} disabled={deleteLeadMutation.isPending}>
                 <Trash2 className="h-3 w-3" /> Remover
@@ -1298,6 +1305,8 @@ const LeadDetailPage = ({ mode = 'lead' }: { mode?: 'lead' | 'booking' } = {}) =
             magicQuestion={lead.magic_question || undefined}
             notes={formState.notes}
             defaultLanguage={idioma[0]}
+            routeMapPath={(lead as any).route_map_path || undefined}
+            exactItineraryPdfPath={(lead as any).exact_itinerary_pdf_path || undefined}
             onGoToCosting={() => setActiveTab('custos')}
           />
         )}

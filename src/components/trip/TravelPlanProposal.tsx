@@ -66,6 +66,8 @@ interface TravelPlanProposalProps {
   magicQuestion?: string;
   notes?: string;
   defaultLanguage?: string;
+  routeMapPath?: string;
+  exactItineraryPdfPath?: string;
   onGoToCosting?: () => void;
 }
 
@@ -425,6 +427,7 @@ const TravelPlanProposal = ({
   numberOfDays, datesType, pax, paxChildren, paxInfants,
   travelStyles, comfortLevel, budgetLevel, magicQuestion, notes,
   defaultLanguage,
+  routeMapPath, exactItineraryPdfPath,
   onGoToCosting,
 }: TravelPlanProposalProps) => {
   const { toast } = useToast();
@@ -656,7 +659,11 @@ const TravelPlanProposal = ({
       if (leadId) await clearUsedPhotos();
       const effectiveLang = langOverride || language;
       const { data, error } = await supabase.functions.invoke('generate-travel-plan', {
-        body: { leadData: { ...leadData, language: effectiveLang }, extraInstructions: extra || undefined },
+        body: {
+          leadData: { ...leadData, language: effectiveLang },
+          extraInstructions: extra || undefined,
+          routeMapPath, exactItineraryPdfPath,
+        },
       });
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
@@ -772,7 +779,7 @@ const TravelPlanProposal = ({
           : userMessage;
 
       const { data, error } = await supabase.functions.invoke('generate-travel-plan', {
-        body: { leadData, extraInstructions: sectionInstruction },
+        body: { leadData, extraInstructions: sectionInstruction, routeMapPath, exactItineraryPdfPath },
       });
       if (error) throw error;
       if (data?.error) throw new Error(data.error);

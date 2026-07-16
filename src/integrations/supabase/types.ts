@@ -1137,6 +1137,7 @@ export type Database = {
           dates_type: string | null
           destination: string | null
           email: string | null
+          exact_itinerary_pdf_path: string | null
           id: string
           lead_code: string
           magic_question: string | null
@@ -1147,6 +1148,7 @@ export type Database = {
           pax_infants: number | null
           phone: string | null
           pvp_override: number | null
+          route_map_path: string | null
           sales_owner: string | null
           source: string
           status: string
@@ -1167,6 +1169,7 @@ export type Database = {
           dates_type?: string | null
           destination?: string | null
           email?: string | null
+          exact_itinerary_pdf_path?: string | null
           id?: string
           lead_code: string
           magic_question?: string | null
@@ -1177,6 +1180,7 @@ export type Database = {
           pax_infants?: number | null
           phone?: string | null
           pvp_override?: number | null
+          route_map_path?: string | null
           sales_owner?: string | null
           source?: string
           status?: string
@@ -1197,6 +1201,7 @@ export type Database = {
           dates_type?: string | null
           destination?: string | null
           email?: string | null
+          exact_itinerary_pdf_path?: string | null
           id?: string
           lead_code?: string
           magic_question?: string | null
@@ -1207,6 +1212,7 @@ export type Database = {
           pax_infants?: number | null
           phone?: string | null
           pvp_override?: number | null
+          route_map_path?: string | null
           sales_owner?: string | null
           source?: string
           status?: string
