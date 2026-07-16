@@ -1305,6 +1305,8 @@ const LeadDetailPage = ({ mode = 'lead' }: { mode?: 'lead' | 'booking' } = {}) =
             magicQuestion={lead.magic_question || undefined}
             notes={formState.notes}
             defaultLanguage={idioma[0]}
+            routeMapPath={(lead as any).route_map_path || undefined}
+            exactItineraryPdfPath={(lead as any).exact_itinerary_pdf_path || undefined}
             onGoToCosting={() => setActiveTab('custos')}
           />
         )}
