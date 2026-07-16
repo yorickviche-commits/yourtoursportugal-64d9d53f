@@ -1267,6 +1267,12 @@ const LeadDetailPage = ({ mode = 'lead' }: { mode?: 'lead' | 'booking' } = {}) =
 
             <div><label className="text-[10px] text-muted-foreground uppercase">Preferências / Notas</label><Textarea className="mt-1 text-xs" rows={3} value={formState.notes} onChange={e => updateFormField('notes', e.target.value)} /></div>
 
+            <LeadContextAttachments
+              leadId={lead.id}
+              routeMapPath={(lead as any).route_map_path}
+              exactItineraryPdfPath={(lead as any).exact_itinerary_pdf_path}
+            />
+
             <div className="flex items-center justify-between border-t pt-4">
               <Button variant="destructive" size="sm" className="text-xs gap-1" onClick={handleRemove} disabled={deleteLeadMutation.isPending}>
                 <Trash2 className="h-3 w-3" /> Remover
