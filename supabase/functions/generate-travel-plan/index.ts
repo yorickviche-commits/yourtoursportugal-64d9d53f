@@ -183,7 +183,13 @@ async function callAI(systemPrompt: string, userPrompt: string, attachments: Att
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({
-                contents: [{ role: 'user', parts: [{ text: `${systemPrompt}\n\n${userPrompt}` }] }],
+                contents: [{
+                  role: 'user',
+                  parts: [
+                    { text: `${systemPrompt}\n\n${userPrompt}` },
+                    ...attachments.map(a => ({ inlineData: { mimeType: a.mime, data: a.base64 } })),
+                  ],
+                }],
                 generationConfig: { maxOutputTokens: 32768, temperature: 0.7, responseMimeType: 'application/json' },
               }),
             }
