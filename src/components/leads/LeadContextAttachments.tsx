@@ -31,7 +31,11 @@ export function LeadContextAttachments({ leadId, routeMapPath, exactItineraryPdf
     const { data } = await supabase.storage.from(BUCKET).createSignedUrl(path, 3600);
     if (data?.signedUrl) setMapUrl(data.signedUrl);
   };
-  if (routeMapPath && !mapUrl) loadMapThumb(routeMapPath);
+  useEffect(() => {
+    if (routeMapPath) loadMapThumb(routeMapPath);
+    else setMapUrl(null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [routeMapPath]);
 
   const uploadFile = async (file: File, kind: 'map' | 'pdf') => {
     const ext = file.name.split('.').pop()?.toLowerCase() || (kind === 'pdf' ? 'pdf' : 'png');
