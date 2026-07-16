@@ -66,6 +66,8 @@ interface TravelPlanProposalProps {
   magicQuestion?: string;
   notes?: string;
   defaultLanguage?: string;
+  routeMapPath?: string;
+  exactItineraryPdfPath?: string;
   onGoToCosting?: () => void;
 }
 
