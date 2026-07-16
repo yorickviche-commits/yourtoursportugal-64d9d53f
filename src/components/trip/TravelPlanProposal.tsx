@@ -779,7 +779,7 @@ const TravelPlanProposal = ({
           : userMessage;
 
       const { data, error } = await supabase.functions.invoke('generate-travel-plan', {
-        body: { leadData, extraInstructions: sectionInstruction },
+        body: { leadData, extraInstructions: sectionInstruction, routeMapPath, exactItineraryPdfPath },
       });
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
