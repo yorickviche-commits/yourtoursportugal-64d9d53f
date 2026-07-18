@@ -31,6 +31,7 @@ export interface ProposalLite {
   public_token?: string;
   booking_ref?: string | null;
   hero_image_url?: string | null;
+  wetravel_checkout_url?: string | null;
   days?: ProposalDay[] | unknown;
 }
 
