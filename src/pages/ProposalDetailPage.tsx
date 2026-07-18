@@ -148,6 +148,34 @@ const ProposalDetailPage = () => {
             </div>
           </div>
 
+          {/* WeTravel payment link */}
+          <div className="bg-card rounded-xl border border-border p-4 mb-4">
+            <div className="flex items-center justify-between mb-2">
+              <div>
+                <h3 className="text-sm font-semibold">Link de pagamento WeTravel</h3>
+                <p className="text-xs text-muted-foreground">Cola o link do checkout. Aparece como botão "Book Now" na proposta online e no PDF.</p>
+              </div>
+              {wetravelUrl && (
+                <a href={wetravelUrl} target="_blank" rel="noopener noreferrer" className="text-xs text-primary hover:underline flex items-center gap-1 shrink-0">
+                  <ExternalLink className="h-3 w-3" /> Testar
+                </a>
+              )}
+            </div>
+            <div className="flex gap-2">
+              <input
+                type="url"
+                value={wetravelUrl}
+                onChange={e => setWetravelUrl(e.target.value)}
+                placeholder="https://www.wetravel.com/trips/..."
+                maxLength={500}
+                className="flex-1 px-3 py-2 border border-border rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-primary"
+              />
+              <Button size="sm" onClick={saveWetravelUrl} disabled={updateProposal.isPending || wetravelUrl === (proposal.wetravel_checkout_url || '')}>
+                Guardar
+              </Button>
+            </div>
+          </div>
+
           {/* Mini proposal preview */}
           <div className="bg-card rounded-xl border border-border overflow-hidden">
             {proposal.hero_image_url && (
