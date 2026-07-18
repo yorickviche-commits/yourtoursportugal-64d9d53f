@@ -11,6 +11,7 @@ export interface ProposalDay {
   images?: { url: string; caption?: string }[];
   items: string[];
   accommodation: { label: string; hotel_name: string; note: string } | null;
+  map_url?: string;
 }
 
 export interface MapStop {
