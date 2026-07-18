@@ -27,11 +27,30 @@ const ProposalDetailPage = () => {
   const createAnnotation = useCreateAnnotation();
   const createEvent = useCreateEvent();
   const resolveAnnotation = useResolveAnnotation();
+  const updateProposal = useUpdateProposal();
   const { profile } = useAuth();
   const [tab, setTab] = useState<'unresolved' | 'all' | 'timeline'>('unresolved');
   const [replyId, setReplyId] = useState<string | null>(null);
   const [replyText, setReplyText] = useState('');
+  const [wetravelUrl, setWetravelUrl] = useState('');
   const navigate = useNavigate();
+
+  useEffect(() => {
+    if (proposal) setWetravelUrl(proposal.wetravel_checkout_url || '');
+  }, [proposal?.id, proposal?.wetravel_checkout_url]);
+
+  const saveWetravelUrl = () => {
+    if (!id) return;
+    const trimmed = wetravelUrl.trim();
+    if (trimmed && !/^https?:\/\//i.test(trimmed)) {
+      toast.error('Link inválido — deve começar por https://');
+      return;
+    }
+    updateProposal.mutate(
+      { id, wetravel_checkout_url: trimmed || null } as any,
+      { onSuccess: () => toast.success('Link WeTravel guardado') }
+    );
+  };
 
   // Realtime subscription
   useEffect(() => {
