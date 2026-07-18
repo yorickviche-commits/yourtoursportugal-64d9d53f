@@ -41,6 +41,7 @@ export interface Proposal {
   updated_at: string;
   sent_at: string | null;
   approved_at: string | null;
+  wetravel_checkout_url?: string | null;
 }
 
 export interface ProposalAnnotation {
