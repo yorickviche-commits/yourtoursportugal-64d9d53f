@@ -1,6 +1,6 @@
 import { useParams, useNavigate } from 'react-router-dom';
 import AppLayout from '@/components/AppLayout';
-import { useProposalById, useProposalAnnotations, useProposalEvents, useCreateAnnotation, useCreateEvent, useResolveAnnotation } from '@/hooks/useProposalsQuery';
+import { useProposalById, useProposalAnnotations, useProposalEvents, useCreateAnnotation, useCreateEvent, useResolveAnnotation, useUpdateProposal } from '@/hooks/useProposalsQuery';
 import { useState, useEffect } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
