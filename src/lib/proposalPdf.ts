@@ -220,6 +220,24 @@ export async function buildProposalPdfBase64(p: ProposalLite, weblink: string): 
     y += 56;
   }
 
+  // Book Now (WeTravel) CTA button
+  if (p.wetravel_checkout_url) {
+    ensureSpace(56);
+    const btnW = 220;
+    const btnH = 40;
+    const btnX = (pageW - btnW) / 2;
+    doc.setFillColor(10, 37, 64);
+    doc.roundedRect(btnX, y, btnW, btnH, 20, 20, 'F');
+    doc.setTextColor(255, 255, 255);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(12);
+    doc.textWithLink('Book Now  \u2192', pageW / 2, y + 26, {
+      align: 'center',
+      url: p.wetravel_checkout_url,
+    });
+    y += btnH + 16;
+  }
+
   if (weblink) {
     ensureSpace(20);
     doc.setTextColor(10, 37, 64);
