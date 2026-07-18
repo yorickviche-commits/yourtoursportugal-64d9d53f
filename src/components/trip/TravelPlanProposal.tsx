@@ -857,6 +857,7 @@ const TravelPlanProposal = ({
         images: (d.images || []).map(img => ({ url: img.url, caption: img.caption || '' })),
         items: d.bullets.map(b => typeof b === 'string' ? b : b.text),
         accommodation: d.overnight ? { label: d.overnight, hotel_name: d.overnight, note: '' } : null,
+        map_url: d.mapUrl || '',
       }));
 
       // Check if proposal already exists for this lead
