@@ -1,91 +1,45 @@
-## Objetivo
+# Mapa Google por Dia — Travel Planner → Proposta Online
 
-Enriquecer o contexto que alimenta o Travel Planner com dois anexos opcionais no cartão do lead (secção "Preferências / Notas"):
+## Viabilidade
+Totalmente viável e simples. O Google Maps permite embed via iframe sem chave (`https://www.google.com/maps/embed?...`) ou via link partilhado (`maps.app.goo.gl/...` / `google.com/maps/dir/...`). Guardamos o URL colado pelo agente e renderizamos como iframe no builder e na proposta pública. Sem custos de API, sem geocoding, sem manutenção — o UI/UX é o próprio Google Maps (zoom, pins, rota, "abrir no Maps").
 
-1. **Rota de referência** — imagem/print do Google Maps (PNG/JPG) com a rota desenhada.
-2. **Exact Itinerary PDF** — quando existe esqueleto/day-by-day já trabalhado, o motor deve seguir **exatamente** essa estrutura.
+Não vamos re-desenhar o mapa nem re-marcar pontos automaticamente (isso exigiria Places API + geocoding por dia). O agente cola o link partilhado do Maps que já contém a rota/pins desejados — igual à lógica que já usas para o "exact itinerary".
 
-Ambos passam a fazer parte do prompt multimodal enviado ao Gemini quando se clica em "Gerar Travel Plan".
+## Modelo de dados
+Adicionar campo `mapUrl?: string` em cada `day` do objeto `plan.days[]` em `travel_plans` (JSONB — não precisa de migração de schema, só update no tipo TS).
 
----
+Para programas de 1 dia funciona naturalmente (só há 1 dia, 1 mapa). Multi-dia: cada dia tem o seu campo próprio.
 
-## UX (YT lean style)
+## UI — Travel Planner (`TravelPlanProposal.tsx`)
+Em cada card de dia (Day-by-Day), acima ou abaixo do bloco de imagens, adicionar:
+- Input compacto "🗺️ Google Maps link (opcional)" com placeholder `https://maps.app.goo.gl/... ou google.com/maps/...`
+- Botão "Pré-visualizar" que abre o iframe inline abaixo (colapsável).
+- Botão "×" para limpar.
+- Estado guardado via `useUndoable` (já integrado).
 
-Na caixa "Preferências / Notas" (`LeadDetailPage.tsx` linha ~1267), abaixo do textarea, adicionar uma linha compacta com dois slots drag-and-drop:
+Validação leve: aceitar apenas hosts `google.com/maps`, `maps.google.com`, `maps.app.goo.gl`, `www.google.com/maps/embed`. Converter automaticamente:
+- Se já for `/maps/embed?pb=...` → usar tal como está.
+- Se for link normal (`/maps/dir/...`, `/maps/place/...`, `maps.app.goo.gl/...`) → embrulhar em `https://www.google.com/maps?output=embed&q=<encoded>` (funciona para a maioria dos links partilhados; o iframe do Maps aceita `?output=embed` no URL completo).
 
-```text
-[ 🗺️  Rota Google Maps (opcional) ]   [ 📄  Exact Itinerary PDF (opcional) ]
-```
+## UI — Proposta pública (`PublicProposalPage.tsx`)
+Dentro de cada dia do itinerário, se `day.mapUrl` existir, renderizar um iframe responsivo (16:9, `loading="lazy"`, `referrerpolicy="no-referrer-when-downgrade"`, `allowfullscreen`) com título "Rota do Dia X" e um link discreto "Abrir no Google Maps →" que aponta ao URL original.
 
-- Cada slot: ícone + label + botão "Anexar" / "Substituir" / "Remover".
-- Quando preenchido: mostra thumbnail (imagem) ou nome do ficheiro (PDF) + tamanho.
-- Se um PDF "exact itinerary" está anexado, aparece badge amarelo **"Modo Exact — o planner vai seguir este PDF literalmente"**.
-- Sem modal — inline, denso, mobile-friendly.
+Se nenhum dia tiver mapUrl, nada aparece — sem placeholder vazio.
 
----
+## PDF
+Por agora **não incluímos no PDF** — iframe não renderiza em html2canvas/jsPDF e um screenshot estático do Maps exige a Static Maps API (paga, com key restrita). Podemos adicionar mais tarde como opção "gerar screenshot" via edge function se quiseres. A proposta online continua a ser o local rico.
 
-## Backend
+## Ficheiros a alterar
+- `src/components/trip/TravelPlanProposal.tsx` — input + preview por dia, integra no state `plan.days[i].mapUrl`, undo-aware.
+- `src/pages/PublicProposalPage.tsx` — render iframe por dia quando existe URL.
+- `src/lib/proposalShare.ts` / tipo do plan (se tiver interface tipada) — adicionar `mapUrl?: string`.
 
-### Storage
-- Novo bucket privado `lead-context` (RLS: leitura/escrita apenas para internos).
-- Paths: `{lead_id}/route-map.{ext}` e `{lead_id}/exact-itinerary.pdf`.
+Nenhuma migração de BD, nenhuma edge function nova, nenhuma dependência nova.
 
-### Schema
-Duas colunas novas em `leads`:
-```
-route_map_path text
-exact_itinerary_pdf_path text
-```
-(Sem tabela nova — 1:1 com o lead, sempre 0 ou 1 ficheiro por tipo.)
+## Fluxo do agente
+1. No Travel Planner, em cada dia, cola o link do Google Maps (do "share" ou da barra do browser).
+2. Clica "Pré-visualizar" para confirmar que abre bem.
+3. Guarda o plano.
+4. Cliente abre o link da proposta → vê o mapa embed em cada dia, com o UX nativo do Google Maps.
 
-### Edge function `generate-travel-plan`
-- Aceitar no payload `routeMapPath` e `exactItineraryPdfPath`.
-- Se existem, criar signed URLs (1h) e baixar como base64.
-- Construir mensagem multimodal para `google/gemini-3-flash-preview` via `/v1/chat/completions`:
-  - `text` block com o prompt atual.
-  - `image_url` block se houver mapa (data URL base64).
-  - `file` block (PDF) se houver exact itinerary.
-- **Modo Exact**: quando existe PDF, injetar bloco no system prompt:
-  > "An EXACT ITINERARY PDF is attached. You MUST follow its day-by-day structure, destinations, order and overnight cities literally. Only rewrite bullets in YTP premium style — do not invent new days, do not reorder, do not add/remove stops. If a day is unclear in the PDF, keep it minimal rather than inventing."
-- **Modo Rota**: quando existe mapa, injetar:
-  > "A Google Maps route screenshot is attached showing the intended geographic flow. Respect this sequence of stops/regions when structuring the days."
-
----
-
-## Fluxo
-
-```text
-Utilizador anexa mapa + PDF no lead
-        │
-        ▼
-Upload → bucket lead-context (paths guardados em leads)
-        │
-        ▼
-"Gerar Travel Plan" → edge function busca ficheiros
-        │
-        ▼
-Prompt multimodal (texto + imagem + PDF) → Gemini
-        │
-        ▼
-JSON estruturado (segue PDF literalmente se presente)
-```
-
----
-
-## Ficheiros a tocar
-
-- **Migration**: bucket `lead-context` + 2 colunas em `leads` + RLS storage.objects.
-- **Novo componente**: `src/components/leads/LeadContextAttachments.tsx` (2 slots upload).
-- **`src/pages/LeadDetailPage.tsx`**: montar `<LeadContextAttachments />` abaixo do textarea "Preferências / Notas"; passar os paths no payload de gerar plano.
-- **`supabase/functions/generate-travel-plan/index.ts`**: aceitar novos campos, download → base64, mensagem multimodal, ramos "Modo Exact" / "Modo Rota" no system prompt.
-- **`src/integrations/supabase/types.ts`**: auto-regenerada.
-
----
-
-## Fora de scope (agora)
-
-- OCR do mapa (o Gemini já lê a imagem nativamente).
-- Parse estruturado do PDF para editor (o PDF é lido pelo modelo; se quisermos importar para o editor visual mais tarde, fica para uma fase 2).
-- Múltiplos anexos por tipo — 1 mapa + 1 PDF por lead chega.
-
-Confirmas para eu implementar?
+Confirmas para eu implementar assim?

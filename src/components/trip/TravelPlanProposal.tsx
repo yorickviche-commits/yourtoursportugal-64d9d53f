@@ -38,7 +38,17 @@ export interface ProposalDay {
   bullets: (string | ProposalBullet)[];
   overnight: string;
   images?: ProposalImage[];
+  mapUrl?: string;
 }
+
+// Convert any Google Maps share/place/directions URL into an embeddable iframe src.
+export const toMapEmbedSrc = (url: string): string => {
+  if (!url) return '';
+  const trimmed = url.trim();
+  if (trimmed.includes('/maps/embed') || trimmed.includes('output=embed')) return trimmed;
+  const sep = trimmed.includes('?') ? '&' : '?';
+  return `${trimmed}${sep}output=embed`;
+};
 
 export interface TravelPlanData {
   trip_title: string;
@@ -847,6 +857,7 @@ const TravelPlanProposal = ({
         images: (d.images || []).map(img => ({ url: img.url, caption: img.caption || '' })),
         items: d.bullets.map(b => typeof b === 'string' ? b : b.text),
         accommodation: d.overnight ? { label: d.overnight, hotel_name: d.overnight, note: '' } : null,
+        map_url: d.mapUrl || '',
       }));
 
       // Check if proposal already exists for this lead
@@ -1329,8 +1340,24 @@ const TravelPlanProposal = ({
                           <Plus className="h-3 w-3" /> Adicionar item
                         </button>
                       </div>
-                      <Input className="h-7 text-xs w-48" value={day.overnight}
-                        onChange={e => updateDay(dayIdx, { overnight: e.target.value })} placeholder="Overnight city..." />
+                      <div className="flex flex-wrap items-center gap-2">
+                        <Input className="h-7 text-xs w-48" value={day.overnight}
+                          onChange={e => updateDay(dayIdx, { overnight: e.target.value })} placeholder="Overnight city..." />
+                        <Input className="h-7 text-xs flex-1 min-w-[240px]" value={day.mapUrl || ''}
+                          onChange={e => updateDay(dayIdx, { mapUrl: e.target.value })}
+                          placeholder="Google Maps link (rota do dia)..." />
+                      </div>
+                      {day.mapUrl && (
+                        <div className="mt-2 rounded-lg overflow-hidden border border-slate-200 aspect-[16/9]">
+                          <iframe
+                            src={toMapEmbedSrc(day.mapUrl)}
+                            className="w-full h-full"
+                            loading="lazy"
+                            referrerPolicy="no-referrer-when-downgrade"
+                            title={`Mapa Dia ${day.day_number}`}
+                          />
+                        </div>
+                      )}
                     </div>
                   ) : (
                     <div className="pr-16">
@@ -1371,6 +1398,17 @@ const TravelPlanProposal = ({
                         <p className="text-sm font-medium text-slate-600 mt-4 pt-3 border-t border-dashed border-slate-200">
                           {day.day_number === displayPlan.days.length ? t.departureFrom(day.overnight) : t.nightIn(day.overnight)}
                         </p>
+                      )}
+                      {day.mapUrl && (
+                        <div className="mt-4 rounded-lg overflow-hidden border border-slate-200 aspect-[16/9]">
+                          <iframe
+                            src={toMapEmbedSrc(day.mapUrl)}
+                            className="w-full h-full"
+                            loading="lazy"
+                            referrerPolicy="no-referrer-when-downgrade"
+                            title={`Mapa Dia ${day.day_number}`}
+                          />
+                        </div>
                       )}
                     </div>
                   )}

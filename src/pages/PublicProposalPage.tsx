@@ -393,6 +393,20 @@ const PublicProposalPage = () => {
                   </div>
                 )}
 
+                {day.map_url && (
+                  <div className="mt-5 rounded-xl overflow-hidden border border-slate-200 aspect-[16/9]">
+                    <iframe
+                      src={(day.map_url.includes('/maps/embed') || day.map_url.includes('output=embed'))
+                        ? day.map_url
+                        : `${day.map_url}${day.map_url.includes('?') ? '&' : '?'}output=embed`}
+                      className="w-full h-full"
+                      loading="lazy"
+                      referrerPolicy="no-referrer-when-downgrade"
+                      title={`Map — Day ${day.day_number}`}
+                    />
+                  </div>
+                )}
+
                 {/* Day images (2 per day from Travel Planner) */}
                 {(day as any).images?.length > 0 && (
                   <div className={cn(
