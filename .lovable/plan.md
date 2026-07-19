@@ -1,45 +1,57 @@
-# Mapa Google por Dia — Travel Planner → Proposta Online
+Perfeito — com esse formato conseguimos fazer funcionar de forma fiável em todos os lados sem precisar de API key.
 
-## Viabilidade
-Totalmente viável e simples. O Google Maps permite embed via iframe sem chave (`https://www.google.com/maps/embed?...`) ou via link partilhado (`maps.app.goo.gl/...` / `google.com/maps/dir/...`). Guardamos o URL colado pelo agente e renderizamos como iframe no builder e na proposta pública. Sem custos de API, sem geocoding, sem manutenção — o UI/UX é o próprio Google Maps (zoom, pins, rota, "abrir no Maps").
+## Diagnóstico
 
-Não vamos re-desenhar o mapa nem re-marcar pontos automaticamente (isso exigiria Places API + geocoding por dia). O agente cola o link partilhado do Maps que já contém a rota/pins desejados — igual à lógica que já usas para o "exact itinerary".
+Links Google Maps do tipo `/maps/dir/A/B/C/@lat,lng/data=...` **não são embebíveis** apenas ao acrescentar `output=embed` — o Google devolve a página `consent.google.pt` e o iframe fica em branco. É esta a causa dos 3 sintomas:
 
-## Modelo de dados
-Adicionar campo `mapUrl?: string` em cada `day` do objeto `plan.days[]` em `travel_plans` (JSONB — não precisa de migração de schema, só update no tipo TS).
+- erro no Travel Planner (consent recusado)
+- link público muito lento / não abre
+- PDF sem mapa
 
-Para programas de 1 dia funciona naturalmente (só há 1 dia, 1 mapa). Multi-dia: cada dia tem o seu campo próprio.
+## Solução
 
-## UI — Travel Planner (`TravelPlanProposal.tsx`)
-Em cada card de dia (Day-by-Day), acima ou abaixo do bloco de imagens, adicionar:
-- Input compacto "🗺️ Google Maps link (opcional)" com placeholder `https://maps.app.goo.gl/... ou google.com/maps/...`
-- Botão "Pré-visualizar" que abre o iframe inline abaixo (colapsável).
-- Botão "×" para limpar.
-- Estado guardado via `useUndoable` (já integrado).
+### 1. Novo helper `toMapEmbedSrc(url)`
 
-Validação leve: aceitar apenas hosts `google.com/maps`, `maps.google.com`, `maps.app.goo.gl`, `www.google.com/maps/embed`. Converter automaticamente:
-- Se já for `/maps/embed?pb=...` → usar tal como está.
-- Se for link normal (`/maps/dir/...`, `/maps/place/...`, `maps.app.goo.gl/...`) → embrulhar em `https://www.google.com/maps?output=embed&q=<encoded>` (funciona para a maioria dos links partilhados; o iframe do Maps aceita `?output=embed` no URL completo).
+Reescrever o helper em `src/components/trip/TravelPlanProposal.tsx` (e reutilizar na página pública):
 
-## UI — Proposta pública (`PublicProposalPage.tsx`)
-Dentro de cada dia do itinerário, se `day.mapUrl` existir, renderizar um iframe responsivo (16:9, `loading="lazy"`, `referrerpolicy="no-referrer-when-downgrade"`, `allowfullscreen`) com título "Rota do Dia X" e um link discreto "Abrir no Google Maps →" que aponta ao URL original.
+- Detetar links `/maps/dir/...`: extrair os waypoints (segmentos entre `/dir/` e `/@` ou `/data`), decodificar (`decodeURIComponent`) e converter para o embed clássico:  
+  `https://maps.google.com/maps?saddr=<A>&daddr=<B>+to:<C>+to:<D>&output=embed`  
+  Este endpoint clássico **não passa pelo consent.google** e aceita múltiplos `+to:` — ideal para rotas multi-stop como a que enviaste.
+- Detetar links `/maps/place/...` ou com `@lat,lng`: usar `https://maps.google.com/maps?q=<place ou lat,lng>&z=<zoom>&output=embed`.
+- Detetar links curtos (`maps.app.goo.gl`, `goo.gl/maps`): não são embebíveis diretamente → mostrar fallback com botão “Abrir no Google Maps” + pedir ao agente para colar o link completo (aviso inline no input).
+- Se já for um `/maps/embed?pb=...` ou já contiver `output=embed`, usar tal e qual.
 
-Se nenhum dia tiver mapUrl, nada aparece — sem placeholder vazio.
+### 2. Travel Planner (back office)
 
-## PDF
-Por agora **não incluímos no PDF** — iframe não renderiza em html2canvas/jsPDF e um screenshot estático do Maps exige a Static Maps API (paga, com key restrita). Podemos adicionar mais tarde como opção "gerar screenshot" via edge function se quiseres. A proposta online continua a ser o local rico.
+- Preview do iframe usa `toMapEmbedSrc` corrigido.
+- Debounce ao escrever (600ms) para não recarregar o iframe a cada tecla.
+- Se o helper devolver `null` (link não suportado), mostrar aviso amarelo em vez do iframe: “Link não embebível — cola o link completo do google.com/maps”.
+
+### 3. Proposta pública
+
+- `PublicProposalPage.tsx`: usar o mesmo helper (importado).
+- `loading="lazy"` já existe — adicionar `sandbox="allow-scripts allow-same-origin allow-popups"` para performance e mostrar título + link “Abrir no Google Maps” por cima do iframe, para nunca ficar “preso” à espera.
+- Encolher a proporção em mobile para carregamento mais leve.
+
+### 4. PDF (estático)
+
+Como PDF não renderiza iframe:
+
+- Por cada dia com `map_url`, adicionar uma caixa estática no PDF:
+  - título “Route map — Day N”
+  - lista de paragens extraídas da URL (nomes decodificados dos waypoints)
+  - botão/link clicável “Open route in Google Maps →” usando `doc.textWithLink` com a URL original.
+- Não vamos gerar imagem estática do mapa (requereria Static Maps API paga) — o link clicável dá acesso imediato à rota real.
+
+### 5. Verificação
+
+- Colar o link do Douro que enviaste no Travel Planner → ver iframe com rota Porto → Casa do Poço → Cozinha da Clara → Daurum → Miradouro → Porto.
+- Abrir link público da proposta → mapa carrega rápido.
+- Gerar PDF → aparece caixa com as paragens e link clicável.
 
 ## Ficheiros a alterar
-- `src/components/trip/TravelPlanProposal.tsx` — input + preview por dia, integra no state `plan.days[i].mapUrl`, undo-aware.
-- `src/pages/PublicProposalPage.tsx` — render iframe por dia quando existe URL.
-- `src/lib/proposalShare.ts` / tipo do plan (se tiver interface tipada) — adicionar `mapUrl?: string`.
 
-Nenhuma migração de BD, nenhuma edge function nova, nenhuma dependência nova.
-
-## Fluxo do agente
-1. No Travel Planner, em cada dia, cola o link do Google Maps (do "share" ou da barra do browser).
-2. Clica "Pré-visualizar" para confirmar que abre bem.
-3. Guarda o plano.
-4. Cliente abre o link da proposta → vê o mapa embed em cada dia, com o UX nativo do Google Maps.
-
-Confirmas para eu implementar assim?
+- `src/components/trip/TravelPlanProposal.tsx` — helper `toMapEmbedSrc` + UI de aviso + debounce.
+- `src/pages/PublicProposalPage.tsx` — passar a usar o helper partilhado.
+- `src/lib/proposalPdf.ts` — bloco estático por dia com waypoints + link.
+- (opcional) mover o helper para `src/lib/proposalShare.ts` para partilhar entre planner, público e PDF.

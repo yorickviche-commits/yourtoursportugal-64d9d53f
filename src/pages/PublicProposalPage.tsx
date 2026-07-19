@@ -5,6 +5,7 @@ import { MessageSquare, Check, Star, Phone, Mail, Globe, ChevronDown, ChevronUp,
 import { cn } from '@/lib/utils';
 import { getProposalDict, resolveProposalLang, encodeSentiment, decodeSentiment, Sentiment } from '@/lib/proposalI18n';
 import reviewsBanner from '@/assets/our-reviews-banner.png.asset.json';
+import { toMapEmbedSrc } from '@/lib/mapEmbed';
 
 
 // Lazy load map to avoid react-leaflet context crash
@@ -393,19 +394,32 @@ const PublicProposalPage = () => {
                   </div>
                 )}
 
-                {day.map_url && (
-                  <div className="mt-5 rounded-xl overflow-hidden border border-slate-200 aspect-[16/9]">
-                    <iframe
-                      src={(day.map_url.includes('/maps/embed') || day.map_url.includes('output=embed'))
-                        ? day.map_url
-                        : `${day.map_url}${day.map_url.includes('?') ? '&' : '?'}output=embed`}
-                      className="w-full h-full"
-                      loading="lazy"
-                      referrerPolicy="no-referrer-when-downgrade"
-                      title={`Map — Day ${day.day_number}`}
-                    />
-                  </div>
-                )}
+                {day.map_url && (() => {
+                  const embed = toMapEmbedSrc(day.map_url);
+                  return (
+                    <div className="mt-5">
+                      {embed && (
+                        <div className="rounded-xl overflow-hidden border border-slate-200 aspect-[16/9]">
+                          <iframe
+                            src={embed}
+                            className="w-full h-full"
+                            loading="lazy"
+                            referrerPolicy="no-referrer-when-downgrade"
+                            title={`Map — Day ${day.day_number}`}
+                          />
+                        </div>
+                      )}
+                      <a
+                        href={day.map_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1 mt-2 text-xs text-sky-600 hover:text-sky-700 font-medium"
+                      >
+                        <MapPin className="h-3.5 w-3.5" /> Open route in Google Maps →
+                      </a>
+                    </div>
+                  );
+                })()}
 
                 {/* Day images (2 per day from Travel Planner) */}
                 {(day as any).images?.length > 0 && (
