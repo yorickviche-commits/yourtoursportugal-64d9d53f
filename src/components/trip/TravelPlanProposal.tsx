@@ -1341,17 +1341,25 @@ const TravelPlanProposal = ({
                           onChange={e => updateDay(dayIdx, { mapUrl: e.target.value })}
                           placeholder="Google Maps link (rota do dia)..." />
                       </div>
-                      {day.mapUrl && (
-                        <div className="mt-2 rounded-lg overflow-hidden border border-slate-200 aspect-[16/9]">
-                          <iframe
-                            src={toMapEmbedSrc(day.mapUrl)}
-                            className="w-full h-full"
-                            loading="lazy"
-                            referrerPolicy="no-referrer-when-downgrade"
-                            title={`Mapa Dia ${day.day_number}`}
-                          />
-                        </div>
-                      )}
+                      {day.mapUrl && (() => {
+                        const embed = toMapEmbedSrc(day.mapUrl);
+                        if (!embed) return (
+                          <div className="mt-2 p-2 text-[11px] rounded border border-amber-300 bg-amber-50 text-amber-800">
+                            Link não embebível. Cola o link completo do google.com/maps (rota <code>/maps/dir/…</code> ou lugar <code>/maps/place/…</code>). Links curtos <code>maps.app.goo.gl</code> não funcionam como iframe.
+                          </div>
+                        );
+                        return (
+                          <div className="mt-2 rounded-lg overflow-hidden border border-slate-200 aspect-[16/9]">
+                            <iframe
+                              src={embed}
+                              className="w-full h-full"
+                              loading="lazy"
+                              referrerPolicy="no-referrer-when-downgrade"
+                              title={`Mapa Dia ${day.day_number}`}
+                            />
+                          </div>
+                        );
+                      })()}
                     </div>
                   ) : (
                     <div className="pr-16">
