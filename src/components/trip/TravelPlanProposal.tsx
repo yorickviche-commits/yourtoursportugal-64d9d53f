@@ -41,8 +41,8 @@ export interface ProposalDay {
   mapUrl?: string;
 }
 
-export { toMapEmbedSrc } from '@/lib/mapEmbed';
-import { toMapEmbedSrc as _toMapEmbedSrc, parseGoogleMapsUrl } from '@/lib/mapEmbed';
+import { toMapEmbedSrc, parseGoogleMapsUrl } from '@/lib/mapEmbed';
+export { toMapEmbedSrc };
 
 export interface TravelPlanData {
   trip_title: string;
