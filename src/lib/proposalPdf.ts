@@ -350,6 +350,37 @@ export async function buildProposalPdfBase64(p: ProposalLite, weblink: string): 
       y += 16;
     }
 
+    // Route map (static block linking to Google Maps)
+    if (d.map_url) {
+      const parsed = parseGoogleMapsUrl(d.map_url);
+      const stops = parsed.waypoints;
+      const boxPad = 10;
+      const linesText = stops.length
+        ? doc.splitTextToSize(stops.join('  →  '), pageW - margin * 2 - boxPad * 2)
+        : [];
+      const boxH = 22 + (linesText.length * 12) + 22 + boxPad;
+      ensureSpace(boxH + 8);
+      doc.setDrawColor(200, 215, 230);
+      doc.setFillColor(240, 247, 255);
+      doc.roundedRect(margin, y, pageW - margin * 2, boxH, 6, 6, 'FD');
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(10);
+      doc.setTextColor(10, 37, 64);
+      doc.text(`Route map — Day ${d.day_number ?? idx + 1}`, margin + boxPad, y + 16);
+      if (linesText.length) {
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(9);
+        doc.setTextColor(60, 80, 100);
+        doc.text(linesText, margin + boxPad, y + 30);
+      }
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(9);
+      doc.setTextColor(0, 102, 204);
+      const linkY = y + boxH - 8;
+      doc.textWithLink('Open route in Google Maps  →', margin + boxPad, linkY, { url: d.map_url });
+      y += boxH + 10;
+    }
+
     // Two images per day at the bottom (matching planner layout)
     const imgs = dayImageUrls[idx].filter(u => imgCache.get(u));
     if (imgs.length) {
