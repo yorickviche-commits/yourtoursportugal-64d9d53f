@@ -1,5 +1,6 @@
 import jsPDF from 'jspdf';
 import reviewsCoverUrl from '@/assets/proposal-reviews-cover.png';
+import { parseGoogleMapsUrl } from '@/lib/mapEmbed';
 
 const ALL_REVIEWS_URL = 'https://yourtoursportugal.com/our-reviews/';
 
@@ -18,6 +19,7 @@ interface ProposalDay {
   accommodation?: string | { label?: string; hotel_name?: string; note?: string } | null;
   cover_image_url?: string;
   images?: ProposalDayImage[];
+  map_url?: string;
 }
 
 export interface ProposalLite {
