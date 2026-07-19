@@ -41,14 +41,8 @@ export interface ProposalDay {
   mapUrl?: string;
 }
 
-// Convert any Google Maps share/place/directions URL into an embeddable iframe src.
-export const toMapEmbedSrc = (url: string): string => {
-  if (!url) return '';
-  const trimmed = url.trim();
-  if (trimmed.includes('/maps/embed') || trimmed.includes('output=embed')) return trimmed;
-  const sep = trimmed.includes('?') ? '&' : '?';
-  return `${trimmed}${sep}output=embed`;
-};
+export { toMapEmbedSrc } from '@/lib/mapEmbed';
+import { toMapEmbedSrc as _toMapEmbedSrc, parseGoogleMapsUrl } from '@/lib/mapEmbed';
 
 export interface TravelPlanData {
   trip_title: string;
