@@ -1401,17 +1401,21 @@ const TravelPlanProposal = ({
                           {day.day_number === displayPlan.days.length ? t.departureFrom(day.overnight) : t.nightIn(day.overnight)}
                         </p>
                       )}
-                      {day.mapUrl && (
-                        <div className="mt-4 rounded-lg overflow-hidden border border-slate-200 aspect-[16/9]">
-                          <iframe
-                            src={toMapEmbedSrc(day.mapUrl)}
-                            className="w-full h-full"
-                            loading="lazy"
-                            referrerPolicy="no-referrer-when-downgrade"
-                            title={`Mapa Dia ${day.day_number}`}
-                          />
-                        </div>
-                      )}
+                      {day.mapUrl && (() => {
+                        const embed = toMapEmbedSrc(day.mapUrl);
+                        if (!embed) return null;
+                        return (
+                          <div className="mt-4 rounded-lg overflow-hidden border border-slate-200 aspect-[16/9]">
+                            <iframe
+                              src={embed}
+                              className="w-full h-full"
+                              loading="lazy"
+                              referrerPolicy="no-referrer-when-downgrade"
+                              title={`Mapa Dia ${day.day_number}`}
+                            />
+                          </div>
+                        );
+                      })()}
                     </div>
                   )}
 
