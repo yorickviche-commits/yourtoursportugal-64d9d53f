@@ -11,6 +11,7 @@ import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
+import { FunctionsHttpError } from '@supabase/supabase-js';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { cn } from '@/lib/utils';
 import ProposalImagePicker from './ProposalImagePicker';
@@ -193,6 +194,23 @@ const LABELS: Record<string, ProposalLabels> = {
 };
 
 const getLabels = (lang: string): ProposalLabels => LABELS[lang?.toUpperCase()] || LABELS.EN;
+
+async function getFunctionErrorMessage(error: unknown): Promise<string> {
+  if (error instanceof FunctionsHttpError) {
+    try {
+      const details = await error.context.json();
+      return details?.error || details?.message || error.message;
+    } catch {
+      try {
+        const text = await error.context.text();
+        return text || error.message;
+      } catch {
+        return error.message;
+      }
+    }
+  }
+  return error instanceof Error ? error.message : String(error || 'Erro desconhecido');
+}
 
 interface ChatMessage {
   role: 'user' | 'assistant';
@@ -669,7 +687,7 @@ const TravelPlanProposal = ({
           routeMapPath, exactItineraryPdfPath,
         },
       });
-      if (error) throw error;
+      if (error) throw new Error(await getFunctionErrorMessage(error));
       if (data?.error) throw new Error(data.error);
       const result = data.result as TravelPlanData;
       setPlan(result);
@@ -682,7 +700,7 @@ const TravelPlanProposal = ({
     } finally {
       setGenerating(false);
     }
-  }, [leadData, leadId, language, toast, clearUsedPhotos, autoFetchImages]);
+  }, [leadData, leadId, language, toast, clearUsedPhotos, autoFetchImages, routeMapPath, exactItineraryPdfPath]);
 
   // Language change with confirmation + fast translation (preserves structure & images)
   const handleLanguageChange = useCallback(async (newLang: string) => {
@@ -785,7 +803,7 @@ const TravelPlanProposal = ({
       const { data, error } = await supabase.functions.invoke('generate-travel-plan', {
         body: { leadData, extraInstructions: sectionInstruction, routeMapPath, exactItineraryPdfPath },
       });
-      if (error) throw error;
+      if (error) throw new Error(await getFunctionErrorMessage(error));
       if (data?.error) throw new Error(data.error);
 
       const result = data.result as TravelPlanData;
@@ -806,7 +824,7 @@ const TravelPlanProposal = ({
     } finally {
       setSectionLoading(null);
     }
-  }, [plan, leadData, language]);
+  }, [plan, leadData, language, routeMapPath, exactItineraryPdfPath]);
 
 
   // Save
