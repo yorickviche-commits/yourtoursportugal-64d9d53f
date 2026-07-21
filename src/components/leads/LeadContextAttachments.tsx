@@ -11,6 +11,17 @@ interface Props {
 }
 
 const BUCKET = 'lead-context';
+const MAX_PDF_BYTES = 7 * 1024 * 1024;
+const WARN_PDF_BYTES = 4 * 1024 * 1024;
+
+function formatFileSize(bytes: number) {
+  if (!bytes) return '';
+  return `${(bytes / 1024 / 1024).toFixed(1)}MB`;
+}
+
+function filenameFromPath(path?: string | null) {
+  return path?.split('/').pop() || 'exact-itinerary.pdf';
+}
 
 export function LeadContextAttachments({ leadId, routeMapPath, exactItineraryPdfPath }: Props) {
   const { toast } = useToast();
@@ -20,6 +31,7 @@ export function LeadContextAttachments({ leadId, routeMapPath, exactItineraryPdf
   const [mapUploading, setMapUploading] = useState(false);
   const [pdfUploading, setPdfUploading] = useState(false);
   const [mapUrl, setMapUrl] = useState<string | null>(null);
+  const [pdfSizeLabel, setPdfSizeLabel] = useState<string>('');
 
   const refresh = () => {
     qc.invalidateQueries({ queryKey: ['leads'] });
@@ -72,10 +84,24 @@ export function LeadContextAttachments({ leadId, routeMapPath, exactItineraryPdf
       toast({ title: 'Formato inválido', description: 'Anexa um PDF.', variant: 'destructive' });
       return;
     }
+    if (file.size > MAX_PDF_BYTES) {
+      toast({
+        title: 'PDF demasiado pesado',
+        description: `Este ficheiro tem ${formatFileSize(file.size)}. Limite seguro: ${formatFileSize(MAX_PDF_BYTES)}. Exporta/compacta o PDF e volta a carregar.`,
+        variant: 'destructive',
+      });
+      return;
+    }
     setPdfUploading(true);
     try {
       await uploadFile(file, 'pdf');
-      toast({ title: '📄 Exact Itinerary carregado', description: 'O planner vai seguir este PDF literalmente.' });
+      setPdfSizeLabel(formatFileSize(file.size));
+      toast({
+        title: file.size > WARN_PDF_BYTES ? '📄 Exact Itinerary carregado — ficheiro pesado' : '📄 Exact Itinerary carregado',
+        description: file.size > WARN_PDF_BYTES
+          ? 'Vai ser usado em modo seguro. Se falhar, exporta uma versão mais leve/textual.'
+          : 'O planner vai seguir este PDF literalmente.',
+      });
       refresh();
     } catch (e: any) {
       toast({ title: 'Erro no upload', description: e.message, variant: 'destructive' });
@@ -90,6 +116,7 @@ export function LeadContextAttachments({ leadId, routeMapPath, exactItineraryPdf
       const column = kind === 'map' ? 'route_map_path' : 'exact_itinerary_pdf_path';
       await supabase.from('leads').update({ [column]: null }).eq('id', leadId);
       if (kind === 'map') setMapUrl(null);
+      if (kind === 'pdf') setPdfSizeLabel('');
       toast({ title: 'Removido' });
       refresh();
     } catch (e: any) {
@@ -147,6 +174,9 @@ export function LeadContextAttachments({ leadId, routeMapPath, exactItineraryPdf
               </div>
               <div className="flex-1 min-w-0">
                 <p className="text-xs font-medium flex items-center gap-1"><FileText className="h-3 w-3 text-amber-600" /> Exact Itinerary PDF</p>
+                <p className="text-[10px] text-muted-foreground truncate">
+                  {filenameFromPath(exactItineraryPdfPath)}{pdfSizeLabel ? ` · ${pdfSizeLabel}` : ''}
+                </p>
                 <div className="flex gap-2 mt-1">
                   <button className="text-[10px] text-blue-600 hover:underline" onClick={() => pdfInputRef.current?.click()}>Substituir</button>
                   <button className="text-[10px] text-red-600 hover:underline" onClick={() => removeAttachment('pdf')}>Remover</button>
@@ -171,7 +201,7 @@ export function LeadContextAttachments({ leadId, routeMapPath, exactItineraryPdf
       {exactItineraryPdfPath && (
         <div className="flex items-center gap-1.5 text-[11px] bg-amber-50 border border-amber-200 text-amber-800 rounded px-2 py-1">
           <Sparkles className="h-3 w-3" />
-          <span><strong>Modo Exact ativo</strong> — o planner vai seguir literalmente a estrutura deste PDF.</span>
+          <span><strong>Modo Exact ativo</strong> — o planner vai seguir literalmente a estrutura deste PDF em modo seguro.</span>
         </div>
       )}
     </div>

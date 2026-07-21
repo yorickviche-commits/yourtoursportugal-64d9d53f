@@ -1,10 +1,36 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { encodeBase64 } from "https://deno.land/std@0.224.0/encoding/base64.ts";
 import { requireInternalUser } from "../_shared/require-auth.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
 };
+
+const MAX_PDF_BYTES = 7 * 1024 * 1024;
+const MAX_IMAGE_BYTES = 4 * 1024 * 1024;
+const FINAL_MAX_TOKENS = 18000;
+const EXTRACTION_MAX_TOKENS = 10000;
+
+class SafeFunctionError extends Error {
+  status: number;
+  code: string;
+
+  constructor(message: string, code = 'generation_failed', status = 500) {
+    super(message);
+    this.name = 'SafeFunctionError';
+    this.status = status;
+    this.code = code;
+  }
+}
+
+const jsonResponse = (body: Record<string, unknown>, status = 200) =>
+  new Response(JSON.stringify(body), {
+    status,
+    headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+  });
+
+const formatMb = (bytes: number) => `${(bytes / 1024 / 1024).toFixed(1)}MB`;
 
 const SYSTEM_PROMPT = `You are the senior travel designer for Your Tours Portugal (YTP), a premium DMC.
 Your task is to generate a complete, day-by-day travel plan proposal for a private client.
@@ -23,11 +49,11 @@ You must follow these strict rules:
 11. Opening narrative: 2–3 sentences, mentions all destinations, premium DMC tone
 12. Day TITLE: MUST be an explicit, descriptive experience label in the style of tour catalogues — clear about WHAT, WHERE and HOW. Examples: "Douro Valley Private Day Tour from Porto", "Private Morning Tour Porto City Center", "Transfer Porto–Lisbon with Aveiro and Coimbra", "Self-Guided Alentejo Day Tour". Never romantic, never abstract (forbidden: "Welcome, Portugal!", "Northern Soul", "A Day of Wonders"). Always include city/region + tour type (Private/Shared/Self-Guided/Transfer/Full Day/Morning/Multi-Day/etc.).
 13. Day SUBTITLE: this is where the evocative/commercial/romantic descriptive line goes (5–10 words, premium tone).
-13. Bullet style: "Entrance and guided visit of..." (not "we will visit")
-14. "Regional lunch (drinks included)" — always mention drinks included
-15. "Pick-up & Drop-off at your accommodation in [City] city centre"
-16. "Private Guide & Transportation" as a standalone bullet when applicable
-17. Transfer-only days (arrival/departure) get 1–2 bullets max
+14. Bullet style: "Entrance and guided visit of..." (not "we will visit")
+15. "Regional lunch (drinks included)" — always mention drinks included
+16. "Pick-up & Drop-off at your accommodation in [City] city centre"
+17. "Private Guide & Transportation" as a standalone bullet when applicable
+18. Transfer-only days (arrival/departure) get 1–2 bullets max
 
 Output ONLY valid JSON — no markdown, no preamble, no code fences.
 
@@ -72,7 +98,7 @@ interface RequestBody {
   extraInstructions?: string;
   routeMapPath?: string;
   exactItineraryPdfPath?: string;
-};
+}
 
 const LANGUAGE_MAP: Record<string, string> = {
   EN: 'English (premium DMC tone)',
@@ -100,53 +126,71 @@ function calculateDays(ld: RequestBody['leadData']): number {
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
-interface Attachment { kind: 'image' | 'pdf'; mime: string; base64: string; filename?: string; }
+interface Attachment {
+  kind: 'image' | 'pdf';
+  mime: string;
+  base64: string;
+  filename?: string;
+  sizeBytes: number;
+}
 
-async function callAI(systemPrompt: string, userPrompt: string, attachments: Attachment[] = []): Promise<string> {
+interface CallAIOptions {
+  maxTokens?: number;
+  allowTextFallbacks?: boolean;
+  purpose?: string;
+}
+
+async function readErrorBody(res: Response) {
+  try { return (await res.text()).slice(0, 300); } catch { return ''; }
+}
+
+async function callAI(
+  systemPrompt: string,
+  userPrompt: string,
+  attachments: Attachment[] = [],
+  options: CallAIOptions = {},
+): Promise<string> {
   const errors: string[] = [];
+  const maxTokens = options.maxTokens ?? FINAL_MAX_TOKENS;
+  const allowTextFallbacks = options.allowTextFallbacks ?? true;
+  const purpose = options.purpose ? `${options.purpose}: ` : '';
   let creditsExhausted = false;
 
-  // Build multimodal user content blocks (if attachments present).
-  // Only used by Lovable AI Gateway / direct Gemini — text-capable fallbacks ignore attachments.
   const userContentBlocks: any[] = [{ type: 'text', text: userPrompt }];
   for (const att of attachments) {
     if (att.kind === 'image') {
-      userContentBlocks.push({
-        type: 'image_url',
-        image_url: { url: `data:${att.mime};base64,${att.base64}` },
-      });
+      userContentBlocks.push({ type: 'image_url', image_url: { url: `data:${att.mime};base64,${att.base64}` } });
     } else if (att.kind === 'pdf') {
       userContentBlocks.push({
         type: 'file',
-        file: {
-          filename: att.filename || 'exact-itinerary.pdf',
-          file_data: `data:${att.mime};base64,${att.base64}`,
-        },
+        file: { filename: att.filename || 'exact-itinerary.pdf', file_data: `data:${att.mime};base64,${att.base64}` },
       });
     }
   }
   const useMultimodal = attachments.length > 0;
 
-  // 1) Lovable AI Gateway — rotate models on 429, skip on 402
+  // 1) Lovable AI Gateway
   const LOVABLE_KEY = Deno.env.get('LOVABLE_API_KEY');
   if (LOVABLE_KEY) {
     const lovableModels = useMultimodal
-      ? ['google/gemini-2.5-pro', 'google/gemini-2.5-flash']
-      : ['google/gemini-2.5-pro', 'google/gemini-2.5-flash', 'google/gemini-2.5-flash-lite'];
+      ? ['google/gemini-3.6-flash', 'google/gemini-2.5-flash', 'google/gemini-2.5-pro']
+      : ['google/gemini-3.6-flash', 'google/gemini-2.5-flash', 'google/gemini-2.5-flash-lite'];
+
     for (const model of lovableModels) {
       let lastStatus = 0;
+      let lastBody = '';
       for (let attempt = 0; attempt < 2; attempt++) {
         try {
           const res = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
             method: 'POST',
-            headers: { 'Authorization': `Bearer ${LOVABLE_KEY}`, 'Content-Type': 'application/json' },
+            headers: { 'Lovable-API-Key': LOVABLE_KEY, 'Content-Type': 'application/json' },
             body: JSON.stringify({
               model,
               messages: [
                 { role: 'system', content: systemPrompt },
                 { role: 'user', content: useMultimodal ? userContentBlocks : userPrompt },
               ],
-              max_tokens: 32768,
+              max_tokens: maxTokens,
               response_format: { type: 'json_object' },
             }),
           });
@@ -156,67 +200,68 @@ async function callAI(systemPrompt: string, userPrompt: string, attachments: Att
             if (content) return content;
           }
           lastStatus = res.status;
+          lastBody = await readErrorBody(res);
           if (res.status === 402) { creditsExhausted = true; break; }
           if (res.status !== 429) break;
           await sleep(1500 * (attempt + 1));
         } catch (e: any) {
-          errors.push(`Lovable(${model}): ${e.message}`);
+          errors.push(`${purpose}Lovable(${model}): ${e.message}`);
           break;
         }
       }
-      errors.push(`Lovable(${model}): ${lastStatus}`);
+      errors.push(`${purpose}Lovable(${model}): ${lastStatus}${lastBody ? ` ${lastBody}` : ''}`);
       if (creditsExhausted) break;
     }
   }
 
-  // 2) Gemini Direct with retry on 429
+  // 2) Gemini Direct — strongest multimodal fallback
   const GEMINI_KEY = Deno.env.get('GEMINI_API_KEY');
   if (GEMINI_KEY) {
     const geminiModels = ['gemini-2.5-pro', 'gemini-2.5-flash'];
     for (const model of geminiModels) {
       let lastStatus = 0;
+      let lastBody = '';
       for (let attempt = 0; attempt < 3; attempt++) {
         try {
-          const res = await fetch(
-            `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${GEMINI_KEY}`,
-            {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                contents: [{
-                  role: 'user',
-                  parts: [
-                    { text: `${systemPrompt}\n\n${userPrompt}` },
-                    ...attachments.map(a => ({ inlineData: { mimeType: a.mime, data: a.base64 } })),
-                  ],
-                }],
-                generationConfig: { maxOutputTokens: 32768, temperature: 0.7, responseMimeType: 'application/json' },
-              }),
-            }
-          );
+          const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${GEMINI_KEY}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              contents: [{
+                role: 'user',
+                parts: [
+                  { text: `${systemPrompt}\n\n${userPrompt}` },
+                  ...attachments.map(a => ({ inlineData: { mimeType: a.mime, data: a.base64 } })),
+                ],
+              }],
+              generationConfig: { maxOutputTokens: maxTokens, temperature: 0.7, responseMimeType: 'application/json' },
+            }),
+          });
           if (res.ok) {
             const data = await res.json();
             const content = data.candidates?.[0]?.content?.parts?.[0]?.text;
             if (content) return content;
           }
           lastStatus = res.status;
+          lastBody = await readErrorBody(res);
           if (res.status !== 429 && res.status !== 503) break;
           await sleep(2000 * (attempt + 1));
         } catch (e: any) {
-          errors.push(`Gemini(${model}): ${e.message}`);
+          errors.push(`${purpose}Gemini(${model}): ${e.message}`);
           break;
         }
       }
-      errors.push(`Gemini(${model}): ${lastStatus}`);
+      errors.push(`${purpose}Gemini(${model}): ${lastStatus}${lastBody ? ` ${lastBody}` : ''}`);
     }
   }
 
-  // 3) OpenAI with retry
+  // 3) OpenAI — useful after PDF has been converted to text context
   const OPENAI_KEY = Deno.env.get('OPENAI_API_KEY');
-  if (OPENAI_KEY) {
+  if (OPENAI_KEY && (!useMultimodal || allowTextFallbacks)) {
     const openaiModels = ['gpt-4o', 'gpt-4o-mini'];
     for (const model of openaiModels) {
       let lastStatus = 0;
+      let lastBody = '';
       for (let attempt = 0; attempt < 3; attempt++) {
         try {
           const res = await fetch('https://api.openai.com/v1/chat/completions', {
@@ -225,7 +270,7 @@ async function callAI(systemPrompt: string, userPrompt: string, attachments: Att
             body: JSON.stringify({
               model,
               messages: [{ role: 'system', content: systemPrompt }, { role: 'user', content: userPrompt }],
-              max_tokens: 16384,
+              max_tokens: Math.min(maxTokens, 16000),
               temperature: 0.7,
               response_format: { type: 'json_object' },
             }),
@@ -236,35 +281,33 @@ async function callAI(systemPrompt: string, userPrompt: string, attachments: Att
             if (content) return content;
           }
           lastStatus = res.status;
+          lastBody = await readErrorBody(res);
           if (res.status !== 429 && res.status !== 503) break;
           await sleep(2000 * (attempt + 1));
         } catch (e: any) {
-          errors.push(`OpenAI(${model}): ${e.message}`);
+          errors.push(`${purpose}OpenAI(${model}): ${e.message}`);
           break;
         }
       }
-      errors.push(`OpenAI(${model}): ${lastStatus}`);
+      errors.push(`${purpose}OpenAI(${model}): ${lastStatus}${lastBody ? ` ${lastBody}` : ''}`);
     }
   }
 
-  // 4) Claude (Anthropic) — corrected model names
-  const CLAUDE_KEY = Deno.env.get('CLAUDE_API_KEY');
-  if (CLAUDE_KEY) {
+  // 4) Claude/Anthropic — useful after PDF has been converted to text context
+  const CLAUDE_KEY = Deno.env.get('CLAUDE_API_KEY') || Deno.env.get('ANTHROPIC_API_KEY');
+  if (CLAUDE_KEY && (!useMultimodal || allowTextFallbacks)) {
     const claudeModels = ['claude-sonnet-4-5-20250929', 'claude-3-5-sonnet-20241022', 'claude-3-5-haiku-20241022'];
     for (const model of claudeModels) {
       let lastStatus = 0;
+      let lastBody = '';
       for (let attempt = 0; attempt < 2; attempt++) {
         try {
           const res = await fetch('https://api.anthropic.com/v1/messages', {
             method: 'POST',
-            headers: {
-              'x-api-key': CLAUDE_KEY,
-              'Content-Type': 'application/json',
-              'anthropic-version': '2023-06-01',
-            },
+            headers: { 'x-api-key': CLAUDE_KEY, 'Content-Type': 'application/json', 'anthropic-version': '2023-06-01' },
             body: JSON.stringify({
               model,
-              max_tokens: 16384,
+              max_tokens: Math.min(maxTokens, 16000),
               system: systemPrompt,
               messages: [{ role: 'user', content: userPrompt }],
             }),
@@ -275,14 +318,15 @@ async function callAI(systemPrompt: string, userPrompt: string, attachments: Att
             if (content) return content;
           }
           lastStatus = res.status;
+          lastBody = await readErrorBody(res);
           if (res.status !== 429 && res.status !== 529) break;
           await sleep(2000 * (attempt + 1));
         } catch (e: any) {
-          errors.push(`Claude(${model}): ${e.message}`);
+          errors.push(`${purpose}Claude(${model}): ${e.message}`);
           break;
         }
       }
-      errors.push(`Claude(${model}): ${lastStatus}`);
+      errors.push(`${purpose}Claude(${model}): ${lastStatus}${lastBody ? ` ${lastBody}` : ''}`);
     }
   }
 
@@ -292,23 +336,91 @@ async function callAI(systemPrompt: string, userPrompt: string, attachments: Att
   throw new Error(`Todos os modelos de AI falharam${hint}. Detalhes: ${errors.join(' | ')}`);
 }
 
+function parseJsonFromAI(raw: string): any {
+  const cleaned = raw.replace(/```json\s*/gi, '').replace(/```/g, '').trim();
+  try { return JSON.parse(cleaned); } catch {}
+  const m = cleaned.match(/\{[\s\S]*\}/);
+  if (m) { try { return JSON.parse(m[0]); } catch {} }
+
+  const start = cleaned.indexOf('{');
+  const daysStart = cleaned.indexOf('"days"');
+  const lastDayEnd = cleaned.lastIndexOf('\n    }');
+  if (start >= 0 && daysStart > start && lastDayEnd > daysStart) {
+    try { return JSON.parse(cleaned.slice(start, lastDayEnd + 7) + '\n  ]\n}'); } catch {}
+  }
+  return null;
+}
+
+function normalizePlan(parsed: any) {
+  if (!parsed || !Array.isArray(parsed.days)) return null;
+  return {
+    trip_title: String(parsed.trip_title || parsed.title || 'Your Tours Portugal Proposal'),
+    narrative: String(parsed.narrative || parsed.summary || ''),
+    days: parsed.days.map((day: any, index: number) => ({
+      day_number: Number(day.day_number || day.day || index + 1),
+      title: String(day.title || `Day ${index + 1}`),
+      date: String(day.date || ''),
+      subtitle: String(day.subtitle || ''),
+      bullets: Array.isArray(day.bullets)
+        ? day.bullets.map((b: any) => typeof b === 'string' ? b : String(b?.text || b?.label || '')).filter(Boolean)
+        : [],
+      overnight: String(day.overnight || day.accommodation || ''),
+    })).filter((day: any) => day.bullets.length > 0 || day.title),
+  };
+}
+
+async function extractExactItineraryContext(pdf: Attachment): Promise<string> {
+  const system = `You extract exact itinerary structure from PDFs for a premium DMC operations team.
+Return ONLY valid JSON. Do not write markdown. Keep it compact but complete.`;
+  const prompt = `Read the attached Exact Itinerary PDF and extract the operational skeleton exactly as written.
+
+Return this JSON shape:
+{
+  "source_quality": "clear|partial|poor",
+  "detected_days": number,
+  "title": "...",
+  "days": [
+    {
+      "day_number": 1,
+      "date": "if present",
+      "base_city_or_overnight": "...",
+      "route_or_region": "...",
+      "main_stops": ["..."],
+      "experiences_services": ["..."],
+      "must_keep_notes": ["..."]
+    }
+  ]
+}
+
+Do not invent missing days. If text is scanned or unclear, extract what is visible and set source_quality accordingly.`;
+
+  const raw = await callAI(system, prompt, [pdf], {
+    maxTokens: EXTRACTION_MAX_TOKENS,
+    allowTextFallbacks: false,
+    purpose: 'Exact PDF extraction',
+  });
+  const parsed = parseJsonFromAI(raw);
+  if (!parsed?.days?.length) {
+    throw new SafeFunctionError('O PDF foi lido, mas a AI não conseguiu extrair uma estrutura de itinerário válida. Tenta exportar o PDF numa versão mais leve/textual.', 'pdf_extraction_failed', 422);
+  }
+  return JSON.stringify(parsed).slice(0, 30000);
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response(null, { headers: corsHeaders });
   const __auth = await requireInternalUser(req);
   if (!__auth.ok) return __auth.response;
 
-
   try {
     const { leadData, extraInstructions, routeMapPath, exactItineraryPdfPath } = (await req.json()) as RequestBody;
     const numDays = calculateDays(leadData);
     const dateRange = formatDateRange(leadData, numDays);
-
     const paxStr = `${leadData.pax} adult${leadData.pax > 1 ? 's' : ''}${leadData.paxChildren ? ` + ${leadData.paxChildren} children` : ''}${leadData.paxInfants ? ` + ${leadData.paxInfants} infants` : ''}`;
 
-    // ── Fetch context attachments (map screenshot / exact-itinerary PDF) ──
     const attachments: Attachment[] = [];
     const SUPA_URL = Deno.env.get('SUPABASE_URL');
     const SUPA_SR = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+
     async function fetchAttachment(path: string, kind: 'image' | 'pdf'): Promise<Attachment | null> {
       if (!SUPA_URL || !SUPA_SR) return null;
       try {
@@ -316,20 +428,32 @@ serve(async (req) => {
           headers: { 'Authorization': `Bearer ${SUPA_SR}`, 'apikey': SUPA_SR },
         });
         if (!res.ok) { console.warn(`Fetch attachment ${path} failed: ${res.status}`); return null; }
+
+        const limit = kind === 'pdf' ? MAX_PDF_BYTES : MAX_IMAGE_BYTES;
+        const contentLength = Number(res.headers.get('content-length') || 0);
+        if (contentLength > limit) {
+          try { await res.body?.cancel(); } catch {}
+          const label = kind === 'pdf' ? 'Exact Itinerary PDF' : 'imagem de mapa';
+          throw new SafeFunctionError(`${label} demasiado pesado (${formatMb(contentLength)}). Limite seguro: ${formatMb(limit)}. Exporta/compacta o ficheiro e volta a carregar para garantir geração estável.`, kind === 'pdf' ? 'pdf_too_large' : 'image_too_large', 413);
+        }
+
         const buf = new Uint8Array(await res.arrayBuffer());
-        // base64 encode
-        let bin = '';
-        for (let i = 0; i < buf.byteLength; i++) bin += String.fromCharCode(buf[i]);
-        const base64 = btoa(bin);
+        if (buf.byteLength > limit) {
+          const label = kind === 'pdf' ? 'Exact Itinerary PDF' : 'imagem de mapa';
+          throw new SafeFunctionError(`${label} demasiado pesado (${formatMb(buf.byteLength)}). Limite seguro: ${formatMb(limit)}. Exporta/compacta o ficheiro e volta a carregar.`, kind === 'pdf' ? 'pdf_too_large' : 'image_too_large', 413);
+        }
+
         const mime = kind === 'pdf'
           ? 'application/pdf'
           : (path.endsWith('.png') ? 'image/png' : path.endsWith('.webp') ? 'image/webp' : 'image/jpeg');
-        return { kind, mime, base64, filename: path.split('/').pop() };
+        return { kind, mime, base64: encodeBase64(buf), filename: path.split('/').pop(), sizeBytes: buf.byteLength };
       } catch (e) {
+        if (e instanceof SafeFunctionError) throw e;
         console.warn(`Attachment fetch error ${path}:`, e);
         return null;
       }
     }
+
     if (routeMapPath) {
       const a = await fetchAttachment(routeMapPath, 'image');
       if (a) attachments.push(a);
@@ -339,8 +463,21 @@ serve(async (req) => {
       if (a) attachments.push(a);
     }
 
-    const hasMap = attachments.some(a => a.kind === 'image');
-    const hasExact = attachments.some(a => a.kind === 'pdf');
+    const pdfAttachment = attachments.find(a => a.kind === 'pdf');
+    let exactItineraryContext = '';
+    if (pdfAttachment) {
+      try {
+        exactItineraryContext = await extractExactItineraryContext(pdfAttachment);
+      } catch (e) {
+        if (e instanceof SafeFunctionError) throw e;
+        const msg = e instanceof Error ? e.message : 'Erro desconhecido';
+        throw new SafeFunctionError(`Não foi possível interpretar o Exact Itinerary PDF de forma estável. Detalhe: ${msg}`, 'pdf_extraction_failed', 422);
+      }
+    }
+
+    const finalAttachments = attachments.filter(a => a.kind === 'image');
+    const hasMap = finalAttachments.some(a => a.kind === 'image');
+    const hasExact = Boolean(exactItineraryContext);
 
     const userPrompt = `Generate a ${numDays}-day travel plan proposal for:
 
@@ -348,7 +485,7 @@ Client: ${leadData.clientName}
 File ID: ${leadData.fileId || 'TBD'}
 Destinations: ${leadData.destination}
 Travel Dates: ${dateRange}
-EXACT NUMBER OF DAYS: ${numDays} — create exactly ${numDays} days
+EXACT NUMBER OF DAYS: ${numDays} — create exactly ${numDays} days unless Exact Itinerary context says otherwise
 Participants: ${paxStr}
 Travel Styles: ${leadData.travelStyles?.join(', ') || 'General'}
 Comfort Level: ${leadData.comfortLevel || 'Standard'}
@@ -357,16 +494,15 @@ ${leadData.magicQuestion ? `What would make this trip unforgettable: ${leadData.
 ${leadData.notes ? `Additional notes: ${leadData.notes}` : ''}
 ${extraInstructions ? `\nADDITIONAL INSTRUCTIONS FROM TEAM: ${extraInstructions}` : ''}
 ${hasMap ? `\nATTACHED: a Google Maps route screenshot showing the intended geographic flow.` : ''}
-${hasExact ? `\nATTACHED: an EXACT ITINERARY PDF that defines the day-by-day skeleton to follow literally.` : ''}
+${hasExact ? `\nEXACT ITINERARY STRUCTURED CONTEXT extracted from the uploaded PDF. This is the source of truth and must be followed literally:\n${exactItineraryContext}` : ''}
 
 Format dates as DD-Mon-YYYY (e.g. 02-Aug-2026). If exact dates aren't provided, use placeholder dates starting from a reasonable near-future date.`;
 
     const langCode = (leadData.language || 'EN').toUpperCase();
     const langInstruction = LANGUAGE_MAP[langCode] || LANGUAGE_MAP.EN;
     const languageDirective = `\n\nOUTPUT LANGUAGE: Generate ALL text fields (trip_title, narrative, day title, subtitle, bullets, overnight) in ${langInstruction}. Keep JSON keys in English. Keep proper nouns (city names, hotel names) untranslated.`;
-
     const exactDirective = hasExact
-      ? `\n\nEXACT-ITINERARY MODE (STRICT): An EXACT ITINERARY PDF is attached. You MUST follow its day-by-day structure, destinations, order and overnight cities literally. Do not invent new days, do not reorder, do not add or remove stops. Only rewrite bullets in YTP premium tone following the style rules above. If a day is unclear in the PDF, keep it minimal instead of inventing content. Override the numeric "EXACT NUMBER OF DAYS" hint if it conflicts with the PDF — the PDF is the source of truth.`
+      ? `\n\nEXACT-ITINERARY MODE (STRICT): Use the extracted Exact Itinerary context as the source of truth. You MUST follow its day-by-day structure, destinations, order and overnight cities literally. Do not invent new days, do not reorder, do not add or remove stops. Only rewrite bullets in YTP premium tone following the style rules above. If a day is unclear in the context, keep it minimal instead of inventing content.`
       : '';
     const routeDirective = hasMap
       ? `\n\nROUTE-MAP CONTEXT: A Google Maps route screenshot is attached showing the intended geographic flow. Respect this sequence of stops/regions when structuring the days.`
@@ -376,45 +512,29 @@ Format dates as DD-Mon-YYYY (e.g. 02-Aug-2026). If exact dates aren't provided, 
       ? `${SYSTEM_PROMPT}\n\nIMPORTANT ADDITIONAL INSTRUCTIONS: ${extraInstructions}`
       : SYSTEM_PROMPT) + exactDirective + routeDirective + languageDirective;
 
-    const raw = await callAI(systemWithExtra, userPrompt, attachments);
-
-    // Parse JSON from response — strip code fences, then try greedy match + partial repair
-    let parsed: any = null;
-    const cleaned = raw.replace(/```json\s*/gi, '').replace(/```/g, '').trim();
-    try { parsed = JSON.parse(cleaned); } catch {}
-    if (!parsed) {
-      const m = cleaned.match(/\{[\s\S]*\}/);
-      if (m) { try { parsed = JSON.parse(m[0]); } catch {} }
-    }
-    // Partial repair: truncate to last complete day and close braces
-    if (!parsed) {
-      try {
-        const start = cleaned.indexOf('{');
-        if (start >= 0) {
-          let s = cleaned.slice(start);
-          // cut at last closed day object inside days array
-          const lastDayEnd = s.lastIndexOf('}\n    }');
-          if (lastDayEnd > 0) {
-            s = s.slice(0, lastDayEnd + 1) + ']\n}';
-            parsed = JSON.parse(s);
-          }
-        }
-      } catch {}
-    }
-
-    if (!parsed || !parsed.days) {
-      return new Response(JSON.stringify({ error: 'AI returned invalid format', raw: raw.slice(0, 1200), tail: raw.slice(-400) }), {
-        status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-    }
-
-    return new Response(JSON.stringify({ result: parsed }), {
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    const raw = await callAI(systemWithExtra, userPrompt, finalAttachments, {
+      maxTokens: FINAL_MAX_TOKENS,
+      allowTextFallbacks: true,
+      purpose: 'Travel plan generation',
     });
+
+    const parsed = normalizePlan(parseJsonFromAI(raw));
+    if (!parsed || !parsed.days?.length) {
+      return jsonResponse({ error: 'A AI devolveu um formato inválido. Tenta novamente; se persistir, reduz as instruções/PDF.', code: 'invalid_ai_format', raw: raw.slice(0, 1200), tail: raw.slice(-400) }, 502);
+    }
+
+    return jsonResponse({ result: parsed });
   } catch (e) {
     console.error('generate-travel-plan error:', e);
-    return new Response(JSON.stringify({ error: e instanceof Error ? e.message : 'Unknown error' }), {
-      status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    });
+    if (e instanceof SafeFunctionError) return jsonResponse({ error: e.message, code: e.code }, e.status);
+
+    const message = e instanceof Error ? e.message : 'Unknown error';
+    const isMemory = /memory/i.test(message);
+    return jsonResponse({
+      error: isMemory
+        ? 'A geração excedeu o limite de memória. Compacta o PDF/usa uma versão textual e tenta novamente.'
+        : message,
+      code: isMemory ? 'memory_limit' : 'generation_failed',
+    }, 500);
   }
 });

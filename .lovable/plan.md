@@ -1,57 +1,149 @@
-Perfeito — com esse formato conseguimos fazer funcionar de forma fiável em todos os lados sem precisar de API key.
+## Diagnóstico confirmado
 
-## Diagnóstico
+O erro atual vem da função de geração do Travel Plan a falhar por **limite de memória excedido** quando existe PDF anexado como “Exact Itinerary”.
 
-Links Google Maps do tipo `/maps/dir/A/B/C/@lat,lng/data=...` **não são embebíveis** apenas ao acrescentar `output=embed` — o Google devolve a página `consent.google.pt` e o iframe fica em branco. É esta a causa dos 3 sintomas:
+Hoje o fluxo faz isto:
 
-- erro no Travel Planner (consent recusado)
-- link público muito lento / não abre
-- PDF sem mapa
+1. descarrega o PDF do storage;
+2. carrega o ficheiro inteiro em memória;
+3. converte tudo para base64;
+4. envia o PDF completo para o modelo multimodal;
+5. se o PDF for pesado, repetido, com imagens/scans, ou grande demais, a função rebenta antes de concluir.
 
-## Solução
+Resultado: no frontend aparece apenas “Edge Function returned a non-2xx status code”.
 
-### 1. Novo helper `toMapEmbedSrc(url)`
+## Objetivo
 
-Reescrever o helper em `src/components/trip/TravelPlanProposal.tsx` (e reutilizar na página pública):
+Garantir que a geração **quase nunca falha** e, quando algo externo falhar, o agente humano recebe uma mensagem clara e uma alternativa operacional.
 
-- Detetar links `/maps/dir/...`: extrair os waypoints (segmentos entre `/dir/` e `/@` ou `/data`), decodificar (`decodeURIComponent`) e converter para o embed clássico:  
-  `https://maps.google.com/maps?saddr=<A>&daddr=<B>+to:<C>+to:<D>&output=embed`  
-  Este endpoint clássico **não passa pelo consent.google** e aceita múltiplos `+to:` — ideal para rotas multi-stop como a que enviaste.
-- Detetar links `/maps/place/...` ou com `@lat,lng`: usar `https://maps.google.com/maps?q=<place ou lat,lng>&z=<zoom>&output=embed`.
-- Detetar links curtos (`maps.app.goo.gl`, `goo.gl/maps`): não são embebíveis diretamente → mostrar fallback com botão “Abrir no Google Maps” + pedir ao agente para colar o link completo (aviso inline no input).
-- Se já for um `/maps/embed?pb=...` ou já contiver `output=embed`, usar tal e qual.
+A lógica deve ser:
 
-### 2. Travel Planner (back office)
+```text
+PDF / mapa / notas humanas
+        ↓
+pré-processar contexto de forma leve
+        ↓
+gerar Travel Plan estruturado
+        ↓
+validar JSON
+        ↓
+se falhar, reparar / tentar fallback
+        ↓
+se ainda falhar, devolver erro claro e útil
+```
 
-- Preview do iframe usa `toMapEmbedSrc` corrigido.
-- Debounce ao escrever (600ms) para não recarregar o iframe a cada tecla.
-- Se o helper devolver `null` (link não suportado), mostrar aviso amarelo em vez do iframe: “Link não embebível — cola o link completo do google.com/maps”.
+## Plano de implementação
 
-### 3. Proposta pública
+### 1. Separar leitura do PDF da geração final
 
-- `PublicProposalPage.tsx`: usar o mesmo helper (importado).
-- `loading="lazy"` já existe — adicionar `sandbox="allow-scripts allow-same-origin allow-popups"` para performance e mostrar título + link “Abrir no Google Maps” por cima do iframe, para nunca ficar “preso” à espera.
-- Encolher a proporção em mobile para carregamento mais leve.
+Em vez de enviar sempre o PDF completo para o modelo final, criar um passo intermédio dentro da função:
 
-### 4. PDF (estático)
+- se houver Exact Itinerary PDF, primeiro tentar extrair/resumir a estrutura essencial:
+  - número de dias;
+  - cidade/base por dia;
+  - título operacional do dia;
+  - paragens principais;
+  - experiências/serviços descritos;
+  - noites;
+  - notas importantes.
 
-Como PDF não renderiza iframe:
+Depois, o gerador final recebe **texto estruturado leve**, não o PDF inteiro pesado.
 
-- Por cada dia com `map_url`, adicionar uma caixa estática no PDF:
-  - título “Route map — Day N”
-  - lista de paragens extraídas da URL (nomes decodificados dos waypoints)
-  - botão/link clicável “Open route in Google Maps →” usando `doc.textWithLink` com a URL original.
-- Não vamos gerar imagem estática do mapa (requereria Static Maps API paga) — o link clicável dá acesso imediato à rota real.
+Isto reduz muito memória, custo e falhas.
 
-### 5. Verificação
+### 2. Criar fallback quando o PDF for pesado ou problemático
 
-- Colar o link do Douro que enviaste no Travel Planner → ver iframe com rota Porto → Casa do Poço → Cozinha da Clara → Daurum → Miradouro → Porto.
-- Abrir link público da proposta → mapa carrega rápido.
-- Gerar PDF → aparece caixa com as paragens e link clicável.
+Adicionar proteções antes de processar o PDF:
+
+- limite de tamanho seguro;
+- se o PDF for demasiado grande, não carregar tudo cegamente;
+- se a leitura multimodal falhar, tentar uma chamada alternativa apenas com o contexto textual disponível;
+- se o PDF não puder ser interpretado, devolver mensagem clara: “PDF demasiado pesado / ilegível — exportar versão mais leve ou copiar o esqueleto para notas”.
+
+### 3. Melhorar a cadeia de modelos
+
+A função já tem fallback Lovable AI → Gemini direto → OpenAI → Claude, mas com PDF anexado os fallbacks atuais ficam fracos porque OpenAI/Claude estão a receber só texto e não o PDF.
+
+Vou ajustar para:
+
+- usar multimodal apenas quando necessário;
+- se o PDF já foi convertido em estrutura textual, todos os modelos seguintes podem usar esse texto;
+- manter Gemini pago como caminho principal para PDF/imagem;
+- usar OpenAI/Claude como fallback real com o contexto já extraído.
+
+### 4. Reduzir `max_tokens` e carga por tentativa
+
+A função pede respostas muito grandes (`32768 tokens`) em todas as tentativas. Para propostas longas pode fazer sentido, mas aumenta risco de memória/timeouts.
+
+Vou ajustar para um valor mais seguro e progressivo:
+
+- tentativa normal com output controlado;
+- se o programa tiver muitos dias, manter estrutura compacta;
+- preservar qualidade sem pedir output excessivo logo à partida.
+
+### 5. Tornar o erro visível e acionável no frontend
+
+No Travel Planner, quando a função falhar, mostrar a causa real quando disponível:
+
+- “PDF demasiado pesado”;
+- “AI sem créditos / quota”;
+- “modelo não conseguiu devolver JSON válido”;
+- “timeout / memória excedida”.
+
+Hoje o utilizador vê só erro genérico da função. Isso não ajuda a operação.
+
+### 6. Guardar melhor o estado do Exact Itinerary
+
+Após upload do PDF, validar no frontend:
+
+- tipo PDF;
+- tamanho máximo recomendado;
+- mostrar nome/tamanho do ficheiro;
+- aviso se for pesado;
+- manter indicação clara de “Modo Exact ativo”.
+
+### 7. Adicionar validação e reparação do JSON final
+
+Depois da AI responder:
+
+- validar se existem `trip_title`, `narrative`, `days`;
+- garantir que cada dia tem `day_number`, `title`, `bullets`, `overnight`;
+- normalizar bullets antigas/string/object;
+- se o JSON vier parcial, tentar reparar de forma mais robusta;
+- se o PDF indicar 10 dias, mas a AI devolver menos, tentar uma segunda geração só para completar dias em falta.
+
+## Resultado esperado
+
+Depois desta alteração:
+
+- PDFs pequenos/médios devem gerar sempre com muito mais estabilidade;
+- PDFs pesados deixam de rebentar a função por memória;
+- Gemini pago continua a ser o motor principal;
+- OpenAI/Claude passam a funcionar melhor como fallback porque recebem contexto textual limpo;
+- o agente deixa de ver erro genérico e passa a ver uma explicação prática;
+- o Travel Planner fica mais fiável para o fluxo real da equipa.
 
 ## Ficheiros a alterar
 
-- `src/components/trip/TravelPlanProposal.tsx` — helper `toMapEmbedSrc` + UI de aviso + debounce.
-- `src/pages/PublicProposalPage.tsx` — passar a usar o helper partilhado.
-- `src/lib/proposalPdf.ts` — bloco estático por dia com waypoints + link.
-- (opcional) mover o helper para `src/lib/proposalShare.ts` para partilhar entre planner, público e PDF.
+- `supabase/functions/generate-travel-plan/index.ts`
+  - refatorar processamento de anexos;
+  - adicionar pré-extração/normalização do PDF;
+  - melhorar fallback AI;
+  - melhorar erros.
+
+- `src/components/trip/TravelPlanProposal.tsx`
+  - mostrar erro real da função no toast;
+  - melhorar mensagem quando há falha de geração.
+
+- `src/components/leads/LeadContextAttachments.tsx`
+  - mostrar nome/tamanho do PDF;
+  - bloquear ou avisar PDFs demasiado pesados.
+
+## Critério de sucesso
+
+Testar com uma lead com Exact Itinerary PDF anexado e confirmar que:
+
+1. a função já não falha por memória;
+2. se o PDF for aceite, o Travel Plan segue o esqueleto do PDF;
+3. se o PDF for problemático, a app explica o motivo;
+4. a geração continua funcional sem PDF e com mapa/imagem.
