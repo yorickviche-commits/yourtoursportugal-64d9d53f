@@ -288,7 +288,7 @@ const PublicProposalPage = () => {
                             'w-1.5 h-1.5 rounded-full mt-2 shrink-0',
                             isLiked ? 'bg-emerald-500' : isChange ? 'bg-amber-500' : 'bg-sky-400',
                           )} />
-                          <span className="flex-1 text-sm text-slate-700">{item}</span>
+                          <RichText className="flex-1 text-sm text-slate-700" value={item} />
                           <div className="flex items-center gap-1 shrink-0">
                             <button
                               onClick={() => {
