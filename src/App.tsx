@@ -47,6 +47,7 @@ import AdminKPIPage from "./pages/AdminKPIPage";
 import AdminActivityLogsPage from "./pages/AdminActivityLogsPage";
 import AgentDashboardPage from "./pages/AgentDashboardPage";
 import ProfilePage from "./pages/ProfilePage";
+import { BoldShortcutProvider } from "@/lib/richText";
 
 const queryClient = new QueryClient();
 
@@ -56,6 +57,7 @@ const App = () => (
       <TooltipProvider>
         <Toaster />
         <Sonner />
+        <BoldShortcutProvider />
         <BrowserRouter>
           <TourProvider>
           <Routes>

@@ -6,6 +6,7 @@ import { cn } from '@/lib/utils';
 import { getProposalDict, resolveProposalLang, encodeSentiment, decodeSentiment, Sentiment } from '@/lib/proposalI18n';
 import reviewsBanner from '@/assets/our-reviews-banner.png.asset.json';
 import { toMapEmbedSrc } from '@/lib/mapEmbed';
+import { RichText, stripBoldMarkers } from '@/lib/richText';
 
 
 // Lazy load map to avoid react-leaflet context crash
@@ -172,7 +173,7 @@ const PublicProposalPage = () => {
         <div className="absolute bottom-0 left-0 right-0 p-6 md:p-12 text-white">
           <div className="max-w-4xl">
             {statusBadge && <div className="mb-3">{statusBadge}</div>}
-            <h1 className="text-3xl md:text-5xl font-serif font-bold leading-tight mb-3">{proposal.title}</h1>
+            <RichText as="h1" className="text-3xl md:text-5xl font-serif font-bold leading-tight mb-3" value={proposal.title} />
             <div className="flex flex-wrap gap-4 text-sm text-white/80">
               <span>{proposal.client_name}</span>
               {proposal.date_range && <span>• {proposal.date_range}</span>}
@@ -221,7 +222,7 @@ const PublicProposalPage = () => {
         {/* ─── SUMMARY ─── */}
         <section id="summary">
           <h2 className="text-2xl font-serif text-slate-800 mb-4">{dict.tripSummary}</h2>
-          <p className="text-slate-600 leading-relaxed mb-6">{proposal.summary_text}</p>
+          <RichText as="p" className="text-slate-600 leading-relaxed mb-6 whitespace-pre-wrap" value={proposal.summary_text} preserveNewlines />
           <div className="bg-white rounded-xl border border-slate-200 p-5">
             <button onClick={() => setNavOpen(!navOpen)} className="flex items-center justify-between w-full text-left">
               <span className="font-medium text-slate-700">{dict.programDayByDay}</span>
@@ -233,8 +234,8 @@ const PublicProposalPage = () => {
                   <a key={d.day_number} href={`#day-${d.day_number}`} className="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-sky-50 text-sm text-slate-600">
                     <span className="w-8 h-8 bg-sky-100 rounded-full flex items-center justify-center text-xs font-bold text-sky-600">{dict.dayShort(d.day_number)}</span>
                     <div>
-                      <span className="font-medium text-slate-800">{d.title}</span>
-                      {d.subtitle && <span className="text-slate-400 ml-2">— {d.subtitle}</span>}
+                      <RichText className="font-medium text-slate-800" value={d.title} />
+                      {d.subtitle && <RichText className="text-slate-400 ml-2" value={`— ${d.subtitle}`} />}
                     </div>
                   </a>
                 ))}
@@ -249,20 +250,20 @@ const PublicProposalPage = () => {
             <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm">
               {day.cover_image_url && (
                 <div className="relative h-56 md:h-72">
-                  <img src={day.cover_image_url} alt={day.title} className="w-full h-full object-cover" />
+                  <img src={day.cover_image_url} alt={stripBoldMarkers(day.title)} className="w-full h-full object-cover" />
                   <div className="absolute inset-0 bg-gradient-to-t from-[#0a2540]/60 to-transparent" />
                   <div className="absolute bottom-4 left-5 right-5 text-white">
                     <div className="text-xs uppercase tracking-wider opacity-75 mb-1">{day.date_label}</div>
-                    <h3 className="text-2xl font-serif font-bold">{day.title}</h3>
-                    {day.subtitle && <p className="text-sm text-white/80 mt-1">{day.subtitle}</p>}
+                    <RichText as="h3" className="text-2xl font-serif font-bold" value={day.title} />
+                    {day.subtitle && <RichText as="p" className="text-sm text-white/80 mt-1" value={day.subtitle} />}
                   </div>
                 </div>
               )}
               {!day.cover_image_url && (
                 <div className="p-5 border-b border-slate-100">
                   <div className="text-xs uppercase tracking-wider text-slate-400 mb-1">{day.date_label}</div>
-                  <h3 className="text-xl font-serif font-bold text-slate-800">{day.title}</h3>
-                  {day.subtitle && <p className="text-sm text-slate-500 mt-1">{day.subtitle}</p>}
+                  <RichText as="h3" className="text-xl font-serif font-bold text-slate-800" value={day.title} />
+                  {day.subtitle && <RichText as="p" className="text-sm text-slate-500 mt-1" value={day.subtitle} />}
                 </div>
               )}
 
@@ -287,7 +288,7 @@ const PublicProposalPage = () => {
                             'w-1.5 h-1.5 rounded-full mt-2 shrink-0',
                             isLiked ? 'bg-emerald-500' : isChange ? 'bg-amber-500' : 'bg-sky-400',
                           )} />
-                          <span className="flex-1 text-sm text-slate-700">{item}</span>
+                          <RichText className="flex-1 text-sm text-slate-700" value={item} />
                           <div className="flex items-center gap-1 shrink-0">
                             <button
                               onClick={() => {
@@ -770,7 +771,7 @@ const DayAnnotationSection = ({ day, dayIdx, isOpen, onToggle, annotations, note
     <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
       <button onClick={onToggle} className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-sky-50">
         <span className="w-7 h-7 bg-sky-50 text-sky-600 rounded-full flex items-center justify-center text-xs font-bold">{dict.day.charAt(0)}{day.day_number}</span>
-        <span className="text-sm font-medium text-slate-800 flex-1 truncate">{day.title}</span>
+        <RichText className="text-sm font-medium text-slate-800 flex-1 truncate" value={day.title} />
         <span className="text-xs text-slate-400">{annotations.filter((a: any) => a.level === 'day').length}</span>
         {isOpen ? <ChevronUp className="h-4 w-4 text-slate-400" /> : <ChevronDown className="h-4 w-4 text-slate-400" />}
       </button>

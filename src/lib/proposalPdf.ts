@@ -1,6 +1,7 @@
 import jsPDF from 'jspdf';
 import reviewsCoverUrl from '@/assets/proposal-reviews-cover.png';
 import { parseGoogleMapsUrl } from '@/lib/mapEmbed';
+import { drawRichTextPdf, stripBoldMarkers } from '@/lib/richText';
 
 const ALL_REVIEWS_URL = 'https://yourtoursportugal.com/our-reviews/';
 
@@ -81,32 +82,32 @@ export function buildProposalEmailText(p: ProposalLite, weblink: string): string
   ].filter(Boolean);
 
   const lines: string[] = [];
-  lines.push(p.title || 'Your Travel Plan');
+  lines.push(stripBoldMarkers(p.title || 'Your Travel Plan'));
   if (headerBits.length) lines.push(headerBits.join(' · '));
   lines.push('');
   if (p.summary_text) {
-    lines.push(p.summary_text.trim());
+    lines.push(stripBoldMarkers(p.summary_text).trim());
     lines.push('');
   }
 
   if (days.length) {
     lines.push('Summary & Day-by-Day');
     days.forEach((d, i) => {
-      lines.push(`Day ${d.day_number ?? i + 1} — ${d.title || ''}`.trim());
+      lines.push(`Day ${d.day_number ?? i + 1} — ${stripBoldMarkers(d.title || '')}`.trim());
     });
     lines.push('');
     days.forEach((d, i) => {
-      lines.push(`Day ${d.day_number ?? i + 1} — ${d.title || ''}`.trim());
+      lines.push(`Day ${d.day_number ?? i + 1} — ${stripBoldMarkers(d.title || '')}`.trim());
       const dl = dayDateLabel(d);
       if (dl) lines.push(dl);
-      if (d.subtitle) lines.push(d.subtitle);
+      if (d.subtitle) lines.push(stripBoldMarkers(d.subtitle));
       const items = dayItems(d);
       if (items.length) {
         lines.push('ITINERARY & INCLUDED:');
-        items.forEach(it => lines.push(`  • ${it}`));
+        items.forEach(it => lines.push(`  • ${stripBoldMarkers(it)}`));
       }
       const acc = accommodationLabel(d);
-      if (acc) lines.push(`Night: ${acc}`);
+      if (acc) lines.push(`Night: ${stripBoldMarkers(acc)}`);
       lines.push('');
     });
   }
@@ -185,7 +186,7 @@ export async function buildProposalPdfBase64(p: ProposalLite, weblink: string): 
   doc.setTextColor(20, 20, 20);
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(20);
-  const title = p.title || 'Travel Plan';
+  const title = stripBoldMarkers(p.title || 'Travel Plan');
   const titleLines = doc.splitTextToSize(title, pageW - margin * 2);
   ensureSpace(titleLines.length * 24 + 6);
   doc.text(titleLines, margin, y);
@@ -255,10 +256,12 @@ export async function buildProposalPdfBase64(p: ProposalLite, weblink: string): 
     doc.setTextColor(40, 40, 40);
     doc.setFont('helvetica', 'italic');
     doc.setFontSize(11);
-    const lines = doc.splitTextToSize(p.summary_text, pageW - margin * 2);
-    ensureSpace(lines.length * 14 + 10);
-    doc.text(lines, margin, y);
-    y += lines.length * 14 + 10;
+    const estLines = doc.splitTextToSize(stripBoldMarkers(p.summary_text), pageW - margin * 2);
+    ensureSpace(estLines.length * 14 + 10);
+    y = drawRichTextPdf(doc as any, p.summary_text, {
+      x: margin, y, maxWidth: pageW - margin * 2, lineHeight: 14, baseStyle: 'italic', boldStyle: 'bolditalic',
+    });
+    y += 10;
   }
 
   if (days.length) {
@@ -273,10 +276,12 @@ export async function buildProposalPdfBase64(p: ProposalLite, weblink: string): 
     doc.setTextColor(60, 60, 60);
     days.forEach((d, i) => {
       const line = `Day ${d.day_number ?? i + 1} — ${d.title || ''}`;
-      const wrapped = doc.splitTextToSize(line, pageW - margin * 2);
-      ensureSpace(wrapped.length * 12 + 2);
-      doc.text(wrapped, margin, y);
-      y += wrapped.length * 12 + 2;
+      const est = doc.splitTextToSize(stripBoldMarkers(line), pageW - margin * 2);
+      ensureSpace(est.length * 12 + 2);
+      y = drawRichTextPdf(doc as any, line, {
+        x: margin, y, maxWidth: pageW - margin * 2, lineHeight: 12, baseStyle: 'normal', boldStyle: 'bold',
+      });
+      y += 2;
     });
     y += 10;
   }
@@ -290,7 +295,7 @@ export async function buildProposalPdfBase64(p: ProposalLite, weblink: string): 
     doc.setTextColor(10, 37, 64);
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(13);
-    const dayTitle = `Day ${d.day_number ?? idx + 1}${d.title ? ` — ${d.title}` : ''}`;
+    const dayTitle = `Day ${d.day_number ?? idx + 1}${d.title ? ` — ${stripBoldMarkers(d.title)}` : ''}`;
     doc.text(dayTitle, margin, y);
     const dl = dayDateLabel(d);
     if (dl) {
@@ -305,20 +310,24 @@ export async function buildProposalPdfBase64(p: ProposalLite, weblink: string): 
       doc.setTextColor(80, 80, 80);
       doc.setFont('helvetica', 'italic');
       doc.setFontSize(10);
-      const lines = doc.splitTextToSize(d.subtitle, pageW - margin * 2);
-      ensureSpace(lines.length * 12 + 6);
-      doc.text(lines, margin, y);
-      y += lines.length * 12 + 6;
+      const est = doc.splitTextToSize(stripBoldMarkers(d.subtitle), pageW - margin * 2);
+      ensureSpace(est.length * 12 + 6);
+      y = drawRichTextPdf(doc as any, d.subtitle, {
+        x: margin, y, maxWidth: pageW - margin * 2, lineHeight: 12, baseStyle: 'italic', boldStyle: 'bolditalic',
+      });
+      y += 6;
     }
 
     if (d.narrative) {
       doc.setTextColor(50, 50, 50);
       doc.setFont('helvetica', 'normal');
       doc.setFontSize(10);
-      const lines = doc.splitTextToSize(d.narrative, pageW - margin * 2);
-      ensureSpace(lines.length * 12 + 6);
-      doc.text(lines, margin, y);
-      y += lines.length * 12 + 6;
+      const est = doc.splitTextToSize(stripBoldMarkers(d.narrative), pageW - margin * 2);
+      ensureSpace(est.length * 12 + 6);
+      y = drawRichTextPdf(doc as any, d.narrative, {
+        x: margin, y, maxWidth: pageW - margin * 2, lineHeight: 12, baseStyle: 'normal', boldStyle: 'bold',
+      });
+      y += 6;
     }
 
     const items = dayItems(d);
@@ -332,10 +341,12 @@ export async function buildProposalPdfBase64(p: ProposalLite, weblink: string): 
       doc.setFont('helvetica', 'normal');
       doc.setTextColor(50, 50, 50);
       items.forEach(h => {
-        const lines = doc.splitTextToSize(`• ${h}`, pageW - margin * 2 - 10);
-        ensureSpace(lines.length * 12 + 2);
-        doc.text(lines, margin + 6, y);
-        y += lines.length * 12 + 2;
+        const est = doc.splitTextToSize(`• ${stripBoldMarkers(h)}`, pageW - margin * 2 - 10);
+        ensureSpace(est.length * 12 + 2);
+        y = drawRichTextPdf(doc as any, `• ${h}`, {
+          x: margin + 6, y, maxWidth: pageW - margin * 2 - 10, lineHeight: 12, baseStyle: 'normal', boldStyle: 'bold',
+        });
+        y += 2;
       });
       y += 4;
     }
@@ -346,7 +357,7 @@ export async function buildProposalPdfBase64(p: ProposalLite, weblink: string): 
       doc.setFontSize(9);
       doc.setTextColor(120, 120, 120);
       ensureSpace(14);
-      doc.text(`Night: ${acc}`, margin, y);
+      doc.text(`Night: ${stripBoldMarkers(acc)}`, margin, y);
       y += 16;
     }
 
