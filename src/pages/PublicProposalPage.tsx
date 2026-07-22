@@ -234,8 +234,8 @@ const PublicProposalPage = () => {
                   <a key={d.day_number} href={`#day-${d.day_number}`} className="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-sky-50 text-sm text-slate-600">
                     <span className="w-8 h-8 bg-sky-100 rounded-full flex items-center justify-center text-xs font-bold text-sky-600">{dict.dayShort(d.day_number)}</span>
                     <div>
-                      <span className="font-medium text-slate-800">{d.title}</span>
-                      {d.subtitle && <span className="text-slate-400 ml-2">— {d.subtitle}</span>}
+                      <RichText className="font-medium text-slate-800" value={d.title} />
+                      {d.subtitle && <RichText className="text-slate-400 ml-2" value={`— ${d.subtitle}`} />}
                     </div>
                   </a>
                 ))}
