@@ -82,32 +82,32 @@ export function buildProposalEmailText(p: ProposalLite, weblink: string): string
   ].filter(Boolean);
 
   const lines: string[] = [];
-  lines.push(p.title || 'Your Travel Plan');
+  lines.push(stripBoldMarkers(p.title || 'Your Travel Plan'));
   if (headerBits.length) lines.push(headerBits.join(' · '));
   lines.push('');
   if (p.summary_text) {
-    lines.push(p.summary_text.trim());
+    lines.push(stripBoldMarkers(p.summary_text).trim());
     lines.push('');
   }
 
   if (days.length) {
     lines.push('Summary & Day-by-Day');
     days.forEach((d, i) => {
-      lines.push(`Day ${d.day_number ?? i + 1} — ${d.title || ''}`.trim());
+      lines.push(`Day ${d.day_number ?? i + 1} — ${stripBoldMarkers(d.title || '')}`.trim());
     });
     lines.push('');
     days.forEach((d, i) => {
-      lines.push(`Day ${d.day_number ?? i + 1} — ${d.title || ''}`.trim());
+      lines.push(`Day ${d.day_number ?? i + 1} — ${stripBoldMarkers(d.title || '')}`.trim());
       const dl = dayDateLabel(d);
       if (dl) lines.push(dl);
-      if (d.subtitle) lines.push(d.subtitle);
+      if (d.subtitle) lines.push(stripBoldMarkers(d.subtitle));
       const items = dayItems(d);
       if (items.length) {
         lines.push('ITINERARY & INCLUDED:');
-        items.forEach(it => lines.push(`  • ${it}`));
+        items.forEach(it => lines.push(`  • ${stripBoldMarkers(it)}`));
       }
       const acc = accommodationLabel(d);
-      if (acc) lines.push(`Night: ${acc}`);
+      if (acc) lines.push(`Night: ${stripBoldMarkers(acc)}`);
       lines.push('');
     });
   }
