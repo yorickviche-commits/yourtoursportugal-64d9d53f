@@ -6,6 +6,7 @@ import { cn } from '@/lib/utils';
 import { getProposalDict, resolveProposalLang, encodeSentiment, decodeSentiment, Sentiment } from '@/lib/proposalI18n';
 import reviewsBanner from '@/assets/our-reviews-banner.png.asset.json';
 import { toMapEmbedSrc } from '@/lib/mapEmbed';
+import { RichText, stripBoldMarkers } from '@/lib/richText';
 
 
 // Lazy load map to avoid react-leaflet context crash
