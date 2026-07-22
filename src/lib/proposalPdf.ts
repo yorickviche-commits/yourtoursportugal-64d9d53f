@@ -1,6 +1,7 @@
 import jsPDF from 'jspdf';
 import reviewsCoverUrl from '@/assets/proposal-reviews-cover.png';
 import { parseGoogleMapsUrl } from '@/lib/mapEmbed';
+import { drawRichTextPdf, stripBoldMarkers } from '@/lib/richText';
 
 const ALL_REVIEWS_URL = 'https://yourtoursportugal.com/our-reviews/';
 
