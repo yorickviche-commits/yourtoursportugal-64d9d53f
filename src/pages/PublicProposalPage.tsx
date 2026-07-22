@@ -771,7 +771,7 @@ const DayAnnotationSection = ({ day, dayIdx, isOpen, onToggle, annotations, note
     <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
       <button onClick={onToggle} className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-sky-50">
         <span className="w-7 h-7 bg-sky-50 text-sky-600 rounded-full flex items-center justify-center text-xs font-bold">{dict.day.charAt(0)}{day.day_number}</span>
-        <span className="text-sm font-medium text-slate-800 flex-1 truncate">{day.title}</span>
+        <RichText className="text-sm font-medium text-slate-800 flex-1 truncate" value={day.title} />
         <span className="text-xs text-slate-400">{annotations.filter((a: any) => a.level === 'day').length}</span>
         {isOpen ? <ChevronUp className="h-4 w-4 text-slate-400" /> : <ChevronDown className="h-4 w-4 text-slate-400" />}
       </button>
