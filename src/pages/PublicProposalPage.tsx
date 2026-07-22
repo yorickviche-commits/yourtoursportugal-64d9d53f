@@ -173,7 +173,7 @@ const PublicProposalPage = () => {
         <div className="absolute bottom-0 left-0 right-0 p-6 md:p-12 text-white">
           <div className="max-w-4xl">
             {statusBadge && <div className="mb-3">{statusBadge}</div>}
-            <h1 className="text-3xl md:text-5xl font-serif font-bold leading-tight mb-3">{proposal.title}</h1>
+            <RichText as="h1" className="text-3xl md:text-5xl font-serif font-bold leading-tight mb-3" value={proposal.title} />
             <div className="flex flex-wrap gap-4 text-sm text-white/80">
               <span>{proposal.client_name}</span>
               {proposal.date_range && <span>• {proposal.date_range}</span>}
