@@ -187,10 +187,12 @@ export async function buildProposalPdfBase64(p: ProposalLite, weblink: string): 
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(20);
   const title = p.title || 'Travel Plan';
-  const titleLines = doc.splitTextToSize(title, pageW - margin * 2);
+  const titleLines = doc.splitTextToSize(stripBoldMarkers(title), pageW - margin * 2);
   ensureSpace(titleLines.length * 24 + 6);
-  doc.text(titleLines, margin, y);
-  y += titleLines.length * 24 + 4;
+  // Rich renderer honors current font size; use bold-italic when a segment is **wrapped**.
+  y = drawRichTextPdf(doc as any, title, { x: margin, y, maxWidth: pageW - margin * 2, lineHeight: 24, baseStyle: 'normal', boldStyle: 'bold' });
+  doc.setFont('helvetica', 'bold'); // keep title's overall look for next-line spacing
+  y += 4;
 
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(11);
