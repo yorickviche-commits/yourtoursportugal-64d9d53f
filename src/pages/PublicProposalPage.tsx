@@ -250,20 +250,20 @@ const PublicProposalPage = () => {
             <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm">
               {day.cover_image_url && (
                 <div className="relative h-56 md:h-72">
-                  <img src={day.cover_image_url} alt={day.title} className="w-full h-full object-cover" />
+                  <img src={day.cover_image_url} alt={stripBoldMarkers(day.title)} className="w-full h-full object-cover" />
                   <div className="absolute inset-0 bg-gradient-to-t from-[#0a2540]/60 to-transparent" />
                   <div className="absolute bottom-4 left-5 right-5 text-white">
                     <div className="text-xs uppercase tracking-wider opacity-75 mb-1">{day.date_label}</div>
-                    <h3 className="text-2xl font-serif font-bold">{day.title}</h3>
-                    {day.subtitle && <p className="text-sm text-white/80 mt-1">{day.subtitle}</p>}
+                    <RichText as="h3" className="text-2xl font-serif font-bold" value={day.title} />
+                    {day.subtitle && <RichText as="p" className="text-sm text-white/80 mt-1" value={day.subtitle} />}
                   </div>
                 </div>
               )}
               {!day.cover_image_url && (
                 <div className="p-5 border-b border-slate-100">
                   <div className="text-xs uppercase tracking-wider text-slate-400 mb-1">{day.date_label}</div>
-                  <h3 className="text-xl font-serif font-bold text-slate-800">{day.title}</h3>
-                  {day.subtitle && <p className="text-sm text-slate-500 mt-1">{day.subtitle}</p>}
+                  <RichText as="h3" className="text-xl font-serif font-bold text-slate-800" value={day.title} />
+                  {day.subtitle && <RichText as="p" className="text-sm text-slate-500 mt-1" value={day.subtitle} />}
                 </div>
               )}
 
