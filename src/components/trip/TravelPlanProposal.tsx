@@ -1570,13 +1570,13 @@ const TravelPlanProposal = ({
           <div>
             <h3 className="text-base font-serif font-bold text-slate-800 mb-2">{t.paymentConditions}</h3>
             {viewMode === 'edit' ? (
-              <Textarea
+              <RichTextarea
                 className="text-xs min-h-[90px]"
                 value={closing.payment}
-                onChange={e => setClosing(c => ({ ...c, payment: e.target.value }))}
+                onChange={v => setClosing(c => ({ ...c, payment: v }))}
               />
             ) : (
-              <div className="text-xs text-slate-700 whitespace-pre-wrap ml-3">{closing.payment}</div>
+              <RichText as="div" className="text-xs text-slate-700 whitespace-pre-wrap ml-3" value={closing.payment} preserveNewlines />
             )}
           </div>
 
