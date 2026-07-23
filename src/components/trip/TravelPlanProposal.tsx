@@ -6,6 +6,8 @@ import { useUndoable } from '@/hooks/useUndoable';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
+import { RichInput, RichTextarea } from '@/components/ui/rich-editable';
+import { RichText } from '@/lib/richText';
 import { Card, CardContent } from '@/components/ui/card';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -1208,22 +1210,22 @@ const TravelPlanProposal = ({
           <div className="bg-gradient-to-br from-slate-900 via-slate-800 to-slate-700 text-white p-8 md:p-12">
             {viewMode === 'edit' ? (
               <div className="space-y-3 pr-28">
-                <Input className="text-2xl font-serif font-bold bg-white/10 border-white/20 text-white placeholder:text-white/50 h-auto py-2"
-                  value={displayPlan.trip_title} onChange={e => setPlan(p => p ? { ...p, trip_title: e.target.value } : p)} />
+                <RichInput className="text-2xl font-serif font-bold bg-white/10 border-white/20 text-white placeholder:text-white/50 h-auto py-2"
+                  value={displayPlan.trip_title} onChange={v => setPlan(p => p ? { ...p, trip_title: v } : p)} />
                 <p className="text-sm text-white/70">{clientName}</p>
-                <Textarea className="text-sm bg-white/10 border-white/20 text-white/90 placeholder:text-white/40 min-h-[60px]"
-                  value={displayPlan.narrative} onChange={e => setPlan(p => p ? { ...p, narrative: e.target.value } : p)} />
+                <RichTextarea className="text-sm bg-white/10 border-white/20 text-white/90 placeholder:text-white/40 min-h-[60px]"
+                  value={displayPlan.narrative} onChange={v => setPlan(p => p ? { ...p, narrative: v } : p)} />
               </div>
             ) : (
               <div className="pr-28">
-                <h1 className="text-2xl md:text-3xl font-serif font-bold tracking-tight">{displayPlan.trip_title}</h1>
+                <RichText as="h1" className="text-2xl md:text-3xl font-serif font-bold tracking-tight" value={displayPlan.trip_title} />
                 <p className="text-lg text-white/80 mt-1">{clientName}</p>
                 <div className="flex items-center gap-3 mt-4 text-sm text-white/60">
                   <span>ID: {displayId}</span><span>·</span>
                   <span>{displayPlan.days[0]?.date} – {displayPlan.days[displayPlan.days.length - 1]?.date}</span><span>·</span>
                   <span>{t.adult(pax)}{paxChildren ? ` + ${t.child(paxChildren)}` : ''}{paxInfants ? ` + ${t.infant(paxInfants)}` : ''}</span>
                 </div>
-                <p className="text-sm text-white/80 mt-4 leading-relaxed max-w-3xl">{displayPlan.narrative}</p>
+                <RichText as="p" className="text-sm text-white/80 mt-4 leading-relaxed max-w-3xl" value={displayPlan.narrative} preserveNewlines />
               </div>
             )}
           </div>
@@ -1245,7 +1247,7 @@ const TravelPlanProposal = ({
             <div className="space-y-1">
               {displayPlan.days.map(d => (
                 <p key={d.day_number} className="text-sm text-slate-600">
-                  <span className="font-medium text-slate-800">{t.day} {d.day_number}</span> — {d.title}
+                  <span className="font-medium text-slate-800">{t.day} {d.day_number}</span> — <RichText value={d.title} />
                 </p>
               ))}
             </div>
@@ -1280,14 +1282,14 @@ const TravelPlanProposal = ({
                       <div className="flex items-center gap-2">
                         <span className="text-sm font-bold text-[hsl(var(--info))]">Day {day.day_number}</span>
                         <span className="text-xs text-muted-foreground">—</span>
-                        <Input className="text-sm font-bold flex-1 h-8" value={day.title}
-                          onChange={e => updateDay(dayIdx, { title: e.target.value })} />
+                        <RichInput className="text-sm font-bold flex-1 h-8 py-1" value={day.title}
+                          onChange={v => updateDay(dayIdx, { title: v })} />
                       </div>
                       <div className="flex gap-2 items-center">
                         <Input className="h-7 text-xs w-32" value={day.date}
                           onChange={e => updateDay(dayIdx, { date: e.target.value })} placeholder="DD-Mon-YYYY" />
-                        <Input className="h-7 text-xs flex-1" value={day.subtitle}
-                          onChange={e => updateDay(dayIdx, { subtitle: e.target.value })} placeholder="Subtitle..." />
+                        <RichInput className="h-7 text-xs flex-1 py-1" value={day.subtitle}
+                          onChange={v => updateDay(dayIdx, { subtitle: v })} placeholder="Subtitle..." />
                         {dayDuration && (
                           <span className="flex items-center gap-1 text-[10px] text-muted-foreground bg-muted px-2 rounded-full whitespace-nowrap shrink-0">
                             <Clock className="h-3 w-3" /> {dayDuration}
@@ -1326,8 +1328,8 @@ const TravelPlanProposal = ({
                                           <GripVertical className="h-3.5 w-3.5" />
                                         </span>
                                         <span className="text-xs text-muted-foreground w-4 text-center shrink-0">{bi + 1}.</span>
-                                        <Input className="h-7 text-xs flex-1" value={obj.text}
-                                          onChange={e => updateBulletField(dayIdx, bi, 'text', e.target.value)} placeholder="Experience..." />
+                                        <RichInput className="h-7 text-xs flex-1 py-1" value={obj.text}
+                                          onChange={v => updateBulletField(dayIdx, bi, 'text', v)} placeholder="Experience..." />
                                         <DurationSelector
                                           value={obj.durationValue}
                                           unit={obj.durationUnit || 'hours'}
@@ -1383,7 +1385,7 @@ const TravelPlanProposal = ({
                     <div className="pr-16">
                       <div className="mb-4">
                         <div className="flex items-center gap-3">
-                          <h3 className="text-lg font-serif font-bold text-slate-800">{t.day} {day.day_number} — {day.title}</h3>
+                          <h3 className="text-lg font-serif font-bold text-slate-800">{t.day} {day.day_number} — <RichText value={day.title} /></h3>
                           {dayDuration && (
                             <span className="flex items-center gap-1 text-[10px] text-muted-foreground bg-muted px-2 py-0.5 rounded-full">
                               <Clock className="h-3 w-3" /> {dayDuration}
@@ -1391,7 +1393,7 @@ const TravelPlanProposal = ({
                           )}
                         </div>
                         <p className="text-sm text-slate-500 mt-0.5">{day.date}</p>
-                        <p className="text-sm italic text-slate-600 mt-1">{day.subtitle}</p>
+                        <RichText as="p" className="text-sm italic text-slate-600 mt-1" value={day.subtitle} />
                       </div>
                       <div className="mb-3">
                         <p className="text-xs font-bold uppercase text-slate-400 mb-2">{t.itineraryIncluded}:</p>
@@ -1402,7 +1404,7 @@ const TravelPlanProposal = ({
                             return (
                               <li key={bi} className="text-sm text-slate-700 flex items-start gap-2">
                                 <span className="text-slate-400 mt-0.5">•</span>
-                                <span className="flex-1">{obj.text}</span>
+                                <RichText as="span" className="flex-1" value={obj.text} />
                                 {(dur || obj.startTime) && (
                                   <span className="flex items-center gap-1 text-[10px] text-muted-foreground shrink-0">
                                     {obj.startTime && <span>{obj.startTime}{obj.endTime ? `–${obj.endTime}` : ''}</span>}
@@ -1540,10 +1542,10 @@ const TravelPlanProposal = ({
               )}
             </div>
             {viewMode === 'edit' && closing.inclusionsOverride !== undefined && closing.inclusionsOverride !== '' ? (
-              <Textarea
+              <RichTextarea
                 className="text-xs font-mono min-h-[180px]"
                 value={closing.inclusionsOverride}
-                onChange={e => setClosing(c => ({ ...c, inclusionsOverride: e.target.value }))}
+                onChange={v => setClosing(c => ({ ...c, inclusionsOverride: v }))}
               />
             ) : closing.inclusionsOverride ? (
               <div className="text-xs text-slate-700 whitespace-pre-wrap">{closing.inclusionsOverride}</div>
@@ -1568,13 +1570,13 @@ const TravelPlanProposal = ({
           <div>
             <h3 className="text-base font-serif font-bold text-slate-800 mb-2">{t.paymentConditions}</h3>
             {viewMode === 'edit' ? (
-              <Textarea
+              <RichTextarea
                 className="text-xs min-h-[90px]"
                 value={closing.payment}
-                onChange={e => setClosing(c => ({ ...c, payment: e.target.value }))}
+                onChange={v => setClosing(c => ({ ...c, payment: v }))}
               />
             ) : (
-              <div className="text-xs text-slate-700 whitespace-pre-wrap ml-3">{closing.payment}</div>
+              <RichText as="div" className="text-xs text-slate-700 whitespace-pre-wrap ml-3" value={closing.payment} preserveNewlines />
             )}
           </div>
 
@@ -1582,13 +1584,13 @@ const TravelPlanProposal = ({
           <div>
             <h3 className="text-base font-serif font-bold text-slate-800 mb-2">{t.cancellationConditions}</h3>
             {viewMode === 'edit' ? (
-              <Textarea
+              <RichTextarea
                 className="text-xs min-h-[90px]"
                 value={closing.cancellation}
-                onChange={e => setClosing(c => ({ ...c, cancellation: e.target.value }))}
+                onChange={v => setClosing(c => ({ ...c, cancellation: v }))}
               />
             ) : (
-              <div className="text-xs text-slate-700 whitespace-pre-wrap ml-3">{closing.cancellation}</div>
+              <RichText as="div" className="text-xs text-slate-700 whitespace-pre-wrap ml-3" value={closing.cancellation} preserveNewlines />
             )}
           </div>
 
@@ -1596,26 +1598,26 @@ const TravelPlanProposal = ({
           <div>
             <h3 className="text-base font-serif font-bold text-slate-800 mb-2">{t.importantNotes}</h3>
             {viewMode === 'edit' ? (
-              <Textarea
+              <RichTextarea
                 className="text-xs min-h-[120px]"
                 value={closing.importantNotes}
-                onChange={e => setClosing(c => ({ ...c, importantNotes: e.target.value }))}
+                onChange={v => setClosing(c => ({ ...c, importantNotes: v }))}
               />
             ) : (
-              <div className="text-xs text-slate-600 whitespace-pre-wrap ml-3">{closing.importantNotes}</div>
+              <RichText as="div" className="text-xs text-slate-600 whitespace-pre-wrap ml-3" value={closing.importantNotes} preserveNewlines />
             )}
           </div>
 
           {/* Closing Message */}
           <div className="pt-4 border-t border-slate-200 text-xs text-slate-700 space-y-3 leading-relaxed">
             {viewMode === 'edit' ? (
-              <Textarea
+              <RichTextarea
                 className="text-xs min-h-[140px]"
                 value={closing.closingMessage}
-                onChange={e => setClosing(c => ({ ...c, closingMessage: e.target.value }))}
+                onChange={v => setClosing(c => ({ ...c, closingMessage: v }))}
               />
             ) : (
-              <div className="whitespace-pre-wrap">{closing.closingMessage}</div>
+              <RichText as="div" className="whitespace-pre-wrap" value={closing.closingMessage} preserveNewlines />
             )}
             <p className="italic text-slate-500">{t.noReservationNote}</p>
             <p className="font-serif font-semibold text-slate-800 pt-2 whitespace-pre-line">{t.bestRegards}</p>
