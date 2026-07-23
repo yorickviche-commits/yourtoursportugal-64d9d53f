@@ -228,3 +228,14 @@
     size: A4;
   }
 }
+
+/* Rich-text editable (contenteditable) inputs — placeholder + bold rendering */
+.rich-editable:empty::before {
+  content: attr(data-placeholder);
+  color: hsl(var(--muted-foreground));
+  pointer-events: none;
+}
+.rich-editable strong,
+.rich-editable b {
+  font-weight: 700;
+}
