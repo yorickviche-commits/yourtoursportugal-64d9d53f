@@ -1282,14 +1282,14 @@ const TravelPlanProposal = ({
                       <div className="flex items-center gap-2">
                         <span className="text-sm font-bold text-[hsl(var(--info))]">Day {day.day_number}</span>
                         <span className="text-xs text-muted-foreground">—</span>
-                        <Input className="text-sm font-bold flex-1 h-8" value={day.title}
-                          onChange={e => updateDay(dayIdx, { title: e.target.value })} />
+                        <RichInput className="text-sm font-bold flex-1 h-8 py-1" value={day.title}
+                          onChange={v => updateDay(dayIdx, { title: v })} />
                       </div>
                       <div className="flex gap-2 items-center">
                         <Input className="h-7 text-xs w-32" value={day.date}
                           onChange={e => updateDay(dayIdx, { date: e.target.value })} placeholder="DD-Mon-YYYY" />
-                        <Input className="h-7 text-xs flex-1" value={day.subtitle}
-                          onChange={e => updateDay(dayIdx, { subtitle: e.target.value })} placeholder="Subtitle..." />
+                        <RichInput className="h-7 text-xs flex-1 py-1" value={day.subtitle}
+                          onChange={v => updateDay(dayIdx, { subtitle: v })} placeholder="Subtitle..." />
                         {dayDuration && (
                           <span className="flex items-center gap-1 text-[10px] text-muted-foreground bg-muted px-2 rounded-full whitespace-nowrap shrink-0">
                             <Clock className="h-3 w-3" /> {dayDuration}
