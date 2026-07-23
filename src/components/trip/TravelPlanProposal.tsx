@@ -1584,13 +1584,13 @@ const TravelPlanProposal = ({
           <div>
             <h3 className="text-base font-serif font-bold text-slate-800 mb-2">{t.cancellationConditions}</h3>
             {viewMode === 'edit' ? (
-              <Textarea
+              <RichTextarea
                 className="text-xs min-h-[90px]"
                 value={closing.cancellation}
-                onChange={e => setClosing(c => ({ ...c, cancellation: e.target.value }))}
+                onChange={v => setClosing(c => ({ ...c, cancellation: v }))}
               />
             ) : (
-              <div className="text-xs text-slate-700 whitespace-pre-wrap ml-3">{closing.cancellation}</div>
+              <RichText as="div" className="text-xs text-slate-700 whitespace-pre-wrap ml-3" value={closing.cancellation} preserveNewlines />
             )}
           </div>
 
