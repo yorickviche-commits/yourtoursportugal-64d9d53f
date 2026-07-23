@@ -1247,7 +1247,7 @@ const TravelPlanProposal = ({
             <div className="space-y-1">
               {displayPlan.days.map(d => (
                 <p key={d.day_number} className="text-sm text-slate-600">
-                  <span className="font-medium text-slate-800">{t.day} {d.day_number}</span> — {d.title}
+                  <span className="font-medium text-slate-800">{t.day} {d.day_number}</span> — <RichText value={d.title} />
                 </p>
               ))}
             </div>
