@@ -1542,10 +1542,10 @@ const TravelPlanProposal = ({
               )}
             </div>
             {viewMode === 'edit' && closing.inclusionsOverride !== undefined && closing.inclusionsOverride !== '' ? (
-              <Textarea
+              <RichTextarea
                 className="text-xs font-mono min-h-[180px]"
                 value={closing.inclusionsOverride}
-                onChange={e => setClosing(c => ({ ...c, inclusionsOverride: e.target.value }))}
+                onChange={v => setClosing(c => ({ ...c, inclusionsOverride: v }))}
               />
             ) : closing.inclusionsOverride ? (
               <div className="text-xs text-slate-700 whitespace-pre-wrap">{closing.inclusionsOverride}</div>
