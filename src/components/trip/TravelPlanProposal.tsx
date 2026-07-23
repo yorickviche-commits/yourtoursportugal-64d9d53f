@@ -6,6 +6,8 @@ import { useUndoable } from '@/hooks/useUndoable';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
+import { RichInput, RichTextarea } from '@/components/ui/rich-editable';
+import { RichText } from '@/lib/richText';
 import { Card, CardContent } from '@/components/ui/card';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
