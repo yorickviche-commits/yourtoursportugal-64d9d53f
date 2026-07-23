@@ -1611,13 +1611,13 @@ const TravelPlanProposal = ({
           {/* Closing Message */}
           <div className="pt-4 border-t border-slate-200 text-xs text-slate-700 space-y-3 leading-relaxed">
             {viewMode === 'edit' ? (
-              <Textarea
+              <RichTextarea
                 className="text-xs min-h-[140px]"
                 value={closing.closingMessage}
-                onChange={e => setClosing(c => ({ ...c, closingMessage: e.target.value }))}
+                onChange={v => setClosing(c => ({ ...c, closingMessage: v }))}
               />
             ) : (
-              <div className="whitespace-pre-wrap">{closing.closingMessage}</div>
+              <RichText as="div" className="whitespace-pre-wrap" value={closing.closingMessage} preserveNewlines />
             )}
             <p className="italic text-slate-500">{t.noReservationNote}</p>
             <p className="font-serif font-semibold text-slate-800 pt-2 whitespace-pre-line">{t.bestRegards}</p>
