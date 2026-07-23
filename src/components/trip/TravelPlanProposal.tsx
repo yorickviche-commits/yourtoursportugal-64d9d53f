@@ -1210,22 +1210,22 @@ const TravelPlanProposal = ({
           <div className="bg-gradient-to-br from-slate-900 via-slate-800 to-slate-700 text-white p-8 md:p-12">
             {viewMode === 'edit' ? (
               <div className="space-y-3 pr-28">
-                <Input className="text-2xl font-serif font-bold bg-white/10 border-white/20 text-white placeholder:text-white/50 h-auto py-2"
-                  value={displayPlan.trip_title} onChange={e => setPlan(p => p ? { ...p, trip_title: e.target.value } : p)} />
+                <RichInput className="text-2xl font-serif font-bold bg-white/10 border-white/20 text-white placeholder:text-white/50 h-auto py-2"
+                  value={displayPlan.trip_title} onChange={v => setPlan(p => p ? { ...p, trip_title: v } : p)} />
                 <p className="text-sm text-white/70">{clientName}</p>
-                <Textarea className="text-sm bg-white/10 border-white/20 text-white/90 placeholder:text-white/40 min-h-[60px]"
-                  value={displayPlan.narrative} onChange={e => setPlan(p => p ? { ...p, narrative: e.target.value } : p)} />
+                <RichTextarea className="text-sm bg-white/10 border-white/20 text-white/90 placeholder:text-white/40 min-h-[60px]"
+                  value={displayPlan.narrative} onChange={v => setPlan(p => p ? { ...p, narrative: v } : p)} />
               </div>
             ) : (
               <div className="pr-28">
-                <h1 className="text-2xl md:text-3xl font-serif font-bold tracking-tight">{displayPlan.trip_title}</h1>
+                <RichText as="h1" className="text-2xl md:text-3xl font-serif font-bold tracking-tight" value={displayPlan.trip_title} />
                 <p className="text-lg text-white/80 mt-1">{clientName}</p>
                 <div className="flex items-center gap-3 mt-4 text-sm text-white/60">
                   <span>ID: {displayId}</span><span>·</span>
                   <span>{displayPlan.days[0]?.date} – {displayPlan.days[displayPlan.days.length - 1]?.date}</span><span>·</span>
                   <span>{t.adult(pax)}{paxChildren ? ` + ${t.child(paxChildren)}` : ''}{paxInfants ? ` + ${t.infant(paxInfants)}` : ''}</span>
                 </div>
-                <p className="text-sm text-white/80 mt-4 leading-relaxed max-w-3xl">{displayPlan.narrative}</p>
+                <RichText as="p" className="text-sm text-white/80 mt-4 leading-relaxed max-w-3xl" value={displayPlan.narrative} preserveNewlines />
               </div>
             )}
           </div>
