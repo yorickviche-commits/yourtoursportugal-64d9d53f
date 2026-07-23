@@ -1328,8 +1328,8 @@ const TravelPlanProposal = ({
                                           <GripVertical className="h-3.5 w-3.5" />
                                         </span>
                                         <span className="text-xs text-muted-foreground w-4 text-center shrink-0">{bi + 1}.</span>
-                                        <Input className="h-7 text-xs flex-1" value={obj.text}
-                                          onChange={e => updateBulletField(dayIdx, bi, 'text', e.target.value)} placeholder="Experience..." />
+                                        <RichInput className="h-7 text-xs flex-1 py-1" value={obj.text}
+                                          onChange={v => updateBulletField(dayIdx, bi, 'text', v)} placeholder="Experience..." />
                                         <DurationSelector
                                           value={obj.durationValue}
                                           unit={obj.durationUnit || 'hours'}
