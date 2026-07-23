@@ -1385,7 +1385,7 @@ const TravelPlanProposal = ({
                     <div className="pr-16">
                       <div className="mb-4">
                         <div className="flex items-center gap-3">
-                          <h3 className="text-lg font-serif font-bold text-slate-800">{t.day} {day.day_number} — {day.title}</h3>
+                          <h3 className="text-lg font-serif font-bold text-slate-800">{t.day} {day.day_number} — <RichText value={day.title} /></h3>
                           {dayDuration && (
                             <span className="flex items-center gap-1 text-[10px] text-muted-foreground bg-muted px-2 py-0.5 rounded-full">
                               <Clock className="h-3 w-3" /> {dayDuration}
@@ -1393,7 +1393,7 @@ const TravelPlanProposal = ({
                           )}
                         </div>
                         <p className="text-sm text-slate-500 mt-0.5">{day.date}</p>
-                        <p className="text-sm italic text-slate-600 mt-1">{day.subtitle}</p>
+                        <RichText as="p" className="text-sm italic text-slate-600 mt-1" value={day.subtitle} />
                       </div>
                       <div className="mb-3">
                         <p className="text-xs font-bold uppercase text-slate-400 mb-2">{t.itineraryIncluded}:</p>
@@ -1404,7 +1404,7 @@ const TravelPlanProposal = ({
                             return (
                               <li key={bi} className="text-sm text-slate-700 flex items-start gap-2">
                                 <span className="text-slate-400 mt-0.5">•</span>
-                                <span className="flex-1">{obj.text}</span>
+                                <RichText as="span" className="flex-1" value={obj.text} />
                                 {(dur || obj.startTime) && (
                                   <span className="flex items-center gap-1 text-[10px] text-muted-foreground shrink-0">
                                     {obj.startTime && <span>{obj.startTime}{obj.endTime ? `–${obj.endTime}` : ''}</span>}
