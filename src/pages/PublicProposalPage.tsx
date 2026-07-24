@@ -453,6 +453,11 @@ const PublicProposalPage = () => {
           </section>
         ))}
 
+        {/* ─── PRICING & CONDITIONS ─── */}
+        <PricingConditions proposal={proposal} lang={effectiveLang} />
+
+
+
         {/* ─── MAP ─── */}
         {proposal.map_stops.length > 0 && (
           <section id="map">
@@ -844,4 +849,68 @@ const DayAnnotationSection = ({ day, dayIdx, isOpen, onToggle, annotations, note
   );
 };
 
+// ─── Pricing & Conditions section ──────────────────────────────────────────
+const PRICING_LABELS: Record<string, { total: string; included: string; payment: string; cancellation: string; notes: string }> = {
+  en: { total: 'Total Price', included: "What's Included", payment: 'Reservation & Payment Conditions', cancellation: 'Cancellations & Refund Conditions', notes: 'Important Notes' },
+  fr: { total: 'Prix Total', included: 'Ce Qui Est Inclus', payment: 'Conditions de Réservation et Paiement', cancellation: "Conditions d'Annulation et Remboursement", notes: 'Notes Importantes' },
+  es: { total: 'Precio Total', included: 'Qué Está Incluido', payment: 'Condiciones de Reserva y Pago', cancellation: 'Condiciones de Cancelación y Reembolso', notes: 'Notas Importantes' },
+  pt: { total: 'Preço Total', included: 'O Que Está Incluído', payment: 'Condições de Reserva e Pagamento', cancellation: 'Condições de Cancelamento e Reembolso', notes: 'Notas Importantes' },
+  it: { total: 'Prezzo Totale', included: 'Cosa È Incluso', payment: 'Condizioni di Prenotazione e Pagamento', cancellation: 'Condizioni di Cancellazione e Rimborso', notes: 'Note Importanti' },
+  de: { total: 'Gesamtpreis', included: 'Leistungen', payment: 'Reservierungs- und Zahlungsbedingungen', cancellation: 'Storno- und Erstattungsbedingungen', notes: 'Wichtige Hinweise' },
+};
+
+const PricingConditions = ({ proposal, lang }: { proposal: any; lang: string }) => {
+  const total = Number(proposal.total_value_eur) || 0;
+  const closing = proposal.closing_terms || {};
+  const L = PRICING_LABELS[lang] || PRICING_LABELS.en;
+  const days: ProposalDay[] = Array.isArray(proposal.days) ? proposal.days : [];
+  const dayLabel = PRICING_LABELS[lang] ? ({ en: 'Day', fr: 'Jour', es: 'Día', pt: 'Dia', it: 'Giorno', de: 'Tag' } as any)[lang] : 'Day';
+  const autoIncluded = days
+    .map(d => `**${dayLabel} ${d.day_number} — ${stripBoldMarkers(d.title || '')}**\n${(d.items || []).slice(0, 6).map(b => `• ${stripBoldMarkers(b)}`).join('\n')}`)
+    .join('\n\n');
+  const includedText: string = closing.inclusionsOverride?.trim() || autoIncluded;
+  const paymentText: string = closing.payment || '• Deposit: 25% of the total amount to formalize the booking.\n• Final Payment: The remaining 75% must be settled up to 30 days before the tour date.';
+  const cancellationText: string = closing.cancellation || '• Free cancellation with 100% refund up to 7 days prior to the tour date.\n• For cancellations made less than 30 days before the tour date, the total amount is non-refundable.';
+  const notesText: string = closing.importantNotes || '• The rates presented include all the itinerary and experiences mentioned in the proposition.\n• Rates are valid on the date this proposal is sent and may change until final confirmation.\n• The rates include all taxes and personal accident insurance.';
+  const hasAny = total > 0 || includedText || paymentText || cancellationText || notesText;
+  if (!hasAny) return null;
+
+  return (
+    <section id="pricing" className="scroll-mt-16">
+      <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm">
+        {total > 0 && (
+          <div className="text-center px-6 py-6 border-b border-slate-100 bg-slate-50">
+            <p className="text-[10px] uppercase tracking-widest text-slate-500 mb-1">{L.total}</p>
+            <p className="text-4xl font-serif font-bold text-[#0a2540]">€ {total.toLocaleString('en-US')}</p>
+            {proposal.participants && (
+              <p className="text-xs text-slate-500 mt-2">{proposal.participants}{proposal.date_range ? ` · ${proposal.date_range}` : ''}</p>
+            )}
+          </div>
+        )}
+        <div className="p-6 space-y-5">
+          {includedText && (
+            <div>
+              <h3 className="text-sm font-serif font-bold text-slate-800 mb-2">{L.included}</h3>
+              <RichText as="div" className="text-sm text-slate-700 whitespace-pre-wrap leading-relaxed" value={includedText} preserveNewlines />
+            </div>
+          )}
+          <div>
+            <h3 className="text-sm font-serif font-bold text-slate-800 mb-2">{L.payment}</h3>
+            <RichText as="div" className="text-sm text-slate-700 whitespace-pre-wrap leading-relaxed" value={paymentText} preserveNewlines />
+          </div>
+          <div>
+            <h3 className="text-sm font-serif font-bold text-slate-800 mb-2">{L.cancellation}</h3>
+            <RichText as="div" className="text-sm text-slate-700 whitespace-pre-wrap leading-relaxed" value={cancellationText} preserveNewlines />
+          </div>
+          <div>
+            <h3 className="text-sm font-serif font-bold text-slate-800 mb-2">{L.notes}</h3>
+            <RichText as="div" className="text-sm text-slate-600 whitespace-pre-wrap leading-relaxed" value={notesText} preserveNewlines />
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+};
+
 export default PublicProposalPage;
+

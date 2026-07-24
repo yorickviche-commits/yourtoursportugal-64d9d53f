@@ -891,6 +891,8 @@ const TravelPlanProposal = ({
           summary_text: plan.narrative,
           days: proposalDays as any,
           language: proposalLang,
+          total_value_eur: totalPVP || null,
+          closing_terms: closing as any,
         }).eq('id', existingProposal.id);
       } else {
         await supabase.from('proposals').insert({
@@ -906,6 +908,8 @@ const TravelPlanProposal = ({
           map_stops: [] as any,
           language: proposalLang,
           status: 'draft',
+          total_value_eur: totalPVP || null,
+          closing_terms: closing as any,
         });
         console.log(`[YTP] Proposal created — public URL: /proposal/${token}`);
       }

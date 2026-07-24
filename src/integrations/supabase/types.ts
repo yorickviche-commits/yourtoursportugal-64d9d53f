@@ -1809,6 +1809,7 @@ export type Database = {
           booking_ref: string | null
           client_email: string | null
           client_name: string
+          closing_terms: Json | null
           created_at: string
           created_by: string | null
           date_range: string | null
@@ -1838,6 +1839,7 @@ export type Database = {
           booking_ref?: string | null
           client_email?: string | null
           client_name?: string
+          closing_terms?: Json | null
           created_at?: string
           created_by?: string | null
           date_range?: string | null
@@ -1867,6 +1869,7 @@ export type Database = {
           booking_ref?: string | null
           client_email?: string | null
           client_name?: string
+          closing_terms?: Json | null
           created_at?: string
           created_by?: string | null
           date_range?: string | null
