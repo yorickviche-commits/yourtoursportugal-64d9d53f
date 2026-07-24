@@ -849,4 +849,65 @@ const DayAnnotationSection = ({ day, dayIdx, isOpen, onToggle, annotations, note
   );
 };
 
+// ─── Pricing & Conditions section ──────────────────────────────────────────
+const PRICING_LABELS: Record<string, { total: string; included: string; payment: string; cancellation: string; notes: string }> = {
+  en: { total: 'Total Price', included: "What's Included", payment: 'Reservation & Payment Conditions', cancellation: 'Cancellations & Refund Conditions', notes: 'Important Notes' },
+  fr: { total: 'Prix Total', included: 'Ce Qui Est Inclus', payment: 'Conditions de Réservation et Paiement', cancellation: "Conditions d'Annulation et Remboursement", notes: 'Notes Importantes' },
+  es: { total: 'Precio Total', included: 'Qué Está Incluido', payment: 'Condiciones de Reserva y Pago', cancellation: 'Condiciones de Cancelación y Reembolso', notes: 'Notas Importantes' },
+  pt: { total: 'Preço Total', included: 'O Que Está Incluído', payment: 'Condições de Reserva e Pagamento', cancellation: 'Condições de Cancelamento e Reembolso', notes: 'Notas Importantes' },
+  it: { total: 'Prezzo Totale', included: 'Cosa È Incluso', payment: 'Condizioni di Prenotazione e Pagamento', cancellation: 'Condizioni di Cancellazione e Rimborso', notes: 'Note Importanti' },
+  de: { total: 'Gesamtpreis', included: 'Leistungen', payment: 'Reservierungs- und Zahlungsbedingungen', cancellation: 'Storno- und Erstattungsbedingungen', notes: 'Wichtige Hinweise' },
+};
+
+const PricingConditions = ({ proposal, lang }: { proposal: any; lang: string }) => {
+  const total = Number(proposal.total_value_eur) || 0;
+  const closing = proposal.closing_terms || {};
+  const L = PRICING_LABELS[lang] || PRICING_LABELS.en;
+  const hasAny = total > 0 || closing.inclusionsOverride || closing.payment || closing.cancellation || closing.importantNotes;
+  if (!hasAny) return null;
+
+  return (
+    <section id="pricing" className="scroll-mt-16">
+      <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm">
+        {total > 0 && (
+          <div className="text-center px-6 py-6 border-b border-slate-100 bg-slate-50">
+            <p className="text-[10px] uppercase tracking-widest text-slate-500 mb-1">{L.total}</p>
+            <p className="text-4xl font-serif font-bold text-[#0a2540]">€ {total.toLocaleString('en-US')}</p>
+            {proposal.participants && (
+              <p className="text-xs text-slate-500 mt-2">{proposal.participants}{proposal.date_range ? ` · ${proposal.date_range}` : ''}</p>
+            )}
+          </div>
+        )}
+        <div className="p-6 space-y-5">
+          {closing.inclusionsOverride && (
+            <div>
+              <h3 className="text-sm font-serif font-bold text-slate-800 mb-2">{L.included}</h3>
+              <RichText as="div" className="text-sm text-slate-700 whitespace-pre-wrap leading-relaxed" value={closing.inclusionsOverride} preserveNewlines />
+            </div>
+          )}
+          {closing.payment && (
+            <div>
+              <h3 className="text-sm font-serif font-bold text-slate-800 mb-2">{L.payment}</h3>
+              <RichText as="div" className="text-sm text-slate-700 whitespace-pre-wrap leading-relaxed" value={closing.payment} preserveNewlines />
+            </div>
+          )}
+          {closing.cancellation && (
+            <div>
+              <h3 className="text-sm font-serif font-bold text-slate-800 mb-2">{L.cancellation}</h3>
+              <RichText as="div" className="text-sm text-slate-700 whitespace-pre-wrap leading-relaxed" value={closing.cancellation} preserveNewlines />
+            </div>
+          )}
+          {closing.importantNotes && (
+            <div>
+              <h3 className="text-sm font-serif font-bold text-slate-800 mb-2">{L.notes}</h3>
+              <RichText as="div" className="text-sm text-slate-600 whitespace-pre-wrap leading-relaxed" value={closing.importantNotes} preserveNewlines />
+            </div>
+          )}
+        </div>
+      </div>
+    </section>
+  );
+};
+
 export default PublicProposalPage;
+
