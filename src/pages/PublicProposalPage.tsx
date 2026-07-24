@@ -454,7 +454,8 @@ const PublicProposalPage = () => {
         ))}
 
         {/* ─── PRICING & CONDITIONS ─── */}
-        <PricingConditions proposal={proposal} lang={lang} />
+        <PricingConditions proposal={proposal} lang={effectiveLang} />
+
 
 
         {/* ─── MAP ─── */}
