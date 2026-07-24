@@ -453,6 +453,10 @@ const PublicProposalPage = () => {
           </section>
         ))}
 
+        {/* ─── PRICING & CONDITIONS ─── */}
+        <PricingConditions proposal={proposal} lang={lang} />
+
+
         {/* ─── MAP ─── */}
         {proposal.map_stops.length > 0 && (
           <section id="map">
