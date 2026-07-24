@@ -869,7 +869,10 @@ const PricingConditions = ({ proposal, lang }: { proposal: any; lang: string }) 
     .map(d => `**${dayLabel} ${d.day_number} — ${stripBoldMarkers(d.title || '')}**\n${(d.items || []).slice(0, 6).map(b => `• ${stripBoldMarkers(b)}`).join('\n')}`)
     .join('\n\n');
   const includedText: string = closing.inclusionsOverride?.trim() || autoIncluded;
-  const hasAny = total > 0 || includedText || closing.payment || closing.cancellation || closing.importantNotes;
+  const paymentText: string = closing.payment || '• Deposit: 25% of the total amount to formalize the booking.\n• Final Payment: The remaining 75% must be settled up to 30 days before the tour date.';
+  const cancellationText: string = closing.cancellation || '• Free cancellation with 100% refund up to 7 days prior to the tour date.\n• For cancellations made less than 30 days before the tour date, the total amount is non-refundable.';
+  const notesText: string = closing.importantNotes || '• The rates presented include all the itinerary and experiences mentioned in the proposition.\n• Rates are valid on the date this proposal is sent and may change until final confirmation.\n• The rates include all taxes and personal accident insurance.';
+  const hasAny = total > 0 || includedText || paymentText || cancellationText || notesText;
   if (!hasAny) return null;
 
   return (
