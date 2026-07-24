@@ -885,10 +885,10 @@ const PricingConditions = ({ proposal, lang }: { proposal: any; lang: string }) 
           </div>
         )}
         <div className="p-6 space-y-5">
-          {closing.inclusionsOverride && (
+          {includedText && (
             <div>
               <h3 className="text-sm font-serif font-bold text-slate-800 mb-2">{L.included}</h3>
-              <RichText as="div" className="text-sm text-slate-700 whitespace-pre-wrap leading-relaxed" value={closing.inclusionsOverride} preserveNewlines />
+              <RichText as="div" className="text-sm text-slate-700 whitespace-pre-wrap leading-relaxed" value={includedText} preserveNewlines />
             </div>
           )}
           {closing.payment && (
