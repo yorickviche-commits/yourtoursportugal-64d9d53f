@@ -863,7 +863,13 @@ const PricingConditions = ({ proposal, lang }: { proposal: any; lang: string }) 
   const total = Number(proposal.total_value_eur) || 0;
   const closing = proposal.closing_terms || {};
   const L = PRICING_LABELS[lang] || PRICING_LABELS.en;
-  const hasAny = total > 0 || closing.inclusionsOverride || closing.payment || closing.cancellation || closing.importantNotes;
+  const days: ProposalDay[] = Array.isArray(proposal.days) ? proposal.days : [];
+  const dayLabel = PRICING_LABELS[lang] ? ({ en: 'Day', fr: 'Jour', es: 'Día', pt: 'Dia', it: 'Giorno', de: 'Tag' } as any)[lang] : 'Day';
+  const autoIncluded = days
+    .map(d => `**${dayLabel} ${d.day_number} — ${stripBoldMarkers(d.title || '')}**\n${(d.items || []).slice(0, 6).map(b => `• ${stripBoldMarkers(b)}`).join('\n')}`)
+    .join('\n\n');
+  const includedText: string = closing.inclusionsOverride?.trim() || autoIncluded;
+  const hasAny = total > 0 || includedText || closing.payment || closing.cancellation || closing.importantNotes;
   if (!hasAny) return null;
 
   return (
