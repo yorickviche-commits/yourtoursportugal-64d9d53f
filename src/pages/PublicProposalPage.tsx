@@ -894,24 +894,18 @@ const PricingConditions = ({ proposal, lang }: { proposal: any; lang: string }) 
               <RichText as="div" className="text-sm text-slate-700 whitespace-pre-wrap leading-relaxed" value={includedText} preserveNewlines />
             </div>
           )}
-          {closing.payment && (
-            <div>
-              <h3 className="text-sm font-serif font-bold text-slate-800 mb-2">{L.payment}</h3>
-              <RichText as="div" className="text-sm text-slate-700 whitespace-pre-wrap leading-relaxed" value={closing.payment} preserveNewlines />
-            </div>
-          )}
-          {closing.cancellation && (
-            <div>
-              <h3 className="text-sm font-serif font-bold text-slate-800 mb-2">{L.cancellation}</h3>
-              <RichText as="div" className="text-sm text-slate-700 whitespace-pre-wrap leading-relaxed" value={closing.cancellation} preserveNewlines />
-            </div>
-          )}
-          {closing.importantNotes && (
-            <div>
-              <h3 className="text-sm font-serif font-bold text-slate-800 mb-2">{L.notes}</h3>
-              <RichText as="div" className="text-sm text-slate-600 whitespace-pre-wrap leading-relaxed" value={closing.importantNotes} preserveNewlines />
-            </div>
-          )}
+          <div>
+            <h3 className="text-sm font-serif font-bold text-slate-800 mb-2">{L.payment}</h3>
+            <RichText as="div" className="text-sm text-slate-700 whitespace-pre-wrap leading-relaxed" value={paymentText} preserveNewlines />
+          </div>
+          <div>
+            <h3 className="text-sm font-serif font-bold text-slate-800 mb-2">{L.cancellation}</h3>
+            <RichText as="div" className="text-sm text-slate-700 whitespace-pre-wrap leading-relaxed" value={cancellationText} preserveNewlines />
+          </div>
+          <div>
+            <h3 className="text-sm font-serif font-bold text-slate-800 mb-2">{L.notes}</h3>
+            <RichText as="div" className="text-sm text-slate-600 whitespace-pre-wrap leading-relaxed" value={notesText} preserveNewlines />
+          </div>
         </div>
       </div>
     </section>
