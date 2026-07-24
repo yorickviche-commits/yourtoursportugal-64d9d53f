@@ -69,7 +69,7 @@ function useRichEditable(
 ) {
   const ref = useRef<HTMLDivElement>(null);
   const composingRef = useRef(false);
-  const lastValueRef = useRef<string>(value ?? '');
+  const lastValueRef = useRef<string | null>(null);
 
   // Sync external value → DOM (only when it doesn't match what user just typed)
   useEffect(() => {
