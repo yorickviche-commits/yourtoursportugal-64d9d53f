@@ -79,6 +79,7 @@ interface TravelPlanProposalProps {
 }
 
 interface ClosingTerms {
+  showPricing?: boolean;
   inclusionsOverride?: string;
   payment: string;
   cancellation: string;
@@ -87,6 +88,7 @@ interface ClosingTerms {
 }
 
 const DEFAULT_CLOSING: ClosingTerms = {
+  showPricing: true,
   inclusionsOverride: '',
   payment: '• Deposit: 25% of the total amount to formalize the booking.\n• Final Payment: The remaining 75% must be settled up to 30 days before the tour date.',
   cancellation: '• Free cancellation with 100% refund up to 7 days prior to the tour date.\n• For cancellations made less than 30 days before the tour date, the total amount is non-refundable.',
