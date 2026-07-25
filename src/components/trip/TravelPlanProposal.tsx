@@ -1648,6 +1648,7 @@ const TravelPlanProposal = ({
             <p className="font-serif font-semibold text-slate-800 pt-2 whitespace-pre-line">{t.bestRegards}</p>
           </div>
         </div>
+        )}
       </div>
     </div>
   );
