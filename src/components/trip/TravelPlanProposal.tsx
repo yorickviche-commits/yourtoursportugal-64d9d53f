@@ -1516,10 +1516,29 @@ const TravelPlanProposal = ({
         </DragDropContext>
 
 
-        {/* PRICING & CONDITIONS — Client-facing closing section */}
-        <div className="border-t-2 border-slate-200 bg-slate-50 p-6 md:p-10 space-y-6 print:break-before-page">
+        {/* PRICING & CONDITIONS — Client-facing closing section (toggleable) */}
+        {viewMode === 'edit' && (
+          <div className="border-t border-slate-200 bg-white px-6 md:px-10 py-3 flex items-center gap-2 print:hidden">
+            <input
+              id="show-pricing-toggle"
+              type="checkbox"
+              checked={closing.showPricing !== false}
+              onChange={e => setClosing(c => ({ ...c, showPricing: e.target.checked }))}
+              className="h-4 w-4 accent-[hsl(var(--info))]"
+            />
+            <label htmlFor="show-pricing-toggle" className="text-xs font-medium text-slate-700 cursor-pointer select-none">
+              Incluir secção de Preço e Termos & Condições na proposta
+            </label>
+            {closing.showPricing === false && (
+              <span className="text-[10px] text-amber-600 ml-2">— Secção oculta no link e no PDF</span>
+            )}
+          </div>
+        )}
+        {(viewMode === 'edit' || closing.showPricing !== false) && (
+        <div className={`border-t-2 border-slate-200 bg-slate-50 p-6 md:p-10 space-y-6 print:break-before-page ${viewMode === 'edit' && closing.showPricing === false ? 'opacity-50' : ''}`}>
           {/* Price Header */}
           <div className="text-center pb-4 border-b border-slate-200">
+
             <p className="text-[10px] uppercase tracking-widest text-slate-500 mb-2">{t.totalPrice}</p>
             <p className="text-4xl font-serif font-bold text-slate-900">
               {totalPVP > 0 ? `€ ${totalPVP.toLocaleString('en-US')}` : '— € —'}
