@@ -454,7 +454,9 @@ const PublicProposalPage = () => {
         ))}
 
         {/* ─── PRICING & CONDITIONS ─── */}
-        <PricingConditions proposal={proposal} lang={effectiveLang} />
+        {(proposal as any).closing_terms?.showPricing !== false && (
+          <PricingConditions proposal={proposal} lang={effectiveLang} />
+        )}
 
 
 
