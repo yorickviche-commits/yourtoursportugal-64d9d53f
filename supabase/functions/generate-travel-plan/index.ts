@@ -371,28 +371,31 @@ function normalizePlan(parsed: any) {
 
 async function extractExactItineraryContext(pdf: Attachment): Promise<string> {
   const system = `You extract exact itinerary structure from PDFs for a premium DMC operations team.
-Return ONLY valid JSON. Do not write markdown. Keep it compact but complete.`;
-  const prompt = `Read the attached Exact Itinerary PDF and extract the operational skeleton exactly as written.
+Return ONLY valid JSON. Do not write markdown. Preserve wording VERBATIM.`;
+  const prompt = `Read the attached Exact Itinerary PDF and extract the day-by-day structure EXACTLY as written by the human agent. This is a source-of-truth document — do NOT paraphrase, do NOT translate, do NOT embellish, do NOT reorder.
 
 Return this JSON shape:
 {
   "source_quality": "clear|partial|poor",
   "detected_days": number,
-  "title": "...",
+  "trip_title": "verbatim trip title if present",
   "days": [
     {
       "day_number": 1,
-      "date": "if present",
-      "base_city_or_overnight": "...",
-      "route_or_region": "...",
-      "main_stops": ["..."],
-      "experiences_services": ["..."],
-      "must_keep_notes": ["..."]
+      "date": "verbatim date string if present (e.g. 20/December/2026)",
+      "title": "VERBATIM day title exactly as written (e.g. 'Welcome to Portugal – Porto!')",
+      "inclusions": ["each 'Included' line copied VERBATIM as a separate string, in the exact order written"],
+      "overnight": "city name if inferrable from title/content"
     }
   ]
 }
 
-Do not invent missing days. If text is scanned or unclear, extract what is visible and set source_quality accordingly.`;
+Rules:
+- Copy the day title EXACTLY (including punctuation, dashes, capitalisation).
+- Copy each inclusion/bullet line EXACTLY as written — one string per line.
+- If a day has no "Included:" section (e.g. "Free day"), leave inclusions as [].
+- Do not invent, merge, split, translate or reword any line.
+- Do not add days that are not present in the PDF.`;
 
   const raw = await callAI(system, prompt, [pdf], {
     maxTokens: EXTRACTION_MAX_TOKENS,
@@ -404,6 +407,24 @@ Do not invent missing days. If text is scanned or unclear, extract what is visib
     throw new SafeFunctionError('O PDF foi lido, mas a AI não conseguiu extrair uma estrutura de itinerário válida. Tenta exportar o PDF numa versão mais leve/textual.', 'pdf_extraction_failed', 422);
   }
   return JSON.stringify(parsed).slice(0, 30000);
+}
+
+/**
+ * Detects a structured day-by-day itinerary written directly in the notes/preferences field.
+ * Matches patterns like "Day 1 | 20/December/2026: Welcome to Portugal – Porto!" or "Day 1: ...".
+ */
+function detectExactItineraryInNotes(notes: string | undefined): {
+  found: boolean;
+  verbatim: string;
+  dayCount: number;
+} {
+  if (!notes) return { found: false, verbatim: '', dayCount: 0 };
+  const dayHeaderRe = /(^|\n)\s*Day\s*\d+\s*[|:\-–]/gi;
+  const matches = notes.match(dayHeaderRe) || [];
+  if (matches.length < 2) return { found: false, verbatim: '', dayCount: 0 };
+  const firstIdx = notes.search(/Day\s*1\s*[|:\-–]/i);
+  const verbatim = (firstIdx >= 0 ? notes.slice(firstIdx) : notes).trim();
+  return { found: true, verbatim, dayCount: matches.length };
 }
 
 serve(async (req) => {
