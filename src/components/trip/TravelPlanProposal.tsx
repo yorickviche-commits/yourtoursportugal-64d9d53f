@@ -1,5 +1,5 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
-import { Sparkles, RefreshCw, Save, FileText, ArrowRight, Loader2, Edit3, Eye, AlertTriangle, Clock, Plus, X, Send, MessageSquare, ChevronDown, CreditCard, GripVertical } from 'lucide-react';
+import { Sparkles, RefreshCw, Save, FileText, ArrowRight, Loader2, Edit3, Eye, AlertTriangle, Clock, Plus, X, Send, MessageSquare, ChevronDown, CreditCard, GripVertical, Image as ImageIcon } from 'lucide-react';
 import { DragDropContext, Droppable, Draggable, type DropResult } from '@hello-pangea/dnd';
 import { toast as sonnerToast } from 'sonner';
 import { useUndoable } from '@/hooks/useUndoable';
@@ -471,6 +471,7 @@ const TravelPlanProposal = ({
   const [closing, setClosing] = useState<ClosingTerms>(DEFAULT_CLOSING);
   const [extraInstructions, setExtraInstructions] = useState('');
   const [showRegenInput, setShowRegenInput] = useState(false);
+  const [fillingImages, setFillingImages] = useState(false);
   const [sectionLoading, setSectionLoading] = useState<string | null>(null);
   const [activeChat, setActiveChat] = useState<string | null>(null);
   const normalizedDefaultLang = (defaultLanguage || 'EN').toUpperCase();
@@ -697,14 +698,31 @@ const TravelPlanProposal = ({
       setPlan(result);
       setViewMode('preview');
       setShowRegenInput(false);
-      toast({ title: '✨ Plano gerado!', description: `${result.days?.length || 0} dias criados em ${effectiveLang}. A carregar imagens...` });
-      autoFetchImages(result);
+      toast({ title: '✨ Plano gerado!', description: `${result.days?.length || 0} dias criados em ${effectiveLang}. Usa "Preencher Imagens (AI)" para adicionar imagens.` });
     } catch (e: any) {
       toast({ title: 'Erro na geração', description: e.message, variant: 'destructive' });
     } finally {
       setGenerating(false);
     }
-  }, [leadData, leadId, language, toast, clearUsedPhotos, autoFetchImages, routeMapPath, exactItineraryPdfPath]);
+  }, [leadData, leadId, language, toast, clearUsedPhotos, routeMapPath, exactItineraryPdfPath]);
+
+  // Manual: fetch images for the current plan (cover + per-day) using Unsplash + dedup
+  const handleFillImages = useCallback(async () => {
+    if (!plan || !plan.days?.length) {
+      toast({ title: 'Sem plano', description: 'Gera primeiro o Travel Plan.', variant: 'destructive' });
+      return;
+    }
+    setFillingImages(true);
+    try {
+      if (leadId) await clearUsedPhotos();
+      await autoFetchImages(plan);
+      toast({ title: '🖼️ Imagens preenchidas', description: 'Cover + 2 imagens por dia carregadas do Unsplash.' });
+    } catch (e: any) {
+      toast({ title: 'Erro ao preencher imagens', description: e.message, variant: 'destructive' });
+    } finally {
+      setFillingImages(false);
+    }
+  }, [plan, leadId, clearUsedPhotos, autoFetchImages, toast]);
 
   // Language change with confirmation + fast translation (preserves structure & images)
   const handleLanguageChange = useCallback(async (newLang: string) => {
@@ -1144,6 +1162,17 @@ const TravelPlanProposal = ({
           </Select>
           <Button variant="outline" size="sm" className="text-xs gap-1" onClick={() => setShowRegenInput(!showRegenInput)}>
             <RefreshCw className="h-3 w-3" /> Regenerar Tudo
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            className="text-xs gap-1 border-[hsl(var(--info))] text-[hsl(var(--info))] hover:bg-[hsl(var(--info))]/10"
+            onClick={handleFillImages}
+            disabled={fillingImages || !plan?.days?.length}
+            title="Preencher cover + 2 imagens/dia via Unsplash (sem duplicados)"
+          >
+            {fillingImages ? <Loader2 className="h-3 w-3 animate-spin" /> : <ImageIcon className="h-3 w-3" />}
+            Preencher Imagens (AI)
           </Button>
           <Button variant="outline" size="sm" className="text-xs gap-1" onClick={handleSave} disabled={saving}>
             {saving ? <Loader2 className="h-3 w-3 animate-spin" /> : <Save className="h-3 w-3" />} Guardar
