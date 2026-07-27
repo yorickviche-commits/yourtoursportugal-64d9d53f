@@ -698,14 +698,31 @@ const TravelPlanProposal = ({
       setPlan(result);
       setViewMode('preview');
       setShowRegenInput(false);
-      toast({ title: '✨ Plano gerado!', description: `${result.days?.length || 0} dias criados em ${effectiveLang}. A carregar imagens...` });
-      autoFetchImages(result);
+      toast({ title: '✨ Plano gerado!', description: `${result.days?.length || 0} dias criados em ${effectiveLang}. Usa "Preencher Imagens (AI)" para adicionar imagens.` });
     } catch (e: any) {
       toast({ title: 'Erro na geração', description: e.message, variant: 'destructive' });
     } finally {
       setGenerating(false);
     }
-  }, [leadData, leadId, language, toast, clearUsedPhotos, autoFetchImages, routeMapPath, exactItineraryPdfPath]);
+  }, [leadData, leadId, language, toast, clearUsedPhotos, routeMapPath, exactItineraryPdfPath]);
+
+  // Manual: fetch images for the current plan (cover + per-day) using Unsplash + dedup
+  const handleFillImages = useCallback(async () => {
+    if (!plan || !plan.days?.length) {
+      toast({ title: 'Sem plano', description: 'Gera primeiro o Travel Plan.', variant: 'destructive' });
+      return;
+    }
+    setFillingImages(true);
+    try {
+      if (leadId) await clearUsedPhotos();
+      await autoFetchImages(plan);
+      toast({ title: '🖼️ Imagens preenchidas', description: 'Cover + 2 imagens por dia carregadas do Unsplash.' });
+    } catch (e: any) {
+      toast({ title: 'Erro ao preencher imagens', description: e.message, variant: 'destructive' });
+    } finally {
+      setFillingImages(false);
+    }
+  }, [plan, leadId, clearUsedPhotos, autoFetchImages, toast]);
 
   // Language change with confirmation + fast translation (preserves structure & images)
   const handleLanguageChange = useCallback(async (newLang: string) => {
