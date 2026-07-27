@@ -498,32 +498,47 @@ serve(async (req) => {
 
     const finalAttachments = attachments.filter(a => a.kind === 'image');
     const hasMap = finalAttachments.some(a => a.kind === 'image');
-    const hasExact = Boolean(exactItineraryContext);
+    const hasExactPdf = Boolean(exactItineraryContext);
+    const notesItinerary = detectExactItineraryInNotes(leadData.notes);
+    const hasExactNotes = notesItinerary.found;
+    const hasExact = hasExactPdf || hasExactNotes;
+    const effectiveDays = hasExactNotes && notesItinerary.dayCount > 0 ? notesItinerary.dayCount : numDays;
 
-    const userPrompt = `Generate a ${numDays}-day travel plan proposal for:
+    const userPrompt = `Generate a ${effectiveDays}-day travel plan proposal for:
 
 Client: ${leadData.clientName}
 File ID: ${leadData.fileId || 'TBD'}
 Destinations: ${leadData.destination}
 Travel Dates: ${dateRange}
-EXACT NUMBER OF DAYS: ${numDays} — create exactly ${numDays} days unless Exact Itinerary context says otherwise
+EXACT NUMBER OF DAYS: ${effectiveDays} — create exactly ${effectiveDays} days${hasExact ? ' (matching the exact itinerary provided)' : ''}
 Participants: ${paxStr}
 Travel Styles: ${leadData.travelStyles?.join(', ') || 'General'}
 Comfort Level: ${leadData.comfortLevel || 'Standard'}
 Budget: ${leadData.budgetLevel || 'Medium'}
 ${leadData.magicQuestion ? `What would make this trip unforgettable: ${leadData.magicQuestion}` : ''}
-${leadData.notes ? `Additional notes: ${leadData.notes}` : ''}
+${leadData.notes && !hasExactNotes ? `Additional notes: ${leadData.notes}` : ''}
 ${extraInstructions ? `\nADDITIONAL INSTRUCTIONS FROM TEAM: ${extraInstructions}` : ''}
 ${hasMap ? `\nATTACHED: a Google Maps route screenshot showing the intended geographic flow.` : ''}
-${hasExact ? `\nEXACT ITINERARY STRUCTURED CONTEXT extracted from the uploaded PDF. This is the source of truth and must be followed literally:\n${exactItineraryContext}` : ''}
+${hasExactNotes ? `\nEXACT ITINERARY PROVIDED BY THE AGENT (VERBATIM SOURCE OF TRUTH — copy titles and inclusion lines EXACTLY, do not rewrite, do not translate, do not embellish):\n---BEGIN EXACT ITINERARY---\n${notesItinerary.verbatim}\n---END EXACT ITINERARY---` : ''}
+${hasExactPdf ? `\nEXACT ITINERARY STRUCTURED CONTEXT extracted VERBATIM from the uploaded PDF. This is the source of truth and must be followed LITERALLY — copy each day title and each inclusion line exactly as extracted:\n${exactItineraryContext}` : ''}
 
 Format dates as DD-Mon-YYYY (e.g. 02-Aug-2026). If exact dates aren't provided, use placeholder dates starting from a reasonable near-future date.`;
 
     const langCode = (leadData.language || 'EN').toUpperCase();
     const langInstruction = LANGUAGE_MAP[langCode] || LANGUAGE_MAP.EN;
-    const languageDirective = `\n\nOUTPUT LANGUAGE: Generate ALL text fields (trip_title, narrative, day title, subtitle, bullets, overnight) in ${langInstruction}. Keep JSON keys in English. Keep proper nouns (city names, hotel names) untranslated.`;
+    const languageDirective = `\n\nOUTPUT LANGUAGE: Generate ALL text fields (trip_title, narrative, day title, subtitle, bullets, overnight) in ${langInstruction}. Keep JSON keys in English. Keep proper nouns (city names, hotel names) untranslated.${hasExact ? ' EXCEPTION: when in EXACT-ITINERARY MODE, keep day titles and inclusion bullets in the ORIGINAL language exactly as provided — do not translate them.' : ''}`;
     const exactDirective = hasExact
-      ? `\n\nEXACT-ITINERARY MODE (STRICT): Use the extracted Exact Itinerary context as the source of truth. You MUST follow its day-by-day structure, destinations, order and overnight cities literally. Do not invent new days, do not reorder, do not add or remove stops. Only rewrite bullets in YTP premium tone following the style rules above. If a day is unclear in the context, keep it minimal instead of inventing content.`
+      ? `\n\n=== EXACT-ITINERARY MODE (STRICT VERBATIM) ===
+The agent has provided a specific day-by-day itinerary. This is a HARD CONTRACT — you MUST follow it literally:
+1. Number of days: EXACTLY as provided. Do not add, merge, split or remove any day.
+2. Day title: COPY VERBATIM from the source. Do NOT rewrite in "premium DMC tone", do NOT translate, do NOT embellish, do NOT add words. Punctuation and capitalisation must match. If the source says "Welcome to Portugal – Porto!", the title MUST be exactly "Welcome to Portugal – Porto!".
+3. Bullets: each "Included" line in the source becomes ONE bullet, COPIED VERBATIM in the same order. Do NOT reword, do NOT combine, do NOT split, do NOT add new bullets, do NOT drop bullets.
+4. If a day is a "Free day" or transfer-only day with no inclusions, keep bullets minimal (1–2) or empty — do NOT invent activities.
+5. Dates: use the dates from the source if present; otherwise use the trip travel dates.
+6. Overnight: infer from the day title (e.g. "…in Porto" → overnight Porto). Do NOT append a "Night in [City]" bullet when in verbatim mode — the inclusion lines are the only bullets.
+7. Subtitle: this is the ONLY free-form field — write a short (5–10 words) evocative line per day. Everything else is verbatim.
+8. trip_title and narrative: you may write these freely following the standard YTP style rules.
+This overrides rules 3, 4, 5, 6, 7, 14, 15, 16, 17 in the base style guide whenever they conflict with the verbatim source.`
       : '';
     const routeDirective = hasMap
       ? `\n\nROUTE-MAP CONTEXT: A Google Maps route screenshot is attached showing the intended geographic flow. Respect this sequence of stops/regions when structuring the days.`
