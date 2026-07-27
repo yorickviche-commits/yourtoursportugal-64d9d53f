@@ -471,6 +471,7 @@ const TravelPlanProposal = ({
   const [closing, setClosing] = useState<ClosingTerms>(DEFAULT_CLOSING);
   const [extraInstructions, setExtraInstructions] = useState('');
   const [showRegenInput, setShowRegenInput] = useState(false);
+  const [fillingImages, setFillingImages] = useState(false);
   const [sectionLoading, setSectionLoading] = useState<string | null>(null);
   const [activeChat, setActiveChat] = useState<string | null>(null);
   const normalizedDefaultLang = (defaultLanguage || 'EN').toUpperCase();
