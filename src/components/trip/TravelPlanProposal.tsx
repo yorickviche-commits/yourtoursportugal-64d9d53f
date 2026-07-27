@@ -1163,6 +1163,17 @@ const TravelPlanProposal = ({
           <Button variant="outline" size="sm" className="text-xs gap-1" onClick={() => setShowRegenInput(!showRegenInput)}>
             <RefreshCw className="h-3 w-3" /> Regenerar Tudo
           </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            className="text-xs gap-1 border-[hsl(var(--info))] text-[hsl(var(--info))] hover:bg-[hsl(var(--info))]/10"
+            onClick={handleFillImages}
+            disabled={fillingImages || !plan?.days?.length}
+            title="Preencher cover + 2 imagens/dia via Unsplash (sem duplicados)"
+          >
+            {fillingImages ? <Loader2 className="h-3 w-3 animate-spin" /> : <ImageIcon className="h-3 w-3" />}
+            Preencher Imagens (AI)
+          </Button>
           <Button variant="outline" size="sm" className="text-xs gap-1" onClick={handleSave} disabled={saving}>
             {saving ? <Loader2 className="h-3 w-3 animate-spin" /> : <Save className="h-3 w-3" />} Guardar
           </Button>
