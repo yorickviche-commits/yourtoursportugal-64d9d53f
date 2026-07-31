@@ -1,7 +1,8 @@
 import { Button } from '@/components/ui/button';
+import { Switch } from '@/components/ui/switch';
 import { Copy, ExternalLink, Loader2, AlertTriangle } from 'lucide-react';
 import { toast } from 'sonner';
-import { usePaymentLinks, usePublishPaymentLink } from '@/hooks/usePaymentLinksQuery';
+import { usePaymentLinks, usePublishPaymentLink, useSetPaymentLinkActive } from '@/hooks/usePaymentLinksQuery';
 import { cn } from '@/lib/utils';
 
 const statusLabel: Record<string, { label: string; cls: string }> = {
