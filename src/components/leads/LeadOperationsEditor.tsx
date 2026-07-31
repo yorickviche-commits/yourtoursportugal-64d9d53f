@@ -413,10 +413,14 @@ const LeadOperationsEditor = ({ activeVersion, leadId, leadCode, pvpTotal = 0 }:
           </div>
         </div>
         {dirty && <span className="text-[10px] text-[hsl(var(--warning))] font-medium">Alterações não gravadas</span>}
+        <Button size="sm" variant="outline" className="h-7 gap-1 text-xs" onClick={() => setGuidePdfOpen(true)}>
+          <FileDown className="h-3 w-3" /> Planning do Guia (PDF)
+        </Button>
         <Button size="sm" className="h-7 gap-1 text-xs" onClick={handleSave} disabled={!dirty || saveOps.isPending}>
           {saveOps.isPending ? <Loader2 className="h-3 w-3 animate-spin" /> : <Save className="h-3 w-3" />} Gravar
         </Button>
       </div>
+
 
       <div className="border border-t-0 rounded-b-lg overflow-hidden">
         {rowsByDay.map(({ day, title, items: dayItems }) => {
