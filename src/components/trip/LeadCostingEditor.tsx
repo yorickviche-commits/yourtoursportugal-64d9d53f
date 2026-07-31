@@ -776,10 +776,34 @@ const LeadCostingEditor = ({ costingDays, onChange, onSave, saving, plannerDays,
               <button onClick={resetOverride} className="text-[hsl(var(--info))] hover:underline font-medium">Repor cálculo</button>
             </div>
           )}
+          {leadId && (
+            <div className="flex items-center justify-between gap-2 mt-3 pt-3 border-t flex-wrap">
+              <p className="text-[10px] text-muted-foreground">
+                Gera o link de pagamento WeTravel com base no PVP total (€{grandPVP.toFixed(2)}).
+              </p>
+              <Button size="sm" variant="outline" className="text-xs gap-1" onClick={() => setPayLinkOpen(true)} disabled={grandPVP <= 0}>
+                <Link2 className="h-3 w-3" /> Criar link de pagamento
+              </Button>
+            </div>
+          )}
         </div>
       )}
 
+      {leadId && (
+        <PaymentLinkDialog
+          open={payLinkOpen}
+          onOpenChange={setPayLinkOpen}
+          leadId={leadId}
+          tripRef={leadCode || null}
+          defaultTitle={`${leadCode ? leadCode + ' — ' : ''}${clientName || destination || 'Your Tours Portugal'}`.slice(0, 70)}
+          defaultAmount={Math.round(grandPVP * 100) / 100}
+          defaultStartDate={startDate || null}
+          defaultEndDate={endDate || null}
+        />
+      )}
+
     </div>
+
   );
 };
 
