@@ -436,8 +436,13 @@ const LeadOperationsEditor = ({ activeVersion, leadId, leadCode, pvpTotal = 0, s
                 <CollapsibleTrigger className="w-full flex items-center gap-3 p-4 hover:bg-muted/20 transition-colors text-left bg-muted/5">
                   {expanded ? <ChevronDown className="h-4 w-4 text-muted-foreground" /> : <ChevronRight className="h-4 w-4 text-muted-foreground" />}
                   <div className="flex-1">
-                    <span className="text-xs text-[hsl(var(--success))] font-medium">Dia {day}</span>
-                    <span className="text-xs text-[hsl(var(--info))] font-semibold ml-2">— {title}</span>
+                    <div>
+                      <span className="text-xs text-[hsl(var(--success))] font-medium">Dia {day}</span>
+                      <span className="text-xs text-[hsl(var(--info))] font-semibold ml-2">— {title}</span>
+                    </div>
+                    {formatDayLabelPT(startDate, day) && (
+                      <p className="text-[10px] text-muted-foreground capitalize">{formatDayLabelPT(startDate, day)}</p>
+                    )}
                   </div>
                   <span className="text-[10px] text-muted-foreground mr-3">
                     NET €{dayNet.toFixed(0)} · Real €{dayReal.toFixed(0)}
