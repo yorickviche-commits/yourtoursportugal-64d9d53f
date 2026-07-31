@@ -1697,6 +1697,90 @@ export type Database = {
         }
         Relationships: []
       }
+      payment_links: {
+        Row: {
+          amount_cents: number
+          created_at: string
+          created_by: string | null
+          currency: string
+          end_date: string | null
+          expires_at: string | null
+          id: string
+          idempotency_key: string
+          last_error: string | null
+          lead_id: string
+          payment_fees_paid_by: string
+          proposal_id: string | null
+          start_date: string | null
+          status: string
+          title: string
+          trip_ref: string | null
+          updated_at: string
+          url: string | null
+          wetravel_fee_paid_by: string
+          wetravel_uuid: string | null
+        }
+        Insert: {
+          amount_cents: number
+          created_at?: string
+          created_by?: string | null
+          currency?: string
+          end_date?: string | null
+          expires_at?: string | null
+          id?: string
+          idempotency_key: string
+          last_error?: string | null
+          lead_id: string
+          payment_fees_paid_by?: string
+          proposal_id?: string | null
+          start_date?: string | null
+          status?: string
+          title: string
+          trip_ref?: string | null
+          updated_at?: string
+          url?: string | null
+          wetravel_fee_paid_by?: string
+          wetravel_uuid?: string | null
+        }
+        Update: {
+          amount_cents?: number
+          created_at?: string
+          created_by?: string | null
+          currency?: string
+          end_date?: string | null
+          expires_at?: string | null
+          id?: string
+          idempotency_key?: string
+          last_error?: string | null
+          lead_id?: string
+          payment_fees_paid_by?: string
+          proposal_id?: string | null
+          start_date?: string | null
+          status?: string
+          title?: string
+          trip_ref?: string | null
+          updated_at?: string
+          url?: string | null
+          wetravel_fee_paid_by?: string
+          wetravel_uuid?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payment_links_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payment_links_proposal_id_fkey"
+            columns: ["proposal_id"]
+            isOneToOne: false
+            referencedRelation: "proposals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       permissions: {
         Row: {
           created_at: string
