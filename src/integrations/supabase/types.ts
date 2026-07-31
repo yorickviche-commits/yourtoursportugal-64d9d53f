@@ -971,6 +971,7 @@ export type Database = {
       }
       lead_operations: {
         Row: {
+          activity_title: string | null
           booking_status: string
           created_at: string
           day_number: number
@@ -980,11 +981,18 @@ export type Database = {
           invoice_status: string
           item_key: string
           lead_id: string
+          net_value: number | null
+          pax: number | null
           payment_status: string
+          real_cost: number | null
           schedule_time: string | null
+          sort_order: number
+          source: string
+          supplier: string | null
           updated_at: string
         }
         Insert: {
+          activity_title?: string | null
           booking_status?: string
           created_at?: string
           day_number?: number
@@ -994,11 +1002,18 @@ export type Database = {
           invoice_status?: string
           item_key: string
           lead_id: string
+          net_value?: number | null
+          pax?: number | null
           payment_status?: string
+          real_cost?: number | null
           schedule_time?: string | null
+          sort_order?: number
+          source?: string
+          supplier?: string | null
           updated_at?: string
         }
         Update: {
+          activity_title?: string | null
           booking_status?: string
           created_at?: string
           day_number?: number
@@ -1008,8 +1023,14 @@ export type Database = {
           invoice_status?: string
           item_key?: string
           lead_id?: string
+          net_value?: number | null
+          pax?: number | null
           payment_status?: string
+          real_cost?: number | null
           schedule_time?: string | null
+          sort_order?: number
+          source?: string
+          supplier?: string | null
           updated_at?: string
         }
         Relationships: [
