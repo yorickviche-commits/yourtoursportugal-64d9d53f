@@ -1699,16 +1699,22 @@ export type Database = {
       }
       payment_links: {
         Row: {
+          allow_auto_payment: boolean
+          allow_partial_payment: boolean
           amount_cents: number
           created_at: string
           created_by: string | null
           currency: string
+          days_before_departure: number
+          deposit_cents: number | null
           end_date: string | null
           expires_at: string | null
           id: string
           idempotency_key: string
+          installments: Json
           last_error: string | null
           lead_id: string
+          participant_fees: string
           payment_fees_paid_by: string
           proposal_id: string | null
           start_date: string | null
@@ -1721,16 +1727,22 @@ export type Database = {
           wetravel_uuid: string | null
         }
         Insert: {
+          allow_auto_payment?: boolean
+          allow_partial_payment?: boolean
           amount_cents: number
           created_at?: string
           created_by?: string | null
           currency?: string
+          days_before_departure?: number
+          deposit_cents?: number | null
           end_date?: string | null
           expires_at?: string | null
           id?: string
           idempotency_key: string
+          installments?: Json
           last_error?: string | null
           lead_id: string
+          participant_fees?: string
           payment_fees_paid_by?: string
           proposal_id?: string | null
           start_date?: string | null
@@ -1743,16 +1755,22 @@ export type Database = {
           wetravel_uuid?: string | null
         }
         Update: {
+          allow_auto_payment?: boolean
+          allow_partial_payment?: boolean
           amount_cents?: number
           created_at?: string
           created_by?: string | null
           currency?: string
+          days_before_departure?: number
+          deposit_cents?: number | null
           end_date?: string | null
           expires_at?: string | null
           id?: string
           idempotency_key?: string
+          installments?: Json
           last_error?: string | null
           lead_id?: string
+          participant_fees?: string
           payment_fees_paid_by?: string
           proposal_id?: string | null
           start_date?: string | null
