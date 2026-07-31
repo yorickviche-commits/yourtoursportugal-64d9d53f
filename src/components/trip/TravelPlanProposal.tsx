@@ -1,5 +1,5 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
-import { Sparkles, RefreshCw, Save, FileText, ArrowRight, Loader2, Edit3, Eye, AlertTriangle, Clock, Plus, X, Send, MessageSquare, ChevronDown, CreditCard, GripVertical, Image as ImageIcon } from 'lucide-react';
+import { Package, PlusCircle, Sparkles, RefreshCw, Save, FileText, ArrowRight, Loader2, Edit3, Eye, AlertTriangle, Clock, Plus, X, Send, MessageSquare, ChevronDown, CreditCard, GripVertical, Image as ImageIcon } from 'lucide-react';
 import { DragDropContext, Droppable, Draggable, type DropResult } from '@hello-pangea/dnd';
 import { toast as sonnerToast } from 'sonner';
 import { useUndoable } from '@/hooks/useUndoable';
@@ -17,6 +17,9 @@ import { FunctionsHttpError } from '@supabase/supabase-js';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { cn } from '@/lib/utils';
 import ProposalImagePicker from './ProposalImagePicker';
+import ProductPickerDialog from './ProductPickerDialog';
+import { productToProposalDay, productBullets, imageList } from '@/lib/productToDay';
+import type { ImportedProduct } from '@/hooks/useMagpie';
 import { useUsedPhotos, extractPhotoId } from '@/hooks/useUsedPhotos';
 
 // ─── Types ───────────────────────────────────────────────
@@ -477,6 +480,8 @@ const TravelPlanProposal = ({
   const normalizedDefaultLang = (defaultLanguage || 'EN').toUpperCase();
   const initialLang = LANGUAGE_OPTIONS.some(o => o.value === normalizedDefaultLang) ? normalizedDefaultLang : 'EN';
   const [language, setLanguage] = useState<string>(initialLang);
+  // Manual mode: product picker target — 'new' appends a new day, number = append into that day
+  const [pickerTarget, setPickerTarget] = useState<'new' | number | null>(null);
   const [wetravelCheckoutUrl, setWetravelCheckoutUrl] = useState<string | null>(null);
   const [wetravelDepositEur, setWetravelDepositEur] = useState<number | null>(null);
 
@@ -1016,6 +1021,82 @@ const TravelPlanProposal = ({
     const newDays = [...plan.days];
     newDays[dayIdx] = { ...newDays[dayIdx], bullets: newDays[dayIdx].bullets.filter((_, i) => i !== bulletIdx) };
     setPlan({ ...plan, days: newDays });
+  };
+
+  // ─── Manual mode helpers ─────────────────────────────
+  const dateForDayIndex = (index: number): string => {
+    const iso = (travelDates || '').match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    if (!iso || datesType !== 'concrete') return '';
+    const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    const d = new Date(Date.UTC(+iso[1], +iso[2] - 1, +iso[3]) + index * 86400000);
+    return `${String(d.getUTCDate()).padStart(2, '0')} ${months[d.getUTCMonth()]} ${d.getUTCFullYear()}`;
+  };
+
+  const startManualPlan = () => {
+    setPlan({
+      trip_title: destination ? `${destination} — ${clientName}` : clientName,
+      narrative: '',
+      days: [],
+    });
+    setViewMode('edit');
+  };
+
+  const addManualDay = () => {
+    setPlan(p => {
+      const base = p || { trip_title: destination || clientName, narrative: '', days: [] };
+      const index = base.days.length;
+      return {
+        ...base,
+        days: [...base.days, {
+          day_number: index + 1,
+          title: '',
+          date: dateForDayIndex(index),
+          subtitle: '',
+          bullets: [{ text: '' }],
+          overnight: '',
+          images: [],
+        }],
+      };
+    });
+    setViewMode('edit');
+  };
+
+  const handleProductSelected = (product: ImportedProduct) => {
+    const target = pickerTarget;
+    setPickerTarget(null);
+    if (target === null) return;
+    setPlan(p => {
+      const base = p || { trip_title: destination || clientName, narrative: '', days: [] };
+      if (target === 'new') {
+        const index = base.days.length;
+        const day = productToProposalDay(product, { dayNumber: index + 1, date: dateForDayIndex(index) });
+        return { ...base, days: [...base.days, day] };
+      }
+      const days = [...base.days];
+      const current = days[target];
+      if (!current) return base;
+      const extraImages = imageList(product.images, 2);
+      const existingImages = (current.images || []).filter(i => i.url);
+      days[target] = {
+        ...current,
+        bullets: [...current.bullets.filter(b => (typeof b === 'string' ? b.trim() : b.text.trim())), ...productBullets(product)],
+        images: [...existingImages, ...extraImages].slice(0, 2),
+        subtitle: current.subtitle,
+      };
+      return { ...base, days };
+    });
+    setViewMode('edit');
+    sonnerToast.success('Produto importado', { description: 'Conteúdo preenchido a partir do catálogo YT.' });
+  };
+
+  const removeDay = (dayIdx: number) => {
+    setPlan(p => {
+      if (!p) return p;
+      const days = p.days
+        .filter((_, i) => i !== dayIdx)
+        .map((d, i) => ({ ...d, day_number: i + 1, date: dateForDayIndex(i) || d.date }));
+      return { ...p, days };
+    });
   };
 
   const onBulletDragEnd = (result: DropResult) => {
