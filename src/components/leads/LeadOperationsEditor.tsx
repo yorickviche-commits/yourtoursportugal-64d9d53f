@@ -11,7 +11,7 @@ import {
   AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle,
   AlertDialogDescription, AlertDialogFooter,
 } from '@/components/ui/alert-dialog';
-import { cn } from '@/lib/utils';
+import { cn, formatDayLabelPT } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useLeadOperationsQuery, useSaveLeadOperations, useUpsertLeadOperation, DbLeadOperation } from '@/hooks/useLeadOperationsQuery';
@@ -55,9 +55,10 @@ interface Props {
   leadId: string;
   leadCode: string;
   pvpTotal?: number;
+  startDate?: string | null;
 }
 
-const LeadOperationsEditor = ({ activeVersion, leadId, leadCode, pvpTotal = 0 }: Props) => {
+const LeadOperationsEditor = ({ activeVersion, leadId, leadCode, pvpTotal = 0, startDate = null }: Props) => {
 
   const { toast } = useToast();
 
@@ -435,8 +436,13 @@ const LeadOperationsEditor = ({ activeVersion, leadId, leadCode, pvpTotal = 0 }:
                 <CollapsibleTrigger className="w-full flex items-center gap-3 p-4 hover:bg-muted/20 transition-colors text-left bg-muted/5">
                   {expanded ? <ChevronDown className="h-4 w-4 text-muted-foreground" /> : <ChevronRight className="h-4 w-4 text-muted-foreground" />}
                   <div className="flex-1">
-                    <span className="text-xs text-[hsl(var(--success))] font-medium">Dia {day}</span>
-                    <span className="text-xs text-[hsl(var(--info))] font-semibold ml-2">— {title}</span>
+                    <div>
+                      <span className="text-xs text-[hsl(var(--success))] font-medium">Dia {day}</span>
+                      <span className="text-xs text-[hsl(var(--info))] font-semibold ml-2">— {title}</span>
+                    </div>
+                    {formatDayLabelPT(startDate, day) && (
+                      <p className="text-[10px] text-muted-foreground capitalize">{formatDayLabelPT(startDate, day)}</p>
+                    )}
                   </div>
                   <span className="text-[10px] text-muted-foreground mr-3">
                     NET €{dayNet.toFixed(0)} · Real €{dayReal.toFixed(0)}

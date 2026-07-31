@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
-import { cn } from '@/lib/utils';
+import { cn, formatDayLabelPT } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import SupplierSearchDropdown from './SupplierSearchDropdown';
@@ -535,7 +535,9 @@ const LeadCostingEditor = ({ costingDays, onChange, onSave, saving, plannerDays,
                 <div className="flex-1 min-w-0">
                   <span className="text-xs text-[hsl(var(--info))] font-medium">Dia {day.day}.</span>
                   <p className="text-sm font-bold text-[hsl(var(--info))] truncate">{day.title || 'Sem título'}</p>
-                  {day.date && <span className="text-[10px] text-muted-foreground">{day.date}</span>}
+                  {(formatDayLabelPT(startDate, day.day) || day.date) && (
+                    <span className="text-[10px] text-muted-foreground capitalize">{formatDayLabelPT(startDate, day.day) || day.date}</span>
+                  )}
                 </div>
                 <div className="text-right shrink-0">
                   <span className="text-xs font-medium">NET {dayNet.toFixed(0)}€</span>
