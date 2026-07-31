@@ -34,6 +34,8 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/component
 import ItemNotesDialog from '@/components/trip/ItemNotesDialog';
 import BookingRequestDialog from '@/components/trip/BookingRequestDialog';
 import { useLeadOperationsQuery, useUpsertLeadOperation, DbLeadOperation } from '@/hooks/useLeadOperationsQuery';
+import LeadOperationsEditor from '@/components/leads/LeadOperationsEditor';
+
 import BookingEmailHistory from '@/components/trip/BookingEmailHistory';
 import CommunicationsTab from '@/components/communications/CommunicationsTab';
 import { getProposalShareUrl } from '@/lib/proposalShare';
