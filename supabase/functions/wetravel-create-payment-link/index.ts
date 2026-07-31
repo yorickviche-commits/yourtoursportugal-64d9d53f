@@ -130,6 +130,14 @@ serve(async (req) => {
     if (!isDate(start_date) || !isDate(end_date)) {
       return json({ error: "Datas de início e fim são obrigatórias (AAAA-MM-DD)" }, 422);
     }
+    if (end_date < start_date) {
+      return json({ error: "A data de fim não pode ser anterior à de início" }, 422);
+    }
+    const todayStr = new Date().toISOString().slice(0, 10);
+    if (start_date < todayStr) {
+      return json({ error: `A data de início (${start_date}) está no passado — confirma o ano da viagem` }, 422);
+    }
+
     if (!["all", "none", "credit_card", "service"].includes(participant_fees)) {
       return json({ error: "Opção de taxas inválida" }, 422);
     }
