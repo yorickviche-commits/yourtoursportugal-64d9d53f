@@ -77,6 +77,7 @@ const PaymentLinkDialog = ({
     setResult(null);
   }, [open, defaultTitle, tripRef, defaultAmount, defaultStartDate, defaultEndDate]);
 
+  const today = new Date().toISOString().slice(0, 10);
   const num = (v: string) => parseFloat((v || '').replace(',', '.'));
   const total = num(amount);
   const depositValue = num(deposit) || 0;
