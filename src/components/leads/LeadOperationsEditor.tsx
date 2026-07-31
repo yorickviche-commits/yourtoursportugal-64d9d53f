@@ -55,9 +55,10 @@ interface Props {
   leadId: string;
   leadCode: string;
   pvpTotal?: number;
+  startDate?: string | null;
 }
 
-const LeadOperationsEditor = ({ activeVersion, leadId, leadCode, pvpTotal = 0 }: Props) => {
+const LeadOperationsEditor = ({ activeVersion, leadId, leadCode, pvpTotal = 0, startDate = null }: Props) => {
 
   const { toast } = useToast();
 
