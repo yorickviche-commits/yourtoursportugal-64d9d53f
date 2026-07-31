@@ -2,7 +2,8 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Loader2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
-import { signInWithLovableOAuthPopup } from '@/lib/lovableCloudOAuth';
+import { lovable } from '@/integrations/lovable/index';
+
 import { useToast } from '@/hooks/use-toast';
 
 const GoogleIcon = () => (
@@ -17,7 +18,11 @@ const GoogleSignInButton = ({ label = 'Continuar com Google' }: { label?: string
 
   const handleGoogle = async () => {
     setLoading(true);
-    const result = await signInWithLovableOAuthPopup('google');
+    const result = await lovable.auth.signInWithOAuth('google', {
+      redirect_uri: window.location.origin,
+      extraParams: { prompt: 'select_account' },
+    });
+
 
     if (result.error) {
       setLoading(false);
