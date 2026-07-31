@@ -186,21 +186,37 @@ function normalizeImages(p: any): unknown[] {
   };
 
   push(p?.image_url, p?.image_ttd_url);
-  for (const img of asArray(p?.images)) {
-    if (typeof img === "string") push(img);
-    else {
-      const o = asObject(img);
-      push(o.image_url ?? o.url ?? o.src, o.image_ttd_url ?? o.ttd_url, o.caption ?? o.title);
-    }
-  }
-  for (const img of asArray(p?.photos)) {
-    if (typeof img === "string") push(img);
-    else {
-      const o = asObject(img);
-      push(o.image_url ?? o.url, o.image_ttd_url, o.caption);
+  for (const src of [p?.gallery, p?.images, p?.photos]) {
+    for (const img of asArray(src)) {
+      if (typeof img === "string") push(img);
+      else {
+        const o = asObject(img);
+        push(o.image_url ?? o.url ?? o.src, o.image_ttd_url ?? o.ttd_url, o.caption ?? o.title);
+      }
     }
   }
   return out;
+}
+
+/** "8.0 hours" / [12, "hours"] style values -> readable text. */
+function cutoffText(v: unknown): string | null {
+  if (Array.isArray(v)) return v.filter((x) => x !== null && x !== "").join(" ") || null;
+  return asText(v);
+}
+
+function parseDuration(v: unknown) {
+  const text = Array.isArray(v) ? v.join(" ") : asText(v);
+  if (!text) return { text: null, from: null, to: null, unit: null };
+  const range = text.match(/(\d+(?:\.\d+)?)\s*(?:-|to|–)\s*(\d+(?:\.\d+)?)\s*([a-zA-Z]+)?/);
+  if (range) {
+    return { text, from: asNum(range[1]), to: asNum(range[2]), unit: range[3] ?? null };
+  }
+  const single = text.match(/(\d+(?:\.\d+)?)\s*([a-zA-Z]+)?/);
+  if (single) {
+    const n = asNum(single[1]);
+    return { text, from: n, to: n, unit: single[2] ?? null };
+  }
+  return { text, from: null, to: null, unit: null };
 }
 
 /** Maps a raw Magpie product into our magpie_products row shape. */
@@ -208,15 +224,21 @@ export function normalizeProduct(p: any) {
   const magpieId = asText(first(p?.id, p?.product_id, p?.magpie_id, p?.uuid));
   if (!magpieId) return null;
 
-  const duration = asObject(p?.duration);
+  const durationObj = asObject(p?.duration);
+  const duration = parseDuration(
+    first(p?.duration_text, durationObj.text, typeof p?.duration === "string" ? p.duration : null),
+  );
+  const account = asObject(p?.account);
 
   return {
     magpie_id: magpieId,
-    version_id: asText(first(p?.version_id, p?.version, p?.updated_at, p?.last_modified)),
+    version_id: asText(
+      first(p?.version_id, p?.version, p?.updated_at, p?.last_modified, p?.primary_product_id),
+    ),
     internal_id: asText(first(p?.internal_id, p?.short_code, p?.code, p?.reference)),
     name: asText(first(p?.name, p?.title, p?.product_name)) ?? `Magpie ${magpieId}`,
-    account_id: asText(first(p?.account_id, p?.account?.id, p?.supplier_id)),
-    account_name: asText(first(p?.account_name, p?.account?.name, p?.supplier_name)),
+    account_id: asText(first(p?.account_id, account.id, p?.supplier_id)),
+    account_name: asText(first(p?.account_name, account.name, p?.supplier_name)),
     summary: asText(first(p?.summary, p?.short_description)),
     description: asText(first(p?.description, p?.body)),
     long_description: asText(first(p?.long_description, p?.full_description)),
@@ -226,26 +248,28 @@ export function normalizeProduct(p: any) {
     currency: asText(first(p?.currency, p?.currency_code)),
     language: asText(first(p?.language, p?.languages?.[0])),
     timezone: asText(first(p?.timezone, p?.time_zone)),
-    duration_text: asText(first(p?.duration_text, duration.text, typeof p?.duration === "string" ? p.duration : null)),
-    duration_type: asText(first(p?.duration_type, duration.type)),
-    duration_from: asNum(first(p?.duration_from, duration.from, duration.min)),
-    duration_to: asNum(first(p?.duration_to, duration.to, duration.max)),
-    duration_unit: asText(first(p?.duration_unit, duration.unit)),
-    min_pax: asInt(first(p?.min_pax, p?.minimum_pax, p?.min_travellers)),
-    max_pax: asInt(first(p?.max_pax, p?.maximum_pax, p?.max_travellers)),
+    duration_text: duration.text,
+    duration_type: asText(first(p?.duration_type, durationObj.type, p?.operating_type)),
+    duration_from: asNum(first(p?.duration_from, durationObj.from, durationObj.min, duration.from)),
+    duration_to: asNum(first(p?.duration_to, durationObj.to, durationObj.max, duration.to)),
+    duration_unit: asText(first(p?.duration_unit, durationObj.unit, duration.unit)),
+    min_pax: asInt(first(p?.booking_min_pax, p?.min_pax, p?.minimum_pax, p?.min_travellers)),
+    max_pax: asInt(first(p?.booking_max_pax, p?.max_pax, p?.maximum_pax, p?.max_travellers)),
     max_group_size: asInt(first(p?.max_group_size, p?.group_size_max)),
     multiday: asBool(first(p?.multiday, p?.multi_day, p?.is_multiday)),
     private: asBool(first(p?.private, p?.is_private)),
-    confirmation_required: asBool(first(p?.confirmation_required, p?.requires_confirmation)),
+    confirmation_required: asBool(
+      first(p?.confirmation_necessary, p?.confirmation_required, p?.requires_confirmation),
+    ),
     redemption_type: asText(first(p?.redemption_type, p?.redemption)),
     guide_type: asText(first(p?.guide_type, p?.guide)),
     trip_difficulty: asText(first(p?.trip_difficulty, p?.difficulty)),
     cancellation_policy: asText(first(p?.cancellation_policy, p?.cancellation)),
-    cancellation_cutoff: asText(first(p?.cancellation_cutoff, p?.cancellation_cut_off)),
+    cancellation_cutoff: cutoffText(first(p?.cancellation_cutoff, p?.cancellation_cut_off)),
     cancellation_notes: asText(first(p?.cancellation_notes, p?.cancellation_note)),
     terms_and_conditions: asText(first(p?.terms_and_conditions, p?.terms)),
     voucher_info: asText(first(p?.voucher_info, p?.voucher_information)),
-    booking_cutoff: asText(first(p?.booking_cutoff, p?.booking_cut_off)),
+    booking_cutoff: cutoffText(first(p?.booking_cutoff, p?.booking_cut_off)),
     valid_for: asText(first(p?.valid_for, p?.validity)),
     start_date: asDate(first(p?.start_date, p?.valid_from)),
     end_date: asDate(first(p?.end_date, p?.valid_to)),
@@ -265,13 +289,16 @@ export function normalizeProduct(p: any) {
     opening_hours: asObject(first(p?.opening_hours, p?.hours)),
     health_items: asArray(first(p?.health_items, p?.health_and_safety)),
     images: normalizeImages(p),
-    accessibility: asObject(p?.accessibility),
+    accessibility: Array.isArray(p?.accessibility)
+      ? { items: p.accessibility }
+      : asObject(p?.accessibility),
     raw_payload: p,
     availability_status: "available",
     sync_status: "ok",
     sync_error: null,
   };
 }
+
 
 /**
  * Fetches product details in batches of max 20 ids via the cached detail endpoint.
