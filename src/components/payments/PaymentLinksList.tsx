@@ -102,6 +102,20 @@ const PaymentLinksList = ({ leadId }: Props) => {
               {l.url && (
                 <p className="text-[10px] font-mono text-muted-foreground break-all mt-1">{l.url}</p>
               )}
+              <div className="flex items-center gap-2 mt-2 pt-2 border-t">
+                <Switch
+                  id={`active-${l.id}`}
+                  checked={!!l.is_active}
+                  disabled={setActive.isPending}
+                  onCheckedChange={(v) => toggleActive(l, v)}
+                />
+                <label htmlFor={`active-${l.id}`} className="text-[10px] text-muted-foreground leading-tight">
+                  {l.is_active
+                    ? 'Ativo — botão "Book Now" visível na proposta digital e no PDF'
+                    : 'Inativo — não aparece na proposta nem no PDF'}
+                </label>
+              </div>
+
               {l.last_error && (
                 <p className="text-[10px] text-destructive flex items-start gap-1 mt-1">
                   <AlertTriangle className="h-3 w-3 mt-[1px] shrink-0" /> {l.last_error}
