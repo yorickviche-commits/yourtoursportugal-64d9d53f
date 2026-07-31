@@ -87,9 +87,11 @@ interface Props {
   activeVersion: number;
   leadId: string;
   leadCode: string;
+  pvpTotal?: number;
 }
 
-const LeadOperationsEditor = ({ activeVersion, leadId, leadCode }: Props) => {
+const LeadOperationsEditor = ({ activeVersion, leadId, leadCode, pvpTotal = 0 }: Props) => {
+
   const { toast } = useToast();
 
   const { data: plannerDays = [], isLoading: plannerLoading } = useQuery({
