@@ -13,20 +13,22 @@ interface ProductPickerDialogProps {
 }
 
 /** Only commercially-ready products (visible + approved) can enter a proposal. */
-const READY_STATUSES = new Set(['approved', 'ready', 'published', 'validated', 'aprovado']);
+const READY_STATUSES = new Set(['published']);
 
 const ProductPickerDialog = ({ open, onOpenChange, onSelect, title = 'Importar produto do catálogo' }: ProductPickerDialogProps) => {
   const { data: products, isLoading } = useImportedProducts();
   const [search, setSearch] = useState('');
+  const [showAll, setShowAll] = useState(false);
 
   const ready = useMemo(() => {
     const rows = products ?? [];
+    if (showAll) return rows;
     return rows.filter(p => {
       const l = local(p);
       if (!l?.is_visible) return false;
       return READY_STATUSES.has(String(l.workflow_status || '').toLowerCase());
     });
-  }, [products]);
+  }, [products, showAll]);
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -55,6 +57,12 @@ const ProductPickerDialog = ({ open, onOpenChange, onSelect, title = 'Importar p
             onChange={e => setSearch(e.target.value)}
           />
         </div>
+
+        <label className="flex items-center gap-2 text-[11px] text-muted-foreground cursor-pointer select-none">
+          <input type="checkbox" className="h-3.5 w-3.5 accent-[hsl(var(--info))]"
+            checked={showAll} onChange={e => setShowAll(e.target.checked)} />
+          Mostrar todos os produtos importados (incluindo rascunhos)
+        </label>
 
         <div className="max-h-[55vh] overflow-y-auto divide-y rounded-md border">
           {isLoading && (
