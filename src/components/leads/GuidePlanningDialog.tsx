@@ -13,7 +13,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { getProposalAppUrl } from '@/lib/proposalShare';
 import { generateGuidePlanningPdf } from '@/lib/guidePlanningPdf';
-import { BOOKING_OPTIONS, PAYMENT_OPTIONS, type OpsRow } from '@/components/leads/LeadOperationsEditor';
+import { BOOKING_OPTIONS, PAYMENT_OPTIONS, type OpsRow } from '@/components/leads/opsConstants';
 
 interface Props {
   open: boolean;
