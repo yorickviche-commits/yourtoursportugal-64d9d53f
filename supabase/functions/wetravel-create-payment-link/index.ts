@@ -160,7 +160,10 @@ serve(async (req) => {
       }
     }
 
-    const idempotency_key = await sha256(`${lead_id}|${cents}|${title.trim()}`);
+    // Dates are part of the key so a corrected date range always creates a NEW link
+    const idempotency_key = await sha256(
+      `${lead_id}|${cents}|${title.trim()}|${start_date}|${end_date}`,
+    );
 
     const { data: existing } = await supabase
       .from("payment_links").select("*").eq("idempotency_key", idempotency_key).maybeSingle();
