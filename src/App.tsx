@@ -47,6 +47,9 @@ import AdminKPIPage from "./pages/AdminKPIPage";
 import AdminActivityLogsPage from "./pages/AdminActivityLogsPage";
 import AgentDashboardPage from "./pages/AgentDashboardPage";
 import ProfilePage from "./pages/ProfilePage";
+import CatalogPage from "./pages/CatalogPage";
+import ProductsPage from "./pages/ProductsPage";
+import ProductDetailPage from "./pages/ProductDetailPage";
 import { BoldShortcutProvider } from "@/lib/richText";
 
 const queryClient = new QueryClient();
@@ -97,6 +100,9 @@ const App = () => (
             <Route path="/comercial/matriz" element={<ProtectedRoute><FSEDatabasePage /></ProtectedRoute>} />
             <Route path="/comercial/suppliers" element={<ProtectedRoute><AdminSuppliersPage /></ProtectedRoute>} />
             <Route path="/comercial/suppliers/:id" element={<ProtectedRoute><AdminSupplierDetailPage /></ProtectedRoute>} />
+            <Route path="/catalog" element={<ProtectedRoute><CatalogPage /></ProtectedRoute>} />
+            <Route path="/products" element={<ProtectedRoute><ProductsPage /></ProtectedRoute>} />
+            <Route path="/products/:magpieId" element={<ProtectedRoute><ProductDetailPage /></ProtectedRoute>} />
             <Route path="/admin/users" element={<ProtectedRoute><AdminUsersPage /></ProtectedRoute>} />
             <Route path="/admin/permissions" element={<ProtectedRoute><AdminPermissionsPage /></ProtectedRoute>} />
             <Route path="/admin/settings" element={<ProtectedRoute><AdminSettingsPage /></ProtectedRoute>} />
