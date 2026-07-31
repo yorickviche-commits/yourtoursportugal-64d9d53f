@@ -76,6 +76,7 @@ const PaymentsPage = () => {
   const [error, setError] = useState<string | null>(null);
   const [tab, setTab] = useState<'upcoming' | 'pending' | 'paid' | 'trips' | 'links'>('upcoming');
   const { data: paymentLinks = [], isLoading: linksLoading } = usePaymentLinks();
+  const publishLink = usePublishPaymentLink();
 
   const fetchAll = async () => {
     setLoading(true);
