@@ -1295,15 +1295,6 @@ const TravelPlanProposal = ({
           <Button size="sm" className="text-xs gap-1 bg-[hsl(var(--success))] hover:bg-[hsl(var(--success))]/90 text-white" onClick={onGoToCosting}>
             <ArrowRight className="h-3 w-3" /> Costing
           </Button>
-          {wetravelCheckoutUrl && (
-            <Button
-              size="sm"
-              className="text-xs gap-1 bg-green-600 hover:bg-green-700 text-white"
-              onClick={() => window.open(wetravelCheckoutUrl, '_blank')}
-            >
-              <CreditCard className="h-3 w-3" /> Book Now · €{wetravelDepositEur ?? '—'}
-            </Button>
-          )}
         </div>
       </div>
 
