@@ -1,6 +1,7 @@
 import { useState, useMemo, useCallback } from 'react';
 import { ChevronDown, ChevronRight, Plus, CheckCircle2, MinusCircle, XCircle, Sparkles, Pencil, Trash2, Save, Loader2, Wand2, GripVertical, Link2 } from 'lucide-react';
 import PaymentLinkDialog from '@/components/payments/PaymentLinkDialog';
+import PaymentLinksList from '@/components/payments/PaymentLinksList';
 import { DragDropContext, Droppable, Draggable, type DropResult } from '@hello-pangea/dnd';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -778,14 +779,17 @@ const LeadCostingEditor = ({ costingDays, onChange, onSave, saving, plannerDays,
             </div>
           )}
           {leadId && (
-            <div className="flex items-center justify-between gap-2 mt-3 pt-3 border-t flex-wrap">
-              <p className="text-[10px] text-muted-foreground">
-                Gera o link de pagamento WeTravel com base no PVP total (€{grandPVP.toFixed(2)}).
-              </p>
-              <Button size="sm" variant="outline" className="text-xs gap-1" onClick={() => setPayLinkOpen(true)} disabled={grandPVP <= 0}>
-                <Link2 className="h-3 w-3" /> Criar link de pagamento
-              </Button>
-            </div>
+            <>
+              <div className="flex items-center justify-between gap-2 mt-3 pt-3 border-t flex-wrap">
+                <p className="text-[10px] text-muted-foreground">
+                  Gera o link de pagamento WeTravel com base no PVP total (€{grandPVP.toFixed(2)}).
+                </p>
+                <Button size="sm" variant="outline" className="text-xs gap-1" onClick={() => setPayLinkOpen(true)} disabled={grandPVP <= 0}>
+                  <Link2 className="h-3 w-3" /> Criar link de pagamento
+                </Button>
+              </div>
+              <PaymentLinksList leadId={leadId} />
+            </>
           )}
         </div>
       )}

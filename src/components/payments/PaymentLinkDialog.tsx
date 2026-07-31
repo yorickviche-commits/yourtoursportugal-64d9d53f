@@ -77,6 +77,7 @@ const PaymentLinkDialog = ({
     setResult(null);
   }, [open, defaultTitle, tripRef, defaultAmount, defaultStartDate, defaultEndDate]);
 
+  const today = new Date().toISOString().slice(0, 10);
   const num = (v: string) => parseFloat((v || '').replace(',', '.'));
   const total = num(amount);
   const depositValue = num(deposit) || 0;
@@ -106,6 +107,10 @@ const PaymentLinkDialog = ({
     if (cleanTitle.length > 70) return setError('O título não pode exceder 70 caracteres.');
     if (!startDate || !endDate) return setError('As datas de início e fim são obrigatórias na WeTravel.');
     if (endDate < startDate) return setError('A data de fim não pode ser anterior à de início.');
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(startDate) || !/^\d{4}-\d{2}-\d{2}$/.test(endDate)) {
+      return setError('Datas inválidas — usa o formato AAAA-MM-DD.');
+    }
+    if (startDate < today) return setError(`A data de início (${startDate}) está no passado. Confirma o ano.`);
     if (isNaN(total) || total <= 0) return setError('Indica um montante maior que zero.');
     if (usePlan) {
       if (depositValue < 0 || depositValue > total) return setError('O depósito tem de estar entre 0 e o total.');
@@ -225,11 +230,12 @@ const PaymentLinkDialog = ({
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <Label className="text-xs">Data início *</Label>
-                <Input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} className="h-9 text-sm" />
+                <Input type="date" min={today} value={startDate} onChange={e => setStartDate(e.target.value)} className="h-9 text-sm" />
               </div>
               <div>
                 <Label className="text-xs">Data fim *</Label>
-                <Input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} className="h-9 text-sm" />
+                <Input type="date" min={startDate || today} value={endDate} onChange={e => setEndDate(e.target.value)} className="h-9 text-sm" />
+
               </div>
             </div>
 
