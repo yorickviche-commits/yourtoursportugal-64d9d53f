@@ -689,9 +689,9 @@ const LeadOperationsEditor = ({ activeVersion, leadId, leadCode }: Props) => {
               {guard.saving ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : <Save className="h-3 w-3 mr-1" />} Gravar e sair
             </Button>
           </AlertDialogFooter>
-        </AlertDialogFooter>
-      </AlertDialogContent>
+        </AlertDialogContent>
       </AlertDialog>
+
     </div>
   );
 };
