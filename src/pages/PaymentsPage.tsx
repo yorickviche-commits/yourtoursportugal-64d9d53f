@@ -219,6 +219,7 @@ const PaymentsPage = () => {
             { id: 'pending', label: `Pendentes (${stats.cPending})`, icon: Clock },
             { id: 'paid', label: `Pagos (${stats.cPaid})`, icon: CheckCircle2 },
             { id: 'trips', label: `Viagens (${trips.length})`, icon: Plane },
+            { id: 'links', label: `Links de pagamento (${paymentLinks.length})`, icon: Link2 },
           ].map((t: any) => (
             <button
               key={t.id}
@@ -236,7 +237,74 @@ const PaymentsPage = () => {
         </div>
 
         {/* Content */}
-        {loading ? (
+        {tab === 'links' ? (
+          linksLoading ? (
+            <div className="grid gap-2 md:grid-cols-2">
+              {[1, 2].map(i => <Skeleton key={i} className="h-24" />)}
+            </div>
+          ) : paymentLinks.length === 0 ? (
+            <p className="text-sm text-muted-foreground">
+              Sem links criados. Gera links na secção Custos de cada simulação.
+            </p>
+          ) : (
+            <div className="grid gap-2 md:grid-cols-2">
+              {paymentLinks.map(l => (
+                <Card key={l.id}>
+                  <CardContent className="p-3 flex flex-col gap-2">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="min-w-0">
+                        <p className="font-medium text-sm truncate">{l.title}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {l.trip_ref ? `${l.trip_ref} · ` : ''}{new Date(l.created_at).toLocaleDateString('pt-PT')}
+                        </p>
+                      </div>
+                      <div className="text-right shrink-0">
+                        <p className="text-sm font-bold">{fmt(l.amount_cents / 100, l.currency)}</p>
+                        <Badge variant="outline" className={cn('text-[10px] h-5',
+                          l.status === 'published' && 'border-emerald-300 text-emerald-700',
+                          l.status === 'draft' && 'border-amber-300 text-amber-700',
+                          l.status === 'failed' && 'border-red-300 text-red-700')}>
+                          {l.status === 'published' ? 'Publicado' : l.status === 'draft' ? 'Publicação pendente' : 'Falhou'}
+                        </Badge>
+                      </div>
+                    </div>
+                    {l.last_error && l.status !== 'published' && (
+                      <p className="text-[10px] text-destructive">{l.last_error}</p>
+                    )}
+                    <div className="flex gap-2">
+                      {l.url ? (
+                        <>
+                          <Button variant="outline" size="sm" className="flex-1 h-8 text-xs"
+                            onClick={() => { navigator.clipboard.writeText(l.url!); toast.success('Link copiado!'); }}>
+                            <Copy className="h-3 w-3 mr-1" /> Copiar link
+                          </Button>
+                          <a href={l.url} target="_blank" rel="noopener noreferrer" className="flex-1">
+                            <Button size="sm" className="w-full h-8 text-xs">
+                              <ExternalLink className="h-3 w-3 mr-1" /> Abrir
+                            </Button>
+                          </a>
+                        </>
+                      ) : (
+                        <Button variant="outline" size="sm" className="flex-1 h-8 text-xs"
+                          disabled={!l.wetravel_uuid || publishLink.isPending}
+                          onClick={() => publishLink.mutate(l.id, {
+                            onSuccess: () => toast.success('Link publicado.'),
+                            onError: (e: any) => toast.error(e.message || 'Erro ao publicar'),
+                          })}>
+                          Retomar publicação
+                        </Button>
+                      )}
+                      <Button variant="ghost" size="sm" className="h-8 text-xs"
+                        onClick={() => navigate(`/leads/${l.lead_id}`)}>
+                        <ArrowRight className="h-3 w-3 mr-1" /> Lead
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )
+        ) : loading ? (
           <div className="grid gap-2 md:grid-cols-2">
             {[1, 2, 3, 4].map(i => <Skeleton key={i} className="h-28" />)}
           </div>
