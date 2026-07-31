@@ -71,7 +71,8 @@ const PaymentsPage = () => {
   const [tripToLead, setTripToLead] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [tab, setTab] = useState<'upcoming' | 'pending' | 'paid' | 'trips'>('upcoming');
+  const [tab, setTab] = useState<'upcoming' | 'pending' | 'paid' | 'trips' | 'links'>('upcoming');
+  const { data: paymentLinks = [], isLoading: linksLoading } = usePaymentLinks();
 
   const fetchAll = async () => {
     setLoading(true);
