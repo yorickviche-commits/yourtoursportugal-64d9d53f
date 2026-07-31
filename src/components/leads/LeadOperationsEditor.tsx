@@ -103,6 +103,8 @@ const LeadOperationsEditor = ({ activeVersion, leadId, leadCode, pvpTotal = 0 }:
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [activeUploadKey, setActiveUploadKey] = useState<string | null>(null);
   const initialized = useRef(false);
+  const [guidePdfOpen, setGuidePdfOpen] = useState(false);
+
 
   const dayTitles = useMemo(() => {
     const map: Record<number, string> = {};
