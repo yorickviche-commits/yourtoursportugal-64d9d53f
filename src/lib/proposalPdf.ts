@@ -394,6 +394,88 @@ export async function buildProposalPdfBase64(p: ProposalLite, weblink: string): 
     }
   });
 
+  // ─── Pricing & Conditions (end of programme, total price before inclusions) ───
+  {
+    const closing: any = (p as any).closing_terms || {};
+    const showPricing = closing.showPricing !== false;
+    const total = Number(p.total_value_eur) || 0;
+
+    if (showPricing) {
+      ensureSpace(40);
+      doc.setDrawColor(220, 220, 220);
+      doc.line(margin, y, pageW - margin, y);
+      y += 20;
+
+      if (total > 0) {
+        ensureSpace(60);
+        doc.setFillColor(245, 247, 250);
+        doc.rect(margin, y, pageW - margin * 2, 48, 'F');
+        doc.setTextColor(100, 100, 100);
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(9);
+        doc.text('TOTAL PRICE', pageW / 2, y + 16, { align: 'center' });
+        doc.setTextColor(10, 37, 64);
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(18);
+        doc.text(`€ ${total.toLocaleString('en-US')}`, pageW / 2, y + 38, { align: 'center' });
+        y += 56;
+        const sub = [p.participants, p.date_range].filter(Boolean).join('  ·  ');
+        if (sub) {
+          doc.setFont('helvetica', 'normal');
+          doc.setFontSize(9);
+          doc.setTextColor(120, 120, 120);
+          doc.text(sub, pageW / 2, y, { align: 'center' });
+          y += 16;
+        }
+      }
+
+      const autoIncluded = days
+        .map((d, i) => `**Day ${d.day_number ?? i + 1} — ${stripBoldMarkers(d.title || '')}**\n${dayItems(d).slice(0, 6).map(b => `• ${b}`).join('\n')}`)
+        .join('\n\n');
+
+      const blocks: Array<{ heading: string; text: string }> = [
+        { heading: "What's Included", text: (closing.inclusionsOverride?.trim() || autoIncluded) },
+        {
+          heading: 'Reservation & Payment Conditions',
+          text: closing.payment || '• Deposit: 25% of the total amount to formalize the booking.\n• Final Payment: The remaining 75% must be settled up to 30 days before the tour date.',
+        },
+        {
+          heading: 'Cancellations & Refund Conditions',
+          text: closing.cancellation || '• Free cancellation with 100% refund up to 7 days prior to the tour date.\n• For cancellations made less than 30 days before the tour date, the total amount is non-refundable.',
+        },
+        {
+          heading: 'Important Notes',
+          text: closing.importantNotes || '• The rates presented include all the itinerary and experiences mentioned in the proposition.\n• Rates are valid on the date this proposal is sent and may change until final confirmation.\n• The rates include all taxes and personal accident insurance.',
+        },
+      ];
+
+      blocks.forEach(({ heading, text }) => {
+        if (!text || !String(text).trim()) return;
+        ensureSpace(30);
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(12);
+        doc.setTextColor(10, 37, 64);
+        doc.text(heading, margin, y);
+        y += 16;
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(10);
+        doc.setTextColor(50, 50, 50);
+        String(text).split('\n').forEach(line => {
+          if (!line.trim()) { y += 6; return; }
+          const est = doc.splitTextToSize(stripBoldMarkers(line), pageW - margin * 2 - 6);
+          ensureSpace(est.length * 12 + 2);
+          y = drawRichTextPdf(doc as any, line, {
+            x: margin + 4, y, maxWidth: pageW - margin * 2 - 6, lineHeight: 12, baseStyle: 'normal', boldStyle: 'bold',
+          });
+          y += 2;
+        });
+        y += 10;
+      });
+    }
+  }
+
+
+
   // ─── Final page: What Our Clients Say ───
   // Loads the bundled reviews screenshot via <img> + canvas so the image is
   // GUARANTEED to embed (no CORS/fetch dependency). Falls back to text page.
