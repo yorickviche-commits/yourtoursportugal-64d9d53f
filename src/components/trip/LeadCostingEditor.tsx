@@ -235,14 +235,19 @@ interface LeadCostingEditorProps {
   paxChildren: number;
   destination?: string;
   leadId?: string;
+  leadCode?: string;
+  clientName?: string;
+  startDate?: string | null;
+  endDate?: string | null;
   pvpOverride?: number | null;
   onPvpOverrideChange?: (v: number | null) => void;
 }
 
 // ─── Component ───────────────────────────────────────
-const LeadCostingEditor = ({ costingDays, onChange, onSave, saving, plannerDays, pax, paxChildren, destination, leadId, pvpOverride: pvpOverrideProp, onPvpOverrideChange }: LeadCostingEditorProps) => {
+const LeadCostingEditor = ({ costingDays, onChange, onSave, saving, plannerDays, pax, paxChildren, destination, leadId, leadCode, clientName, startDate, endDate, pvpOverride: pvpOverrideProp, onPvpOverrideChange }: LeadCostingEditorProps) => {
   const [expandedDays, setExpandedDays] = useState<number[]>(costingDays.length > 0 ? costingDays.map(d => d.day) : []);
   const [autoFilling, setAutoFilling] = useState(false);
+  const [payLinkOpen, setPayLinkOpen] = useState(false);
   const [importingTP, setImportingTP] = useState(false);
 
   const toggleDay = (day: number) => {
