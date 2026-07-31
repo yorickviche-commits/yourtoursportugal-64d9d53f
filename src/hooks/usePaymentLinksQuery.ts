@@ -29,6 +29,7 @@ export interface PaymentLink {
   allow_partial_payment: boolean;
   status: 'draft' | 'published' | 'failed';
   last_error: string | null;
+  is_active: boolean;
   created_at: string;
 }
 
