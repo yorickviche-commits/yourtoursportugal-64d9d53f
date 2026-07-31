@@ -1,6 +1,7 @@
 import { useState, useMemo, useCallback, useRef, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { ChevronDown, ChevronRight, Upload, Clock, FileText, Loader2, Save, Plus, Trash2 } from 'lucide-react';
+import { ChevronDown, ChevronRight, Upload, Clock, FileText, Loader2, Save, Plus, Trash2, FileDown } from 'lucide-react';
+
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
