@@ -891,7 +891,25 @@ const PricingConditions = ({ proposal, lang, dict }: { proposal: any; lang: stri
             <h3 className="text-sm font-serif font-bold text-slate-800 mb-2">{L.notes}</h3>
             <RichText as="div" className="text-sm text-slate-600 whitespace-pre-wrap leading-relaxed" value={notesText} preserveNewlines />
           </div>
+          {proposal.wetravel_checkout_url && (
+            <div className="pt-2 border-t border-slate-100 text-center">
+              <a
+                href={proposal.wetravel_checkout_url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center justify-center gap-2 bg-green-600 hover:bg-green-700 text-white px-8 py-3 rounded-lg font-semibold shadow-md transition w-full sm:w-auto"
+              >
+                {dict.bookNow}
+              </a>
+              <p className="mt-2 text-xs text-slate-500">
+                {proposal.deposit_amount_eur
+                  ? dict.depositSuffix(String(proposal.deposit_amount_eur), proposal.deposit_percent ?? 50)
+                  : dict.defaultDepositNote}
+              </p>
+            </div>
+          )}
         </div>
+
       </div>
     </section>
   );
