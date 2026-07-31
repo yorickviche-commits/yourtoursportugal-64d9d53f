@@ -11,6 +11,9 @@ import {
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { cn } from '@/lib/utils';
+import { usePaymentLinks, usePublishPaymentLink } from '@/hooks/usePaymentLinksQuery';
+import { toast } from 'sonner';
+import { Link2, Copy } from 'lucide-react';
 
 interface WeTravelTrip {
   id: number | string;
