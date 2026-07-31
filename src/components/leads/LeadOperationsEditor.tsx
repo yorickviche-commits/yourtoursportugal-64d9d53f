@@ -652,6 +652,20 @@ const LeadOperationsEditor = ({ activeVersion, leadId, leadCode, pvpTotal = 0 }:
         })}
       </div>
 
+      {/* Indicadores e gráficos de custos/margem */}
+      <LeadOpsAnalyticsPanel rows={rows} pvpTotal={pvpTotal} dayTitles={dayTitles} />
+
+      <GuidePlanningDialog
+        open={guidePdfOpen}
+        onOpenChange={setGuidePdfOpen}
+        leadId={leadId}
+        leadCode={leadCode}
+        rows={rows}
+        dayTitles={dayTitles}
+      />
+
+
+
       {/* Aviso de alterações não gravadas */}
       <AlertDialog open={guard.open}>
         <AlertDialogContent>
