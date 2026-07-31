@@ -1,5 +1,5 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
-import { Sparkles, RefreshCw, Save, FileText, ArrowRight, Loader2, Edit3, Eye, AlertTriangle, Clock, Plus, X, Send, MessageSquare, ChevronDown, CreditCard, GripVertical, Image as ImageIcon } from 'lucide-react';
+import { Package, PlusCircle, Sparkles, RefreshCw, Save, FileText, ArrowRight, Loader2, Edit3, Eye, AlertTriangle, Clock, Plus, X, Send, MessageSquare, ChevronDown, CreditCard, GripVertical, Image as ImageIcon } from 'lucide-react';
 import { DragDropContext, Droppable, Draggable, type DropResult } from '@hello-pangea/dnd';
 import { toast as sonnerToast } from 'sonner';
 import { useUndoable } from '@/hooks/useUndoable';
@@ -17,6 +17,9 @@ import { FunctionsHttpError } from '@supabase/supabase-js';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { cn } from '@/lib/utils';
 import ProposalImagePicker from './ProposalImagePicker';
+import ProductPickerDialog from './ProductPickerDialog';
+import { productToProposalDay, productBullets, imageList } from '@/lib/productToDay';
+import type { ImportedProduct } from '@/hooks/useMagpie';
 import { useUsedPhotos, extractPhotoId } from '@/hooks/useUsedPhotos';
 
 // ─── Types ───────────────────────────────────────────────
@@ -477,6 +480,8 @@ const TravelPlanProposal = ({
   const normalizedDefaultLang = (defaultLanguage || 'EN').toUpperCase();
   const initialLang = LANGUAGE_OPTIONS.some(o => o.value === normalizedDefaultLang) ? normalizedDefaultLang : 'EN';
   const [language, setLanguage] = useState<string>(initialLang);
+  // Manual mode: product picker target — 'new' appends a new day, number = append into that day
+  const [pickerTarget, setPickerTarget] = useState<'new' | number | null>(null);
   const [wetravelCheckoutUrl, setWetravelCheckoutUrl] = useState<string | null>(null);
   const [wetravelDepositEur, setWetravelDepositEur] = useState<number | null>(null);
 
@@ -1018,6 +1023,82 @@ const TravelPlanProposal = ({
     setPlan({ ...plan, days: newDays });
   };
 
+  // ─── Manual mode helpers ─────────────────────────────
+  const dateForDayIndex = (index: number): string => {
+    const iso = (travelDates || '').match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    if (!iso || datesType !== 'concrete') return '';
+    const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    const d = new Date(Date.UTC(+iso[1], +iso[2] - 1, +iso[3]) + index * 86400000);
+    return `${String(d.getUTCDate()).padStart(2, '0')} ${months[d.getUTCMonth()]} ${d.getUTCFullYear()}`;
+  };
+
+  const startManualPlan = () => {
+    setPlan({
+      trip_title: destination ? `${destination} — ${clientName}` : clientName,
+      narrative: '',
+      days: [],
+    });
+    setViewMode('edit');
+  };
+
+  const addManualDay = () => {
+    setPlan(p => {
+      const base = p || { trip_title: destination || clientName, narrative: '', days: [] };
+      const index = base.days.length;
+      return {
+        ...base,
+        days: [...base.days, {
+          day_number: index + 1,
+          title: '',
+          date: dateForDayIndex(index),
+          subtitle: '',
+          bullets: [{ text: '' }],
+          overnight: '',
+          images: [],
+        }],
+      };
+    });
+    setViewMode('edit');
+  };
+
+  const handleProductSelected = (product: ImportedProduct) => {
+    const target = pickerTarget;
+    setPickerTarget(null);
+    if (target === null) return;
+    setPlan(p => {
+      const base = p || { trip_title: destination || clientName, narrative: '', days: [] };
+      if (target === 'new') {
+        const index = base.days.length;
+        const day = productToProposalDay(product, { dayNumber: index + 1, date: dateForDayIndex(index) });
+        return { ...base, days: [...base.days, day] };
+      }
+      const days = [...base.days];
+      const current = days[target];
+      if (!current) return base;
+      const extraImages = imageList(product.images, 2);
+      const existingImages = (current.images || []).filter(i => i.url);
+      days[target] = {
+        ...current,
+        bullets: [...current.bullets.filter(b => (typeof b === 'string' ? b.trim() : b.text.trim())), ...productBullets(product)],
+        images: [...existingImages, ...extraImages].slice(0, 2),
+        subtitle: current.subtitle,
+      };
+      return { ...base, days };
+    });
+    setViewMode('edit');
+    sonnerToast.success('Produto importado', { description: 'Conteúdo preenchido a partir do catálogo YT.' });
+  };
+
+  const removeDay = (dayIdx: number) => {
+    setPlan(p => {
+      if (!p) return p;
+      const days = p.days
+        .filter((_, i) => i !== dayIdx)
+        .map((d, i) => ({ ...d, day_number: i + 1, date: dateForDayIndex(i) || d.date }));
+      return { ...p, days };
+    });
+  };
+
   const onBulletDragEnd = (result: DropResult) => {
     if (!plan) return;
     const { source, destination } = result;
@@ -1105,14 +1186,34 @@ const TravelPlanProposal = ({
               </SelectContent>
             </Select>
           </div>
-          <Button size="lg" disabled={!canGenerate || generating} onClick={() => handleGenerate()}
-            className="text-sm gap-2 bg-gradient-to-r from-[hsl(var(--info))] to-[hsl(var(--info)/0.7)] text-white px-8 py-3 h-auto shadow-lg hover:shadow-xl transition-shadow">
-            {generating ? <><Loader2 className="h-4 w-4 animate-spin" /> O nosso travel designer está a criar o seu plano...</> : <><Sparkles className="h-4 w-4" /> Gerar Plano de Viagem</>}
-          </Button>
+          <div className="flex flex-wrap items-center justify-center gap-2">
+            <Button size="lg" disabled={!canGenerate || generating} onClick={() => handleGenerate()}
+              className="text-sm gap-2 bg-gradient-to-r from-[hsl(var(--info))] to-[hsl(var(--info)/0.7)] text-white px-8 py-3 h-auto shadow-lg hover:shadow-xl transition-shadow">
+              {generating ? <><Loader2 className="h-4 w-4 animate-spin" /> O nosso travel designer está a criar o seu plano...</> : <><Sparkles className="h-4 w-4" /> Gerar Plano de Viagem</>}
+            </Button>
+            <Button size="lg" variant="outline" disabled={generating} onClick={startManualPlan}
+              className="text-sm gap-2 px-6 py-3 h-auto">
+              <PlusCircle className="h-4 w-4" /> Criar Manualmente
+            </Button>
+            <Button size="lg" variant="outline" disabled={generating} onClick={() => setPickerTarget('new')}
+              className="text-sm gap-2 px-6 py-3 h-auto">
+              <Package className="h-4 w-4" /> Criar a partir de Produto
+            </Button>
+          </div>
+          <p className="text-[10px] text-muted-foreground text-center max-w-md">
+            Modo manual: constrói o programa dia a dia, do zero ou importando produtos já validados do catálogo YT.
+          </p>
         </div>
+
+        <ProductPickerDialog
+          open={pickerTarget !== null}
+          onOpenChange={o => { if (!o) setPickerTarget(null); }}
+          onSelect={handleProductSelected}
+        />
       </div>
     );
   }
+
 
   if (loadingSaved) {
     return (
@@ -1385,9 +1486,17 @@ const TravelPlanProposal = ({
                             </div>
                           )}
                         </Droppable>
-                        <button onClick={() => addBullet(dayIdx)} className="text-[10px] text-[hsl(var(--info))] hover:underline flex items-center gap-1">
-                          <Plus className="h-3 w-3" /> Adicionar item
-                        </button>
+                        <div className="flex flex-wrap items-center gap-3">
+                          <button onClick={() => addBullet(dayIdx)} className="text-[10px] text-[hsl(var(--info))] hover:underline flex items-center gap-1">
+                            <Plus className="h-3 w-3" /> Adicionar item
+                          </button>
+                          <button onClick={() => setPickerTarget(dayIdx)} className="text-[10px] text-[hsl(var(--info))] hover:underline flex items-center gap-1">
+                            <Package className="h-3 w-3" /> Importar produto do catálogo
+                          </button>
+                          <button onClick={() => removeDay(dayIdx)} className="text-[10px] text-destructive hover:underline flex items-center gap-1 ml-auto">
+                            <X className="h-3 w-3" /> Remover dia
+                          </button>
+                        </div>
                       </div>
                       <div className="flex flex-wrap items-center gap-2">
                         <Input className="h-7 text-xs w-48" value={day.overnight}
@@ -1543,6 +1652,23 @@ const TravelPlanProposal = ({
           })}
         </div>
         </DragDropContext>
+
+        {viewMode === 'edit' && (
+          <div className="border-t border-slate-200 px-6 md:px-8 py-4 flex flex-wrap items-center gap-2 print:hidden">
+            <Button size="sm" variant="outline" className="text-xs gap-1" onClick={addManualDay}>
+              <PlusCircle className="h-3.5 w-3.5" /> Adicionar dia (manual)
+            </Button>
+            <Button size="sm" variant="outline" className="text-xs gap-1" onClick={() => setPickerTarget('new')}>
+              <Package className="h-3.5 w-3.5" /> Adicionar dia (produto do catálogo)
+            </Button>
+          </div>
+        )}
+
+        <ProductPickerDialog
+          open={pickerTarget !== null}
+          onOpenChange={o => { if (!o) setPickerTarget(null); }}
+          onSelect={handleProductSelected}
+        />
 
 
         {/* PRICING & CONDITIONS — Client-facing closing section (toggleable) */}

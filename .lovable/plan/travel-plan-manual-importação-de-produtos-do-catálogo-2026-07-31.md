@@ -1,6 +1,6 @@
 # Travel Plan manual + importação de produtos do catálogo
 
-A geração AI mantém-se exactamente como está. Adiciona-se um caminho alternativo, manual, com importação de produtos já validados no catálogo YT.
+A geração AI mantém-se exactamente como está. Adiciona-se um caminho alternativo, manual, com importação de produtos já validados no catálogo YT, ou entao opcao manual.
 
 ## 1. Ecrã inicial do Travel Planner (sem plano)
 
