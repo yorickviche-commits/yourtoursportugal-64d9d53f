@@ -1712,6 +1712,7 @@ export type Database = {
           id: string
           idempotency_key: string
           installments: Json
+          is_active: boolean
           last_error: string | null
           lead_id: string
           participant_fees: string
@@ -1740,6 +1741,7 @@ export type Database = {
           id?: string
           idempotency_key: string
           installments?: Json
+          is_active?: boolean
           last_error?: string | null
           lead_id: string
           participant_fees?: string
@@ -1768,6 +1770,7 @@ export type Database = {
           id?: string
           idempotency_key?: string
           installments?: Json
+          is_active?: boolean
           last_error?: string | null
           lead_id?: string
           participant_fees?: string

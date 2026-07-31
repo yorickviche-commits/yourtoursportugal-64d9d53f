@@ -32,25 +32,8 @@ const ProposalDetailPage = () => {
   const [tab, setTab] = useState<'unresolved' | 'all' | 'timeline'>('unresolved');
   const [replyId, setReplyId] = useState<string | null>(null);
   const [replyText, setReplyText] = useState('');
-  const [wetravelUrl, setWetravelUrl] = useState('');
   const navigate = useNavigate();
 
-  useEffect(() => {
-    if (proposal) setWetravelUrl(proposal.wetravel_checkout_url || '');
-  }, [proposal?.id, proposal?.wetravel_checkout_url]);
-
-  const saveWetravelUrl = () => {
-    if (!id) return;
-    const trimmed = wetravelUrl.trim();
-    if (trimmed && !/^https?:\/\//i.test(trimmed)) {
-      toast.error('Link inválido — deve começar por https://');
-      return;
-    }
-    updateProposal.mutate(
-      { id, wetravel_checkout_url: trimmed || null } as any,
-      { onSuccess: () => toast.success('Link WeTravel guardado') }
-    );
-  };
 
   // Realtime subscription
   useEffect(() => {
@@ -148,33 +131,21 @@ const ProposalDetailPage = () => {
             </div>
           </div>
 
-          {/* WeTravel payment link */}
+          {/* WeTravel payment link (managed in Custos → Links de pagamento) */}
           <div className="bg-card rounded-xl border border-border p-4 mb-4">
-            <div className="flex items-center justify-between mb-2">
-              <div>
-                <h3 className="text-sm font-semibold">Link de pagamento WeTravel</h3>
-                <p className="text-xs text-muted-foreground">Cola o link do checkout. Aparece como botão "Book Now" na proposta online e no PDF.</p>
-              </div>
-              {wetravelUrl && (
-                <a href={wetravelUrl} target="_blank" rel="noopener noreferrer" className="text-xs text-primary hover:underline flex items-center gap-1 shrink-0">
-                  <ExternalLink className="h-3 w-3" /> Testar
-                </a>
-              )}
-            </div>
-            <div className="flex gap-2">
-              <input
-                type="url"
-                value={wetravelUrl}
-                onChange={e => setWetravelUrl(e.target.value)}
-                placeholder="https://www.wetravel.com/trips/..."
-                maxLength={500}
-                className="flex-1 px-3 py-2 border border-border rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-primary"
-              />
-              <Button size="sm" onClick={saveWetravelUrl} disabled={updateProposal.isPending || wetravelUrl === (proposal.wetravel_checkout_url || '')}>
-                Guardar
-              </Button>
-            </div>
+            <h3 className="text-sm font-semibold">Link de pagamento WeTravel</h3>
+            <p className="text-xs text-muted-foreground mt-1">
+              Gerado na secção <strong>Custos</strong> da lead. Ativa o link nessa lista para que o botão "Book Now" apareça na proposta digital e no PDF.
+            </p>
+            {proposal.wetravel_checkout_url ? (
+              <a href={proposal.wetravel_checkout_url} target="_blank" rel="noopener noreferrer" className="text-xs text-primary hover:underline flex items-center gap-1 mt-2 break-all">
+                <ExternalLink className="h-3 w-3 shrink-0" /> {proposal.wetravel_checkout_url}
+              </a>
+            ) : (
+              <p className="text-xs text-muted-foreground mt-2">Sem link ativo — o botão "Book Now" não é mostrado.</p>
+            )}
           </div>
+
 
           {/* Mini proposal preview */}
           <div className="bg-card rounded-xl border border-border overflow-hidden">

@@ -29,6 +29,7 @@ export interface PaymentLink {
   allow_partial_payment: boolean;
   status: 'draft' | 'published' | 'failed';
   last_error: string | null;
+  is_active: boolean;
   created_at: string;
 }
 
@@ -97,3 +98,34 @@ export const usePublishPaymentLink = () => {
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['payment_links'] }); },
   });
 };
+
+/**
+ * Activates (or deactivates) a payment link. Only one link per lead can be
+ * active — the active link's URL is what powers the "Book Now" button on the
+ * digital proposal and in the PDF.
+ */
+export const useSetPaymentLinkActive = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, leadId, url, active }: { id: string; leadId: string; url: string | null; active: boolean }) => {
+      const table = () => supabase.from('payment_links' as any) as any;
+      if (active) {
+        const { error: offErr } = await table().update({ is_active: false }).eq('lead_id', leadId).neq('id', id);
+        if (offErr) throw offErr;
+      }
+      const { error } = await table().update({ is_active: active }).eq('id', id);
+      if (error) throw error;
+
+      // Propagate to every proposal of this lead so the Book Now button shows/hides
+      const { error: pErr } = await (supabase.from('proposals') as any)
+        .update({ wetravel_checkout_url: active ? url : null })
+        .eq('lead_id', leadId);
+      if (pErr) throw pErr;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['payment_links'] });
+      qc.invalidateQueries({ queryKey: ['proposals'] });
+    },
+  });
+};
+
