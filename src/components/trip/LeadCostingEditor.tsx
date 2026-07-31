@@ -1,5 +1,6 @@
 import { useState, useMemo, useCallback } from 'react';
-import { ChevronDown, ChevronRight, Plus, CheckCircle2, MinusCircle, XCircle, Sparkles, Pencil, Trash2, Save, Loader2, Wand2, GripVertical } from 'lucide-react';
+import { ChevronDown, ChevronRight, Plus, CheckCircle2, MinusCircle, XCircle, Sparkles, Pencil, Trash2, Save, Loader2, Wand2, GripVertical, Link2 } from 'lucide-react';
+import PaymentLinkDialog from '@/components/payments/PaymentLinkDialog';
 import { DragDropContext, Droppable, Draggable, type DropResult } from '@hello-pangea/dnd';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
