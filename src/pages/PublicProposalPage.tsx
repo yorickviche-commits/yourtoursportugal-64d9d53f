@@ -880,12 +880,28 @@ const PricingConditions = ({ proposal, lang }: { proposal: any; lang: string }) 
   return (
     <section id="pricing" className="scroll-mt-16">
       <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm">
-        {total > 0 && (
-          <div className="text-center px-6 py-6 border-b border-slate-100 bg-slate-50">
-            <p className="text-[10px] uppercase tracking-widest text-slate-500 mb-1">{L.total}</p>
-            <p className="text-4xl font-serif font-bold text-[#0a2540]">€ {total.toLocaleString('en-US')}</p>
-            {proposal.participants && (
-              <p className="text-xs text-slate-500 mt-2">{proposal.participants}{proposal.date_range ? ` · ${proposal.date_range}` : ''}</p>
+        {(total > 0 || proposal.wetravel_checkout_url) && (
+          <div className="px-6 py-6 border-b border-slate-100 bg-slate-50 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <div className="text-left">
+              {total > 0 && (
+                <>
+                  <p className="text-[10px] uppercase tracking-widest text-slate-500 mb-1">{L.total}</p>
+                  <p className="text-4xl font-serif font-bold text-[#0a2540]">€ {total.toLocaleString('en-US')}</p>
+                </>
+              )}
+              {proposal.participants && (
+                <p className="text-xs text-slate-500 mt-2">{proposal.participants}{proposal.date_range ? ` · ${proposal.date_range}` : ''}</p>
+              )}
+            </div>
+            {proposal.wetravel_checkout_url && (
+              <a
+                href={proposal.wetravel_checkout_url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center justify-center gap-2 bg-[#0a2540] hover:bg-[#123a63] text-white px-8 py-4 rounded-lg font-extrabold uppercase tracking-wide text-base shadow-lg transition shrink-0"
+              >
+                Book Now
+              </a>
             )}
           </div>
         )}
