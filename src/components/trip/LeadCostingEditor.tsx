@@ -1,5 +1,6 @@
 import { useState, useMemo, useCallback } from 'react';
-import { ChevronDown, ChevronRight, Plus, CheckCircle2, MinusCircle, XCircle, Sparkles, Pencil, Trash2, Save, Loader2, Wand2, GripVertical } from 'lucide-react';
+import { ChevronDown, ChevronRight, Plus, CheckCircle2, MinusCircle, XCircle, Sparkles, Pencil, Trash2, Save, Loader2, Wand2, GripVertical, Link2 } from 'lucide-react';
+import PaymentLinkDialog from '@/components/payments/PaymentLinkDialog';
 import { DragDropContext, Droppable, Draggable, type DropResult } from '@hello-pangea/dnd';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -235,14 +236,19 @@ interface LeadCostingEditorProps {
   paxChildren: number;
   destination?: string;
   leadId?: string;
+  leadCode?: string;
+  clientName?: string;
+  startDate?: string | null;
+  endDate?: string | null;
   pvpOverride?: number | null;
   onPvpOverrideChange?: (v: number | null) => void;
 }
 
 // ─── Component ───────────────────────────────────────
-const LeadCostingEditor = ({ costingDays, onChange, onSave, saving, plannerDays, pax, paxChildren, destination, leadId, pvpOverride: pvpOverrideProp, onPvpOverrideChange }: LeadCostingEditorProps) => {
+const LeadCostingEditor = ({ costingDays, onChange, onSave, saving, plannerDays, pax, paxChildren, destination, leadId, leadCode, clientName, startDate, endDate, pvpOverride: pvpOverrideProp, onPvpOverrideChange }: LeadCostingEditorProps) => {
   const [expandedDays, setExpandedDays] = useState<number[]>(costingDays.length > 0 ? costingDays.map(d => d.day) : []);
   const [autoFilling, setAutoFilling] = useState(false);
+  const [payLinkOpen, setPayLinkOpen] = useState(false);
   const [importingTP, setImportingTP] = useState(false);
 
   const toggleDay = (day: number) => {
@@ -771,10 +777,34 @@ const LeadCostingEditor = ({ costingDays, onChange, onSave, saving, plannerDays,
               <button onClick={resetOverride} className="text-[hsl(var(--info))] hover:underline font-medium">Repor cálculo</button>
             </div>
           )}
+          {leadId && (
+            <div className="flex items-center justify-between gap-2 mt-3 pt-3 border-t flex-wrap">
+              <p className="text-[10px] text-muted-foreground">
+                Gera o link de pagamento WeTravel com base no PVP total (€{grandPVP.toFixed(2)}).
+              </p>
+              <Button size="sm" variant="outline" className="text-xs gap-1" onClick={() => setPayLinkOpen(true)} disabled={grandPVP <= 0}>
+                <Link2 className="h-3 w-3" /> Criar link de pagamento
+              </Button>
+            </div>
+          )}
         </div>
       )}
 
+      {leadId && (
+        <PaymentLinkDialog
+          open={payLinkOpen}
+          onOpenChange={setPayLinkOpen}
+          leadId={leadId}
+          tripRef={leadCode || null}
+          defaultTitle={`${leadCode ? leadCode + ' — ' : ''}${clientName || destination || 'Your Tours Portugal'}`.slice(0, 70)}
+          defaultAmount={Math.round(grandPVP * 100) / 100}
+          defaultStartDate={startDate || null}
+          defaultEndDate={endDate || null}
+        />
+      )}
+
     </div>
+
   );
 };
 
