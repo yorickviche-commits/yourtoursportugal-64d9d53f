@@ -107,8 +107,12 @@ serve(async (req) => {
       lead_id, proposal_id = null, title, trip_ref = null,
       start_date = null, end_date = null,
       amount_cents, currency = "EUR", expires_at = null,
-      payment_fees_paid_by = "participant",
-      wetravel_fee_paid_by = "participant",
+      participant_fees = "all",
+      days_before_departure = 0,
+      deposit_cents = null,
+      installments = [],
+      allow_auto_payment = false,
+      allow_partial_payment = false,
     } = body;
 
     if (!lead_id) return json({ error: "lead_id obrigatório" }, 422);
@@ -121,6 +125,31 @@ serve(async (req) => {
     const cents = Number(amount_cents);
     if (!Number.isInteger(cents) || cents <= 0) {
       return json({ error: "Montante inválido — deve ser maior que zero" }, 422);
+    }
+    const isDate = (v: unknown) => typeof v === "string" && /^\d{4}-\d{2}-\d{2}$/.test(v);
+    if (!isDate(start_date) || !isDate(end_date)) {
+      return json({ error: "Datas de início e fim são obrigatórias (AAAA-MM-DD)" }, 422);
+    }
+    if (!["all", "none", "credit_card", "service"].includes(participant_fees)) {
+      return json({ error: "Opção de taxas inválida" }, 422);
+    }
+    const dep = deposit_cents == null ? null : Number(deposit_cents);
+    if (dep != null && (!Number.isInteger(dep) || dep < 0 || dep > cents)) {
+      return json({ error: "Depósito inválido — deve estar entre 0 e o montante total" }, 422);
+    }
+    const insts = Array.isArray(installments) ? installments : [];
+    if (insts.length > 18) return json({ error: "Máximo de 18 prestações" }, 422);
+    for (const it of insts) {
+      const p = Number(it?.price);
+      const d = Number(it?.days_before_departure);
+      if (!isFinite(p) || p < 1) return json({ error: "Cada prestação deve ter valor >= 1" }, 422);
+      if (!Number.isInteger(d) || d < 0) return json({ error: "Dias antes da partida inválidos" }, 422);
+    }
+    if (insts.length > 0) {
+      const sum = insts.reduce((a: number, it: any) => a + Number(it.price), 0) + (dep ?? 0) / 100;
+      if (Math.abs(sum - cents / 100) > 0.01) {
+        return json({ error: `Depósito + prestações (${sum.toFixed(2)}) tem de igualar o total (${(cents / 100).toFixed(2)})` }, 422);
+      }
     }
 
     const idempotency_key = await sha256(`${lead_id}|${cents}|${title.trim()}`);
@@ -139,7 +168,11 @@ serve(async (req) => {
         .insert({
           lead_id, proposal_id, title: title.trim(), trip_ref,
           start_date, end_date, amount_cents: cents, currency,
-          expires_at, payment_fees_paid_by, wetravel_fee_paid_by,
+          expires_at, participant_fees,
+          days_before_departure: Number(days_before_departure) || 0,
+          deposit_cents: dep, installments: insts,
+          allow_auto_payment: !!allow_auto_payment,
+          allow_partial_payment: !!allow_partial_payment,
           status: "draft", idempotency_key, created_by: auth.userId,
         })
         .select("*").single();
@@ -152,7 +185,7 @@ serve(async (req) => {
     // Step 1 — create draft on WeTravel (skip if we already have a uuid)
     if (!row.wetravel_uuid) {
       try {
-        const created = await wtFetch(`${WETRAVEL.baseUrl}${WETRAVEL.paymentLinksPath}`, {
+        const created = await wtFetch(`${WETRAVEL.baseUrl}${WETRAVEL.paymentLinksPath}?publish_immediately=false`, {
           method: "POST",
           headers: {
             Authorization: `Bearer ${token}`,
@@ -166,11 +199,15 @@ serve(async (req) => {
             endDate: row.end_date,
             amountCents: row.amount_cents,
             currency: row.currency,
-            expiresAt: row.expires_at,
-            paymentFeesPaidBy: row.payment_fees_paid_by,
-            wetravelFeePaidBy: row.wetravel_fee_paid_by,
+            participantFees: row.participant_fees,
+            daysBeforeDeparture: row.days_before_departure,
+            depositCents: row.deposit_cents,
+            installments: (row.installments ?? []) as any,
+            allowAutoPayment: row.allow_auto_payment,
+            allowPartialPayment: row.allow_partial_payment,
           })),
         });
+
         const parsed = fromWeTravelResponse(created);
         if (!parsed.uuid) throw new Error("WeTravel não devolveu identificador do link");
         const { data: upd } = await supabase
