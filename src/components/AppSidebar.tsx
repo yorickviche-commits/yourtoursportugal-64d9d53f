@@ -2,7 +2,7 @@ import { NavLink, useLocation } from 'react-router-dom';
 import {
   Map, Users, CreditCard, Sparkles, LayoutDashboard,
   FileText, Handshake, Grid3x3, Truck, Settings, Shield, BarChart3, Plug, ScrollText,
-  Inbox,
+  Inbox, PackageSearch, Boxes,
   LogOut, ChevronDown, ChevronRight, Menu, X,
 } from 'lucide-react';
 import { useState } from 'react';
@@ -33,6 +33,8 @@ const reservasItems: NavItem[] = [
 const comercialItems: NavItem[] = [
   { to: '/comercial/matriz', icon: Grid3x3, label: 'Matriz FSE', pageKey: 'comercial_matriz' },
   { to: '/comercial/suppliers', icon: Truck, label: 'Fornecedores', pageKey: 'comercial_suppliers' },
+  { to: '/catalog', icon: PackageSearch, label: 'Catálogo Magpie', pageKey: 'catalog' },
+  { to: '/products', icon: Boxes, label: 'Catálogo de Produtos', pageKey: 'products' },
   { to: '/partners', icon: Handshake, label: 'Parceiros B2B', pageKey: 'partners' },
 ];
 

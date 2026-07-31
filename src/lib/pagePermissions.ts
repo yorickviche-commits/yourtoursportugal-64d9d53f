@@ -11,6 +11,8 @@ export type PageKey =
   | 'comercial_matriz'
   | 'comercial_suppliers'
   | 'partners'
+  | 'catalog'
+  | 'products'
   | 'profile'
   | 'admin_users'
   | 'admin_permissions'
@@ -37,6 +39,8 @@ export const PAGES: PageDef[] = [
   { key: 'crm',                 label: 'CRM / Comunicação',    path: '/crm',                  group: 'Dep. Reservas' },
   { key: 'comercial_matriz',    label: 'Matriz FSE',           path: '/comercial/matriz',     group: 'Comercial' },
   { key: 'comercial_suppliers', label: 'Fornecedores',         path: '/comercial/suppliers',  group: 'Comercial' },
+  { key: 'catalog',              label: 'Catálogo Magpie',      path: '/catalog',              group: 'Comercial' },
+  { key: 'products',             label: 'Catálogo de Produtos', path: '/products',             group: 'Comercial' },
   { key: 'partners',            label: 'Parceiros B2B',        path: '/partners',             group: 'Comercial' },
   { key: 'profile',             label: 'O Meu Perfil',         path: '/profile',              group: 'Visão Geral' },
   { key: 'admin_users',         label: 'Utilizadores',         path: '/admin/users',          group: 'Administração' },
