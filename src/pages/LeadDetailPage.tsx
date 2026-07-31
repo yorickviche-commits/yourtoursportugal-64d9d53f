@@ -974,7 +974,7 @@ const LeadDetailPage = ({ mode = 'lead' }: { mode?: 'lead' | 'booking' } = {}) =
 
         {/* Operações — apenas para reservas confirmadas (status = won) */}
         {activeTab === 'operacoes' && lead && (
-          <OperacoesTab activeVersion={activeVersion} leadId={lead.id} leadCode={lead.lead_code} pvpTotal={costingTotalPVP} />
+          <OperacoesTab activeVersion={activeVersion} leadId={lead.id} leadCode={lead.lead_code} pvpTotal={costingTotalPVP} startDate={/^\d{4}-\d{2}-\d{2}$/.test(formState.travelDates || '') ? formState.travelDates : null} />
         )}
 
 
