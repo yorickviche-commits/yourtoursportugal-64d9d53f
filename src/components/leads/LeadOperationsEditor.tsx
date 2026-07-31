@@ -47,23 +47,8 @@ const slug = (s: string) =>
 const norm = (s: string) =>
   (s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, '');
 
-export interface OpsRow {
-  itemKey: string;
-  dayNumber: number;
-  source: 'planner' | 'manual';
-  activityTitle: string;
-  supplier: string;
-  pax: number;
-  netValue: number;
-  realCost: number | null;
-  scheduleTime: string;
-  bookingStatus: string;
-  paymentStatus: string;
-  invoiceStatus: string;
-  invoiceUrl: string | null;
-  invoiceName: string | null;
-  opId?: string;
-}
+
+
 
 interface Props {
   activeVersion: number;
