@@ -273,27 +273,59 @@ export function normalizeProduct(p: any) {
   };
 }
 
-/** Fetches product details in batches of max 20 ids. */
+/**
+ * Fetches product details in batches of max 20 ids via the cached detail endpoint.
+ * Any id the detail endpoint does not return (it 404s for some accounts) is looked up
+ * through the paginated list endpoint, which returns the same full product payload.
+ */
 export async function fetchProductDetails(ids: string[]): Promise<Map<string, any>> {
   const found = new Map<string, any>();
+
   for (let i = 0; i < ids.length; i += 20) {
     const batch = ids.slice(i, i + 20);
-    const data = await magpieGet(
-      "/api/products/get_products",
-      { product_ids: batch.join(","), format: "json" },
-      { retries: 3 },
-    );
-    for (const account of asArray(data?.accounts)) {
-      const acc = asObject(account);
-      for (const product of asArray(acc.products)) {
-        const p = asObject(product) as any;
-        const id = asText(first(p.id, p.product_id, p.magpie_id));
-        if (!id) continue;
-        if (!p.account_id && acc.id) p.account_id = acc.id;
-        if (!p.account_name && acc.name) p.account_name = acc.name;
-        found.set(id, p);
+    try {
+      const data = await magpieGet(
+        "/api/products/get_products",
+        { product_ids: batch.join(","), format: "json" },
+        { retries: 3 },
+      );
+      for (const account of asArray(data?.accounts)) {
+        const acc = asObject(account);
+        for (const product of asArray(acc.products)) {
+          const p = asObject(product) as any;
+          const id = asText(first(p.id, p.product_id, p.magpie_id));
+          if (!id) continue;
+          if (!p.account && (acc.id || acc.name)) p.account = { id: acc.id, name: acc.name };
+          found.set(id, p);
+        }
       }
+    } catch (e) {
+      // 404/400 from the cached endpoint is not fatal — fall back to the list endpoint.
+      if (e instanceof MagpieError && e.status >= 500) throw e;
     }
   }
+
+  const missing = ids.filter((id) => !found.has(id));
+  if (missing.length) {
+    const wanted = new Set(missing);
+    let page = 1;
+    let totalPages = 1;
+    const MAX_PAGES = 40;
+    while (page <= totalPages && page <= MAX_PAGES && wanted.size > 0) {
+      const data = await magpieGet("/api/products", { page, limit: 100 }, { retries: 3 });
+      totalPages = Number(data?.total_pages) || 1;
+      for (const product of asArray(data?.products)) {
+        const p = asObject(product) as any;
+        const id = asText(first(p.id, p.product_id, p.magpie_id));
+        if (id && wanted.has(id)) {
+          found.set(id, p);
+          wanted.delete(id);
+        }
+      }
+      page += 1;
+    }
+  }
+
   return found;
 }
+
