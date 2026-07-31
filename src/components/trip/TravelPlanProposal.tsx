@@ -1186,14 +1186,34 @@ const TravelPlanProposal = ({
               </SelectContent>
             </Select>
           </div>
-          <Button size="lg" disabled={!canGenerate || generating} onClick={() => handleGenerate()}
-            className="text-sm gap-2 bg-gradient-to-r from-[hsl(var(--info))] to-[hsl(var(--info)/0.7)] text-white px-8 py-3 h-auto shadow-lg hover:shadow-xl transition-shadow">
-            {generating ? <><Loader2 className="h-4 w-4 animate-spin" /> O nosso travel designer está a criar o seu plano...</> : <><Sparkles className="h-4 w-4" /> Gerar Plano de Viagem</>}
-          </Button>
+          <div className="flex flex-wrap items-center justify-center gap-2">
+            <Button size="lg" disabled={!canGenerate || generating} onClick={() => handleGenerate()}
+              className="text-sm gap-2 bg-gradient-to-r from-[hsl(var(--info))] to-[hsl(var(--info)/0.7)] text-white px-8 py-3 h-auto shadow-lg hover:shadow-xl transition-shadow">
+              {generating ? <><Loader2 className="h-4 w-4 animate-spin" /> O nosso travel designer está a criar o seu plano...</> : <><Sparkles className="h-4 w-4" /> Gerar Plano de Viagem</>}
+            </Button>
+            <Button size="lg" variant="outline" disabled={generating} onClick={startManualPlan}
+              className="text-sm gap-2 px-6 py-3 h-auto">
+              <PlusCircle className="h-4 w-4" /> Criar Manualmente
+            </Button>
+            <Button size="lg" variant="outline" disabled={generating} onClick={() => setPickerTarget('new')}
+              className="text-sm gap-2 px-6 py-3 h-auto">
+              <Package className="h-4 w-4" /> Criar a partir de Produto
+            </Button>
+          </div>
+          <p className="text-[10px] text-muted-foreground text-center max-w-md">
+            Modo manual: constrói o programa dia a dia, do zero ou importando produtos já validados do catálogo YT.
+          </p>
         </div>
+
+        <ProductPickerDialog
+          open={pickerTarget !== null}
+          onOpenChange={o => { if (!o) setPickerTarget(null); }}
+          onSelect={handleProductSelected}
+        />
       </div>
     );
   }
+
 
   if (loadingSaved) {
     return (
