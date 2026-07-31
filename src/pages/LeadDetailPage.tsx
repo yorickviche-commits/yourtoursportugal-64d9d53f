@@ -1335,8 +1335,8 @@ const LeadDetailPage = ({ mode = 'lead' }: { mode?: 'lead' | 'booking' } = {}) =
               leadId={lead?.id}
               leadCode={lead?.lead_code}
               clientName={lead?.client_name}
-              startDate={formState.travelDates || null}
-              endDate={formState.travelEndDate || null}
+              startDate={/^\d{4}-\d{2}-\d{2}$/.test(formState.travelDates || '') ? formState.travelDates : null}
+              endDate={/^\d{4}-\d{2}-\d{2}$/.test(formState.travelEndDate || '') ? formState.travelEndDate : null}
               pvpOverride={pvpOverride}
               onPvpOverrideChange={async (v) => {
                 setPvpOverride(v);
