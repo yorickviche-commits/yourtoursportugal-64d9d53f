@@ -1333,6 +1333,10 @@ const LeadDetailPage = ({ mode = 'lead' }: { mode?: 'lead' | 'booking' } = {}) =
               paxChildren={formState.paxChildren}
               destination={destino.join(', ') || lead?.destination || ''}
               leadId={lead?.id}
+              leadCode={lead?.lead_code}
+              clientName={lead?.client_name}
+              startDate={formState.travelDates || null}
+              endDate={formState.travelEndDate || null}
               pvpOverride={pvpOverride}
               onPvpOverrideChange={async (v) => {
                 setPvpOverride(v);
