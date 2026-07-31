@@ -535,7 +535,9 @@ const LeadCostingEditor = ({ costingDays, onChange, onSave, saving, plannerDays,
                 <div className="flex-1 min-w-0">
                   <span className="text-xs text-[hsl(var(--info))] font-medium">Dia {day.day}.</span>
                   <p className="text-sm font-bold text-[hsl(var(--info))] truncate">{day.title || 'Sem título'}</p>
-                  {day.date && <span className="text-[10px] text-muted-foreground">{day.date}</span>}
+                  {(formatDayLabelPT(startDate, day.day) || day.date) && (
+                    <span className="text-[10px] text-muted-foreground capitalize">{formatDayLabelPT(startDate, day.day) || day.date}</span>
+                  )}
                 </div>
                 <div className="text-right shrink-0">
                   <span className="text-xs font-medium">NET {dayNet.toFixed(0)}€</span>
