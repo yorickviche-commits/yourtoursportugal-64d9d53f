@@ -83,6 +83,26 @@ export const useProposalsQuery = () =>
     },
   });
 
+// Lightweight list query: skips the heavy `days` / `map_stops` / image payloads
+// so the proposals menu (and the lead Propostas tab) render in well under a
+// second. Full data is fetched on the detail pages.
+export const useProposalsListQuery = () =>
+  useQuery({
+    queryKey: ['proposals_list'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('proposals')
+        .select('id, public_token, client_name, client_email, booking_ref, title, date_range, participants, language, status, lead_id, created_at, updated_at, sent_at, approved_at, wetravel_checkout_url')
+        .order('created_at', { ascending: false });
+      if (error) throw error;
+      return (data || []) as ProposalListItem[];
+    },
+    staleTime: 60_000,
+    gcTime: 10 * 60_000,
+  });
+
+export type ProposalListItem = Omit<Proposal, 'days' | 'map_stops' | 'hero_image_url' | 'summary_text'>;
+
 export const useProposalByToken = (token: string) =>
   useQuery({
     queryKey: ['proposal', 'token', token],

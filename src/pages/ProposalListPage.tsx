@@ -1,5 +1,5 @@
 import AppLayout from '@/components/AppLayout';
-import { useProposalsQuery } from '@/hooks/useProposalsQuery';
+import { useProposalsListQuery } from '@/hooks/useProposalsQuery';
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Badge } from '@/components/ui/badge';
@@ -35,7 +35,7 @@ const filterLabels: Record<string, string> = {
 };
 
 const ProposalListPage = () => {
-  const { data: proposals = [], isLoading } = useProposalsQuery();
+  const { data: proposals = [], isLoading } = useProposalsListQuery();
   const [filter, setFilter] = useState<string>('all');
   const navigate = useNavigate();
 
