@@ -263,17 +263,17 @@ const ProductDetailPage = () => {
 
         {product.summary && (
           <Section title="Resumo">
-            <MagpieHtml html={product.summary} className="prose prose-sm max-w-none text-sm" />
+            <MagpieHtml html={String(product.summary)} className="prose prose-sm max-w-none text-sm" />
           </Section>
         )}
         {product.description && (
           <Section title="Descrição">
-            <MagpieHtml html={product.description} className="prose prose-sm max-w-none text-sm" />
+            <MagpieHtml html={String(product.description)} className="prose prose-sm max-w-none text-sm" />
           </Section>
         )}
         {product.long_description && (
           <Section title="Descrição completa">
-            <MagpieHtml html={product.long_description} className="prose prose-sm max-w-none text-sm" />
+            <MagpieHtml html={String(product.long_description)} className="prose prose-sm max-w-none text-sm" />
           </Section>
         )}
 
@@ -336,24 +336,24 @@ const ProductDetailPage = () => {
               {[product.cancellation_policy, product.cancellation_cutoff].filter(Boolean).join(' · ')}
             </p>
             {product.cancellation_notes && (
-              <p className="text-sm text-muted-foreground">{product.cancellation_notes}</p>
+              <p className="text-sm text-muted-foreground">{String(product.cancellation_notes)}</p>
             )}
           </Section>
         )}
 
         {product.additional_info && (
           <Section title="Informação adicional">
-            <MagpieHtml html={product.additional_info} className="prose prose-sm max-w-none text-sm" />
+            <MagpieHtml html={String(product.additional_info)} className="prose prose-sm max-w-none text-sm" />
           </Section>
         )}
         {product.terms_and_conditions && (
           <Section title="Termos e condições">
-            <MagpieHtml html={product.terms_and_conditions} className="prose prose-sm max-w-none text-sm whitespace-pre-line" />
+            <MagpieHtml html={String(product.terms_and_conditions)} className="prose prose-sm max-w-none text-sm whitespace-pre-line" />
           </Section>
         )}
         {product.voucher_info && (
           <Section title="Voucher">
-            <MagpieHtml html={product.voucher_info} className="prose prose-sm max-w-none text-sm" />
+            <MagpieHtml html={String(product.voucher_info)} className="prose prose-sm max-w-none text-sm" />
           </Section>
         )}
       </div>
