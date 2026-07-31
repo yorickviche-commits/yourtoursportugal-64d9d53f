@@ -2,7 +2,8 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Loader2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
-import { signInWithLovableOAuthPopup } from '@/lib/lovableCloudOAuth';
+import { lovable } from '@/integrations/lovable/index';
+
 import { useToast } from '@/hooks/use-toast';
 
 const GoogleIcon = () => (
