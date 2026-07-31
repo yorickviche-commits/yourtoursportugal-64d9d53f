@@ -225,11 +225,12 @@ const PaymentLinkDialog = ({
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <Label className="text-xs">Data início *</Label>
-                <Input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} className="h-9 text-sm" />
+                <Input type="date" min={today} value={startDate} onChange={e => setStartDate(e.target.value)} className="h-9 text-sm" />
               </div>
               <div>
                 <Label className="text-xs">Data fim *</Label>
-                <Input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} className="h-9 text-sm" />
+                <Input type="date" min={startDate || today} value={endDate} onChange={e => setEndDate(e.target.value)} className="h-9 text-sm" />
+
               </div>
             </div>
 
