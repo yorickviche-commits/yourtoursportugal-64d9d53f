@@ -21,6 +21,9 @@ import ItemNotesDialog from '@/components/trip/ItemNotesDialog';
 import BookingRequestDialog from '@/components/trip/BookingRequestDialog';
 import BookingEmailHistory from '@/components/trip/BookingEmailHistory';
 import SupplierSearchDropdown from '@/components/trip/SupplierSearchDropdown';
+import LeadOpsAnalyticsPanel from '@/components/leads/LeadOpsAnalyticsPanel';
+import GuidePlanningDialog from '@/components/leads/GuidePlanningDialog';
+
 
 export const BOOKING_OPTIONS = [
   { value: 'not_requested', label: 'Não Pedido', className: 'bg-muted text-muted-foreground' },
