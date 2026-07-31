@@ -1,6 +1,13 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 
+export type ParticipantFees = 'all' | 'none' | 'credit_card' | 'service';
+
+export interface Installment {
+  price: number;
+  days_before_departure: number;
+}
+
 export interface PaymentLink {
   id: string;
   lead_id: string;
@@ -14,8 +21,12 @@ export interface PaymentLink {
   amount_cents: number;
   currency: string;
   expires_at: string | null;
-  payment_fees_paid_by: 'organizer' | 'participant';
-  wetravel_fee_paid_by: 'organizer' | 'participant';
+  participant_fees: ParticipantFees;
+  days_before_departure: number;
+  deposit_cents: number | null;
+  installments: Installment[];
+  allow_auto_payment: boolean;
+  allow_partial_payment: boolean;
   status: 'draft' | 'published' | 'failed';
   last_error: string | null;
   created_at: string;
@@ -26,13 +37,17 @@ export interface CreatePaymentLinkInput {
   proposal_id?: string | null;
   title: string;
   trip_ref?: string | null;
-  start_date?: string | null;
-  end_date?: string | null;
+  start_date: string;
+  end_date: string;
   amount_cents: number;
   currency?: string;
   expires_at?: string | null;
-  payment_fees_paid_by?: 'organizer' | 'participant';
-  wetravel_fee_paid_by?: 'organizer' | 'participant';
+  participant_fees?: ParticipantFees;
+  days_before_departure?: number;
+  deposit_cents?: number | null;
+  installments?: Installment[];
+  allow_auto_payment?: boolean;
+  allow_partial_payment?: boolean;
 }
 
 export const usePaymentLinks = (leadId?: string) =>
@@ -52,13 +67,20 @@ export const usePaymentLinks = (leadId?: string) =>
 async function invokeFn(body: Record<string, unknown>) {
   const { data, error } = await supabase.functions.invoke('wetravel-create-payment-link', { body });
   if (error) {
-    // surface the API message when available
-    const msg = (data as any)?.error || error.message;
+    // Surface the real API message from the error response body when available
+    let msg = error.message;
+    try {
+      const ctx: any = (error as any).context;
+      const parsed = ctx && typeof ctx.json === 'function' ? await ctx.json() : null;
+      if (parsed?.error) msg = typeof parsed.error === 'string' ? parsed.error : JSON.stringify(parsed.error);
+    } catch { /* keep generic message */ }
+    if ((data as any)?.error) msg = (data as any).error;
     throw new Error(msg);
   }
   if ((data as any)?.error) throw new Error((data as any).error);
   return (data as any)?.payment_link as PaymentLink;
 }
+
 
 export const useCreatePaymentLink = () => {
   const qc = useQueryClient();
