@@ -8,7 +8,8 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
 import { ChevronLeft, ChevronRight, Download, Loader2, RefreshCw, Search } from 'lucide-react';
-import { useMagpieCatalog, useMagpieImport } from '@/hooks/useMagpie';
+import { useMagpieCatalog, useMagpieImport, type MagpieCatalogProduct } from '@/hooks/useMagpie';
+import MagpieProductDialog from '@/components/catalog/MagpieProductDialog';
 import { cn } from '@/lib/utils';
 
 const durationText = (d: unknown) => {
@@ -36,6 +37,7 @@ const CatalogPage = () => {
   const [accountId, setAccountId] = useState('all');
   const [search, setSearch] = useState('');
   const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [viewing, setViewing] = useState<MagpieCatalogProduct | null>(null);
 
   const params = useMemo(
     () => ({
@@ -202,7 +204,14 @@ const CatalogPage = () => {
                     <div className="h-14 w-20 rounded-md bg-muted shrink-0" />
                   )}
                   <div className="min-w-0 flex-1">
-                    <h3 className="text-sm font-semibold truncate">{p.name}</h3>
+                    <button
+                      type="button"
+                      onClick={() => setViewing(p)}
+                      className="text-sm font-semibold truncate text-left hover:text-primary hover:underline w-full"
+                      title="Ver detalhes (somente leitura)"
+                    >
+                      {p.name}
+                    </button>
                     <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 mt-1 text-xs text-muted-foreground">
                       {p.category && <span>{p.category}</span>}
                       {p.location && <span>• {p.location}</span>}
@@ -247,6 +256,13 @@ const CatalogPage = () => {
           </div>
         )}
       </div>
+      <MagpieProductDialog
+        product={viewing}
+        open={!!viewing}
+        onClose={() => setViewing(null)}
+        importing={importMutation.isPending}
+        onImport={(id) => runImport([id])}
+      />
     </AppLayout>
   );
 };

@@ -17,7 +17,7 @@ import TravelPlannerEditor, { PlannerDay, PlannerItem, PeriodKey, emptyPeriods, 
 import TravelPlanProposal from '@/components/trip/TravelPlanProposal';
 import LeadAgentsAssignment from '@/components/LeadAgentsAssignment';
 import { LeadContextAttachments } from '@/components/leads/LeadContextAttachments';
-import { useProposalsQuery, useProposalAnnotations } from '@/hooks/useProposalsQuery';
+import { useProposalsListQuery, useProposalAnnotations } from '@/hooks/useProposalsQuery';
 import { toast as sonnerToast } from 'sonner';
 // ItineraryEditor removed — replaced by Propostas tab
 import EditableCostingTable, { CostingDayData, CostingItem } from '@/components/trip/EditableCostingTable';
@@ -590,7 +590,7 @@ const ProposalAnnotationsPreview = ({ proposalId }: { proposalId: string }) => {
 };
 
 const LeadProposalsTab = ({ leadId, clientName }: { leadId: string; clientName: string }) => {
-  const { data: allProposals = [], isLoading } = useProposalsQuery();
+  const { data: allProposals = [], isLoading } = useProposalsListQuery();
   const proposals = allProposals.filter(p => p.lead_id === leadId);
   const navigate = useNavigate();
 
@@ -627,7 +627,6 @@ const LeadProposalsTab = ({ leadId, clientName }: { leadId: string; clientName: 
                   <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground">
                     {p.date_range && <span>{p.date_range}</span>}
                     {p.participants && <span>• {p.participants}</span>}
-                    <span>• {p.days.length} dias</span>
                   </div>
                 </div>
               </div>
