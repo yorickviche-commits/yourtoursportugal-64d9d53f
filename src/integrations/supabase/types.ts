@@ -1232,6 +1232,240 @@ export type Database = {
           },
         ]
       }
+      magpie_products: {
+        Row: {
+          accessibility: Json
+          account_id: string | null
+          account_name: string | null
+          additional_info: string | null
+          addresses: Json
+          availability_status: string
+          before_arrival: Json
+          before_booking: Json
+          booking_cutoff: string | null
+          cancellation_cutoff: string | null
+          cancellation_notes: string | null
+          cancellation_policy: string | null
+          category: string | null
+          commentaries: Json
+          confirmation_required: boolean | null
+          currency: string | null
+          description: string | null
+          duration_from: number | null
+          duration_text: string | null
+          duration_to: number | null
+          duration_type: string | null
+          duration_unit: string | null
+          end_date: string | null
+          excluded: Json
+          guide_type: string | null
+          health_items: Json
+          highlights: Json
+          id: string
+          images: Json
+          imported_at: string
+          included: Json
+          internal_id: string | null
+          language: string | null
+          last_synced_at: string | null
+          location: string | null
+          long_description: string | null
+          magpie_id: string
+          max_group_size: number | null
+          max_pax: number | null
+          min_pax: number | null
+          multiday: boolean | null
+          name: string
+          opening_hours: Json
+          private: boolean | null
+          raw_payload: Json
+          redemption_type: string | null
+          restrictions: Json
+          retail_rate_adult: number | null
+          retail_rate_child: number | null
+          retail_rate_infant: number | null
+          retail_rate_senior: number | null
+          retail_rate_youth: number | null
+          start_date: string | null
+          summary: string | null
+          sync_error: string | null
+          sync_status: string
+          terms_and_conditions: string | null
+          timezone: string | null
+          trip_difficulty: string | null
+          valid_for: string | null
+          version_id: string | null
+          voucher_info: string | null
+        }
+        Insert: {
+          accessibility?: Json
+          account_id?: string | null
+          account_name?: string | null
+          additional_info?: string | null
+          addresses?: Json
+          availability_status?: string
+          before_arrival?: Json
+          before_booking?: Json
+          booking_cutoff?: string | null
+          cancellation_cutoff?: string | null
+          cancellation_notes?: string | null
+          cancellation_policy?: string | null
+          category?: string | null
+          commentaries?: Json
+          confirmation_required?: boolean | null
+          currency?: string | null
+          description?: string | null
+          duration_from?: number | null
+          duration_text?: string | null
+          duration_to?: number | null
+          duration_type?: string | null
+          duration_unit?: string | null
+          end_date?: string | null
+          excluded?: Json
+          guide_type?: string | null
+          health_items?: Json
+          highlights?: Json
+          id?: string
+          images?: Json
+          imported_at?: string
+          included?: Json
+          internal_id?: string | null
+          language?: string | null
+          last_synced_at?: string | null
+          location?: string | null
+          long_description?: string | null
+          magpie_id: string
+          max_group_size?: number | null
+          max_pax?: number | null
+          min_pax?: number | null
+          multiday?: boolean | null
+          name: string
+          opening_hours?: Json
+          private?: boolean | null
+          raw_payload: Json
+          redemption_type?: string | null
+          restrictions?: Json
+          retail_rate_adult?: number | null
+          retail_rate_child?: number | null
+          retail_rate_infant?: number | null
+          retail_rate_senior?: number | null
+          retail_rate_youth?: number | null
+          start_date?: string | null
+          summary?: string | null
+          sync_error?: string | null
+          sync_status?: string
+          terms_and_conditions?: string | null
+          timezone?: string | null
+          trip_difficulty?: string | null
+          valid_for?: string | null
+          version_id?: string | null
+          voucher_info?: string | null
+        }
+        Update: {
+          accessibility?: Json
+          account_id?: string | null
+          account_name?: string | null
+          additional_info?: string | null
+          addresses?: Json
+          availability_status?: string
+          before_arrival?: Json
+          before_booking?: Json
+          booking_cutoff?: string | null
+          cancellation_cutoff?: string | null
+          cancellation_notes?: string | null
+          cancellation_policy?: string | null
+          category?: string | null
+          commentaries?: Json
+          confirmation_required?: boolean | null
+          currency?: string | null
+          description?: string | null
+          duration_from?: number | null
+          duration_text?: string | null
+          duration_to?: number | null
+          duration_type?: string | null
+          duration_unit?: string | null
+          end_date?: string | null
+          excluded?: Json
+          guide_type?: string | null
+          health_items?: Json
+          highlights?: Json
+          id?: string
+          images?: Json
+          imported_at?: string
+          included?: Json
+          internal_id?: string | null
+          language?: string | null
+          last_synced_at?: string | null
+          location?: string | null
+          long_description?: string | null
+          magpie_id?: string
+          max_group_size?: number | null
+          max_pax?: number | null
+          min_pax?: number | null
+          multiday?: boolean | null
+          name?: string
+          opening_hours?: Json
+          private?: boolean | null
+          raw_payload?: Json
+          redemption_type?: string | null
+          restrictions?: Json
+          retail_rate_adult?: number | null
+          retail_rate_child?: number | null
+          retail_rate_infant?: number | null
+          retail_rate_senior?: number | null
+          retail_rate_youth?: number | null
+          start_date?: string | null
+          summary?: string | null
+          sync_error?: string | null
+          sync_status?: string
+          terms_and_conditions?: string | null
+          timezone?: string | null
+          trip_difficulty?: string | null
+          valid_for?: string | null
+          version_id?: string | null
+          voucher_info?: string | null
+        }
+        Relationships: []
+      }
+      magpie_sync_log: {
+        Row: {
+          details: Json
+          error_message: string | null
+          finished_at: string | null
+          http_status: number | null
+          id: string
+          products_failed: number
+          products_requested: number
+          products_succeeded: number
+          run_type: string
+          started_at: string
+        }
+        Insert: {
+          details?: Json
+          error_message?: string | null
+          finished_at?: string | null
+          http_status?: number | null
+          id?: string
+          products_failed?: number
+          products_requested?: number
+          products_succeeded?: number
+          run_type: string
+          started_at?: string
+        }
+        Update: {
+          details?: Json
+          error_message?: string | null
+          finished_at?: string | null
+          http_status?: number | null
+          id?: string
+          products_failed?: number
+          products_requested?: number
+          products_succeeded?: number
+          run_type?: string
+          started_at?: string
+        }
+        Relationships: []
+      }
       partner_files: {
         Row: {
           created_at: string
@@ -1516,6 +1750,56 @@ export type Database = {
           updated_at?: string | null
         }
         Relationships: []
+      }
+      product_local: {
+        Row: {
+          commercial_notes: string | null
+          created_at: string
+          custom_summary: string | null
+          custom_title: string | null
+          id: string
+          internal_tags: string[]
+          is_visible: boolean
+          magpie_id: string
+          sort_weight: number
+          updated_at: string
+          workflow_status: string
+        }
+        Insert: {
+          commercial_notes?: string | null
+          created_at?: string
+          custom_summary?: string | null
+          custom_title?: string | null
+          id?: string
+          internal_tags?: string[]
+          is_visible?: boolean
+          magpie_id: string
+          sort_weight?: number
+          updated_at?: string
+          workflow_status?: string
+        }
+        Update: {
+          commercial_notes?: string | null
+          created_at?: string
+          custom_summary?: string | null
+          custom_title?: string | null
+          id?: string
+          internal_tags?: string[]
+          is_visible?: boolean
+          magpie_id?: string
+          sort_weight?: number
+          updated_at?: string
+          workflow_status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "product_local_magpie_id_fkey"
+            columns: ["magpie_id"]
+            isOneToOne: true
+            referencedRelation: "magpie_products"
+            referencedColumns: ["magpie_id"]
+          },
+        ]
       }
       products: {
         Row: {
@@ -2788,6 +3072,8 @@ export type Database = {
           read_ct: number
         }[]
       }
+      show_limit: { Args: never; Returns: number }
+      show_trgm: { Args: { "": string }; Returns: string[] }
     }
     Enums: {
       app_role:
