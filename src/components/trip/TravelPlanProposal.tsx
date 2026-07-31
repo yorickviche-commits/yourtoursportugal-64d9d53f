@@ -1486,9 +1486,17 @@ const TravelPlanProposal = ({
                             </div>
                           )}
                         </Droppable>
-                        <button onClick={() => addBullet(dayIdx)} className="text-[10px] text-[hsl(var(--info))] hover:underline flex items-center gap-1">
-                          <Plus className="h-3 w-3" /> Adicionar item
-                        </button>
+                        <div className="flex flex-wrap items-center gap-3">
+                          <button onClick={() => addBullet(dayIdx)} className="text-[10px] text-[hsl(var(--info))] hover:underline flex items-center gap-1">
+                            <Plus className="h-3 w-3" /> Adicionar item
+                          </button>
+                          <button onClick={() => setPickerTarget(dayIdx)} className="text-[10px] text-[hsl(var(--info))] hover:underline flex items-center gap-1">
+                            <Package className="h-3 w-3" /> Importar produto do catálogo
+                          </button>
+                          <button onClick={() => removeDay(dayIdx)} className="text-[10px] text-destructive hover:underline flex items-center gap-1 ml-auto">
+                            <X className="h-3 w-3" /> Remover dia
+                          </button>
+                        </div>
                       </div>
                       <div className="flex flex-wrap items-center gap-2">
                         <Input className="h-7 text-xs w-48" value={day.overnight}
@@ -1644,6 +1652,23 @@ const TravelPlanProposal = ({
           })}
         </div>
         </DragDropContext>
+
+        {viewMode === 'edit' && (
+          <div className="border-t border-slate-200 px-6 md:px-8 py-4 flex flex-wrap items-center gap-2 print:hidden">
+            <Button size="sm" variant="outline" className="text-xs gap-1" onClick={addManualDay}>
+              <PlusCircle className="h-3.5 w-3.5" /> Adicionar dia (manual)
+            </Button>
+            <Button size="sm" variant="outline" className="text-xs gap-1" onClick={() => setPickerTarget('new')}>
+              <Package className="h-3.5 w-3.5" /> Adicionar dia (produto do catálogo)
+            </Button>
+          </div>
+        )}
+
+        <ProductPickerDialog
+          open={pickerTarget !== null}
+          onOpenChange={o => { if (!o) setPickerTarget(null); }}
+          onSelect={handleProductSelected}
+        />
 
 
         {/* PRICING & CONDITIONS — Client-facing closing section (toggleable) */}
