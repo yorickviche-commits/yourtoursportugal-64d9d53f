@@ -210,23 +210,8 @@ export async function buildProposalPdfBase64(p: ProposalLite, weblink: string): 
   // (Total price is rendered at the end of the programme, before "What's Included")
 
 
-  // Book Now (WeTravel) CTA button
-  if (p.wetravel_checkout_url) {
-    ensureSpace(56);
-    const btnW = 220;
-    const btnH = 40;
-    const btnX = (pageW - btnW) / 2;
-    doc.setFillColor(10, 37, 64);
-    doc.roundedRect(btnX, y, btnW, btnH, 20, 20, 'F');
-    doc.setTextColor(255, 255, 255);
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(12);
-    doc.textWithLink('Book Now  \u2192', pageW / 2, y + 26, {
-      align: 'center',
-      url: p.wetravel_checkout_url,
-    });
-    y += btnH + 16;
-  }
+  // Book Now (WeTravel) CTA is rendered in the Total Price section at the end of the programme
+
 
   if (weblink) {
     ensureSpace(20);
@@ -407,27 +392,48 @@ export async function buildProposalPdfBase64(p: ProposalLite, weblink: string): 
       doc.line(margin, y, pageW - margin, y);
       y += 20;
 
-      if (total > 0) {
-        ensureSpace(60);
+      if (total > 0 || p.wetravel_checkout_url) {
+        ensureSpace(80);
+        const boxH = 64;
         doc.setFillColor(245, 247, 250);
-        doc.rect(margin, y, pageW - margin * 2, 48, 'F');
-        doc.setTextColor(100, 100, 100);
-        doc.setFont('helvetica', 'normal');
-        doc.setFontSize(9);
-        doc.text('TOTAL PRICE', pageW / 2, y + 16, { align: 'center' });
-        doc.setTextColor(10, 37, 64);
-        doc.setFont('helvetica', 'bold');
-        doc.setFontSize(18);
-        doc.text(`€ ${total.toLocaleString('en-US')}`, pageW / 2, y + 38, { align: 'center' });
-        y += 56;
-        const sub = [p.participants, p.date_range].filter(Boolean).join('  ·  ');
-        if (sub) {
+        doc.rect(margin, y, pageW - margin * 2, boxH, 'F');
+
+        if (total > 0) {
+          doc.setTextColor(100, 100, 100);
           doc.setFont('helvetica', 'normal');
           doc.setFontSize(9);
-          doc.setTextColor(120, 120, 120);
-          doc.text(sub, pageW / 2, y, { align: 'center' });
-          y += 16;
+          doc.text('TOTAL PRICE', margin + 14, y + 18);
+          doc.setTextColor(10, 37, 64);
+          doc.setFont('helvetica', 'bold');
+          doc.setFontSize(18);
+          doc.text(`€ ${total.toLocaleString('en-US')}`, margin + 14, y + 40);
+          const sub = [p.participants, p.date_range].filter(Boolean).join('  ·  ');
+          if (sub) {
+            doc.setFont('helvetica', 'normal');
+            doc.setFontSize(9);
+            doc.setTextColor(120, 120, 120);
+            doc.text(sub, margin + 14, y + 55);
+          }
         }
+
+        if (p.wetravel_checkout_url) {
+          const btnW = 150;
+          const btnH = 34;
+          const btnX = pageW - margin - 14 - btnW;
+          const btnY = y + (boxH - btnH) / 2;
+          doc.setFillColor(10, 37, 64);
+          doc.roundedRect(btnX, btnY, btnW, btnH, 6, 6, 'F');
+          doc.setTextColor(255, 255, 255);
+          doc.setFont('helvetica', 'bold');
+          doc.setFontSize(13);
+          doc.textWithLink('BOOK NOW', btnX + btnW / 2, btnY + 22, {
+            align: 'center',
+            url: p.wetravel_checkout_url,
+          });
+          doc.link(btnX, btnY, btnW, btnH, { url: p.wetravel_checkout_url });
+        }
+
+        y += boxH + 18;
       }
 
       const autoIncluded = days
