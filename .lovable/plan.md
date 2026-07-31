@@ -1,149 +1,50 @@
-## Diagnóstico confirmado
+# Travel Plan manual + importação de produtos do catálogo
 
-O erro atual vem da função de geração do Travel Plan a falhar por **limite de memória excedido** quando existe PDF anexado como “Exact Itinerary”.
+A geração AI mantém-se exactamente como está. Adiciona-se um caminho alternativo, manual, com importação de produtos já validados no catálogo YT.
 
-Hoje o fluxo faz isto:
+## 1. Ecrã inicial do Travel Planner (sem plano)
 
-1. descarrega o PDF do storage;
-2. carrega o ficheiro inteiro em memória;
-3. converte tudo para base64;
-4. envia o PDF completo para o modelo multimodal;
-5. se o PDF for pesado, repetido, com imagens/scans, ou grande demais, a função rebenta antes de concluir.
+Hoje existe apenas o botão "Gerar Plano de Viagem". Passa a haver dois botões lado a lado:
 
-Resultado: no frontend aparece apenas “Edge Function returned a non-2xx status code”.
+- **Gerar Plano de Viagem (AI)** — inalterado.
+- **Criar Manualmente** — cria um plano vazio (título = destino, 0 dias) e entra directamente em modo Edição.
 
-## Objetivo
+## 2. Adicionar dia (novo, hoje não existe botão de dia)
 
-Garantir que a geração **quase nunca falha** e, quando algo externo falhar, o agente humano recebe uma mensagem clara e uma alternativa operacional.
-
-A lógica deve ser:
+No fim da lista de dias, em modo Edição, aparece:
 
 ```text
-PDF / mapa / notas humanas
-        ↓
-pré-processar contexto de forma leve
-        ↓
-gerar Travel Plan estruturado
-        ↓
-validar JSON
-        ↓
-se falhar, reparar / tentar fallback
-        ↓
-se ainda falhar, devolver erro claro e útil
+[ + Dia manual ]   [ + Dia a partir de produto ]
 ```
 
-## Plano de implementação
+- **Dia manual**: cria um dia vazio com título/subtítulo editáveis, sem itens, pronto para adicionar itens um a um (já suportado) e imagens (já suportado).
+- **Dia a partir de produto**: abre um selector de produtos do catálogo.
 
-### 1. Separar leitura do PDF da geração final
+Cada dia existente ganha também, na barra do dia, uma acção **Importar produto** que acrescenta os itens/imagens do produto ao dia actual (sem apagar o que lá está), para dias com mais do que uma experiência.
 
-Em vez de enviar sempre o PDF completo para o modelo final, criar um passo intermédio dentro da função:
+## 3. Selector de produtos
 
-- se houver Exact Itinerary PDF, primeiro tentar extrair/resumir a estrutura essencial:
-  - número de dias;
-  - cidade/base por dia;
-  - título operacional do dia;
-  - paragens principais;
-  - experiências/serviços descritos;
-  - noites;
-  - notas importantes.
+Modal com pesquisa por nome/localização/categoria, listando produtos do catálogo importado e mostrando miniatura, nome, localização e duração. Só aparecem os produtos **prontos para uso comercial** (visíveis e com estado de workflow aprovado); o título/resumo editorial interno tem prioridade sobre o do Magpie.
 
-Depois, o gerador final recebe **texto estruturado leve**, não o PDF inteiro pesado.
+Ao escolher um produto, o dia é auto-preenchido:
 
-Isto reduz muito memória, custo e falhas.
+- **Título do dia**: título editorial ou nome do produto
+- **Subtítulo**: resumo editorial ou sumário do produto
+- **Itens**: destaques do produto e, quando não existem destaques, os itens incluídos — cada um como item do dia, com a duração do produto no primeiro item
+- **Imagens**: até 2 imagens da galeria do produto
+- **Data**: calculada automaticamente a partir da data de início da lead, como já acontece
 
-### 2. Criar fallback quando o PDF for pesado ou problemático
+Tudo fica imediatamente editável (bold, drag & drop, undo com Ctrl+Z) porque reutiliza a estrutura de dias existente. A importação é uma cópia pontual: alterações posteriores no Magpie não mexem no plano já criado.
 
-Adicionar proteções antes de processar o PDF:
+## 4. Fora de âmbito
 
-- limite de tamanho seguro;
-- se o PDF for demasiado grande, não carregar tudo cegamente;
-- se a leitura multimodal falhar, tentar uma chamada alternativa apenas com o contexto textual disponível;
-- se o PDF não puder ser interpretado, devolver mensagem clara: “PDF demasiado pesado / ilegível — exportar versão mais leve ou copiar o esqueleto para notas”.
+- Nenhuma alteração à função de geração AI, aos prompts ou às edge functions.
+- Nenhuma escrita para o Magpie.
+- Preços dos produtos não entram no Travel Plan (custos continuam a ser tratados no separador Custos).
 
-### 3. Melhorar a cadeia de modelos
+## Detalhes técnicos
 
-A função já tem fallback Lovable AI → Gemini direto → OpenAI → Claude, mas com PDF anexado os fallbacks atuais ficam fracos porque OpenAI/Claude estão a receber só texto e não o PDF.
-
-Vou ajustar para:
-
-- usar multimodal apenas quando necessário;
-- se o PDF já foi convertido em estrutura textual, todos os modelos seguintes podem usar esse texto;
-- manter Gemini pago como caminho principal para PDF/imagem;
-- usar OpenAI/Claude como fallback real com o contexto já extraído.
-
-### 4. Reduzir `max_tokens` e carga por tentativa
-
-A função pede respostas muito grandes (`32768 tokens`) em todas as tentativas. Para propostas longas pode fazer sentido, mas aumenta risco de memória/timeouts.
-
-Vou ajustar para um valor mais seguro e progressivo:
-
-- tentativa normal com output controlado;
-- se o programa tiver muitos dias, manter estrutura compacta;
-- preservar qualidade sem pedir output excessivo logo à partida.
-
-### 5. Tornar o erro visível e acionável no frontend
-
-No Travel Planner, quando a função falhar, mostrar a causa real quando disponível:
-
-- “PDF demasiado pesado”;
-- “AI sem créditos / quota”;
-- “modelo não conseguiu devolver JSON válido”;
-- “timeout / memória excedida”.
-
-Hoje o utilizador vê só erro genérico da função. Isso não ajuda a operação.
-
-### 6. Guardar melhor o estado do Exact Itinerary
-
-Após upload do PDF, validar no frontend:
-
-- tipo PDF;
-- tamanho máximo recomendado;
-- mostrar nome/tamanho do ficheiro;
-- aviso se for pesado;
-- manter indicação clara de “Modo Exact ativo”.
-
-### 7. Adicionar validação e reparação do JSON final
-
-Depois da AI responder:
-
-- validar se existem `trip_title`, `narrative`, `days`;
-- garantir que cada dia tem `day_number`, `title`, `bullets`, `overnight`;
-- normalizar bullets antigas/string/object;
-- se o JSON vier parcial, tentar reparar de forma mais robusta;
-- se o PDF indicar 10 dias, mas a AI devolver menos, tentar uma segunda geração só para completar dias em falta.
-
-## Resultado esperado
-
-Depois desta alteração:
-
-- PDFs pequenos/médios devem gerar sempre com muito mais estabilidade;
-- PDFs pesados deixam de rebentar a função por memória;
-- Gemini pago continua a ser o motor principal;
-- OpenAI/Claude passam a funcionar melhor como fallback porque recebem contexto textual limpo;
-- o agente deixa de ver erro genérico e passa a ver uma explicação prática;
-- o Travel Planner fica mais fiável para o fluxo real da equipa.
-
-## Ficheiros a alterar
-
-- `supabase/functions/generate-travel-plan/index.ts`
-  - refatorar processamento de anexos;
-  - adicionar pré-extração/normalização do PDF;
-  - melhorar fallback AI;
-  - melhorar erros.
-
-- `src/components/trip/TravelPlanProposal.tsx`
-  - mostrar erro real da função no toast;
-  - melhorar mensagem quando há falha de geração.
-
-- `src/components/leads/LeadContextAttachments.tsx`
-  - mostrar nome/tamanho do PDF;
-  - bloquear ou avisar PDFs demasiado pesados.
-
-## Critério de sucesso
-
-Testar com uma lead com Exact Itinerary PDF anexado e confirmar que:
-
-1. a função já não falha por memória;
-2. se o PDF for aceite, o Travel Plan segue o esqueleto do PDF;
-3. se o PDF for problemático, a app explica o motivo;
-4. a geração continua funcional sem PDF e com mapa/imagem.
+- `src/components/trip/TravelPlanProposal.tsx`: botão "Criar Manualmente" no estado vazio; `addDay('manual' | 'product')`; acção de importar produto por dia; renumeração de `day_number` e recálculo de datas ao adicionar/remover dias.
+- Novo `src/components/trip/ProductPickerDialog.tsx`: modal de selecção, alimentado por `useImportedProducts()` de `src/hooks/useMagpie.ts`, filtrando por `product_local.is_visible` e `workflow_status`.
+- Novo helper `productToProposalDay()` que mapeia `magpie_products` (highlights, included, images, duration_text) para `ProposalDay`, usando `firstImage`/`local()` já existentes.
+- Sem migrações de base de dados e sem novas edge functions.
