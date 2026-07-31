@@ -844,7 +844,7 @@ const PRICING_LABELS: Record<string, { total: string; included: string; payment:
   de: { total: 'Gesamtpreis', included: 'Leistungen', payment: 'Reservierungs- und Zahlungsbedingungen', cancellation: 'Storno- und Erstattungsbedingungen', notes: 'Wichtige Hinweise' },
 };
 
-const PricingConditions = ({ proposal, lang }: { proposal: any; lang: string }) => {
+const PricingConditions = ({ proposal, lang, dict }: { proposal: any; lang: string; dict: ReturnType<typeof getProposalDict> }) => {
   const total = Number(proposal.total_value_eur) || 0;
   const closing = proposal.closing_terms || {};
   const L = PRICING_LABELS[lang] || PRICING_LABELS.en;
