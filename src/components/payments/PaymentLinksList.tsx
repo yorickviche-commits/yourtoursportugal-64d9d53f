@@ -21,6 +21,18 @@ interface Props {
 const PaymentLinksList = ({ leadId }: Props) => {
   const { data: links = [], isLoading } = usePaymentLinks(leadId);
   const publish = usePublishPaymentLink();
+  const setActive = useSetPaymentLinkActive();
+
+  const toggleActive = (l: { id: string; url: string | null; is_active: boolean }, next: boolean) => {
+    if (next && !l.url) {
+      toast.error('Publica o link antes de o ativar.');
+      return;
+    }
+    setActive.mutateAsync({ id: l.id, leadId, url: l.url, active: next })
+      .then(() => toast.success(next ? 'Botão "Book Now" ativado na proposta e no PDF.' : 'Botão "Book Now" desativado.'))
+      .catch((e: any) => toast.error(e.message || 'Erro ao atualizar.'));
+  };
+
 
   const copy = (url: string) => {
     navigator.clipboard.writeText(url);
