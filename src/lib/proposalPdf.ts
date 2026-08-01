@@ -583,7 +583,7 @@ export async function buildProposalPdfBase64(p: ProposalLite, weblink: string): 
   const client = sanitize(p.client_name || 'Client');
   const dates = sanitize(p.date_range || '');
   const program = sanitize(p.title || 'Travel Plan');
-  const parts = [ytCode, client, dates, program].filter(Boolean);
+  const parts = [ytCode, client, program, dates].filter(Boolean);
   const filename = `${parts.join(' - ').slice(0, 180)}.pdf`;
   return { base64, filename };
 }
