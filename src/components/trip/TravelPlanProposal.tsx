@@ -1909,7 +1909,56 @@ const TravelPlanProposal = ({
           </div>
         </div>
         )}
+
+        {/* ─── REVIEWS & ABOUT US (last page) ─── */}
+        <div className="border-t-2 border-slate-200 bg-white p-6 md:p-10 space-y-8 print:break-before-page">
+          <a
+            href={ALL_REVIEWS_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="block rounded-xl overflow-hidden border border-slate-200"
+          >
+            <img
+              src={reviewsBanner.url}
+              alt="Our Reviews — Your Tours Portugal"
+              className="w-full h-auto aspect-[16/9] object-cover"
+            />
+          </a>
+
+          <div>
+            <h3 className="text-base font-serif font-bold text-slate-800 mb-3">{d.travellersSay}</h3>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {d.reviewsList.map((r, i) => (
+                <div key={i} className="rounded-lg border border-slate-200 bg-slate-50 p-3" style={{ printColorAdjust: 'exact', WebkitPrintColorAdjust: 'exact' } as any}>
+                  <p className="text-[11px] text-amber-500 tracking-widest">{'★'.repeat(r.stars)}</p>
+                  <p className="text-xs text-slate-700 mt-1 leading-relaxed">{r.text}</p>
+                  <p className="text-[11px] font-semibold text-slate-800 mt-2">{r.name}</p>
+                </div>
+              ))}
+            </div>
+            <div className="flex justify-center mt-4">
+              <a
+                href={ALL_REVIEWS_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center justify-center rounded-md bg-[#0a2540] px-6 py-2.5 text-xs font-extrabold uppercase tracking-wider text-white no-underline"
+                style={{ backgroundColor: '#0a2540', color: '#ffffff', printColorAdjust: 'exact', WebkitPrintColorAdjust: 'exact' } as any}
+              >
+                {REVIEWS_CTA[language?.toLowerCase() as keyof typeof REVIEWS_CTA] || REVIEWS_CTA.en}
+              </a>
+            </div>
+          </div>
+
+          <div>
+            <h3 className="text-base font-serif font-bold text-slate-800 mb-2">{d.aboutUs}</h3>
+            <p className="text-xs text-slate-700 leading-relaxed">{d.aboutBody}</p>
+            <p className="text-[11px] text-slate-500 mt-3">
+              info@yourtoursportugal.com · {d.website}: yourtoursportugal.com
+            </p>
+          </div>
+        </div>
       </div>
+
 
     </div>
   );
