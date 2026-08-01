@@ -1427,6 +1427,15 @@ const TravelPlanProposal = ({
         )}
 
         {/* FULL DAY-BY-DAY */}
+        {viewMode === 'edit' && (
+          <div className="flex items-center gap-2 px-6 py-2 border-b bg-muted/20 print:hidden">
+            <span className="text-xs text-muted-foreground">
+              {displayPlan.days.length} dias · {displayPlan.days.reduce((s, d) => s + d.bullets.length, 0)} rubricas
+            </span>
+            <button type="button" onClick={() => setCollapsedDays(new Set())} className="text-[10px] text-[hsl(var(--info))] hover:underline">Expandir</button>
+            <button type="button" onClick={() => setCollapsedDays(new Set(displayPlan.days.map(d => d.day_number)))} className="text-[10px] text-[hsl(var(--info))] hover:underline">Colapsar</button>
+          </div>
+        )}
         <DragDropContext onDragEnd={onBulletDragEnd}>
         <div className="divide-y">
 
