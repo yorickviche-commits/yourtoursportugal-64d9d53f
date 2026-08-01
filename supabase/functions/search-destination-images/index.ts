@@ -166,15 +166,22 @@ async function tryLovableGateway(query: string, prompt: string, failures: Provid
   }
 }
 
-async function generateWithAI(query: string): Promise<{ image: { url: string; caption: string; photo_id: string } | null; failures: ProviderFailure[] }> {
-  const prompt = `Generate a beautiful, photorealistic travel photograph of: ${query}. Professional travel magazine quality, warm cinematic lighting, vivid colors, strong sense of place. Landscape orientation, no text, no watermark.`;
-  const failures: ProviderFailure[] = [];
+async function generateWithAI(query: string, customPrompt?: string, programContext?: string): Promise<{ image: { url: string; caption: string; photo_id: string } | null; failures: ProviderFailure[] }> {
+  const base = (customPrompt && customPrompt.trim())
+    ? customPrompt.trim()
+    : `Generate a beautiful, photorealistic travel photograph of: ${query}. Professional travel magazine quality, warm cinematic lighting, vivid colors, strong sense of place. Landscape orientation, no text, no watermark.`;
 
-  const gemini = await tryGeminiDirect(query, prompt, failures);
-  if (gemini) { console.log('Image served by: Gemini direct'); return { image: gemini, failures }; }
+  const prompt = programContext && programContext.trim()
+    ? `${base}\n\nTRIP PROGRAM CONTEXT (use these destinations and included experiences as the visual content):\n${programContext.trim()}\n\nStrictly landscape orientation. No text, no letters, no logos, no watermark.`
+    : base;
+
+  const failures: ProviderFailure[] = [];
 
   const openai = await tryOpenAI(query, prompt, failures);
   if (openai) { console.log('Image served by: OpenAI'); return { image: openai, failures }; }
+
+  const gemini = await tryGeminiDirect(query, prompt, failures);
+  if (gemini) { console.log('Image served by: Gemini direct'); return { image: gemini, failures }; }
 
   const gateway = await tryLovableGateway(query, prompt, failures);
   if (gateway) { console.log('Image served by: Lovable gateway'); return { image: gateway, failures }; }
@@ -182,6 +189,7 @@ async function generateWithAI(query: string): Promise<{ image: { url: string; ca
   console.error('All image providers failed for query:', query);
   return { image: null, failures };
 }
+
 
 
 serve(async (req) => {
