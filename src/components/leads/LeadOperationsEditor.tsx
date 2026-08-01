@@ -454,6 +454,7 @@ const LeadOperationsEditor = ({ activeVersion, leadId, leadCode, pvpTotal = 0, s
                   <span className="text-[10px] text-muted-foreground mr-3">
                     NET €{dayNet.toFixed(0)} · Real €{dayReal.toFixed(0)}
                   </span>
+                  <span className="text-[10px] text-muted-foreground mr-3">{dayItems.length} rubricas</span>
                   <span className="text-[10px] text-muted-foreground">{dayConfirmed}/{dayItems.length} confirmados</span>
                 </CollapsibleTrigger>
 
