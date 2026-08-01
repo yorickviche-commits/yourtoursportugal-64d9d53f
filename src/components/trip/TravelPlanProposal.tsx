@@ -1756,9 +1756,11 @@ const TravelPlanProposal = ({
                                     return { ...p, days: newDays };
                                   });
                                 }}
-                                searchContext={imgContext}
-                                aspectRatio="landscape"
-                                dedupScope={leadId ? { type: 'lead', id: leadId } : undefined}
+                                 searchContext={imgContext}
+                                 aspectRatio="landscape"
+                                 dedupScope={leadId ? { type: 'lead', id: leadId } : undefined}
+                                 programContext={programContext}
+
                               />
                             );
                           })}
