@@ -554,6 +554,23 @@ export async function buildProposalPdfBase64(p: ProposalLite, weblink: string): 
       align: 'center',
       url: ALL_REVIEWS_URL,
     });
+    doc.link(btnX, btnY, btnW, btnH, { url: ALL_REVIEWS_URL });
+
+    // About Your Tours Portugal
+    const aboutY = Math.min(btnY + btnH + 30, pageH - 90);
+    doc.setTextColor(10, 37, 64);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(13);
+    doc.text('About Your Tours Portugal', pageW / 2, aboutY, { align: 'center' });
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(9.5);
+    doc.setTextColor(80, 80, 80);
+    const aboutBody = 'Your Tours Portugal is a bespoke travel agency specialised in authentic Portuguese experiences. We craft tailor-made itineraries that reveal the very best of local culture, gastronomy and craftsmanship with passionate local guides.';
+    const aboutLines = doc.splitTextToSize(aboutBody, pageW - 120);
+    doc.text(aboutLines, pageW / 2, aboutY + 16, { align: 'center' });
+    doc.setTextColor(120, 120, 120);
+    doc.setFontSize(9);
+    doc.text('info@yourtoursportugal.com  ·  yourtoursportugal.com', pageW / 2, aboutY + 16 + aboutLines.length * 12 + 8, { align: 'center' });
   } catch (e) {
     console.warn('reviews page failed', e);
   }
