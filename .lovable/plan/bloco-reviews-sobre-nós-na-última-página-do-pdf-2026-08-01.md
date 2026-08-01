@@ -16,4 +16,6 @@ O bloco aparece tanto na pré-visualização do Travel Plan (modo leitura) como 
 
 - `src/components/trip/TravelPlanProposal.tsx`: novo bloco no fim do `data-print-root`, com `print:break-before-page`, usando `t` (já obtido via `getLabels(language)`) para `travellersSay`, `reviewsList`, `aboutUs`, `aboutBody`, `website`. Import do asset `@/assets/our-reviews-banner.png.asset.json`. Cores de fundo com `printColorAdjust: 'exact'` onde necessário.
 - Nada muda no `handlePrintPdf` nem no nome do ficheiro.
-- `src/lib/proposalPdf.ts` (PDF anexado por email, jsPDF): mantém a página de reviews existente e ganha, abaixo do botão "See All Reviews", um pequeno bloco "About Your Tours Portugal" com o mesmo texto, para consistência.
+- `src/lib/proposalPdf.ts` (PDF anexado por email, jsPDF): mantém a página de reviews existente e ganha, abaixo do botão "See All Reviews", um pequeno bloco "About Your Tours Portugal" com o mesmo texto, para consistência.  
+  
+no pdf, devem estar os mesmos buttons e linkagens para see all reviews, que leva ao link externo da pagina dedicada your torus ds reviews 
