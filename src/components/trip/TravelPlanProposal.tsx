@@ -1281,15 +1281,21 @@ const TravelPlanProposal = ({
           <Button variant="outline" size="sm" className="text-xs gap-1" onClick={() => {
             const startD = plan?.days[0]?.date || travelDates || '';
             const endD = plan?.days[plan.days.length - 1]?.date || travelEndDate || '';
-            const dates = [startD, endD].filter(Boolean).join('_');
-            const sanitize = (s: string) => (s || '').replace(/[\\/:*?"<>|]/g, '').replace(/\s+/g, '_').trim();
+            const dates = [startD, endD].filter(Boolean).join(' - ');
+            const sanitize = (s: string) => (s || '').replace(/[\\/:*?"<>|]/g, '').replace(/\s+/g, ' ').trim();
             const idPart = sanitize(ytId || leadCode || 'YT');
-            const name = [idPart, sanitize(clientName), sanitize(plan?.trip_title || destination), sanitize(dates)].filter(Boolean).join('_');
+            const name = [idPart, sanitize(clientName), sanitize(plan?.trip_title || destination), sanitize(dates)]
+              .filter(Boolean).join(' - ').slice(0, 180);
             const prevTitle = document.title;
-            document.title = name || prevTitle;
+            if (name) document.title = name;
+            const restore = () => {
+              document.title = prevTitle;
+              window.removeEventListener('afterprint', restore);
+            };
+            window.addEventListener('afterprint', restore);
             window.print();
-            setTimeout(() => { document.title = prevTitle; }, 1000);
           }}>
+
             <FileText className="h-3 w-3" /> PDF
           </Button>
           <Button size="sm" className="text-xs gap-1 bg-[hsl(var(--success))] hover:bg-[hsl(var(--success))]/90 text-white" onClick={onGoToCosting}>
