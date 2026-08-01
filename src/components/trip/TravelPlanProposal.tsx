@@ -1350,33 +1350,37 @@ const TravelPlanProposal = ({
                   value={displayPlan.narrative} onChange={v => setPlan(p => p ? { ...p, narrative: v } : p)} />
               </div>
             ) : (
-              <div className="pr-28">
-                <RichText as="h1" className="text-2xl md:text-3xl font-serif font-bold tracking-tight" value={displayPlan.trip_title} />
-                <p className="text-lg text-white/80 mt-1">{clientName}</p>
-                <div className="flex items-center gap-3 mt-4 text-sm text-white/60">
-                  <span>ID: {displayId}</span><span>·</span>
-                  <span>{displayPlan.days[0]?.date} – {displayPlan.days[displayPlan.days.length - 1]?.date}</span><span>·</span>
-                  <span>{t.adult(pax)}{paxChildren ? ` + ${t.child(paxChildren)}` : ''}{paxInfants ? ` + ${t.infant(paxInfants)}` : ''}</span>
+              <div className="flex flex-col md:flex-row md:items-end gap-6">
+                <div className="flex-1 min-w-0 pr-28 md:pr-0">
+                  <RichText as="h1" className="text-2xl md:text-3xl font-serif font-bold tracking-tight" value={displayPlan.trip_title} />
+                  <p className="text-lg text-white/80 mt-1">{clientName}</p>
+                  <div className="flex items-center gap-3 mt-4 text-sm text-white/60">
+                    <span>ID: {displayId}</span><span>·</span>
+                    <span>{displayPlan.days[0]?.date} – {displayPlan.days[displayPlan.days.length - 1]?.date}</span><span>·</span>
+                    <span>{t.adult(pax)}{paxChildren ? ` + ${t.child(paxChildren)}` : ''}{paxInfants ? ` + ${t.infant(paxInfants)}` : ''}</span>
+                  </div>
+                  <RichText as="p" className="text-sm text-white/80 mt-4 leading-relaxed" value={displayPlan.narrative} preserveNewlines />
                 </div>
-                <RichText as="p" className="text-sm text-white/80 mt-4 leading-relaxed max-w-3xl" value={displayPlan.narrative} preserveNewlines />
+                {wetravelCheckoutUrl && (
+                  <div className="shrink-0 w-full md:w-[220px] text-left md:text-right">
+                    <a
+                      href={wetravelCheckoutUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-block w-full text-center px-6 py-3 rounded-md bg-[#0a2540] text-white text-sm font-extrabold tracking-wide border border-white/30"
+                    >
+                      BOOK NOW
+                    </a>
+                    <p className="text-[9px] leading-snug text-white/70 mt-2">
+                      Book with deposit · 100% refundable if plans change / cancel* —{' '}
+                      <a href={TERMS_URL} target="_blank" rel="noopener noreferrer" className="underline">
+                        see terms and conditions
+                      </a>
+                    </p>
+                  </div>
+                )}
               </div>
             )}
-          </div>
-          {viewMode === 'preview' && wetravelCheckoutUrl && (
-            <div className="absolute bottom-6 right-6 md:right-12 text-right max-w-[240px]">
-              <a
-                href={wetravelCheckoutUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-block px-6 py-2.5 rounded-md bg-[#0a2540] text-white text-sm font-extrabold tracking-wide border border-white/30"
-              >
-                BOOK NOW
-              </a>
-              <p className="text-[9px] leading-snug text-white/70 mt-1.5">
-                Book with deposit · 100% refundable if plans change / cancel* — see terms and conditions below
-              </p>
-            </div>
-          )}
           <div className="absolute top-2 right-2 print:hidden">
             <SectionAIButton label="AI" active={activeChat === 'narrative'} loading={sectionLoading === 'narrative'} onClick={() => toggleChat('narrative')} />
           </div>
