@@ -16,9 +16,12 @@ interface ProposalImagePickerProps {
   className?: string;
   aspectRatio?: 'landscape' | 'square';
   dedupScope?: PhotoScope;
+  basePrompt?: string;
+  programContext?: string;
 }
 
 type UnsplashResult = { url: string; caption: string; photo_id?: string };
+
 
 export default function ProposalImagePicker({
   currentUrl,
