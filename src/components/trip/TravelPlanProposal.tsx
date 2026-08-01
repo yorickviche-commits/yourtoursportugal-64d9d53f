@@ -565,6 +565,21 @@ const TravelPlanProposal = ({
     }, 300);
   }, [buildPdfFilename]);
 
+  // Keep the document title aligned with the custom PDF filename while this
+  // view is mounted, so any print path (button, Ctrl+P) saves as
+  // "YT#### - Client - Program - Dates".
+  useEffect(() => {
+    const filename = buildPdfFilename();
+    if (!filename) return;
+    const previous = document.title;
+    document.title = filename;
+    return () => {
+      document.title = previous;
+    };
+  }, [buildPdfFilename]);
+
+
+
 
   // Load WeTravel checkout if already set on the proposal
   useQuery({
