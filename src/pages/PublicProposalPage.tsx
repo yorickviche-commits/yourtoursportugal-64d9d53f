@@ -8,6 +8,9 @@ import reviewsBanner from '@/assets/our-reviews-banner.png.asset.json';
 import { toMapEmbedSrc } from '@/lib/mapEmbed';
 import { RichText, stripBoldMarkers } from '@/lib/richText';
 
+const TERMS_URL = 'https://drive.google.com/file/d/12AkvW2Ob0LtcooaciWY4e-nEx7hlOnQC/view?usp=sharing';
+const WHATSAPP_URL = 'https://wa.me/351919473029';
+
 
 // Lazy load map to avoid react-leaflet context crash
 const LazyMap = lazy(() => import('@/components/proposal/ProposalMap'));
