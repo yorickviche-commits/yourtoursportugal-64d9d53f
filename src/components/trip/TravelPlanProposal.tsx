@@ -494,6 +494,54 @@ const TravelPlanProposal = ({
   const [wetravelCheckoutUrl, setWetravelCheckoutUrl] = useState<string | null>(null);
   const [wetravelDepositEur, setWetravelDepositEur] = useState<number | null>(null);
 
+  const buildPdfFilename = useCallback(() => {
+    const sanitize = (value: string) => (value || '')
+      .replace(/[\\/:*?"<>|]/g, '')
+      .replace(/\s+/g, ' ')
+      .trim();
+    const localeByLanguage: Record<string, string> = {
+      EN: 'en-GB', FR: 'fr-FR', ES: 'es-ES', PT: 'pt-PT', IT: 'it-IT', DE: 'de-DE',
+    };
+    const locale = localeByLanguage[language] || 'en-GB';
+    const formatDate = (value?: string) => {
+      if (!value) return '';
+      const iso = value.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+      if (!iso) return sanitize(value);
+      const date = new Date(Date.UTC(Number(iso[1]), Number(iso[2]) - 1, Number(iso[3])));
+      return new Intl.DateTimeFormat(locale, {
+        day: '2-digit', month: 'short', year: 'numeric', timeZone: 'UTC',
+      }).format(date);
+    };
+    const id = sanitize(ytId || leadCode || 'YT');
+    const program = sanitize(plan?.trip_title || destination || 'Travel Plan');
+    const start = formatDate(travelDates) || sanitize(plan?.days[0]?.date || '');
+    const end = formatDate(travelEndDate) || sanitize(plan?.days[plan.days.length - 1]?.date || '');
+    const dates = start && end && start !== end ? `${start} - ${end}` : start || end;
+
+    return [id, sanitize(clientName), program, dates]
+      .filter(Boolean)
+      .join(' - ')
+      .slice(0, 180);
+  }, [clientName, destination, language, leadCode, plan, travelDates, travelEndDate, ytId]);
+
+  const handlePrintPdf = useCallback(() => {
+    const filename = buildPdfFilename();
+    if (!filename) return;
+
+    const applyFilename = () => {
+      document.title = filename;
+      const titleElement = document.querySelector('title');
+      if (titleElement) titleElement.textContent = filename;
+    };
+    applyFilename();
+    window.addEventListener('beforeprint', applyFilename, { once: true });
+
+    requestAnimationFrame(() => requestAnimationFrame(() => {
+      applyFilename();
+      window.print();
+    }));
+  }, [buildPdfFilename]);
+
   // Load WeTravel checkout if already set on the proposal
   useQuery({
     queryKey: ['proposal_wetravel', leadId],
@@ -1287,24 +1335,7 @@ const TravelPlanProposal = ({
           <Button variant="outline" size="sm" className="text-xs gap-1" onClick={handleSave} disabled={saving}>
             {saving ? <Loader2 className="h-3 w-3 animate-spin" /> : <Save className="h-3 w-3" />} Guardar
           </Button>
-          <Button variant="outline" size="sm" className="text-xs gap-1" onClick={() => {
-            const startD = plan?.days[0]?.date || travelDates || '';
-            const endD = plan?.days[plan.days.length - 1]?.date || travelEndDate || '';
-            const dates = [startD, endD].filter(Boolean).join(' - ');
-            const sanitize = (s: string) => (s || '').replace(/[\\/:*?"<>|]/g, '').replace(/\s+/g, ' ').trim();
-            const idPart = sanitize(ytId || leadCode || 'YT');
-            const name = [idPart, sanitize(clientName), sanitize(plan?.trip_title || destination), sanitize(dates)]
-              .filter(Boolean).join(' - ').slice(0, 180);
-            if (name) document.title = name;
-            // Chrome reads document.title when the print dialog opens — give it a tick.
-            setTimeout(() => {
-              const restore = () => {
-                window.removeEventListener('afterprint', restore);
-              };
-              window.addEventListener('afterprint', restore);
-              window.print();
-            }, 200);
-          }}>
+          <Button variant="outline" size="sm" className="text-xs gap-1" onClick={handlePrintPdf}>
 
             <FileText className="h-3 w-3" /> PDF
           </Button>
