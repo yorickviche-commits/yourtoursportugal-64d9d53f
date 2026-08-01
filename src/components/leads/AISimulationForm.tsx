@@ -120,8 +120,8 @@ const AISimulationForm = ({ open, onOpenChange }: Props) => {
                 <Input placeholder="Client full name" value={form.name} onChange={e => update('name', e.target.value)} />
               </div>
               <div className="space-y-1.5">
-                <label className="text-sm font-medium text-foreground">Email *</label>
-                <Input type="email" placeholder="email@example.com" value={form.email} onChange={e => update('email', e.target.value)} />
+                <label className="text-sm font-medium text-foreground">Email / WhatsApp *</label>
+                <Input placeholder="email@example.com or +351..." value={form.email} onChange={e => update('email', e.target.value)} />
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1.5">

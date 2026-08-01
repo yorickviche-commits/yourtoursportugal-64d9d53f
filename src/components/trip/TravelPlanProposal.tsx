@@ -21,8 +21,6 @@ import ProductPickerDialog from './ProductPickerDialog';
 import { productToProposalDay, productBullets, imageList } from '@/lib/productToDay';
 import type { ImportedProduct } from '@/hooks/useMagpie';
 import { useUsedPhotos, extractPhotoId } from '@/hooks/useUsedPhotos';
-import { buildProposalPdfBase64 } from '@/lib/proposalPdf';
-import { buildProposalFilename, downloadBase64Pdf } from '@/lib/proposalFilename';
 
 // ─── Types ───────────────────────────────────────────────
 export interface ProposalImage {
@@ -496,6 +494,54 @@ const TravelPlanProposal = ({
   const [wetravelCheckoutUrl, setWetravelCheckoutUrl] = useState<string | null>(null);
   const [wetravelDepositEur, setWetravelDepositEur] = useState<number | null>(null);
 
+  const buildPdfFilename = useCallback(() => {
+    const sanitize = (value: string) => (value || '')
+      .replace(/[\\/:*?"<>|]/g, '')
+      .replace(/\s+/g, ' ')
+      .trim();
+    const localeByLanguage: Record<string, string> = {
+      EN: 'en-GB', FR: 'fr-FR', ES: 'es-ES', PT: 'pt-PT', IT: 'it-IT', DE: 'de-DE',
+    };
+    const locale = localeByLanguage[language] || 'en-GB';
+    const formatDate = (value?: string) => {
+      if (!value) return '';
+      const iso = value.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+      if (!iso) return sanitize(value);
+      const date = new Date(Date.UTC(Number(iso[1]), Number(iso[2]) - 1, Number(iso[3])));
+      return new Intl.DateTimeFormat(locale, {
+        day: '2-digit', month: 'short', year: 'numeric', timeZone: 'UTC',
+      }).format(date);
+    };
+    const id = sanitize(ytId || leadCode || 'YT');
+    const program = sanitize(plan?.trip_title || destination || 'Travel Plan');
+    const start = formatDate(travelDates) || sanitize(plan?.days[0]?.date || '');
+    const end = formatDate(travelEndDate) || sanitize(plan?.days[plan.days.length - 1]?.date || '');
+    const dates = start && end && start !== end ? `${start} - ${end}` : start || end;
+
+    return [id, sanitize(clientName), program, dates]
+      .filter(Boolean)
+      .join(' - ')
+      .slice(0, 180);
+  }, [clientName, destination, language, leadCode, plan, travelDates, travelEndDate, ytId]);
+
+  const handlePrintPdf = useCallback(() => {
+    const filename = buildPdfFilename();
+    if (!filename) return;
+
+    const applyFilename = () => {
+      document.title = filename;
+      const titleElement = document.querySelector('title');
+      if (titleElement) titleElement.textContent = filename;
+    };
+    applyFilename();
+    window.addEventListener('beforeprint', applyFilename, { once: true });
+
+    requestAnimationFrame(() => requestAnimationFrame(() => {
+      applyFilename();
+      window.print();
+    }));
+  }, [buildPdfFilename]);
+
   // Load WeTravel checkout if already set on the proposal
   useQuery({
     queryKey: ['proposal_wetravel', leadId],
@@ -570,54 +616,6 @@ const TravelPlanProposal = ({
     });
     return Math.round(total);
   })();
-
-  const handlePrintPdf = useCallback(async () => {
-    if (!plan) return;
-    const dateRange = [travelDates, travelEndDate].filter(Boolean).join(' – ');
-    const proposalForPdf = {
-      id: leadId,
-      booking_ref: ytId || leadCode,
-      client_name: clientName,
-      title: plan.trip_title || destination || 'Travel Plan',
-      date_range: dateRange,
-      start_date: travelDates,
-      end_date: travelEndDate,
-      participants: `${pax} travelers`,
-      hero_image_url: plan.cover_image?.url || null,
-      summary_text: plan.narrative,
-      total_value_eur: totalPVP || null,
-      language,
-      wetravel_checkout_url: wetravelCheckoutUrl,
-      days: plan.days.map(day => ({
-        day_number: day.day_number,
-        title: day.title,
-        date: day.date,
-        subtitle: day.subtitle,
-        items: day.bullets.map(bullet => toBulletObj(bullet).text),
-        accommodation: day.overnight,
-        cover_image_url: day.images?.[0]?.url,
-        images: day.images,
-        map_url: day.mapUrl,
-      })),
-      closing_terms: closing,
-    };
-    const filename = buildProposalFilename({
-      ytId: ytId || leadCode,
-      clientName,
-      programName: plan.trip_title || destination,
-      startDate: travelDates,
-      endDate: travelEndDate,
-      language,
-    });
-    try {
-      const { base64 } = await buildProposalPdfBase64(proposalForPdf, '');
-      downloadBase64Pdf(base64, filename);
-      sonnerToast.success(`PDF gerado: ${filename}`);
-    } catch (error) {
-      console.error('PDF download failed', error);
-      sonnerToast.error('Não foi possível gerar o PDF');
-    }
-  }, [clientName, closing, destination, language, leadCode, leadId, pax, plan, totalPVP, travelDates, travelEndDate, wetravelCheckoutUrl, ytId]);
 
   const hydratedRef = useRef(false);
   if (savedPlan && !plan && !hydratedRef.current) {
@@ -982,7 +980,6 @@ const TravelPlanProposal = ({
         await supabase.from('proposals').insert({
           public_token: token,
           lead_id: leadId,
-          booking_ref: ytId || leadCode,
           title: plan.trip_title,
           client_name: clientName,
           date_range: dateRange,
@@ -1899,6 +1896,19 @@ const TravelPlanProposal = ({
         )}
       </div>
 
+      {/* Sticky WhatsApp — digital only (hidden in print/PDF) */}
+      <a
+        href="https://wa.me/351919473029"
+        target="_blank"
+        rel="noopener noreferrer"
+        aria-label="Chat with our travel experts on WhatsApp"
+        className="print:hidden fixed left-4 bottom-6 z-50 flex items-center gap-2 rounded-full bg-[#25D366] text-white shadow-lg hover:shadow-xl transition px-3 py-3 md:px-4"
+      >
+        <svg viewBox="0 0 24 24" className="h-5 w-5 fill-current" aria-hidden="true">
+          <path d="M12.04 2C6.6 2 2.2 6.4 2.2 11.84c0 1.9.53 3.68 1.46 5.2L2 22l5.1-1.62a9.8 9.8 0 0 0 4.94 1.33c5.43 0 9.84-4.4 9.84-9.84C21.88 6.4 17.47 2 12.04 2Zm5.71 13.9c-.24.68-1.4 1.3-1.93 1.35-.53.05-1.03.24-2.92-.6-2.28-1.02-3.7-3.4-3.82-3.56-.12-.16-.9-1.24-.9-2.37 0-1.13.6-1.68.81-1.92.21-.24.46-.3.62-.3.16 0 .32 0 .46.01.15.01.35-.06.54.42.2.48.66 1.66.72 1.78.06.12.1.26.02.42-.08.16-.4.56-.57.75-.12.14-.26.3-.1.58.16.28.7 1.18 1.5 1.9 1.03.92 1.42 1.03 1.7 1.15.2.09.35.06.49-.08.16-.16.62-.72.79-.97.16-.24.33-.2.55-.12.22.08 1.4.66 1.64.78.24.12.4.18.46.28.06.1.06.6-.18 1.28Z" />
+        </svg>
+        <span className="hidden md:inline text-sm font-semibold">Chat with us</span>
+      </a>
     </div>
   );
 };

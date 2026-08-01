@@ -1,6 +1,6 @@
 // Public OG-preview endpoint for shared proposal links.
 // Serves HTML with proper Open Graph / Twitter meta tags (image, title, description)
-// so social crawlers render a rich card.
+// so WhatsApp / Slack / iMessage / Facebook crawlers render a rich card.
 // Social crawlers receive this HTML. Human visitors are redirected to the SPA
 // at /proposal/:token with a real HTTP redirect so crawlers do not follow a
 // meta-refresh and lose the proposal-specific tags.
@@ -28,7 +28,7 @@ function stripHtml(s: string): string {
 }
 
 function isSocialCrawler(userAgent: string): boolean {
-  return /facebookexternalhit|facebot|twitterbot|linkedinbot|slackbot|telegrambot|discordbot|pinterest|embedly|quora link preview|vkshare|skypeuripreview|applebot/i.test(
+  return /facebookexternalhit|facebot|whatsapp|twitterbot|linkedinbot|slackbot|telegrambot|discordbot|pinterest|embedly|quora link preview|vkshare|skypeuripreview|applebot/i.test(
     userAgent,
   );
 }
@@ -47,7 +47,7 @@ Deno.serve(async (req) => {
   const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
   const sb = createClient(supabaseUrl, serviceKey);
 
-  // Fallback OG image MUST be an absolute https URL. Social preview clients
+  // Fallback OG image MUST be an absolute https URL. WhatsApp/Facebook/iMessage
   // silently drop data: URIs and relative paths, which is why previews rendered
   // no thumbnail before.
   const FALLBACK_IMAGE =

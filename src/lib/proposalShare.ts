@@ -1,5 +1,5 @@
 // Public share URL for a proposal — routes through the `proposal-preview`
-// edge function so social crawlers get proper OG meta
+// edge function so WhatsApp / Slack / iMessage crawlers get proper OG meta
 // (hero image, program title, summary). Human visitors are HTTP-redirected to
 // the SPA at /proposal/:token.
 
