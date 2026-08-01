@@ -520,9 +520,6 @@ const PublicProposalPage = () => {
           <div className="bg-white rounded-2xl border border-slate-200 p-6">
             <p className="text-slate-600 leading-relaxed mb-6">{dict.aboutBody}</p>
             <div className="flex flex-wrap gap-3">
-              <a href="https://wa.me/351961615400" target="_blank" rel="noopener" className="flex items-center gap-2 px-4 py-2 bg-emerald-500 text-white rounded-lg text-sm font-medium hover:bg-emerald-600 transition-colors">
-                <Phone className="h-4 w-4" /> WhatsApp
-              </a>
               <a href="mailto:info@yourtoursportugal.com" className="flex items-center gap-2 px-4 py-2 bg-sky-100 text-sky-700 rounded-lg text-sm font-medium hover:bg-sky-200 transition-colors">
                 <Mail className="h-4 w-4" /> Email
               </a>
