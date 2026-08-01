@@ -203,7 +203,10 @@ const EmailComposerDialog = ({ lead, children, open: openProp, onOpenChange, ini
       const attachments: any[] = [];
       if (isProposalTemplate && attachPdf && proposal) {
         try {
-          const { base64, filename } = await buildProposalPdfBase64(proposal, weblink);
+          const { base64, filename } = await buildProposalPdfBase64({
+            ...proposal,
+            booking_ref: proposal.booking_ref || lead.ytId || null,
+          }, weblink);
           attachments.push({ filename, mimeType: 'application/pdf', contentBase64: base64 });
         } catch (e) {
           console.error('PDF build failed', e);

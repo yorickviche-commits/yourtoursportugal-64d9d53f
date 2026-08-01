@@ -982,6 +982,7 @@ const TravelPlanProposal = ({
         await supabase.from('proposals').insert({
           public_token: token,
           lead_id: leadId,
+          booking_ref: ytId || leadCode,
           title: plan.trip_title,
           client_name: clientName,
           date_range: dateRange,
