@@ -2,6 +2,7 @@ import jsPDF from 'jspdf';
 import reviewsCoverUrl from '@/assets/proposal-reviews-cover.png';
 import { parseGoogleMapsUrl } from '@/lib/mapEmbed';
 import { drawRichTextPdf, stripBoldMarkers } from '@/lib/richText';
+import { buildProposalFilename } from '@/lib/proposalFilename';
 
 const ALL_REVIEWS_URL = 'https://yourtoursportugal.com/our-reviews/';
 
@@ -37,6 +38,9 @@ export interface ProposalLite {
   wetravel_checkout_url?: string | null;
   closing_terms?: Record<string, any> | null;
   days?: ProposalDay[] | unknown;
+  language?: string | null;
+  start_date?: string | null;
+  end_date?: string | null;
 }
 
 async function fetchImageAsDataUrl(url: string): Promise<{ dataUrl: string; format: 'JPEG' | 'PNG' } | null> {
@@ -578,13 +582,15 @@ export async function buildProposalPdfBase64(p: ProposalLite, weblink: string): 
   const dataUri = doc.output('datauristring');
   const base64 = dataUri.split(',')[1] || '';
 
-  const sanitize = (s: string) => s.replace(/[\\/:*?"<>|]+/g, ' ').replace(/\s+/g, ' ').trim();
-  const ytCode = sanitize(p.booking_ref || (p.id ? `YT-${String(p.id).slice(0, 4).toUpperCase()}` : 'YT'));
-  const client = sanitize(p.client_name || 'Client');
-  const dates = sanitize(p.date_range || '');
-  const program = sanitize(p.title || 'Travel Plan');
-  const parts = [ytCode, client, program, dates].filter(Boolean);
-  const filename = `${parts.join(' - ').slice(0, 180)}.pdf`;
+  const filename = buildProposalFilename({
+    ytId: p.booking_ref,
+    clientName: p.client_name,
+    programName: p.title,
+    startDate: p.start_date,
+    endDate: p.end_date,
+    dateRange: p.date_range,
+    language: p.language,
+  });
   return { base64, filename };
 }
 

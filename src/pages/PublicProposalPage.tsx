@@ -1,15 +1,18 @@
 import { useParams } from 'react-router-dom';
 import { useProposalByToken, useProposalAnnotations, useProposalEvents, useCreateAnnotation, useCreateEvent, useUpdateProposal, ProposalDay, Proposal } from '@/hooks/useProposalsQuery';
 import { useState, useEffect, useRef, lazy, Suspense, Component, ReactNode } from 'react';
-import { MessageSquare, Check, Star, Phone, Mail, Globe, ChevronDown, ChevronUp, Send, X, Clock, MapPin, Hotel, ThumbsUp, ThumbsDown } from 'lucide-react';
+import { MessageSquare, Check, Star, Phone, Mail, Globe, ChevronDown, ChevronUp, Send, X, Clock, MapPin, Hotel, ThumbsUp, ThumbsDown, Download } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { getProposalDict, resolveProposalLang, encodeSentiment, decodeSentiment, Sentiment } from '@/lib/proposalI18n';
 import reviewsBanner from '@/assets/our-reviews-banner.png.asset.json';
 import { toMapEmbedSrc } from '@/lib/mapEmbed';
 import { RichText, stripBoldMarkers } from '@/lib/richText';
+import { Button } from '@/components/ui/button';
+import { toast } from 'sonner';
+import { buildProposalPdfBase64 } from '@/lib/proposalPdf';
+import { buildProposalFilename, downloadBase64Pdf } from '@/lib/proposalFilename';
 
 const TERMS_URL = 'https://drive.google.com/file/d/12AkvW2Ob0LtcooaciWY4e-nEx7hlOnQC/view?usp=sharing';
-const WHATSAPP_URL = 'https://wa.me/351919473029';
 
 
 // Lazy load map to avoid react-leaflet context crash
@@ -133,6 +136,24 @@ const PublicProposalPage = () => {
     setSubmitted(true);
   };
 
+  const handleDownloadPdf = async () => {
+    if (!proposal) return;
+    const filename = buildProposalFilename({
+      ytId: proposal.booking_ref,
+      clientName: proposal.client_name,
+      programName: proposal.title,
+      dateRange: proposal.date_range,
+      language: proposal.language,
+    });
+    try {
+      const { base64 } = await buildProposalPdfBase64(proposal as any, window.location.href);
+      downloadBase64Pdf(base64, filename);
+    } catch (error) {
+      console.error('PDF download failed', error);
+      toast.error('Unable to generate PDF');
+    }
+  };
+
   const handleRevision = () => {
     if (!noteText.trim()) return;
     updateProposal.mutate({ id: proposal.id, status: 'revision_requested' });
@@ -219,6 +240,9 @@ const PublicProposalPage = () => {
             ))}
             <a href="#reviews" className="shrink-0 px-3 py-1.5 rounded-full hover:bg-sky-50 text-slate-600">{dict.reviews}</a>
             <a href="#about" className="shrink-0 px-3 py-1.5 rounded-full hover:bg-sky-50 text-slate-600">{dict.about}</a>
+            <Button size="sm" variant="outline" onClick={handleDownloadPdf} className="ml-auto shrink-0 print:hidden">
+              <Download className="mr-1.5 h-4 w-4" /> PDF
+            </Button>
           </div>
         </div>
 
@@ -701,19 +725,6 @@ const PublicProposalPage = () => {
         </div>
       )}
 
-      {/* Sticky WhatsApp — chat with our travel experts */}
-      <a
-        href={WHATSAPP_URL}
-        target="_blank"
-        rel="noopener noreferrer"
-        aria-label="Chat with our travel experts on WhatsApp"
-        className="print:hidden fixed left-4 bottom-24 md:bottom-6 z-50 flex items-center gap-2 rounded-full bg-[#25D366] text-white shadow-lg hover:shadow-xl transition px-3 py-3 md:px-4"
-      >
-        <svg viewBox="0 0 24 24" className="h-5 w-5 fill-current" aria-hidden="true">
-          <path d="M12.04 2C6.6 2 2.2 6.4 2.2 11.84c0 1.9.53 3.68 1.46 5.2L2 22l5.1-1.62a9.8 9.8 0 0 0 4.94 1.33c5.43 0 9.84-4.4 9.84-9.84C21.88 6.4 17.47 2 12.04 2Zm5.71 13.9c-.24.68-1.4 1.3-1.93 1.35-.53.05-1.03.24-2.92-.6-2.28-1.02-3.7-3.4-3.82-3.56-.12-.16-.9-1.24-.9-2.37 0-1.13.6-1.68.81-1.92.21-.24.46-.3.62-.3.16 0 .32 0 .46.01.15.01.35-.06.54.42.2.48.66 1.66.72 1.78.06.12.1.26.02.42-.08.16-.4.56-.57.75-.12.14-.26.3-.1.58.16.28.7 1.18 1.5 1.9 1.03.92 1.42 1.03 1.7 1.15.2.09.35.06.49-.08.16-.16.62-.72.79-.97.16-.24.33-.2.55-.12.22.08 1.4.66 1.64.78.24.12.4.18.46.28.06.1.06.6-.18 1.28Z" />
-        </svg>
-        <span className="hidden md:inline text-sm font-semibold">Chat with us</span>
-      </a>
     </div>
   );
 };
