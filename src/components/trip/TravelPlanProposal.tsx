@@ -1683,20 +1683,33 @@ const TravelPlanProposal = ({
         {(viewMode === 'edit' || closing.showPricing !== false) && (
         <div className={`border-t-2 border-slate-200 bg-slate-50 p-6 md:p-10 space-y-6 print:break-before-page ${viewMode === 'edit' && closing.showPricing === false ? 'opacity-50' : ''}`}>
           {/* Price Header */}
-          <div className="text-center pb-4 border-b border-slate-200">
-
-            <p className="text-[10px] uppercase tracking-widest text-slate-500 mb-2">{t.totalPrice}</p>
-            <p className="text-4xl font-serif font-bold text-slate-900">
-              {totalPVP > 0 ? `€ ${totalPVP.toLocaleString('en-US')}` : '— € —'}
-            </p>
-            <div className="flex items-center justify-center gap-3 mt-3 text-xs text-slate-600">
-              <span>{t.adult(pax)}{paxChildren ? ` + ${t.child(paxChildren)}` : ''}{paxInfants ? ` + ${t.infant(paxInfants)}` : ''}</span>
-              <span className="text-slate-300">·</span>
-              <span>{displayPlan.days[0]?.date} – {displayPlan.days[displayPlan.days.length - 1]?.date}</span>
-              <span className="text-slate-300">·</span>
-              <span>{t.dayUnit(displayPlan.days.length)}</span>
+          <div className={`pb-4 border-b border-slate-200 flex flex-col sm:flex-row items-center gap-4 ${wetravelCheckoutUrl ? 'sm:justify-between text-center sm:text-left' : 'justify-center text-center'}`}>
+            <div>
+              <p className="text-[10px] uppercase tracking-widest text-slate-500 mb-2">{t.totalPrice}</p>
+              <p className="text-4xl font-serif font-bold text-slate-900">
+                {totalPVP > 0 ? `€ ${totalPVP.toLocaleString('en-US')}` : '— € —'}
+              </p>
+              <div className={`flex items-center gap-3 mt-3 text-xs text-slate-600 ${wetravelCheckoutUrl ? 'justify-center sm:justify-start' : 'justify-center'}`}>
+                <span>{t.adult(pax)}{paxChildren ? ` + ${t.child(paxChildren)}` : ''}{paxInfants ? ` + ${t.infant(paxInfants)}` : ''}</span>
+                <span className="text-slate-300">·</span>
+                <span>{displayPlan.days[0]?.date} – {displayPlan.days[displayPlan.days.length - 1]?.date}</span>
+                <span className="text-slate-300">·</span>
+                <span>{t.dayUnit(displayPlan.days.length)}</span>
+              </div>
             </div>
+            {wetravelCheckoutUrl && (
+              <a
+                href={wetravelCheckoutUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center justify-center rounded-md bg-[#0a2540] px-8 py-3.5 text-sm font-extrabold uppercase tracking-wider text-white no-underline shadow-sm"
+                style={{ backgroundColor: '#0a2540', color: '#ffffff', printColorAdjust: 'exact', WebkitPrintColorAdjust: 'exact' } as any}
+              >
+                BOOK NOW
+              </a>
+            )}
           </div>
+
 
           {/* What's Included — Day by Day Summary or override */}
           <div>
