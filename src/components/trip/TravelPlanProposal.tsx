@@ -1337,6 +1337,24 @@ const TravelPlanProposal = ({
   const d = getProposalDict(language);
   const displayId = ytId || leadCode;
 
+  // Day-by-day summary sent to the AI image generator
+  const programContext = [
+    `Trip: ${displayPlan.trip_title || destination}`,
+    `Destination: ${destination || '—'} | Days: ${displayPlan.days?.length || numberOfDays || '—'} | Pax: ${pax}${paxChildren ? ` + ${paxChildren} children` : ''}`,
+    travelStyles.length ? `Travel styles: ${travelStyles.join(', ')}` : '',
+    ...(displayPlan.days || []).map(day => {
+      const items = (day.bullets || [])
+        .map(b => (typeof b === 'string' ? b : b?.text))
+        .filter(Boolean)
+        .slice(0, 6)
+        .join('; ');
+      return `Day ${day.day_number} — ${day.subtitle || day.title}${day.overnight ? ` (overnight: ${day.overnight})` : ''}${items ? `: ${items}` : ''}`;
+    }),
+  ].filter(Boolean).join('\n');
+
+  const coverBasePrompt = `Create an elegant editorial travel COLLAGE / composite cover image for a luxury private tour in ${destination || 'Portugal'}, titled "${displayPlan.trip_title || ''}". Blend 3 to 5 photorealistic scenes of the destination landscapes, landmarks and the specific experiences included in this program into one harmonious landscape composition (soft blended edges, cohesive warm cinematic light, premium travel magazine quality, rich colors). Personalized to this itinerary. Landscape 21:9 friendly framing. No text, no letters, no logos, no watermark.`;
+
+
   return (
     <div className="space-y-4 print:space-y-6">
       {/* Actions Bar */}
@@ -1410,7 +1428,10 @@ const TravelPlanProposal = ({
               className="max-h-48"
               aspectRatio="landscape"
               dedupScope={leadId ? { type: 'lead', id: leadId } : undefined}
+              basePrompt={coverBasePrompt}
+              programContext={programContext}
             />
+
           </div>
         )}
         {viewMode === 'preview' && displayPlan.cover_image?.url && (
@@ -1735,9 +1756,11 @@ const TravelPlanProposal = ({
                                     return { ...p, days: newDays };
                                   });
                                 }}
-                                searchContext={imgContext}
-                                aspectRatio="landscape"
-                                dedupScope={leadId ? { type: 'lead', id: leadId } : undefined}
+                                 searchContext={imgContext}
+                                 aspectRatio="landscape"
+                                 dedupScope={leadId ? { type: 'lead', id: leadId } : undefined}
+                                 programContext={programContext}
+
                               />
                             );
                           })}

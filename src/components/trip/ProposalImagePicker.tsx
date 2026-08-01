@@ -2,6 +2,8 @@ import { useState, useRef, useEffect } from 'react';
 import { Image, Upload, Search, Sparkles, X, Loader2, Monitor } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { supabase } from '@/integrations/supabase/client';
@@ -16,9 +18,12 @@ interface ProposalImagePickerProps {
   className?: string;
   aspectRatio?: 'landscape' | 'square';
   dedupScope?: PhotoScope;
+  basePrompt?: string;
+  programContext?: string;
 }
 
 type UnsplashResult = { url: string; caption: string; photo_id?: string };
+
 
 export default function ProposalImagePicker({
   currentUrl,
@@ -28,6 +33,8 @@ export default function ProposalImagePicker({
   className = '',
   aspectRatio = 'landscape',
   dedupScope,
+  basePrompt,
+  programContext,
 }: ProposalImagePickerProps) {
   const [open, setOpen] = useState(false);
   const [tab, setTab] = useState<string>('unsplash');
@@ -38,6 +45,14 @@ export default function ProposalImagePicker({
   const [excludePhotoIds, setExcludePhotoIds] = useState<string[]>([]);
   const fileRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
+
+  const defaultPrompt = basePrompt
+    || `Beautiful, photorealistic travel photograph of: ${searchContext}. Professional travel magazine quality, warm cinematic lighting, vivid colors, strong sense of place. Landscape orientation, no text, no watermark.`;
+  const [aiPrompt, setAiPrompt] = useState(defaultPrompt);
+  const [showContext, setShowContext] = useState(false);
+
+  useEffect(() => { setAiPrompt(defaultPrompt); }, [defaultPrompt]);
+
 
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(false);
@@ -101,8 +116,15 @@ export default function ProposalImagePicker({
     setGenerating(true);
     try {
       const { data, error } = await supabase.functions.invoke('search-destination-images', {
-        body: { query: `Beautiful travel photograph: ${searchContext}`, count: 1, mode: 'generate' },
+        body: {
+          query: searchContext,
+          count: 1,
+          mode: 'generate',
+          prompt: aiPrompt,
+          programContext,
+        },
       });
+
       if (error) {
         let contextMessage = (error as any)?.context?.error || (error as any)?.context?.message;
         if (!contextMessage && typeof (error as any)?.context?.clone === 'function') {
@@ -260,23 +282,56 @@ export default function ProposalImagePicker({
               </div>
             </TabsContent>
 
-            <TabsContent value="ai" className="flex-1 flex flex-col items-center justify-center py-8 gap-4">
-              <Sparkles className="h-10 w-10 text-[hsl(var(--info))] opacity-60" />
-              <div className="text-center space-y-1">
-                <p className="text-sm font-medium">Gerar com AI</p>
-                <p className="text-xs text-muted-foreground max-w-xs">
-                  Cria uma imagem única baseada no contexto: <span className="italic">"{searchContext}"</span>
+            <TabsContent value="ai" className="flex-1 flex flex-col overflow-y-auto gap-3 py-3">
+              <div className="flex items-center gap-2">
+                <Sparkles className="h-4 w-4 text-[hsl(var(--info))]" />
+                <p className="text-sm font-medium">Gerar com AI (ChatGPT)</p>
+              </div>
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <p className="text-[10px] uppercase font-bold text-muted-foreground">Prompt (editável)</p>
+                  <button className="text-[10px] text-[hsl(var(--info))] hover:underline" onClick={() => setAiPrompt(defaultPrompt)}>
+                    Restaurar prompt base
+                  </button>
+                </div>
+                <Textarea
+                  value={aiPrompt}
+                  onChange={e => setAiPrompt(e.target.value)}
+                  rows={7}
+                  className="text-xs leading-relaxed"
+                  placeholder="Descreve a imagem pretendida..."
+                />
+                <p className="text-[10px] text-muted-foreground">
+                  Escreve aqui instruções extra antes de gerar — a AI considera este texto e o day-by-day do programa.
                 </p>
               </div>
+
+              {programContext && (
+                <div className="rounded-md border bg-muted/30 p-2">
+                  <button
+                    className="text-[10px] uppercase font-bold text-muted-foreground hover:text-foreground"
+                    onClick={() => setShowContext(v => !v)}
+                  >
+                    {showContext ? '▾' : '▸'} Contexto do programa enviado à AI
+                  </button>
+                  {showContext && (
+                    <pre className="mt-2 max-h-40 overflow-y-auto whitespace-pre-wrap text-[10px] text-muted-foreground">
+                      {programContext}
+                    </pre>
+                  )}
+                </div>
+              )}
+
               <Button
                 onClick={handleAIGenerate}
-                disabled={generating}
-                className="gap-2 bg-gradient-to-r from-[hsl(var(--info))] to-[hsl(var(--info)/0.7)] text-white"
+                disabled={generating || !aiPrompt.trim()}
+                className="gap-2 bg-gradient-to-r from-[hsl(var(--info))] to-[hsl(var(--info)/0.7)] text-white self-center"
               >
                 {generating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
                 {generating ? 'A gerar imagem...' : 'Gerar Imagem AI'}
               </Button>
             </TabsContent>
+
           </Tabs>
         </DialogContent>
       </Dialog>
