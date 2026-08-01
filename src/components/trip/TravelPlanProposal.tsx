@@ -529,18 +529,29 @@ const TravelPlanProposal = ({
     if (!filename) return;
 
     const applyFilename = () => {
-      document.title = filename;
+      if (document.title !== filename) document.title = filename;
       const titleElement = document.querySelector('title');
-      if (titleElement) titleElement.textContent = filename;
+      if (titleElement && titleElement.textContent !== filename) titleElement.textContent = filename;
     };
     applyFilename();
-    window.addEventListener('beforeprint', applyFilename, { once: true });
+    window.addEventListener('beforeprint', applyFilename);
 
-    requestAnimationFrame(() => requestAnimationFrame(() => {
+    // Some renders (router/helmet) reset the title; keep re-applying while the
+    // print dialog is open so Chrome always picks the custom filename.
+    const keepAlive = window.setInterval(applyFilename, 100);
+    const stop = () => {
+      window.clearInterval(keepAlive);
+      window.removeEventListener('beforeprint', applyFilename);
+    };
+    window.addEventListener('afterprint', () => window.setTimeout(stop, 500), { once: true });
+    window.setTimeout(stop, 20000);
+
+    window.setTimeout(() => {
       applyFilename();
       window.print();
-    }));
+    }, 300);
   }, [buildPdfFilename]);
+
 
   // Load WeTravel checkout if already set on the proposal
   useQuery({
