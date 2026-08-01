@@ -384,7 +384,7 @@ When receiving an email, automatically identify:
 | Budget | If shared |
 | Language | English / PT / ES / FR / DE |
 | Urgency | Lead time before travel |
-| Source | Website / WhatsApp / Instagram / Partner referral |
+| Source | Website / Instagram / Partner referral |
 
 ---
 

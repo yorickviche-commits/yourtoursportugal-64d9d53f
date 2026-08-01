@@ -203,7 +203,10 @@ const EmailComposerDialog = ({ lead, children, open: openProp, onOpenChange, ini
       const attachments: any[] = [];
       if (isProposalTemplate && attachPdf && proposal) {
         try {
-          const { base64, filename } = await buildProposalPdfBase64(proposal, weblink);
+          const { base64, filename } = await buildProposalPdfBase64({
+            ...proposal,
+            booking_ref: proposal.booking_ref || null,
+          }, weblink);
           attachments.push({ filename, mimeType: 'application/pdf', contentBase64: base64 });
         } catch (e) {
           console.error('PDF build failed', e);
@@ -439,7 +442,7 @@ const EmailComposerDialog = ({ lead, children, open: openProp, onOpenChange, ini
 
             <div>
               <label className="text-xs font-semibold text-muted-foreground">Notas adicionais para o AI (opcional)</label>
-              <Textarea className="mt-1 text-xs" rows={3} placeholder="Ex: Mencionar o desconto de 10% que discutimos... ou que o cliente prefere contacto por WhatsApp..."
+              <Textarea className="mt-1 text-xs" rows={3} placeholder="Ex: Mencionar o desconto de 10% que discutimos..."
                 value={customNotes} onChange={e => setCustomNotes(e.target.value)} />
             </div>
 
