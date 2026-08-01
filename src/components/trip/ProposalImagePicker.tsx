@@ -31,6 +31,8 @@ export default function ProposalImagePicker({
   className = '',
   aspectRatio = 'landscape',
   dedupScope,
+  basePrompt,
+  programContext,
 }: ProposalImagePickerProps) {
   const [open, setOpen] = useState(false);
   const [tab, setTab] = useState<string>('unsplash');
@@ -41,6 +43,14 @@ export default function ProposalImagePicker({
   const [excludePhotoIds, setExcludePhotoIds] = useState<string[]>([]);
   const fileRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
+
+  const defaultPrompt = basePrompt
+    || `Beautiful, photorealistic travel photograph of: ${searchContext}. Professional travel magazine quality, warm cinematic lighting, vivid colors, strong sense of place. Landscape orientation, no text, no watermark.`;
+  const [aiPrompt, setAiPrompt] = useState(defaultPrompt);
+  const [showContext, setShowContext] = useState(false);
+
+  useEffect(() => { setAiPrompt(defaultPrompt); }, [defaultPrompt]);
+
 
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(false);
