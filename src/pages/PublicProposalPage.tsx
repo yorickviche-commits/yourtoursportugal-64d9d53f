@@ -181,7 +181,7 @@ const PublicProposalPage = () => {
               {proposal.participants && <span>• {proposal.participants}</span>}
             </div>
             {(proposal as any).wetravel_checkout_url && (
-              <div className="mt-6">
+              <div className="mt-6 max-w-md">
                 <a
                   href={(proposal as any).wetravel_checkout_url}
                   target="_blank"
@@ -193,7 +193,10 @@ const PublicProposalPage = () => {
                 <p className="mt-2 text-xs text-white/80">
                   {(proposal as any).deposit_amount_eur
                     ? dict.depositSuffix(String((proposal as any).deposit_amount_eur), (proposal as any).deposit_percent ?? 50)
-                    : dict.defaultDepositNote}
+                    : dict.defaultDepositNote}{' '}
+                  <a href={TERMS_URL} target="_blank" rel="noopener noreferrer" className="underline">
+                    see terms and conditions
+                  </a>
                 </p>
               </div>
             )}
