@@ -1452,11 +1452,17 @@ const TravelPlanProposal = ({
                   {viewMode === 'edit' ? (
                     <div className="space-y-3 pr-16">
                       <div className="flex items-center gap-2">
+                        <button type="button" onClick={() => toggleDayCollapse(day.day_number)} className="text-muted-foreground hover:text-[hsl(var(--info))] shrink-0" title={dayCollapsed ? 'Expandir dia' : 'Colapsar dia'}>
+                          {dayCollapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                        </button>
                         <span className="text-sm font-bold text-[hsl(var(--info))]">Day {day.day_number}</span>
                         <span className="text-xs text-muted-foreground">—</span>
                         <RichInput className="text-sm font-bold flex-1 h-8 py-1" value={day.title}
                           onChange={v => updateDay(dayIdx, { title: v })} />
+                        <span className="text-[10px] text-muted-foreground shrink-0 whitespace-nowrap">{day.bullets.length} rubricas</span>
                       </div>
+                      {!dayCollapsed && (
+                      <>
                       <div className="flex gap-2 items-center">
                         <Input className="h-7 text-xs w-32" value={day.date}
                           onChange={e => updateDay(dayIdx, { date: e.target.value })} placeholder="DD-Mon-YYYY" />
