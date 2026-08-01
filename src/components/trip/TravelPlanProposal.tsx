@@ -1441,6 +1441,7 @@ const TravelPlanProposal = ({
 
           {displayPlan.days.map((day, dayIdx) => {
             const dayDuration = getDayDuration(day);
+            const dayCollapsed = collapsedDays.has(day.day_number);
             const chatKey = `day_${day.day_number}`;
             return (
               <div key={day.day_number}>
