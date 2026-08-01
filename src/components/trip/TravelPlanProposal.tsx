@@ -90,6 +90,8 @@ interface ClosingTerms {
   closingMessage: string;
 }
 
+const TERMS_URL = 'https://drive.google.com/file/d/12AkvW2Ob0LtcooaciWY4e-nEx7hlOnQC/view?usp=sharing';
+
 const DEFAULT_CLOSING: ClosingTerms = {
   showPricing: true,
   inclusionsOverride: '',
