@@ -1281,15 +1281,21 @@ const TravelPlanProposal = ({
           <Button variant="outline" size="sm" className="text-xs gap-1" onClick={() => {
             const startD = plan?.days[0]?.date || travelDates || '';
             const endD = plan?.days[plan.days.length - 1]?.date || travelEndDate || '';
-            const dates = [startD, endD].filter(Boolean).join('_');
-            const sanitize = (s: string) => (s || '').replace(/[\\/:*?"<>|]/g, '').replace(/\s+/g, '_').trim();
+            const dates = [startD, endD].filter(Boolean).join(' - ');
+            const sanitize = (s: string) => (s || '').replace(/[\\/:*?"<>|]/g, '').replace(/\s+/g, ' ').trim();
             const idPart = sanitize(ytId || leadCode || 'YT');
-            const name = [idPart, sanitize(clientName), sanitize(plan?.trip_title || destination), sanitize(dates)].filter(Boolean).join('_');
+            const name = [idPart, sanitize(clientName), sanitize(plan?.trip_title || destination), sanitize(dates)]
+              .filter(Boolean).join(' - ').slice(0, 180);
             const prevTitle = document.title;
-            document.title = name || prevTitle;
+            if (name) document.title = name;
+            const restore = () => {
+              document.title = prevTitle;
+              window.removeEventListener('afterprint', restore);
+            };
+            window.addEventListener('afterprint', restore);
             window.print();
-            setTimeout(() => { document.title = prevTitle; }, 1000);
           }}>
+
             <FileText className="h-3 w-3" /> PDF
           </Button>
           <Button size="sm" className="text-xs gap-1 bg-[hsl(var(--success))] hover:bg-[hsl(var(--success))]/90 text-white" onClick={onGoToCosting}>
@@ -1356,10 +1362,26 @@ const TravelPlanProposal = ({
               </div>
             )}
           </div>
+          {viewMode === 'preview' && wetravelCheckoutUrl && (
+            <div className="absolute bottom-6 right-6 md:right-12 text-right max-w-[240px]">
+              <a
+                href={wetravelCheckoutUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-block px-6 py-2.5 rounded-md bg-[#0a2540] text-white text-sm font-extrabold tracking-wide border border-white/30"
+              >
+                BOOK NOW
+              </a>
+              <p className="text-[9px] leading-snug text-white/70 mt-1.5">
+                Book with deposit · 100% refundable if plans change / cancel* — see terms and conditions below
+              </p>
+            </div>
+          )}
           <div className="absolute top-2 right-2 print:hidden">
             <SectionAIButton label="AI" active={activeChat === 'narrative'} loading={sectionLoading === 'narrative'} onClick={() => toggleChat('narrative')} />
           </div>
         </div>
+
         {activeChat === 'narrative' && (
           <div className="px-6 py-3">
             <AIChatPanel section="narrative" plan={displayPlan} destination={destination} loading={sectionLoading === 'narrative'}
