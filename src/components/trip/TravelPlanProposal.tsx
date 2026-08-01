@@ -1864,6 +1864,20 @@ const TravelPlanProposal = ({
         </div>
         )}
       </div>
+
+      {/* Sticky WhatsApp — digital only (hidden in print/PDF) */}
+      <a
+        href="https://wa.me/351919473029"
+        target="_blank"
+        rel="noopener noreferrer"
+        aria-label="Chat with our travel experts on WhatsApp"
+        className="print:hidden fixed left-4 bottom-6 z-50 flex items-center gap-2 rounded-full bg-[#25D366] text-white shadow-lg hover:shadow-xl transition px-3 py-3 md:px-4"
+      >
+        <svg viewBox="0 0 24 24" className="h-5 w-5 fill-current" aria-hidden="true">
+          <path d="M12.04 2C6.6 2 2.2 6.4 2.2 11.84c0 1.9.53 3.68 1.46 5.2L2 22l5.1-1.62a9.8 9.8 0 0 0 4.94 1.33c5.43 0 9.84-4.4 9.84-9.84C21.88 6.4 17.47 2 12.04 2Zm5.71 13.9c-.24.68-1.4 1.3-1.93 1.35-.53.05-1.03.24-2.92-.6-2.28-1.02-3.7-3.4-3.82-3.56-.12-.16-.9-1.24-.9-2.37 0-1.13.6-1.68.81-1.92.21-.24.46-.3.62-.3.16 0 .32 0 .46.01.15.01.35-.06.54.42.2.48.66 1.66.72 1.78.06.12.1.26.02.42-.08.16-.4.56-.57.75-.12.14-.26.3-.1.58.16.28.7 1.18 1.5 1.9 1.03.92 1.42 1.03 1.7 1.15.2.09.35.06.49-.08.16-.16.62-.72.79-.97.16-.24.33-.2.55-.12.22.08 1.4.66 1.64.78.24.12.4.18.46.28.06.1.06.6-.18 1.28Z" />
+        </svg>
+        <span className="hidden md:inline text-sm font-semibold">Chat with us</span>
+      </a>
     </div>
   );
 };
