@@ -1295,14 +1295,15 @@ const TravelPlanProposal = ({
             const idPart = sanitize(ytId || leadCode || 'YT');
             const name = [idPart, sanitize(clientName), sanitize(plan?.trip_title || destination), sanitize(dates)]
               .filter(Boolean).join(' - ').slice(0, 180);
-            const prevTitle = document.title;
             if (name) document.title = name;
-            const restore = () => {
-              document.title = prevTitle;
-              window.removeEventListener('afterprint', restore);
-            };
-            window.addEventListener('afterprint', restore);
-            window.print();
+            // Chrome reads document.title when the print dialog opens — give it a tick.
+            setTimeout(() => {
+              const restore = () => {
+                window.removeEventListener('afterprint', restore);
+              };
+              window.addEventListener('afterprint', restore);
+              window.print();
+            }, 200);
           }}>
 
             <FileText className="h-3 w-3" /> PDF
