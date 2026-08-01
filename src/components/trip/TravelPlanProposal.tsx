@@ -1319,6 +1319,7 @@ const TravelPlanProposal = ({
 
   if (!displayPlan) return null;
   const t = getLabels(language);
+  const d = getProposalDict(language);
   const displayId = ytId || leadCode;
 
   return (
