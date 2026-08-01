@@ -1428,7 +1428,10 @@ const TravelPlanProposal = ({
               className="max-h-48"
               aspectRatio="landscape"
               dedupScope={leadId ? { type: 'lead', id: leadId } : undefined}
+              basePrompt={coverBasePrompt}
+              programContext={programContext}
             />
+
           </div>
         )}
         {viewMode === 'preview' && displayPlan.cover_image?.url && (
