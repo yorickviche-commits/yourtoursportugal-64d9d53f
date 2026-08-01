@@ -1,5 +1,5 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
-import { Package, PlusCircle, Sparkles, RefreshCw, Save, FileText, ArrowRight, Loader2, Edit3, Eye, AlertTriangle, Clock, Plus, X, Send, MessageSquare, ChevronDown, CreditCard, GripVertical, Image as ImageIcon } from 'lucide-react';
+import { Package, PlusCircle, Sparkles, RefreshCw, Save, FileText, ArrowRight, Loader2, Edit3, Eye, AlertTriangle, Clock, Plus, X, Send, MessageSquare, ChevronDown, ChevronRight, CreditCard, GripVertical, Image as ImageIcon } from 'lucide-react';
 import { DragDropContext, Droppable, Draggable, type DropResult } from '@hello-pangea/dnd';
 import { toast as sonnerToast } from 'sonner';
 import { useUndoable } from '@/hooks/useUndoable';
@@ -484,6 +484,13 @@ const TravelPlanProposal = ({
   const [language, setLanguage] = useState<string>(initialLang);
   // Manual mode: product picker target — 'new' appends a new day, number = append into that day
   const [pickerTarget, setPickerTarget] = useState<'new' | number | null>(null);
+  const [collapsedDays, setCollapsedDays] = useState<Set<number>>(new Set());
+  const toggleDayCollapse = (dayNum: number) =>
+    setCollapsedDays(prev => {
+      const next = new Set(prev);
+      next.has(dayNum) ? next.delete(dayNum) : next.add(dayNum);
+      return next;
+    });
   const [wetravelCheckoutUrl, setWetravelCheckoutUrl] = useState<string | null>(null);
   const [wetravelDepositEur, setWetravelDepositEur] = useState<number | null>(null);
 
@@ -1420,11 +1427,21 @@ const TravelPlanProposal = ({
         )}
 
         {/* FULL DAY-BY-DAY */}
+        {viewMode === 'edit' && (
+          <div className="flex items-center gap-2 px-6 py-2 border-b bg-muted/20 print:hidden">
+            <span className="text-xs text-muted-foreground">
+              {displayPlan.days.length} dias · {displayPlan.days.reduce((s, d) => s + d.bullets.length, 0)} rubricas
+            </span>
+            <button type="button" onClick={() => setCollapsedDays(new Set())} className="text-[10px] text-[hsl(var(--info))] hover:underline">Expandir</button>
+            <button type="button" onClick={() => setCollapsedDays(new Set(displayPlan.days.map(d => d.day_number)))} className="text-[10px] text-[hsl(var(--info))] hover:underline">Colapsar</button>
+          </div>
+        )}
         <DragDropContext onDragEnd={onBulletDragEnd}>
         <div className="divide-y">
 
           {displayPlan.days.map((day, dayIdx) => {
             const dayDuration = getDayDuration(day);
+            const dayCollapsed = collapsedDays.has(day.day_number);
             const chatKey = `day_${day.day_number}`;
             return (
               <div key={day.day_number}>
@@ -1436,11 +1453,17 @@ const TravelPlanProposal = ({
                   {viewMode === 'edit' ? (
                     <div className="space-y-3 pr-16">
                       <div className="flex items-center gap-2">
+                        <button type="button" onClick={() => toggleDayCollapse(day.day_number)} className="text-muted-foreground hover:text-[hsl(var(--info))] shrink-0" title={dayCollapsed ? 'Expandir dia' : 'Colapsar dia'}>
+                          {dayCollapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                        </button>
                         <span className="text-sm font-bold text-[hsl(var(--info))]">Day {day.day_number}</span>
                         <span className="text-xs text-muted-foreground">—</span>
                         <RichInput className="text-sm font-bold flex-1 h-8 py-1" value={day.title}
                           onChange={v => updateDay(dayIdx, { title: v })} />
+                        <span className="text-[10px] text-muted-foreground shrink-0 whitespace-nowrap">{day.bullets.length} rubricas</span>
                       </div>
+                      {!dayCollapsed && (
+                      <>
                       <div className="flex gap-2 items-center">
                         <Input className="h-7 text-xs w-32" value={day.date}
                           onChange={e => updateDay(dayIdx, { date: e.target.value })} placeholder="DD-Mon-YYYY" />
@@ -1544,6 +1567,8 @@ const TravelPlanProposal = ({
                           </div>
                         );
                       })()}
+                      </>
+                      )}
                     </div>
                   ) : (
                     <div className="pr-16">

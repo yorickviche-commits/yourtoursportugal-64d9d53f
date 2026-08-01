@@ -392,7 +392,14 @@ const LeadOperationsEditor = ({ activeVersion, leadId, leadCode, pvpTotal = 0, s
 
       {/* Header */}
       <div className="flex items-center justify-between mb-4 gap-2 flex-wrap">
-        <h3 className="text-sm font-bold text-foreground">Operações</h3>
+        <div className="flex items-center gap-2">
+          <h3 className="text-sm font-bold text-foreground">Operações</h3>
+          <span className="text-xs text-muted-foreground">
+            {rowsByDay.length} dias · {totalItems} rubricas
+          </span>
+          <button type="button" onClick={() => setExpandedDays(new Set(rowsByDay.map(d => d.day)))} className="text-[10px] text-[hsl(var(--info))] hover:underline">Expandir</button>
+          <button type="button" onClick={() => setExpandedDays(new Set())} className="text-[10px] text-[hsl(var(--info))] hover:underline">Colapsar</button>
+        </div>
         <span className="text-xs text-muted-foreground">Itens do Travel Planner (V{activeVersion}) — editáveis</span>
       </div>
 
@@ -447,6 +454,7 @@ const LeadOperationsEditor = ({ activeVersion, leadId, leadCode, pvpTotal = 0, s
                   <span className="text-[10px] text-muted-foreground mr-3">
                     NET €{dayNet.toFixed(0)} · Real €{dayReal.toFixed(0)}
                   </span>
+                  <span className="text-[10px] text-muted-foreground mr-3">{dayItems.length} rubricas</span>
                   <span className="text-[10px] text-muted-foreground">{dayConfirmed}/{dayItems.length} confirmados</span>
                 </CollapsibleTrigger>
 
