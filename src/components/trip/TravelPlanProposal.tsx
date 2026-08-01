@@ -26,6 +26,15 @@ import reviewsBanner from '@/assets/our-reviews-banner.png.asset.json';
 
 const ALL_REVIEWS_URL = 'https://yourtoursportugal.com/our-reviews/';
 
+const REVIEWS_CTA = {
+  en: 'Read all reviews',
+  pt: 'Ver todas as avaliações',
+  es: 'Ver todas las opiniones',
+  fr: 'Voir tous les avis',
+  it: 'Leggi tutte le recensioni',
+  de: 'Alle Bewertungen lesen',
+} as const;
+
 // ─── Types ───────────────────────────────────────────────
 export interface ProposalImage {
   url: string;
