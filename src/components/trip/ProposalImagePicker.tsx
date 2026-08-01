@@ -114,8 +114,15 @@ export default function ProposalImagePicker({
     setGenerating(true);
     try {
       const { data, error } = await supabase.functions.invoke('search-destination-images', {
-        body: { query: `Beautiful travel photograph: ${searchContext}`, count: 1, mode: 'generate' },
+        body: {
+          query: searchContext,
+          count: 1,
+          mode: 'generate',
+          prompt: aiPrompt,
+          programContext,
+        },
       });
+
       if (error) {
         let contextMessage = (error as any)?.context?.error || (error as any)?.context?.message;
         if (!contextMessage && typeof (error as any)?.context?.clone === 'function') {
