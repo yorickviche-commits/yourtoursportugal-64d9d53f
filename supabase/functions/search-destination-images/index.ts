@@ -207,10 +207,13 @@ serve(async (req) => {
       page = 1,
       mode = 'search',
       excludePhotoIds = [],
+      prompt: customPrompt,
+      programContext,
     } = await req.json();
 
     if (mode === 'generate') {
-      const result = await generateWithAI(query);
+      const result = await generateWithAI(query, customPrompt, programContext);
+
       if (!result.image) {
         const quotaFailure = result.failures.find(f => f.status === 402 || f.status === 429 || /quota|billing|credit|limit/i.test(f.message));
         const message = quotaFailure
