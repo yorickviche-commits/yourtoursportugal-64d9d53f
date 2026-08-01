@@ -484,6 +484,13 @@ const TravelPlanProposal = ({
   const [language, setLanguage] = useState<string>(initialLang);
   // Manual mode: product picker target — 'new' appends a new day, number = append into that day
   const [pickerTarget, setPickerTarget] = useState<'new' | number | null>(null);
+  const [collapsedDays, setCollapsedDays] = useState<Set<number>>(new Set());
+  const toggleDayCollapse = (dayNum: number) =>
+    setCollapsedDays(prev => {
+      const next = new Set(prev);
+      next.has(dayNum) ? next.delete(dayNum) : next.add(dayNum);
+      return next;
+    });
   const [wetravelCheckoutUrl, setWetravelCheckoutUrl] = useState<string | null>(null);
   const [wetravelDepositEur, setWetravelDepositEur] = useState<number | null>(null);
 
