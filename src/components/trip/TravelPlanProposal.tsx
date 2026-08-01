@@ -1560,6 +1560,8 @@ const TravelPlanProposal = ({
                           </div>
                         );
                       })()}
+                      </>
+                      )}
                     </div>
                   ) : (
                     <div className="pr-16">
