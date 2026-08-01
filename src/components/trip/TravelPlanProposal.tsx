@@ -496,54 +496,6 @@ const TravelPlanProposal = ({
   const [wetravelCheckoutUrl, setWetravelCheckoutUrl] = useState<string | null>(null);
   const [wetravelDepositEur, setWetravelDepositEur] = useState<number | null>(null);
 
-  const handlePrintPdf = useCallback(async () => {
-    if (!plan) return;
-    const dateRange = [travelDates, travelEndDate].filter(Boolean).join(' – ');
-    const proposalForPdf = {
-      id: leadId,
-      booking_ref: ytId || leadCode,
-      client_name: clientName,
-      title: plan.trip_title || destination || 'Travel Plan',
-      date_range: dateRange,
-      start_date: travelDates,
-      end_date: travelEndDate,
-      participants: `${pax} travelers`,
-      hero_image_url: plan.cover_image?.url || null,
-      summary_text: plan.narrative,
-      total_value_eur: totalPVP || null,
-      language,
-      wetravel_checkout_url: wetravelCheckoutUrl,
-      days: plan.days.map(day => ({
-        day_number: day.day_number,
-        title: day.title,
-        date: day.date,
-        subtitle: day.subtitle,
-        items: day.bullets.map(bullet => toBulletObj(bullet).text),
-        accommodation: day.overnight,
-        cover_image_url: day.images?.[0]?.url,
-        images: day.images,
-        map_url: day.mapUrl,
-      })),
-      closing_terms: closing,
-    };
-    const filename = buildProposalFilename({
-      ytId: ytId || leadCode,
-      clientName,
-      programName: plan.trip_title || destination,
-      startDate: travelDates,
-      endDate: travelEndDate,
-      language,
-    });
-    try {
-      const { base64 } = await buildProposalPdfBase64(proposalForPdf);
-      downloadBase64Pdf(base64, filename);
-      sonnerToast.success(`PDF gerado: ${filename}`);
-    } catch (error) {
-      console.error('PDF download failed', error);
-      sonnerToast.error('Não foi possível gerar o PDF');
-    }
-  }, [clientName, closing, destination, language, leadCode, leadId, pax, plan, totalPVP, travelDates, travelEndDate, wetravelCheckoutUrl, ytId]);
-
   // Load WeTravel checkout if already set on the proposal
   useQuery({
     queryKey: ['proposal_wetravel', leadId],
@@ -618,6 +570,54 @@ const TravelPlanProposal = ({
     });
     return Math.round(total);
   })();
+
+  const handlePrintPdf = useCallback(async () => {
+    if (!plan) return;
+    const dateRange = [travelDates, travelEndDate].filter(Boolean).join(' – ');
+    const proposalForPdf = {
+      id: leadId,
+      booking_ref: ytId || leadCode,
+      client_name: clientName,
+      title: plan.trip_title || destination || 'Travel Plan',
+      date_range: dateRange,
+      start_date: travelDates,
+      end_date: travelEndDate,
+      participants: `${pax} travelers`,
+      hero_image_url: plan.cover_image?.url || null,
+      summary_text: plan.narrative,
+      total_value_eur: totalPVP || null,
+      language,
+      wetravel_checkout_url: wetravelCheckoutUrl,
+      days: plan.days.map(day => ({
+        day_number: day.day_number,
+        title: day.title,
+        date: day.date,
+        subtitle: day.subtitle,
+        items: day.bullets.map(bullet => toBulletObj(bullet).text),
+        accommodation: day.overnight,
+        cover_image_url: day.images?.[0]?.url,
+        images: day.images,
+        map_url: day.mapUrl,
+      })),
+      closing_terms: closing,
+    };
+    const filename = buildProposalFilename({
+      ytId: ytId || leadCode,
+      clientName,
+      programName: plan.trip_title || destination,
+      startDate: travelDates,
+      endDate: travelEndDate,
+      language,
+    });
+    try {
+      const { base64 } = await buildProposalPdfBase64(proposalForPdf, '');
+      downloadBase64Pdf(base64, filename);
+      sonnerToast.success(`PDF gerado: ${filename}`);
+    } catch (error) {
+      console.error('PDF download failed', error);
+      sonnerToast.error('Não foi possível gerar o PDF');
+    }
+  }, [clientName, closing, destination, language, leadCode, leadId, pax, plan, totalPVP, travelDates, travelEndDate, wetravelCheckoutUrl, ytId]);
 
   const hydratedRef = useRef(false);
   if (savedPlan && !plan && !hydratedRef.current) {
