@@ -1381,6 +1381,7 @@ const TravelPlanProposal = ({
                 )}
               </div>
             )}
+          </div>
           <div className="absolute top-2 right-2 print:hidden">
             <SectionAIButton label="AI" active={activeChat === 'narrative'} loading={sectionLoading === 'narrative'} onClick={() => toggleChat('narrative')} />
           </div>
