@@ -49,29 +49,62 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
 
   useEffect(() => {
+    let active = true;
+
+    const applySession = (nextSession: Session | null) => {
+      if (!active) return;
+      setSession(nextSession);
+      setUser(nextSession?.user ?? null);
+
+      if (nextSession?.user) {
+        window.setTimeout(() => {
+          if (!active) return;
+          void fetchProfile(nextSession.user.id);
+          void fetchRoles(nextSession.user.id);
+        }, 0);
+      } else {
+        setProfile(null);
+        setRoles([]);
+      }
+    };
+
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, session) => {
-        setSession(session);
-        setUser(session?.user ?? null);
+        applySession(session);
 
-        if (session?.user) {
-          // Use setTimeout to avoid Supabase auth deadlock
-          setTimeout(() => {
-            fetchProfile(session.user.id);
-            fetchRoles(session.user.id);
-          }, 0);
-        } else {
-          setProfile(null);
-          setRoles([]);
-        }
-
-        if (event === 'INITIAL_SESSION' || event === 'SIGNED_IN' || event === 'SIGNED_OUT') {
+        if (event === 'INITIAL_SESSION' || event === 'SIGNED_IN' || event === 'SIGNED_OUT' || event === 'TOKEN_REFRESHED') {
           setLoading(false);
         }
       }
     );
 
-    return () => subscription.unsubscribe();
+    const initializeAuth = async () => {
+      const { data, error } = await supabase.auth.getSession();
+      if (!active) return;
+      if (error || !data.session) {
+        applySession(null);
+        setLoading(false);
+        return;
+      }
+
+      const { data: userData, error: userError } = await supabase.auth.getUser();
+      if (!active) return;
+      if (userError || !userData.user) {
+        applySession(null);
+        setLoading(false);
+        return;
+      }
+
+      applySession({ ...data.session, user: userData.user });
+      setLoading(false);
+    };
+
+    void initializeAuth();
+
+    return () => {
+      active = false;
+      subscription.unsubscribe();
+    };
   }, []);
 
   const isAdmin = roles.includes('super_admin') || roles.includes('admin');

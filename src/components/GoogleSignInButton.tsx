@@ -1,8 +1,10 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Loader2 } from 'lucide-react';
 import { lovable } from '@/integrations/lovable/index';
+import { supabase } from '@/integrations/supabase/client';
+import { consumeAuthRedirect, getAuthCallbackUrl, storeAuthRedirect } from '@/lib/authRedirect';
 
 import { useToast } from '@/hooks/use-toast';
 
@@ -16,11 +18,15 @@ const GoogleSignInButton = ({ label = 'Continuar com Google' }: { label?: string
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
   const navigate = useNavigate();
+  const location = useLocation();
 
   const handleGoogle = async () => {
     setLoading(true);
+    const fromState = (location.state as { from?: string } | null)?.from;
+    storeAuthRedirect(fromState);
+
     const result = await lovable.auth.signInWithOAuth('google', {
-      redirect_uri: window.location.origin,
+      redirect_uri: getAuthCallbackUrl(),
       extraParams: { prompt: 'select_account' },
     });
 
@@ -33,10 +39,19 @@ const GoogleSignInButton = ({ label = 'Continuar com Google' }: { label?: string
 
     if (result.redirected) return;
 
-    const stored = sessionStorage.getItem('postAuthRedirect');
-    if (stored) sessionStorage.removeItem('postAuthRedirect');
+    const { data, error } = await supabase.auth.getUser();
+    if (error || !data.user) {
+      setLoading(false);
+      toast({
+        title: 'Sessão Google não confirmada',
+        description: 'O acesso foi concluído, mas a sessão não pôde ser validada. Tenta novamente.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
     setLoading(false);
-    navigate(stored || '/leads', { replace: true });
+    navigate(consumeAuthRedirect(), { replace: true });
   };
 
 
