@@ -16,6 +16,7 @@ import SignupPage from "./pages/SignupPage";
 import ForgotPasswordPage from "./pages/ForgotPasswordPage";
 import ResetPasswordPage from "./pages/ResetPasswordPage";
 import AuthCallbackPage from "./pages/AuthCallbackPage";
+import OAuthConsentPage from "./pages/OAuthConsentPage";
 import ItineraryPreviewPage from "./pages/ItineraryPreviewPage";
 import PublicProposalPage from "./pages/PublicProposalPage";
 import ProposalDetailPage from "./pages/ProposalDetailPage";
@@ -70,6 +71,7 @@ const App = () => (
             <Route path="/forgot-password" element={<ForgotPasswordPage />} />
             <Route path="/reset-password" element={<ResetPasswordPage />} />
             <Route path="/auth/callback" element={<AuthCallbackPage />} />
+            <Route path="/.lovable/oauth/consent" element={<OAuthConsentPage />} />
             <Route path="/preview/:id" element={<ItineraryPreviewPage />} />
             <Route path="/proposal/:token" element={<PublicProposalPage />} />
 
