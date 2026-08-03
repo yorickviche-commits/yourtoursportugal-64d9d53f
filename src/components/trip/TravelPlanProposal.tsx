@@ -540,29 +540,58 @@ const TravelPlanProposal = ({
   const handlePrintPdf = useCallback(() => {
     const filename = buildPdfFilename();
     if (!filename) return;
+    const printRoot = document.querySelector<HTMLElement>('[data-print-root]');
+    const printWindow = window.open('', '_blank');
 
-    const applyFilename = () => {
-      if (document.title !== filename) document.title = filename;
-      const titleElement = document.querySelector('title');
-      if (titleElement && titleElement.textContent !== filename) titleElement.textContent = filename;
-    };
-    applyFilename();
-    window.addEventListener('beforeprint', applyFilename);
+    // Printing from a dedicated top-level document makes the browser derive
+    // the suggested PDF filename from this proposal title, never from the app
+    // or Lovable preview title. The rendered proposal itself is cloned intact.
+    if (printRoot && printWindow) {
+      const styles = Array.from(document.querySelectorAll('link[rel="stylesheet"], style'))
+        .map(node => node.outerHTML)
+        .join('\n');
+      const safeTitle = filename
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+      const safeBase = document.baseURI.replace(/"/g, '&quot;');
 
-    // Some renders (router/helmet) reset the title; keep re-applying while the
-    // print dialog is open so Chrome always picks the custom filename.
-    const keepAlive = window.setInterval(applyFilename, 100);
-    const stop = () => {
-      window.clearInterval(keepAlive);
-      window.removeEventListener('beforeprint', applyFilename);
-    };
-    window.addEventListener('afterprint', () => window.setTimeout(stop, 500), { once: true });
-    window.setTimeout(stop, 20000);
+      printWindow.document.open();
+      printWindow.document.write(`<!doctype html>
+        <html lang="${document.documentElement.lang || 'en'}">
+          <head>
+            <meta charset="UTF-8" />
+            <base href="${safeBase}" />
+            <title>${safeTitle}</title>
+            ${styles}
+          </head>
+          <body class="${document.body.className}">${printRoot.outerHTML}</body>
+        </html>`);
+      printWindow.document.close();
+      printWindow.document.title = filename;
 
-    window.setTimeout(() => {
-      applyFilename();
-      window.print();
-    }, 300);
+      const images = Array.from(printWindow.document.images);
+      const imagesReady = Promise.all(images.map(image => image.complete
+        ? Promise.resolve()
+        : new Promise<void>(resolve => {
+            image.addEventListener('load', () => resolve(), { once: true });
+            image.addEventListener('error', () => resolve(), { once: true });
+          })));
+      const fontsReady = printWindow.document.fonts?.ready ?? Promise.resolve();
+
+      Promise.all([imagesReady, fontsReady]).then(() => {
+        printWindow.document.title = filename;
+        printWindow.focus();
+        printWindow.print();
+      });
+      return;
+    }
+
+    // Popup-blocker fallback: retain the same personalized name in the
+    // current document before opening the native print dialog.
+    document.title = filename;
+    window.print();
   }, [buildPdfFilename]);
 
   // Keep the document title aligned with the custom PDF filename while this
