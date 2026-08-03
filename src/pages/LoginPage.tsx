@@ -10,6 +10,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Loader2 } from 'lucide-react';
 import GoogleSignInButton from '@/components/GoogleSignInButton';
 import BrandLogo from '@/components/BrandLogo';
+import { consumeAuthRedirect, storeAuthRedirect } from '@/lib/authRedirect';
 
 const LoginPage = () => {
   const [email, setEmail] = useState('');
@@ -23,21 +24,12 @@ const LoginPage = () => {
   // Preserve intended destination across OAuth roundtrip
   const fromState = (location.state as any)?.from as string | undefined;
   useEffect(() => {
-    if (fromState) sessionStorage.setItem('postAuthRedirect', fromState);
+    if (fromState) storeAuthRedirect(fromState);
   }, [fromState]);
-
-  const getRedirect = () => {
-    const stored = sessionStorage.getItem('postAuthRedirect');
-    if (stored) {
-      sessionStorage.removeItem('postAuthRedirect');
-      return stored;
-    }
-    return '/leads';
-  };
 
   useEffect(() => {
     if (!authLoading && user) {
-      navigate(getRedirect(), { replace: true });
+      navigate(consumeAuthRedirect(), { replace: true });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [authLoading, user]);
@@ -51,7 +43,7 @@ const LoginPage = () => {
     if (error) {
       toast({ title: 'Erro ao entrar', description: error.message, variant: 'destructive' });
     } else {
-      navigate(getRedirect(), { replace: true });
+      navigate(consumeAuthRedirect(), { replace: true });
     }
   };
 
