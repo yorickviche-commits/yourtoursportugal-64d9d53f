@@ -70,9 +70,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, session) => {
+        // Initial hydration is owned by initializeAuth below. Ignoring this
+        // duplicate event prevents a transient null session from redirecting
+        // protected routes while OAuth storage is still being restored.
+        if (event === 'INITIAL_SESSION') return;
+
         applySession(session);
 
-        if (event === 'INITIAL_SESSION' || event === 'SIGNED_IN' || event === 'SIGNED_OUT' || event === 'TOKEN_REFRESHED') {
+        if (event === 'SIGNED_IN' || event === 'SIGNED_OUT' || event === 'TOKEN_REFRESHED') {
           setLoading(false);
         }
       }
