@@ -23,9 +23,11 @@ const LoginPage = () => {
 
   // Preserve intended destination across OAuth roundtrip
   const fromState = (location.state as any)?.from as string | undefined;
+  const nextParam = new URLSearchParams(location.search).get('next') ?? undefined;
   useEffect(() => {
-    if (fromState) storeAuthRedirect(fromState);
-  }, [fromState]);
+    const target = nextParam || fromState;
+    if (target) storeAuthRedirect(target);
+  }, [fromState, nextParam]);
 
   useEffect(() => {
     if (!authLoading && user) {
