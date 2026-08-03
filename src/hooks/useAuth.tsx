@@ -73,8 +73,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       }
     );
 
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    supabase.auth.getSession().then(async ({ data: { session }, error }) => {
       initialSessionLoaded.current = true;
+      if (error) {
+        // Stale/rotated refresh token: clear it so the user gets a clean login
+        // instead of an endless bounce back to /login.
+        await supabase.auth.signOut({ scope: 'local' }).catch(() => {});
+      }
       setSession(session);
       setUser(session?.user ?? null);
       if (session?.user) {
@@ -83,6 +88,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       }
       setLoading(false);
     });
+
 
     return () => subscription.unsubscribe();
   }, []);
