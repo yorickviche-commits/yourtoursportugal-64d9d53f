@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Loader2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
@@ -15,6 +16,19 @@ const GoogleIcon = () => (
 const GoogleSignInButton = ({ label = 'Continuar com Google' }: { label?: string }) => {
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
+  const navigate = useNavigate();
+
+  const waitForSession = async () => {
+    // The session is written by the Lovable auth helper; give storage a moment
+    // and re-check without forcing a full page reload (a hard reload can race
+    // the token refresh and invalidate the freshly rotated refresh token).
+    for (let i = 0; i < 20; i++) {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session) return session;
+      await new Promise(r => setTimeout(r, 150));
+    }
+    return null;
+  };
 
   const handleGoogle = async () => {
     setLoading(true);
@@ -32,8 +46,8 @@ const GoogleSignInButton = ({ label = 'Continuar com Google' }: { label?: string
 
     if (result.redirected) return;
 
-    const { data: { session }, error } = await supabase.auth.getSession();
-    if (error || !session) {
+    const session = await waitForSession();
+    if (!session) {
       setLoading(false);
       toast({
         title: 'Sessão Google não guardada',
@@ -45,8 +59,10 @@ const GoogleSignInButton = ({ label = 'Continuar com Google' }: { label?: string
 
     const stored = sessionStorage.getItem('postAuthRedirect');
     if (stored) sessionStorage.removeItem('postAuthRedirect');
-    window.location.replace(stored || '/leads');
+    setLoading(false);
+    navigate(stored || '/leads', { replace: true });
   };
+
 
   return (
     <Button type="button" variant="outline" className="w-full" onClick={handleGoogle} disabled={loading}>
