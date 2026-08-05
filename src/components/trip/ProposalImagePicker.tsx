@@ -104,13 +104,16 @@ export default function ProposalImagePicker({
   };
 
   const handleSelectImage = async (img: UnsplashResult) => {
-    onSelect(img.url);
+    // Base64 (AI/upload) → storage, para não inflar a base de dados nem o gravar
+    const url = await uploadDataUrlImage(img.url);
+    onSelect(url);
     setOpen(false);
     if (dedupScope?.id) {
-      const pid = img.photo_id || extractPhotoId(img.url);
-      await registerPhotos([{ photo_id: pid, photo_url: img.url, used_in: searchContext }]);
+      const pid = img.photo_id || extractPhotoId(url);
+      await registerPhotos([{ photo_id: pid, photo_url: url, used_in: searchContext }]);
     }
   };
+
 
   const handleAIGenerate = async () => {
     setGenerating(true);
