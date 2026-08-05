@@ -328,10 +328,14 @@ Return ONLY JSON with this exact shape:
           action: dropFirstPerson(s?.action || ""),
         }));
       }
-      if (ytRef && typeof result.subject === "string" && !result.subject.includes(ytRef)) {
-        result.subject = `${result.subject.trim()} - ${ytRef}`;
-      }
+      // Subject is always deterministic: YTID - Trip Name - Dates - Client Name
+      const tripName = String(proposal?.title || lead?.destination || "").trim();
+      const subjectDates = String(proposal?.date_range || lead?.travel_dates || "").trim();
+      const clientName = String(lead?.client_name || proposal?.client_name || "").trim();
+      const subjectParts = [ytRef, tripName, subjectDates, clientName].filter(Boolean);
+      if (subjectParts.length) result.subject = subjectParts.join(" - ");
     }
+
 
     return new Response(
       JSON.stringify({
