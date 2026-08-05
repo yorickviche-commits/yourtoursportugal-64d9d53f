@@ -5,7 +5,7 @@
  * of exactly what the client receives → send through the Gmail reservas
  * integration → logged in the timeline.
  */
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   Sparkles, Loader2, Send, Wand2, Paperclip, LinkIcon, X, Eye, CheckCircle2, AlertTriangle,
@@ -28,6 +28,7 @@ import {
   buildEmailHtml, buildEmailPlain, textToHtml,
   type EmailBlocks, type ProgramLite,
 } from '@/lib/emailHtml';
+import { buildProposalPdfBase64, type ProposalLite } from '@/lib/proposalPdf';
 
 const PURPOSES = [
   { value: 'auto', label: 'Auto (recomendado)' },
@@ -95,6 +96,47 @@ export function CommunicationsWorkspace({
   const [sending, setSending] = useState(false);
   const [files, setFiles] = useState<{ filename: string; mimeType: string; contentBase64: string }[]>([]);
   const [showPreview, setShowPreview] = useState(true);
+  // Travel plan PDF — always attached by default on proposal emails
+  const [planPdf, setPlanPdf] = useState<{ filename: string; contentBase64: string } | null>(null);
+  const [planPdfLoading, setPlanPdfLoading] = useState(false);
+  const [attachPlanPdf, setAttachPlanPdf] = useState(true);
+
+  // Latest proposal for this lead (source for the travel plan PDF)
+  const { data: proposalRow } = useQuery({
+    queryKey: ['comms_proposal', scope, entityId],
+    queryFn: async () => {
+      const { data, error } = await (supabase as any)
+        .from('proposals')
+        .select('*')
+        .eq(scope === 'lead' ? 'lead_id' : 'trip_id', entityId)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (error) throw error;
+      return (data || null) as ProposalLite | null;
+    },
+    enabled: !!entityId,
+  });
+
+  // Build the PDF once a proposal exists so it's ready as an attachment
+  useEffect(() => {
+    if (!proposalRow?.id || planPdf || planPdfLoading) return;
+    let cancelled = false;
+    setPlanPdfLoading(true);
+    (async () => {
+      try {
+        const weblink = proposalRow.public_token ? getProposalShareUrl(proposalRow.public_token) : '';
+        const { base64, filename } = await buildProposalPdfBase64(proposalRow, weblink);
+        if (!cancelled) setPlanPdf({ filename, contentBase64: base64 });
+      } catch (e) {
+        console.error('Travel plan PDF build failed', e);
+      } finally {
+        if (!cancelled) setPlanPdfLoading(false);
+      }
+    })();
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [proposalRow?.id]);
 
   const { data: history = [], isLoading } = useQuery({
     queryKey: ['comms_log', scope, entityId],
@@ -231,7 +273,12 @@ export function CommunicationsWorkspace({
           subject: blocks.subject,
           html,
           body: buildEmailPlain(blocks, blocks.includeProgram ? program : null),
-          attachments: files,
+          attachments: [
+            ...(attachPlanPdf && planPdf
+              ? [{ filename: planPdf.filename, mimeType: 'application/pdf', contentBase64: planPdf.contentBase64 }]
+              : []),
+            ...files,
+          ],
         },
       });
       if (error) throw error;
@@ -454,7 +501,21 @@ export function CommunicationsWorkspace({
                 </label>
               </div>
               <div className="space-y-1 p-2">
-                {files.length === 0 && (
+                {/* Travel plan PDF — pinned by default */}
+                {(planPdf || planPdfLoading) && (
+                  <div className="flex items-center gap-2 rounded border bg-muted/40 px-2 py-1 text-xs">
+                    <Switch checked={attachPlanPdf && !!planPdf} disabled={!planPdf} onCheckedChange={setAttachPlanPdf} />
+                    {planPdfLoading ? (
+                      <span className="flex items-center gap-1 text-muted-foreground">
+                        <Loader2 className="h-3 w-3 animate-spin" /> A preparar PDF do programa…
+                      </span>
+                    ) : (
+                      <span className="truncate">{planPdf?.filename}</span>
+                    )}
+                    <Badge variant="secondary" className="ml-auto text-[9px]">Travel Plan</Badge>
+                  </div>
+                )}
+                {files.length === 0 && !planPdf && !planPdfLoading && (
                   <p className="text-[10px] text-muted-foreground">
                     Sem anexos. O itinerário vai como link (capa clicável) — recomendado para entregabilidade.
                   </p>
