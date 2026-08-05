@@ -1,9 +1,6 @@
-// Renders a Google-Maps-looking static route image for a day's Google Maps
-// share URL, so the PDF shows the same map as the digital itinerary.
-//
-// Flow: parse/resolve the Google Maps URL -> Routes API (real driving polyline)
-// -> Static Maps image (PNG, base64). Everything goes through the Lovable
-// connector gateway for the Google Maps Platform connection.
+// Resolves a day's Google Maps share URL into the REAL driving route polyline
+// (Google Routes API through the Lovable connector gateway), so the PDF map can
+// draw the same route the digital itinerary shows.
 import { corsHeaders } from 'npm:@supabase/supabase-js@2/cors';
 
 const GATEWAY = 'https://connector-gateway.lovable.dev/google_maps';
@@ -93,37 +90,7 @@ Deno.serve(async (req) => {
       }
     }
 
-    const params = new URLSearchParams();
-    params.set('size', `${width}x${height}`);
-    params.set('scale', '2');
-    params.set('maptype', 'roadmap');
-    params.set('language', typeof body?.language === 'string' ? body.language : 'en');
-    if (polyline) params.append('path', `weight:5|color:0x2a3ad6ff|enc:${polyline}`);
-    stops.forEach((s, i) => {
-      params.append('markers', `color:0x0a2540|label:${i + 1}|${s}`);
-    });
-
-    const imgRes = await fetch(`${GATEWAY}/maps/api/staticmap?${params.toString()}`, { headers: h });
-    if (!imgRes.ok) {
-      const detail = await imgRes.text();
-      console.error('Static Maps failed', imgRes.status, detail);
-      return json({ error: 'Static map request failed', status: imgRes.status, details: detail }, imgRes.status);
-    }
-
-    const bytes = new Uint8Array(await imgRes.arrayBuffer());
-    let binary = '';
-    for (let i = 0; i < bytes.length; i += 0x8000) {
-      binary += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
-    }
-    const base64 = btoa(binary);
-
-    return json({
-      dataUrl: `data:image/png;base64,${base64}`,
-      width: width * 2,
-      height: height * 2,
-      stops,
-      hasRoute: !!polyline,
-    });
+    return json({ polyline, stops, hasRoute: !!polyline });
   } catch (e) {
     console.error('route-map-image error', e);
     return json({ error: (e as Error).message }, 500);
