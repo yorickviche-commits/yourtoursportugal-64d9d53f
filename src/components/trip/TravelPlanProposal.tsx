@@ -1023,7 +1023,7 @@ const TravelPlanProposal = ({
       const participantLabel = participantLabels[proposalLang] || participantLabels.en;
       const paxStr = `${pax} ${pax === 1 ? participantLabel.adult : participantLabel.adults}${paxChildren ? ` + ${paxChildren} ${paxChildren === 1 ? participantLabel.child : participantLabel.children}` : ''}`;
       // Store cover_image in extra_instructions as JSON metadata
-      const metadata = JSON.stringify({ cover_image: planToSave.cover_image || null, closing, language });
+      const metadata = JSON.stringify({ cover_image: planToSave.cover_image || null, brand_logo: planToSave.brand_logo || null, closing, language });
       const { data: existingPlanRow } = await supabase
         .from('travel_plans').select('id').eq('lead_id', leadId)
         .order('updated_at', { ascending: false }).limit(1).maybeSingle();
