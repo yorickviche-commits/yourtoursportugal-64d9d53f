@@ -9,6 +9,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useUsedPhotos, extractPhotoId, type PhotoScope } from '@/hooks/useUsedPhotos';
+import { uploadDataUrlImage } from '@/lib/uploadDataUrlImage';
+
 
 interface ProposalImagePickerProps {
   currentUrl?: string;
@@ -104,13 +106,16 @@ export default function ProposalImagePicker({
   };
 
   const handleSelectImage = async (img: UnsplashResult) => {
-    onSelect(img.url);
+    // Base64 (AI/upload) → storage, para não inflar a base de dados nem o gravar
+    const url = await uploadDataUrlImage(img.url);
+    onSelect(url);
     setOpen(false);
     if (dedupScope?.id) {
-      const pid = img.photo_id || extractPhotoId(img.url);
-      await registerPhotos([{ photo_id: pid, photo_url: img.url, used_in: searchContext }]);
+      const pid = img.photo_id || extractPhotoId(url);
+      await registerPhotos([{ photo_id: pid, photo_url: url, used_in: searchContext }]);
     }
   };
+
 
   const handleAIGenerate = async () => {
     setGenerating(true);
@@ -155,15 +160,17 @@ export default function ProposalImagePicker({
     const file = e.target.files?.[0];
     if (!file) return;
     const reader = new FileReader();
-    reader.onload = (ev) => {
+    reader.onload = async (ev) => {
       const dataUrl = ev.target?.result as string;
-      onSelect(dataUrl);
+      const url = await uploadDataUrlImage(dataUrl, 'uploads');
+      onSelect(url);
       setOpen(false);
       toast({ title: '📷 Imagem carregada!' });
     };
     reader.readAsDataURL(file);
     e.target.value = '';
   };
+
 
   const arCls = aspectRatio === 'landscape' ? 'aspect-[16/9]' : 'aspect-square';
 

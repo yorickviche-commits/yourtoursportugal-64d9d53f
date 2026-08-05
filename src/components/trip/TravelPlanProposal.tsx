@@ -61,6 +61,8 @@ export interface ProposalDay {
 }
 
 import { toMapEmbedSrc, parseGoogleMapsUrl } from '@/lib/mapEmbed';
+import { uploadDataUrlImage, isDataUrl } from '@/lib/uploadDataUrlImage';
+
 export { toMapEmbedSrc };
 
 export interface TravelPlanData {
@@ -984,8 +986,28 @@ const TravelPlanProposal = ({
     if (!plan) return;
     setSaving(true);
     try {
-      const startDate = plan.days[0]?.date || travelDates || null;
-      const endDate = plan.days[plan.days.length - 1]?.date || travelEndDate || null;
+      // ── Normalizar imagens base64 → storage (evita payloads de vários MB) ──
+      let planToSave = plan;
+      const hasDataUrls =
+        isDataUrl(plan.cover_image?.url) ||
+        plan.days.some(d => (d.images || []).some(img => isDataUrl(img.url)));
+      if (hasDataUrls) {
+        const cover = plan.cover_image?.url
+          ? { ...plan.cover_image, url: await uploadDataUrlImage(plan.cover_image.url, `leads/${leadCode}`) }
+          : plan.cover_image;
+        const days = await Promise.all(plan.days.map(async d => ({
+          ...d,
+          images: await Promise.all((d.images || []).map(async img => ({
+            ...img,
+            url: await uploadDataUrlImage(img.url, `leads/${leadCode}`),
+          }))),
+        })));
+        planToSave = { ...plan, cover_image: cover, days };
+        setPlan(planToSave);
+      }
+
+      const startDate = planToSave.days[0]?.date || travelDates || null;
+      const endDate = planToSave.days[planToSave.days.length - 1]?.date || travelEndDate || null;
       const proposalLang = (language || 'EN').toLowerCase().slice(0, 2);
       const participantLabels: Record<string, { adult: string; adults: string; child: string; children: string }> = {
         en: { adult: 'adult', adults: 'adults', child: 'child', children: 'children' },
@@ -997,22 +1019,28 @@ const TravelPlanProposal = ({
       };
       const participantLabel = participantLabels[proposalLang] || participantLabels.en;
       const paxStr = `${pax} ${pax === 1 ? participantLabel.adult : participantLabel.adults}${paxChildren ? ` + ${paxChildren} ${paxChildren === 1 ? participantLabel.child : participantLabel.children}` : ''}`;
-      await supabase.from('travel_plans').delete().eq('lead_id', leadId);
       // Store cover_image in extra_instructions as JSON metadata
-      const metadata = JSON.stringify({ cover_image: plan.cover_image || null, closing, language });
-      const { error } = await supabase.from('travel_plans').insert({
-        lead_id: leadId, file_id: leadCode, trip_title: plan.trip_title,
+      const metadata = JSON.stringify({ cover_image: planToSave.cover_image || null, closing, language });
+      const { data: existingPlanRow } = await supabase
+        .from('travel_plans').select('id').eq('lead_id', leadId)
+        .order('updated_at', { ascending: false }).limit(1).maybeSingle();
+      const planPayload = {
+        lead_id: leadId, file_id: leadCode, trip_title: planToSave.trip_title,
         client_name: clientName, start_date: startDate, end_date: endDate,
-        pax: paxStr, narrative: plan.narrative, days: plan.days as any,
+        pax: paxStr, narrative: planToSave.narrative, days: planToSave.days as any,
         extra_instructions: metadata, status: 'draft',
-      });
+      };
+      const { error } = existingPlanRow
+        ? await supabase.from('travel_plans').update(planPayload).eq('id', existingPlanRow.id)
+        : await supabase.from('travel_plans').insert(planPayload);
       if (error) throw error;
+
 
       // Auto-create/update proposal from travel plan
       const token = `ytp-${leadCode.toLowerCase().replace(/[^a-z0-9]/g, '-')}`;
       const dateRange = startDate && endDate ? `${startDate} — ${endDate}` : startDate || '';
       const dayLabelByLang: Record<string, string> = { en: 'Day', fr: 'Jour', es: 'Día', pt: 'Dia', it: 'Giorno', de: 'Tag' };
-      const proposalDays = plan.days.map((d, i) => ({
+      const proposalDays = planToSave.days.map((d, i) => ({
         day_number: d.day_number,
         date_label: d.date || `${dayLabelByLang[proposalLang] || 'Day'} ${d.day_number}`,
         title: d.title,
@@ -1033,12 +1061,12 @@ const TravelPlanProposal = ({
 
       if (existingProposal) {
         await supabase.from('proposals').update({
-          title: plan.trip_title,
+          title: planToSave.trip_title,
           client_name: clientName,
           date_range: dateRange,
           participants: paxStr,
-          hero_image_url: plan.cover_image?.url || '',
-          summary_text: plan.narrative,
+          hero_image_url: planToSave.cover_image?.url || '',
+          summary_text: planToSave.narrative,
           days: proposalDays as any,
           language: proposalLang,
           total_value_eur: totalPVP || null,
@@ -1048,12 +1076,12 @@ const TravelPlanProposal = ({
         await supabase.from('proposals').insert({
           public_token: token,
           lead_id: leadId,
-          title: plan.trip_title,
+          title: planToSave.trip_title,
           client_name: clientName,
           date_range: dateRange,
           participants: paxStr,
-          hero_image_url: plan.cover_image?.url || '',
-          summary_text: plan.narrative,
+          hero_image_url: planToSave.cover_image?.url || '',
+          summary_text: planToSave.narrative,
           days: proposalDays as any,
           map_stops: [] as any,
           language: proposalLang,
@@ -1067,54 +1095,56 @@ const TravelPlanProposal = ({
       queryClient.invalidateQueries({ queryKey: ['travel_plan', leadId] });
       queryClient.invalidateQueries({ queryKey: ['proposals'] });
       toast({ title: 'Plano guardado!', description: 'Proposta cliente atualizada automaticamente.' });
+      setSaving(false);
 
-      // ── WeTravel deposit link (non-blocking) ──
-      try {
-        const [{ data: savedProposal }, { data: tripData }] = await Promise.all([
-          supabase.from('proposals').select('id, wetravel_checkout_url, deposit_amount_eur')
-            .eq('lead_id', leadId).maybeSingle(),
-          supabase.from('trips').select('total_value')
-            .eq('lead_id', leadId).order('updated_at', { ascending: false }).limit(1).maybeSingle(),
-        ]);
-        const totalValue = (tripData as any)?.total_value ?? totalPVP ?? 0;
-        if (savedProposal && totalValue > 0) {
+      // ── WeTravel deposit link (totalmente fora do caminho de gravação) ──
+      void (async () => {
+        try {
+          const [{ data: savedProposal }, { data: tripData }] = await Promise.all([
+            supabase.from('proposals').select('id, wetravel_checkout_url, deposit_amount_eur')
+              .eq('lead_id', leadId).maybeSingle(),
+            supabase.from('trips').select('total_value')
+              .eq('lead_id', leadId).order('updated_at', { ascending: false }).limit(1).maybeSingle(),
+          ]);
+          const totalValue = (tripData as any)?.total_value ?? totalPVP ?? 0;
+          if (!savedProposal || !(totalValue > 0)) return;
           if (savedProposal.wetravel_checkout_url) {
             setWetravelCheckoutUrl(savedProposal.wetravel_checkout_url);
             setWetravelDepositEur(savedProposal.deposit_amount_eur ?? null);
-          } else {
-            supabase.functions.invoke('create-wetravel-deposit', {
-              body: {
-                proposal_id: savedProposal.id,
-                total_value_eur: totalValue,
-                deposit_percent: 50,
-                title: plan.trip_title,
-                description: plan.narrative?.slice(0, 500) ?? '',
-                start_date: plan.days[0]?.date ?? travelDates ?? null,
-                end_date: plan.days[plan.days.length - 1]?.date ?? travelEndDate ?? null,
-                cover_image_url: plan.cover_image?.url ?? null,
-                client_name: clientName,
-              },
-            }).then(({ data: wt }: any) => {
-              if (wt?.checkout_url) {
-                setWetravelCheckoutUrl(wt.checkout_url);
-                setWetravelDepositEur(wt.deposit_amount_eur ?? null);
-                toast({
-                  title: '💳 Book Now link criado',
-                  description: `Depósito de €${wt.deposit_amount_eur} · 100% reembolsável`,
-                });
-              }
-            }).catch((err: any) => console.error('WeTravel (non-blocking):', err));
+            return;
           }
+          const { data: wt } = await supabase.functions.invoke('create-wetravel-deposit', {
+            body: {
+              proposal_id: savedProposal.id,
+              total_value_eur: totalValue,
+              deposit_percent: 50,
+              title: planToSave.trip_title,
+              description: planToSave.narrative?.slice(0, 500) ?? '',
+              start_date: planToSave.days[0]?.date ?? travelDates ?? null,
+              end_date: planToSave.days[planToSave.days.length - 1]?.date ?? travelEndDate ?? null,
+              cover_image_url: planToSave.cover_image?.url ?? null,
+              client_name: clientName,
+            },
+          });
+          if ((wt as any)?.checkout_url) {
+            setWetravelCheckoutUrl((wt as any).checkout_url);
+            setWetravelDepositEur((wt as any).deposit_amount_eur ?? null);
+            toast({
+              title: '💳 Book Now link criado',
+              description: `Depósito de €${(wt as any).deposit_amount_eur} · 100% reembolsável`,
+            });
+          }
+        } catch (err) {
+          console.error('WeTravel (non-blocking):', err);
         }
-      } catch (err) {
-        console.error('WeTravel setup error (non-blocking):', err);
-      }
+      })();
     } catch (e: any) {
       toast({ title: 'Erro ao guardar', description: e.message, variant: 'destructive' });
     } finally {
       setSaving(false);
     }
   }, [plan, closing, leadId, leadCode, clientName, pax, paxChildren, travelDates, travelEndDate, toast, queryClient]);
+
 
   // Edit helpers
   const updateDay = (dayIdx: number, updates: Partial<ProposalDay>) => {
