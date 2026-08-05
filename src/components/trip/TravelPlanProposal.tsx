@@ -61,7 +61,7 @@ export interface ProposalDay {
 }
 
 import { toMapEmbedSrc, parseGoogleMapsUrl } from '@/lib/mapEmbed';
-import { uploadDataUrlImage, isDataUrl, uploadImageFile } from '@/lib/uploadDataUrlImage';
+import { uploadDataUrlImage, isDataUrl, uploadImageFile, removeWhiteBackground } from '@/lib/uploadDataUrlImage';
 
 export { toMapEmbedSrc };
 
@@ -1491,9 +1491,9 @@ const TravelPlanProposal = ({
             </p>
             <div className="flex items-center gap-3">
               {displayPlan.brand_logo ? (
-                <img src={displayPlan.brand_logo} alt="Logótipo" className="h-12 max-w-[160px] object-contain border rounded bg-white p-1" />
+                <img src={displayPlan.brand_logo} alt="Logótipo" className="h-[60px] max-w-[200px] object-contain border rounded p-1" />
               ) : (
-                <div className="h-12 w-[160px] border border-dashed rounded flex items-center justify-center text-[10px] text-muted-foreground">
+                <div className="h-[60px] w-[200px] border border-dashed rounded flex items-center justify-center text-[10px] text-muted-foreground">
                   Sem logótipo
                 </div>
               )}
@@ -1508,7 +1508,8 @@ const TravelPlanProposal = ({
                     if (!file) return;
                     setUploadingLogo(true);
                     try {
-                      const url = await uploadImageFile(file, `logos/${leadCode}`);
+                      const clean = await removeWhiteBackground(file);
+                      const url = await uploadImageFile(clean, `logos/${leadCode}`);
                       setPlan(p => p ? { ...p, brand_logo: url } : p);
                       toast({ title: 'Logótipo carregado' });
                     } catch (err: any) {
@@ -1560,15 +1561,15 @@ const TravelPlanProposal = ({
           <div className="relative w-full aspect-[21/9] overflow-hidden">
             <img src={displayPlan.cover_image.url} alt={destination} className="w-full h-full object-cover" />
             {displayPlan.brand_logo && (
-              <div className="absolute top-3 left-3 bg-white/95 rounded-md shadow px-2 py-1">
-                <img src={displayPlan.brand_logo} alt="Logo" className="h-10 max-w-[150px] object-contain" />
+              <div className="absolute top-3 left-3">
+                <img src={displayPlan.brand_logo} alt="Logo" className="h-[50px] max-w-[188px] object-contain drop-shadow-[0_2px_6px_rgba(0,0,0,0.35)]" />
               </div>
             )}
           </div>
         )}
         {viewMode === 'preview' && !displayPlan.cover_image?.url && displayPlan.brand_logo && (
           <div className="px-6 pt-5">
-            <img src={displayPlan.brand_logo} alt="Logo" className="h-10 max-w-[150px] object-contain" />
+            <img src={displayPlan.brand_logo} alt="Logo" className="h-[50px] max-w-[188px] object-contain" />
           </div>
         )}
 

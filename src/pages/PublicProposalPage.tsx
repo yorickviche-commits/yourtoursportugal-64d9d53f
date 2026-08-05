@@ -173,8 +173,8 @@ const PublicProposalPage = () => {
         <img src={proposal.hero_image_url || 'https://images.unsplash.com/photo-1555881400-74d7acaacd8b?w=1600'} alt="Cover" className="absolute inset-0 w-full h-full object-cover" />
         <div className="absolute inset-0 bg-gradient-to-t from-[#0a2540]/80 via-[#0a2540]/30 to-transparent" />
         {(proposal as any).brand_logo_url && (
-          <div className="absolute top-4 left-4 md:top-6 md:left-6 bg-white/95 rounded-lg shadow-lg px-3 py-2">
-            <img src={(proposal as any).brand_logo_url} alt="Logo" className="h-10 md:h-12 max-w-[170px] object-contain" />
+          <div className="absolute top-4 left-4 md:top-6 md:left-6">
+            <img src={(proposal as any).brand_logo_url} alt="Logo" className="h-[50px] md:h-[60px] max-w-[212px] object-contain drop-shadow-[0_2px_8px_rgba(0,0,0,0.4)]" />
           </div>
         )}
         <div className="absolute bottom-0 left-0 right-0 p-6 md:p-12 text-white">
