@@ -160,15 +160,17 @@ export default function ProposalImagePicker({
     const file = e.target.files?.[0];
     if (!file) return;
     const reader = new FileReader();
-    reader.onload = (ev) => {
+    reader.onload = async (ev) => {
       const dataUrl = ev.target?.result as string;
-      onSelect(dataUrl);
+      const url = await uploadDataUrlImage(dataUrl, 'uploads');
+      onSelect(url);
       setOpen(false);
       toast({ title: '📷 Imagem carregada!' });
     };
     reader.readAsDataURL(file);
     e.target.value = '';
   };
+
 
   const arCls = aspectRatio === 'landscape' ? 'aspect-[16/9]' : 'aspect-square';
 
