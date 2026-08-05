@@ -5,7 +5,7 @@
  * of exactly what the client receives → send through the Gmail reservas
  * integration → logged in the timeline.
  */
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   Sparkles, Loader2, Send, Wand2, Paperclip, LinkIcon, X, Eye, CheckCircle2, AlertTriangle,
@@ -28,6 +28,7 @@ import {
   buildEmailHtml, buildEmailPlain, textToHtml,
   type EmailBlocks, type ProgramLite,
 } from '@/lib/emailHtml';
+import { buildProposalPdfBase64, type ProposalLite } from '@/lib/proposalPdf';
 
 const PURPOSES = [
   { value: 'auto', label: 'Auto (recomendado)' },
@@ -104,7 +105,7 @@ export function CommunicationsWorkspace({
   const { data: proposalRow } = useQuery({
     queryKey: ['comms_proposal', scope, entityId],
     queryFn: async () => {
-      const { data, error } = await supabase
+      const { data, error } = await (supabase as any)
         .from('proposals')
         .select('*')
         .eq(scope === 'lead' ? 'lead_id' : 'trip_id', entityId)
@@ -112,7 +113,7 @@ export function CommunicationsWorkspace({
         .limit(1)
         .maybeSingle();
       if (error) throw error;
-      return data as ProposalLite | null;
+      return (data || null) as ProposalLite | null;
     },
     enabled: !!entityId,
   });
