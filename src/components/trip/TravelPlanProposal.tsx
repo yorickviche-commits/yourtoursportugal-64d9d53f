@@ -61,7 +61,7 @@ export interface ProposalDay {
 }
 
 import { toMapEmbedSrc, parseGoogleMapsUrl } from '@/lib/mapEmbed';
-import { uploadDataUrlImage, isDataUrl } from '@/lib/uploadDataUrlImage';
+import { uploadDataUrlImage, isDataUrl, uploadImageFile } from '@/lib/uploadDataUrlImage';
 
 export { toMapEmbedSrc };
 
@@ -69,6 +69,7 @@ export interface TravelPlanData {
   trip_title: string;
   narrative: string;
   cover_image?: ProposalImage;
+  brand_logo?: string;
   days: ProposalDay[];
 }
 
@@ -492,6 +493,7 @@ const TravelPlanProposal = ({
   const [extraInstructions, setExtraInstructions] = useState('');
   const [showRegenInput, setShowRegenInput] = useState(false);
   const [fillingImages, setFillingImages] = useState(false);
+  const [uploadingLogo, setUploadingLogo] = useState(false);
   const [sectionLoading, setSectionLoading] = useState<string | null>(null);
   const [activeChat, setActiveChat] = useState<string | null>(null);
   const normalizedDefaultLang = (defaultLanguage || 'EN').toUpperCase();
@@ -693,15 +695,17 @@ const TravelPlanProposal = ({
     const days = Array.isArray(savedPlan.days) ? savedPlan.days as unknown as ProposalDay[] : [];
     // Restore cover_image + closing terms from extra_instructions metadata
     let cover_image: ProposalImage | undefined;
+    let brand_logo: string | undefined;
     try {
       const meta = savedPlan.extra_instructions ? JSON.parse(savedPlan.extra_instructions) : null;
       if (meta?.cover_image) cover_image = meta.cover_image;
+      if (meta?.brand_logo) brand_logo = meta.brand_logo;
       if (meta?.closing) setClosing({ ...DEFAULT_CLOSING, ...meta.closing });
       if (meta?.language && LANGUAGE_OPTIONS.some(o => o.value === String(meta.language).toUpperCase())) {
         setLanguage(String(meta.language).toUpperCase());
       }
     } catch { /* not JSON, ignore */ }
-    setPlan({ trip_title: savedPlan.trip_title || '', narrative: savedPlan.narrative || '', cover_image, days });
+    setPlan({ trip_title: savedPlan.trip_title || '', narrative: savedPlan.narrative || '', cover_image, brand_logo, days });
   }
 
   // Auto-sync per-day dates when concrete travel dates change in "Dados Gerais".
@@ -1020,7 +1024,7 @@ const TravelPlanProposal = ({
       const participantLabel = participantLabels[proposalLang] || participantLabels.en;
       const paxStr = `${pax} ${pax === 1 ? participantLabel.adult : participantLabel.adults}${paxChildren ? ` + ${paxChildren} ${paxChildren === 1 ? participantLabel.child : participantLabel.children}` : ''}`;
       // Store cover_image in extra_instructions as JSON metadata
-      const metadata = JSON.stringify({ cover_image: planToSave.cover_image || null, closing, language });
+      const metadata = JSON.stringify({ cover_image: planToSave.cover_image || null, brand_logo: planToSave.brand_logo || null, closing, language });
       const { data: existingPlanRow } = await supabase
         .from('travel_plans').select('id').eq('lead_id', leadId)
         .order('updated_at', { ascending: false }).limit(1).maybeSingle();
@@ -1066,6 +1070,7 @@ const TravelPlanProposal = ({
           date_range: dateRange,
           participants: paxStr,
           hero_image_url: planToSave.cover_image?.url || '',
+          brand_logo_url: planToSave.brand_logo || null,
           summary_text: planToSave.narrative,
           days: proposalDays as any,
           language: proposalLang,
@@ -1081,6 +1086,7 @@ const TravelPlanProposal = ({
           date_range: dateRange,
           participants: paxStr,
           hero_image_url: planToSave.cover_image?.url || '',
+          brand_logo_url: planToSave.brand_logo || null,
           summary_text: planToSave.narrative,
           days: proposalDays as any,
           map_stops: [] as any,
@@ -1381,12 +1387,14 @@ const TravelPlanProposal = ({
 
   const displayPlan = plan || (savedPlan ? (() => {
     let cover_image: ProposalImage | undefined;
+    let brand_logo: string | undefined;
     try {
       const meta = savedPlan.extra_instructions ? JSON.parse(savedPlan.extra_instructions) : null;
       if (meta?.cover_image) cover_image = meta.cover_image;
+      if (meta?.brand_logo) brand_logo = meta.brand_logo;
     } catch { /* ignore */ }
     return {
-      trip_title: savedPlan.trip_title, narrative: savedPlan.narrative || '', cover_image,
+      trip_title: savedPlan.trip_title, narrative: savedPlan.narrative || '', cover_image, brand_logo,
       days: (Array.isArray(savedPlan.days) ? savedPlan.days : []) as unknown as ProposalDay[],
     };
   })() : null);
@@ -1475,6 +1483,61 @@ const TravelPlanProposal = ({
 
       {/* ─── PROPOSAL ─── */}
       <div data-print-root className="bg-white rounded-xl border shadow-sm overflow-hidden print:shadow-none print:border-0 print:rounded-none">
+        {/* BRAND LOGO (B2B branded itineraries) */}
+        {viewMode === 'edit' && (
+          <div className="p-4 pb-0 print:hidden">
+            <p className="text-[10px] uppercase font-bold text-muted-foreground mb-2">
+              Logótipo (itinerário B2B — canto superior esquerdo)
+            </p>
+            <div className="flex items-center gap-3">
+              {displayPlan.brand_logo ? (
+                <img src={displayPlan.brand_logo} alt="Logótipo" className="h-12 max-w-[160px] object-contain border rounded bg-white p-1" />
+              ) : (
+                <div className="h-12 w-[160px] border border-dashed rounded flex items-center justify-center text-[10px] text-muted-foreground">
+                  Sem logótipo
+                </div>
+              )}
+              <label className="inline-flex">
+                <input
+                  type="file"
+                  accept="image/png,image/jpeg,image/webp,image/svg+xml"
+                  className="hidden"
+                  onChange={async e => {
+                    const file = e.target.files?.[0];
+                    e.target.value = '';
+                    if (!file) return;
+                    setUploadingLogo(true);
+                    try {
+                      const url = await uploadImageFile(file, `logos/${leadCode}`);
+                      setPlan(p => p ? { ...p, brand_logo: url } : p);
+                      toast({ title: 'Logótipo carregado' });
+                    } catch (err: any) {
+                      toast({ title: 'Erro ao carregar logótipo', description: err.message, variant: 'destructive' });
+                    } finally {
+                      setUploadingLogo(false);
+                    }
+                  }}
+                />
+                <Button asChild variant="outline" size="sm" className="text-xs gap-1" disabled={uploadingLogo}>
+                  <span>
+                    {uploadingLogo ? <Loader2 className="h-3 w-3 animate-spin" /> : <ImageIcon className="h-3 w-3" />}
+                    {displayPlan.brand_logo ? 'Substituir' : 'Carregar logótipo'}
+                  </span>
+                </Button>
+              </label>
+              {displayPlan.brand_logo && (
+                <Button variant="ghost" size="sm" className="text-xs text-destructive"
+                  onClick={() => setPlan(p => p ? { ...p, brand_logo: undefined } : p)}>
+                  Remover
+                </Button>
+              )}
+            </div>
+            <p className="text-[10px] text-muted-foreground mt-1">
+              Aparece no canto superior esquerdo do PDF e do itinerário digital (guardar para aplicar).
+            </p>
+          </div>
+        )}
+
         {/* COVER IMAGE */}
         {viewMode === 'edit' && (
           <div className="p-4 pb-0 print:hidden">
@@ -1494,8 +1557,18 @@ const TravelPlanProposal = ({
           </div>
         )}
         {viewMode === 'preview' && displayPlan.cover_image?.url && (
-          <div className="w-full aspect-[21/9] overflow-hidden">
+          <div className="relative w-full aspect-[21/9] overflow-hidden">
             <img src={displayPlan.cover_image.url} alt={destination} className="w-full h-full object-cover" />
+            {displayPlan.brand_logo && (
+              <div className="absolute top-3 left-3 bg-white/95 rounded-md shadow px-2 py-1">
+                <img src={displayPlan.brand_logo} alt="Logo" className="h-10 max-w-[150px] object-contain" />
+              </div>
+            )}
+          </div>
+        )}
+        {viewMode === 'preview' && !displayPlan.cover_image?.url && displayPlan.brand_logo && (
+          <div className="px-6 pt-5">
+            <img src={displayPlan.brand_logo} alt="Logo" className="h-10 max-w-[150px] object-contain" />
           </div>
         )}
 
