@@ -241,7 +241,7 @@ const PublicProposalPage = () => {
         {/* ─── SUMMARY ─── */}
         <section id="summary">
           <h2 className="text-2xl font-serif text-slate-800 mb-4">{dict.tripSummary}</h2>
-          <RichText as="p" className="text-slate-600 leading-relaxed mb-6 whitespace-pre-wrap" value={proposal.summary_text} preserveNewlines />
+          
           <div className="bg-white rounded-xl border border-slate-200 p-5">
             <button onClick={() => setNavOpen(!navOpen)} className="flex items-center justify-between w-full text-left">
               <span className="font-medium text-slate-700">{dict.programDayByDay}</span>
