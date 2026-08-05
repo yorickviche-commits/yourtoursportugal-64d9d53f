@@ -1938,17 +1938,7 @@ const TravelPlanProposal = ({
                           })}
                         </div>
                       </div>
-                    ) : (
-                      day.images && day.images.filter(i => i.url).length > 0 && (
-                        <div className="grid grid-cols-2 gap-3 mt-4">
-                          {day.images.filter(i => i.url).map((img, i) => (
-                            <div key={i} className="rounded-lg overflow-hidden aspect-[16/10]">
-                              <img src={img.url} alt={img.caption || day.title} className="w-full h-full object-cover" />
-                            </div>
-                          ))}
-                        </div>
-                      )
-                    )}
+                    ) : null}
                   </div>
                 </div>
 
