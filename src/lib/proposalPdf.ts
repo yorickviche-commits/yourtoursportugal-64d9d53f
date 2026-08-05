@@ -599,21 +599,68 @@ export async function buildProposalPdfBase64(
     });
     doc.link(btnX, btnY, btnW, btnH, { url: ALL_REVIEWS_URL });
 
-    // About Your Tours Portugal
-    const aboutY = Math.min(btnY + btnH + 30, pageH - 90);
+    // ─── About Your Tours Portugal (own page, with founders photo) ───
+    doc.addPage();
+    const foundersImg = await loadImg(foundersUrl);
+
+    let ay = 62;
     doc.setTextColor(10, 37, 64);
     doc.setFont('helvetica', 'bold');
-    doc.setFontSize(13);
-    doc.text(t.aboutTitle, pageW / 2, aboutY, { align: 'center' });
+    doc.setFontSize(18);
+    doc.text(t.aboutTitle, pageW / 2, ay, { align: 'center' });
+    ay += 22;
+
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(10);
+    doc.setTextColor(80, 80, 80);
+    const aboutLines = doc.splitTextToSize(t.aboutBody, pageW - 110);
+    doc.text(aboutLines, pageW / 2, ay, { align: 'center' });
+    ay += aboutLines.length * 13 + 16;
+
+    if (foundersImg) {
+      const aspect = foundersImg.h / foundersImg.w;
+      let iw = pageW - 150;
+      let ih = iw * aspect;
+      const maxH = pageH - ay - 170;
+      if (ih > maxH) { ih = maxH; iw = ih / aspect; }
+      const ix = (pageW - iw) / 2;
+      try {
+        doc.addImage(foundersImg.dataUrl, 'JPEG', ix, ay, iw, ih, undefined, 'FAST');
+        ay += ih + 18;
+      } catch (e) { console.warn('founders addImage failed', e); }
+    }
+
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(9.5);
     doc.setTextColor(80, 80, 80);
-    const aboutBody = t.aboutBody;
-    const aboutLines = doc.splitTextToSize(aboutBody, pageW - 120);
-    doc.text(aboutLines, pageW / 2, aboutY + 16, { align: 'center' });
-    doc.setTextColor(120, 120, 120);
-    doc.setFontSize(9);
-    doc.text('info@yourtoursportugal.com  ·  yourtoursportugal.com', pageW / 2, aboutY + 16 + aboutLines.length * 12 + 8, { align: 'center' });
+    const foundersLines = doc.splitTextToSize(t.foundersBody, pageW - 110);
+    doc.text(foundersLines, pageW / 2, ay, { align: 'center' });
+    ay += foundersLines.length * 12 + 22;
+
+    // Contact buttons: Email · Website · Phone/WhatsApp
+    const labels: { text: string; url: string }[] = [
+      { text: 'reservas@yourtours.pt', url: 'mailto:reservas@yourtours.pt' },
+      { text: 'yourtoursportugal.com', url: 'https://yourtoursportugal.com' },
+      { text: '+351 919 473 029', url: 'https://wa.me/351919473029' },
+    ];
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(9.5);
+    const bH = 26;
+    const gap = 12;
+    const widths = labels.map((l) => doc.getTextWidth(l.text) + 26);
+    const totalW = widths.reduce((a, b) => a + b, 0) + gap * (labels.length - 1);
+    let bx = (pageW - totalW) / 2;
+    labels.forEach((l, i) => {
+      const w = widths[i];
+      doc.setFillColor(10, 37, 64);
+      doc.roundedRect(bx, ay, w, bH, 13, 13, 'F');
+      doc.setTextColor(255, 255, 255);
+      doc.textWithLink(l.text, bx + w / 2, ay + 17, { align: 'center', url: l.url });
+      doc.link(bx, ay, w, bH, { url: l.url });
+      bx += w + gap;
+    });
+    doc.setTextColor(0, 0, 0);
+
   } catch (e) {
     console.warn('reviews page failed', e);
   }
