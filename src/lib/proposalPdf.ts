@@ -406,20 +406,6 @@ export async function buildProposalPdfBase64(p: ProposalLite, weblink: string): 
       }
     }
 
-    // Two images per day at the bottom (matching planner layout)
-    const imgs = dayImageUrls[idx].filter(u => imgCache.get(u));
-    if (imgs.length) {
-      const gap = 10;
-      const totalW = pageW - margin * 2;
-      const imgW = imgs.length === 1 ? totalW : (totalW - gap) / 2;
-      const imgH = Math.round((imgW * 2) / 3);
-      ensureSpace(imgH + 10);
-      imgs.forEach((u, i) => {
-        const x = margin + i * (imgW + gap);
-        drawImage(u, x, y, imgW, imgH);
-      });
-      y += imgH + 12;
-    }
   });
 
   // ─── Pricing & Conditions (end of programme, total price before inclusions) ───
