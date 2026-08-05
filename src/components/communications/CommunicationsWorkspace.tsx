@@ -273,7 +273,12 @@ export function CommunicationsWorkspace({
           subject: blocks.subject,
           html,
           body: buildEmailPlain(blocks, blocks.includeProgram ? program : null),
-          attachments: files,
+          attachments: [
+            ...(attachPlanPdf && planPdf
+              ? [{ filename: planPdf.filename, mimeType: 'application/pdf', contentBase64: planPdf.contentBase64 }]
+              : []),
+            ...files,
+          ],
         },
       });
       if (error) throw error;
@@ -496,7 +501,21 @@ export function CommunicationsWorkspace({
                 </label>
               </div>
               <div className="space-y-1 p-2">
-                {files.length === 0 && (
+                {/* Travel plan PDF — pinned by default */}
+                {(planPdf || planPdfLoading) && (
+                  <div className="flex items-center gap-2 rounded border bg-muted/40 px-2 py-1 text-xs">
+                    <Switch checked={attachPlanPdf && !!planPdf} disabled={!planPdf} onCheckedChange={setAttachPlanPdf} />
+                    {planPdfLoading ? (
+                      <span className="flex items-center gap-1 text-muted-foreground">
+                        <Loader2 className="h-3 w-3 animate-spin" /> A preparar PDF do programa…
+                      </span>
+                    ) : (
+                      <span className="truncate">{planPdf?.filename}</span>
+                    )}
+                    <Badge variant="secondary" className="ml-auto text-[9px]">Travel Plan</Badge>
+                  </div>
+                )}
+                {files.length === 0 && !planPdf && !planPdfLoading && (
                   <p className="text-[10px] text-muted-foreground">
                     Sem anexos. O itinerário vai como link (capa clicável) — recomendado para entregabilidade.
                   </p>
