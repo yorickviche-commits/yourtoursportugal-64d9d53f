@@ -69,6 +69,7 @@ export interface TravelPlanData {
   trip_title: string;
   narrative: string;
   cover_image?: ProposalImage;
+  brand_logo?: string;
   days: ProposalDay[];
 }
 
