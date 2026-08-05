@@ -1386,12 +1386,14 @@ const TravelPlanProposal = ({
 
   const displayPlan = plan || (savedPlan ? (() => {
     let cover_image: ProposalImage | undefined;
+    let brand_logo: string | undefined;
     try {
       const meta = savedPlan.extra_instructions ? JSON.parse(savedPlan.extra_instructions) : null;
       if (meta?.cover_image) cover_image = meta.cover_image;
+      if (meta?.brand_logo) brand_logo = meta.brand_logo;
     } catch { /* ignore */ }
     return {
-      trip_title: savedPlan.trip_title, narrative: savedPlan.narrative || '', cover_image,
+      trip_title: savedPlan.trip_title, narrative: savedPlan.narrative || '', cover_image, brand_logo,
       days: (Array.isArray(savedPlan.days) ? savedPlan.days : []) as unknown as ProposalDay[],
     };
   })() : null);
