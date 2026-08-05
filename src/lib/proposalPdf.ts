@@ -317,6 +317,21 @@ export async function buildProposalPdfBase64(p: ProposalLite, weblink: string): 
       y += 6;
     }
 
+    // Two images per day, right after the subtitle and before the itinerary
+    const dayImgs = dayImageUrls[idx].filter(u => imgCache.get(u));
+    if (dayImgs.length) {
+      const gap = 10;
+      const totalW = pageW - margin * 2;
+      const imgW = dayImgs.length === 1 ? totalW : (totalW - gap) / 2;
+      const imgH = Math.round((imgW * 2) / 3);
+      ensureSpace(imgH + 10);
+      dayImgs.forEach((u, i) => {
+        const x = margin + i * (imgW + gap);
+        drawImage(u, x, y, imgW, imgH);
+      });
+      y += imgH + 12;
+    }
+
     const items = dayItems(d);
     if (items.length) {
       doc.setFont('helvetica', 'bold');
