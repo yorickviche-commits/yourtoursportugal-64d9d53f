@@ -1,6 +1,7 @@
 import { useEffect, useState, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
+import { openSupplierFile } from '@/lib/supplierFileUrl';
 import { useAuth } from '@/hooks/useAuth';
 import AppLayout from '@/components/AppLayout';
 import SmartImportDialog from '@/components/commercial/SmartImportDialog';
@@ -542,9 +543,9 @@ const AdminSupplierDetailPage = () => {
                             </div>
                           </div>
                           <div className="flex gap-1 shrink-0">
-                            {f.file_url && (
-                              <Button variant="ghost" size="icon" className="h-7 w-7" asChild>
-                                <a href={f.file_url} target="_blank" rel="noopener noreferrer"><ExternalLink className="h-3 w-3" /></a>
+                            {(f.storage_path || f.file_url) && (
+                              <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openSupplierFile(f.storage_path, f.file_url)}>
+                                <ExternalLink className="h-3 w-3" />
                               </Button>
                             )}
                             <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => handleDeleteFile(f)}>
