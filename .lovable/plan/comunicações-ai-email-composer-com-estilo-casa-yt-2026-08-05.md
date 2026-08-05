@@ -10,6 +10,7 @@ Um único ecrã de Comunicações com duas zonas:
 2. **AI Email Composer** — sem ecrã de escolha de templates. O utilizador define To / CC / BCC, idioma (detetado, editável), Purpose e clica **Gerar Email**.
 
 Purpose:
+
 - Auto (recomendado)
 - Proposta (1ª apresentação)
 - Proposta atualizada / nova versão
@@ -57,11 +58,13 @@ Important Notes:
 
 Blocos editáveis independentes: Assunto, Saudação, Abertura, Conteúdo principal, Programa (auto do Travel Planner), Anexos, Links úteis, Next Steps, Assinatura. Cada bloco pode ser editado à mão, regenerado, encurtado, tornado mais premium/amigável ou traduzido, sem afetar os restantes. Pré-visualização lado a lado exatamente como o cliente vai receber.
 
-Anexos e links são sugeridos automaticamente (PDF da proposta gerado pela app, link do itinerário digital, link de pagamento WeTravel, website, WhatsApp) e podem ser ligados/desligados — o texto do email ajusta-se quando um é removido.
+Anexos e links são sugeridos automaticamente (PDF da proposta gerado pela app, link do itinerário digital, link de pagamento WeTravel, website, WhatsApp) e podem ser ligados/desligados — o texto do email ajusta-se quando um é removido.  
+TEM QUE permitir facilmente editar e logo visivel no back todas as funcoes, seja de bolds, sublinhados, italicos, pontos, tamanhos e cor de letra (a letra assume sempre como standard Trebuchet Ms.
 
 ## Emails de Boas-vindas e Qualificação
 
 Quando não há proposta ou faltam dados, a AI gera:
+
 - **Boas-vindas**: agradecimento, o que vamos fazer, prazo de entrega da proposta, próximos passos.
 - **Qualificação**: lista numerada só com o que realmente falta no lead (datas, pax/crianças, alojamento, voos, restrições alimentares, mobilidade, ocasião especial, orçamento), nunca a perguntar o que já sabemos.
 
@@ -69,7 +72,7 @@ Nestes dois casos não é incluído bloco de programa nem preço.
 
 ## Envio e histórico
 
-O envio continua a passar pela mesma função Gmail já em produção (reservas@yourtours.pt), agora em HTML + versão texto, pelo que os emails continuam a aparecer imediatamente em "Enviados" no Gmail, com anexos. Cada envio, draft e regeneração fica registado no histórico com autor, data e purpose.
+O envio continua a passar pela mesma função Gmail já em produção ([reservas@yourtours.pt](mailto:reservas@yourtours.pt)), agora em HTML + versão texto, pelo que os emails continuam a aparecer imediatamente em "Enviados" no Gmail, com anexos. Cada envio, draft e regeneração fica registado no histórico com autor, data e purpose.
 
 Antes de enviar: validação AI em modo aviso (anexos em falta, links inválidos, idioma inconsistente, nome do cliente, assinatura) — o utilizador mantém sempre o controlo.
 
