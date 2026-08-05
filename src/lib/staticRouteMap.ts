@@ -7,6 +7,7 @@
  */
 
 import { parseGoogleMapsUrl } from '@/lib/mapEmbed';
+import { supabase } from '@/integrations/supabase/client';
 
 const TILE = 256;
 
@@ -70,6 +71,11 @@ export async function buildRouteMapImage(
   height = 460,
 ): Promise<RouteMapImage | null> {
   if (typeof document === 'undefined' || !mapUrl) return null;
+
+  // Preferred: real Google Maps static image (same look as the digital itinerary),
+  // rendered server-side with the actual driving route.
+  const gm = await buildGoogleRouteMapImage(mapUrl);
+  if (gm) return gm;
 
   const parsed = parseGoogleMapsUrl(mapUrl);
   const labels = parsed.waypoints.filter(Boolean);
@@ -187,6 +193,31 @@ export async function buildRouteMapImage(
   try {
     return { dataUrl: canvas.toDataURL('image/jpeg', 0.85), width, height, stops: labels };
   } catch {
+    return null;
+  }
+}
+
+/** Google Static Maps render (via edge function). Returns null on any failure. */
+const gmapCache = new Map<string, RouteMapImage | null>();
+
+export async function buildGoogleRouteMapImage(mapUrl: string): Promise<RouteMapImage | null> {
+  const key = mapUrl.trim();
+  if (!key) return null;
+  if (gmapCache.has(key)) return gmapCache.get(key)!;
+  try {
+    const { data, error } = await supabase.functions.invoke('route-map-image', {
+      body: { mapUrl: key, width: 640, height: 300 },
+    });
+    if (error) throw error;
+    const d = data as { dataUrl?: string; width?: number; height?: number; stops?: string[] } | null;
+    const result = d?.dataUrl
+      ? { dataUrl: d.dataUrl, width: d.width || 1280, height: d.height || 600, stops: d.stops || [] }
+      : null;
+    gmapCache.set(key, result);
+    return result;
+  } catch (e) {
+    console.warn('Google static route map failed, falling back to OSM render', e);
+    gmapCache.set(key, null);
     return null;
   }
 }
