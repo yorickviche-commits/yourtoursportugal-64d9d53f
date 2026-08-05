@@ -137,12 +137,15 @@ export function CommunicationsWorkspace({
   // Build the PDF once a proposal exists so it's ready as an attachment
   useEffect(() => {
     if (!proposalRow?.id || planPdf || planPdfLoading) return;
+    if (scope === 'lead' && leadRef === undefined) return;
     let cancelled = false;
     setPlanPdfLoading(true);
     (async () => {
       try {
         const weblink = proposalRow.public_token ? getProposalShareUrl(proposalRow.public_token) : '';
-        const { base64, filename } = await buildProposalPdfBase64(proposalRow, weblink);
+        const { base64, filename } = await buildProposalPdfBase64(proposalRow, weblink, {
+          idOverride: leadRef?.yt_id || leadRef?.lead_code || null,
+        });
         if (!cancelled) setPlanPdf({ filename, contentBase64: base64 });
       } catch (e) {
         console.error('Travel plan PDF build failed', e);
@@ -152,7 +155,7 @@ export function CommunicationsWorkspace({
     })();
     return () => { cancelled = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [proposalRow?.id]);
+  }, [proposalRow?.id, leadRef?.yt_id, leadRef?.lead_code]);
 
   const { data: history = [], isLoading } = useQuery({
     queryKey: ['comms_log', scope, entityId],
