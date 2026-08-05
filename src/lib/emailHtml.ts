@@ -66,6 +66,7 @@ export interface ProgramLite {
   ytCode?: string;
   dateLabel?: string;
   weblink?: string;
+  publicToken?: string;
   heroImageUrl?: string | null;
   brandLogoUrl?: string | null;
   totalEur?: number | null;
