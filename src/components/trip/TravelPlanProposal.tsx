@@ -1085,6 +1085,7 @@ const TravelPlanProposal = ({
           date_range: dateRange,
           participants: paxStr,
           hero_image_url: planToSave.cover_image?.url || '',
+          brand_logo_url: planToSave.brand_logo || null,
           summary_text: planToSave.narrative,
           days: proposalDays as any,
           map_stops: [] as any,
