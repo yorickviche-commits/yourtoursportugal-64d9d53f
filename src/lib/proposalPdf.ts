@@ -123,7 +123,11 @@ export function buildProposalEmailText(p: ProposalLite, weblink: string): string
   return lines.join('\n');
 }
 
-export async function buildProposalPdfBase64(p: ProposalLite, weblink: string): Promise<{ base64: string; filename: string }> {
+export async function buildProposalPdfBase64(
+  p: ProposalLite,
+  weblink: string,
+  opts?: { idOverride?: string | null },
+): Promise<{ base64: string; filename: string }> {
   const doc = new jsPDF({ unit: 'pt', format: 'a4' });
   const pageW = doc.internal.pageSize.getWidth();
   const pageH = doc.internal.pageSize.getHeight();
@@ -317,6 +321,21 @@ export async function buildProposalPdfBase64(p: ProposalLite, weblink: string): 
       y += 6;
     }
 
+    // Two images per day, right after the subtitle and before the itinerary
+    const dayImgs = dayImageUrls[idx].filter(u => imgCache.get(u));
+    if (dayImgs.length) {
+      const gap = 10;
+      const totalW = pageW - margin * 2;
+      const imgW = dayImgs.length === 1 ? totalW : (totalW - gap) / 2;
+      const imgH = Math.round((imgW * 2) / 3);
+      ensureSpace(imgH + 10);
+      dayImgs.forEach((u, i) => {
+        const x = margin + i * (imgW + gap);
+        drawImage(u, x, y, imgW, imgH);
+      });
+      y += imgH + 12;
+    }
+
     const items = dayItems(d);
     if (items.length) {
       doc.setFont('helvetica', 'bold');
@@ -406,20 +425,6 @@ export async function buildProposalPdfBase64(p: ProposalLite, weblink: string): 
       }
     }
 
-    // Two images per day at the bottom (matching planner layout)
-    const imgs = dayImageUrls[idx].filter(u => imgCache.get(u));
-    if (imgs.length) {
-      const gap = 10;
-      const totalW = pageW - margin * 2;
-      const imgW = imgs.length === 1 ? totalW : (totalW - gap) / 2;
-      const imgH = Math.round((imgW * 2) / 3);
-      ensureSpace(imgH + 10);
-      imgs.forEach((u, i) => {
-        const x = margin + i * (imgW + gap);
-        drawImage(u, x, y, imgW, imgH);
-      });
-      y += imgH + 12;
-    }
   });
 
   // ─── Pricing & Conditions (end of programme, total price before inclusions) ───
@@ -638,7 +643,7 @@ export async function buildProposalPdfBase64(p: ProposalLite, weblink: string): 
   const base64 = dataUri.split(',')[1] || '';
 
   const sanitize = (s: string) => s.replace(/[\\/:*?"<>|]+/g, ' ').replace(/\s+/g, ' ').trim();
-  const ytCode = sanitize(p.booking_ref || (p.id ? `YT-${String(p.id).slice(0, 4).toUpperCase()}` : 'YT'));
+  const ytCode = sanitize(opts?.idOverride || p.booking_ref || (p.id ? `YT-${String(p.id).slice(0, 4).toUpperCase()}` : 'YT'));
   const client = sanitize(p.client_name || 'Client');
   const dates = sanitize(p.date_range || '');
   const program = sanitize(p.title || 'Travel Plan');

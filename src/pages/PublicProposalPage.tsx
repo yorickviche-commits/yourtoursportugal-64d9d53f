@@ -169,35 +169,43 @@ const PublicProposalPage = () => {
   return (
     <div className="min-h-screen bg-slate-50 font-sans">
       {/* ─── HERO ─── */}
-      <section className="relative h-[60vh] min-h-[400px] w-full">
-        <img src={proposal.hero_image_url || 'https://images.unsplash.com/photo-1555881400-74d7acaacd8b?w=1600'} alt="Cover" className="absolute inset-0 w-full h-full object-cover" />
-        <div className="absolute inset-0 bg-gradient-to-t from-[#0a2540]/80 via-[#0a2540]/30 to-transparent" />
-        {(proposal as any).brand_logo_url && (
-          <div className="absolute top-4 left-4 md:top-6 md:left-6">
-            <img src={(proposal as any).brand_logo_url} alt="Logo" className="h-[50px] md:h-[60px] max-w-[212px] object-contain drop-shadow-[0_2px_8px_rgba(0,0,0,0.4)]" />
-          </div>
-        )}
-        <div className="absolute bottom-0 left-0 right-0 p-6 md:p-12 text-white">
-          <div className="max-w-4xl">
-            {statusBadge && <div className="mb-3">{statusBadge}</div>}
-            <RichText as="h1" className="text-3xl md:text-5xl font-serif font-bold leading-tight mb-3" value={proposal.title} />
-            <div className="flex flex-wrap gap-4 text-sm text-white/80">
-              <span>{proposal.client_name}</span>
-              {proposal.date_range && <span>• {proposal.date_range}</span>}
-              {proposal.booking_ref && <span>• {proposal.booking_ref}</span>}
-              {proposal.participants && <span>• {proposal.participants}</span>}
+      <section>
+        <div className="relative w-full aspect-[21/9] overflow-hidden bg-[#0a2540]">
+          <img src={proposal.hero_image_url || 'https://images.unsplash.com/photo-1555881400-74d7acaacd8b?w=1600'} alt="Cover" className="w-full h-full object-cover" />
+          {(proposal as any).brand_logo_url && (
+            <div className="absolute top-4 left-4 md:top-6 md:left-6">
+              <img src={(proposal as any).brand_logo_url} alt="Logo" className="h-[50px] md:h-[60px] max-w-[212px] object-contain drop-shadow-[0_2px_8px_rgba(0,0,0,0.4)]" />
+            </div>
+          )}
+        </div>
+        <div className="bg-gradient-to-br from-[#0a2540] via-slate-800 to-slate-700 text-white px-6 py-8 md:px-12 md:py-12">
+          <div className="max-w-4xl mx-auto flex flex-col md:flex-row md:items-end gap-6">
+            <div className="flex-1 min-w-0">
+              {statusBadge && <div className="mb-3">{statusBadge}</div>}
+              <RichText as="h1" className="text-3xl md:text-4xl font-serif font-bold leading-tight" value={proposal.title} />
+              <p className="text-lg text-white/80 mt-2">{proposal.client_name}</p>
+              <div className="flex flex-wrap items-center gap-3 mt-4 text-sm text-white/60">
+                {proposal.booking_ref && <span>ID: {proposal.booking_ref}</span>}
+                {proposal.booking_ref && proposal.date_range && <span>·</span>}
+                {proposal.date_range && <span>{proposal.date_range}</span>}
+                {proposal.participants && <span>·</span>}
+                {proposal.participants && <span>{proposal.participants}</span>}
+              </div>
+              {proposal.summary_text && (
+                <RichText as="p" className="text-sm text-white/80 mt-5 leading-relaxed whitespace-pre-wrap" value={proposal.summary_text} preserveNewlines />
+              )}
             </div>
             {(proposal as any).wetravel_checkout_url && (
-              <div className="mt-6 max-w-md">
+              <div className="shrink-0 w-full md:w-[240px] text-left md:text-right">
                 <a
                   href={(proposal as any).wetravel_checkout_url}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="inline-flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-lg font-semibold shadow-lg transition"
+                  className="inline-block w-full text-center px-6 py-3 rounded-md bg-green-600 hover:bg-green-700 text-white text-sm font-extrabold tracking-wide shadow-lg transition"
                 >
                   {dict.bookNow}
                 </a>
-                <p className="mt-2 text-xs text-white/80">
+                <p className="mt-2 text-[10px] leading-snug text-white/70">
                   {(proposal as any).deposit_amount_eur
                     ? dict.depositSuffix(String((proposal as any).deposit_amount_eur), (proposal as any).deposit_percent ?? 50)
                     : dict.defaultDepositNote}{' '}
@@ -210,6 +218,7 @@ const PublicProposalPage = () => {
           </div>
         </div>
       </section>
+
 
       {/* ─── STICKY NAV ─── */}
       <nav className="sticky top-0 z-30 bg-white border-b border-slate-200 shadow-sm">
@@ -232,7 +241,7 @@ const PublicProposalPage = () => {
         {/* ─── SUMMARY ─── */}
         <section id="summary">
           <h2 className="text-2xl font-serif text-slate-800 mb-4">{dict.tripSummary}</h2>
-          <RichText as="p" className="text-slate-600 leading-relaxed mb-6 whitespace-pre-wrap" value={proposal.summary_text} preserveNewlines />
+          
           <div className="bg-white rounded-xl border border-slate-200 p-5">
             <button onClick={() => setNavOpen(!navOpen)} className="flex items-center justify-between w-full text-left">
               <span className="font-medium text-slate-700">{dict.programDayByDay}</span>
@@ -278,6 +287,24 @@ const PublicProposalPage = () => {
               )}
 
               <div className="p-5">
+                {/* Day images (2 per day from Travel Planner) — right after the day subtitle */}
+                {(day as any).images?.length > 0 && (
+                  <div className={cn(
+                    "mb-5 gap-3",
+                    (day as any).images.length === 1 ? "flex" : "grid grid-cols-2"
+                  )}>
+                    {(day as any).images.map((img: { url: string; caption?: string }, imgIdx: number) => (
+                      <div key={imgIdx} className="relative rounded-xl overflow-hidden aspect-[16/10]">
+                        <img src={img.url} alt={img.caption || day.title} className="w-full h-full object-cover" />
+                        {img.caption && (
+                          <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/50 to-transparent p-3">
+                            <span className="text-xs text-white/90">{img.caption}</span>
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
                 <h4 className="text-xs uppercase tracking-wider text-slate-400 font-semibold mb-3">{dict.itineraryIncludes}</h4>
                 <ul className="space-y-1.5">
                   {day.items.map((item, i) => {
@@ -432,24 +459,8 @@ const PublicProposalPage = () => {
                   );
                 })()}
 
-                {/* Day images (2 per day from Travel Planner) */}
-                {(day as any).images?.length > 0 && (
-                  <div className={cn(
-                    "mt-5 gap-3",
-                    (day as any).images.length === 1 ? "flex" : "grid grid-cols-2"
-                  )}>
-                    {(day as any).images.map((img: { url: string; caption?: string }, imgIdx: number) => (
-                      <div key={imgIdx} className="relative rounded-xl overflow-hidden aspect-[16/10]">
-                        <img src={img.url} alt={img.caption || day.title} className="w-full h-full object-cover" />
-                        {img.caption && (
-                          <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/50 to-transparent p-3">
-                            <span className="text-xs text-white/90">{img.caption}</span>
-                          </div>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                )}
+
+
 
                 {/* Comment this day link */}
                 <button

@@ -1840,6 +1840,15 @@ const TravelPlanProposal = ({
                         <p className="text-sm text-slate-500 mt-0.5">{day.date}</p>
                         <RichText as="p" className="text-sm italic text-slate-600 mt-1" value={day.subtitle} />
                       </div>
+                      {day.images && day.images.filter(i => i.url).length > 0 && (
+                        <div className="grid grid-cols-2 gap-3 mb-4">
+                          {day.images.filter(i => i.url).map((img, i) => (
+                            <div key={i} className="rounded-lg overflow-hidden aspect-[16/10]">
+                              <img src={img.url} alt={img.caption || day.title} className="w-full h-full object-cover" />
+                            </div>
+                          ))}
+                        </div>
+                      )}
                       <div className="mb-3">
                         <p className="text-xs font-bold uppercase text-slate-400 mb-2">{t.itineraryIncluded}:</p>
                         <ul className="space-y-1.5">
@@ -1929,17 +1938,7 @@ const TravelPlanProposal = ({
                           })}
                         </div>
                       </div>
-                    ) : (
-                      day.images && day.images.filter(i => i.url).length > 0 && (
-                        <div className="grid grid-cols-2 gap-3 mt-4">
-                          {day.images.filter(i => i.url).map((img, i) => (
-                            <div key={i} className="rounded-lg overflow-hidden aspect-[16/10]">
-                              <img src={img.url} alt={img.caption || day.title} className="w-full h-full object-cover" />
-                            </div>
-                          ))}
-                        </div>
-                      )
-                    )}
+                    ) : null}
                   </div>
                 </div>
 
