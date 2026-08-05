@@ -299,7 +299,7 @@ Formato da resposta:
 <<<META
 {"suggestions":["pergunta curta de seguimento", "..."],"next_steps":[{"label":"Abrir lead YT-2026-0001","route":"/leads/<uuid>"}]}
 META>>>
-Nas rotas usa apenas caminhos internos existentes: /leads, /leads/<lead_id>, /trips, /tasks, /proposals, /suppliers, /products, /catalog, /payments, /dashboard. Se não houver ação óbvia, devolve next_steps vazio.`;
+Nas rotas usa apenas caminhos internos existentes: /dashboard, /leads, /leads/<lead_id>, /trips, /trips/<id>, /tasks, /proposals, /proposals/<id>, /comercial/suppliers, /comercial/suppliers/<id>, /products, /catalog, /payments, /partners, /approvals. Se não houver ação óbvia, devolve next_steps vazio.`;
 
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
