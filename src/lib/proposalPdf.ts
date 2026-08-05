@@ -1,6 +1,7 @@
 import jsPDF from 'jspdf';
 import reviewsCoverUrl from '@/assets/proposal-reviews-cover.png';
 import { parseGoogleMapsUrl } from '@/lib/mapEmbed';
+import { buildRouteMapImage, type RouteMapImage } from '@/lib/staticRouteMap';
 import { drawRichTextPdf, stripBoldMarkers } from '@/lib/richText';
 
 const ALL_REVIEWS_URL = 'https://yourtoursportugal.com/our-reviews/';
@@ -149,6 +150,20 @@ export async function buildProposalPdfBase64(p: ProposalLite, weblink: string): 
   const fetched = await Promise.all(allUrls.map(u => fetchImageAsDataUrl(u)));
   const imgCache = new Map<string, { dataUrl: string; format: 'JPEG' | 'PNG' } | null>();
   allUrls.forEach((u, i) => imgCache.set(u, fetched[i]));
+
+  // Pre-render one static route map per day that has a Google Maps route
+  const routeMapCache = new Map<number, RouteMapImage | null>();
+  await Promise.all(
+    days.map(async (d, i) => {
+      if (!d.map_url) return;
+      try {
+        routeMapCache.set(i, await buildRouteMapImage(d.map_url));
+      } catch (e) {
+        console.warn('route map render failed', e);
+        routeMapCache.set(i, null);
+      }
+    }),
+  );
 
   const drawImage = (url: string, x: number, yy: number, w: number, h: number) => {
     const img = imgCache.get(url);
@@ -337,6 +352,32 @@ export async function buildProposalPdfBase64(p: ProposalLite, weblink: string): 
     if (d.map_url) {
       const parsed = parseGoogleMapsUrl(d.map_url);
       const stops = parsed.waypoints;
+      const routeImg = routeMapCache.get(idx);
+      if (routeImg) {
+        const imgW = pageW - margin * 2;
+        const imgH = Math.round((imgW * routeImg.height) / routeImg.width);
+        ensureSpace(imgH + 34);
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(10);
+        doc.setTextColor(10, 37, 64);
+        doc.text(`Route map — Day ${d.day_number ?? idx + 1}`, margin, y + 10);
+        y += 16;
+        try {
+          doc.addImage(routeImg.dataUrl, 'JPEG', margin, y, imgW, imgH, undefined, 'FAST');
+          doc.setDrawColor(200, 215, 230);
+          doc.roundedRect(margin, y, imgW, imgH, 4, 4, 'S');
+          doc.link(margin, y, imgW, imgH, { url: d.map_url });
+          y += imgH + 6;
+          doc.setFont('helvetica', 'bold');
+          doc.setFontSize(9);
+          doc.setTextColor(0, 102, 204);
+          doc.textWithLink('Open route in Google Maps  →', margin, y + 8, { url: d.map_url });
+          y += 20;
+        } catch (e) {
+          console.warn('route map addImage failed', e);
+        }
+      }
+      if (!routeImg) {
       const boxPad = 10;
       const linesText = stops.length
         ? doc.splitTextToSize(stops.join('  →  '), pageW - margin * 2 - boxPad * 2)
@@ -362,6 +403,7 @@ export async function buildProposalPdfBase64(p: ProposalLite, weblink: string): 
       const linkY = y + boxH - 8;
       doc.textWithLink('Open route in Google Maps  →', margin + boxPad, linkY, { url: d.map_url });
       y += boxH + 10;
+      }
     }
 
     // Two images per day at the bottom (matching planner layout)
