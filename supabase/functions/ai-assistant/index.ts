@@ -347,6 +347,7 @@ serve(async (req) => {
 
       if (res.status === 429) return json({ error: "Limite de pedidos atingido. Tenta dentro de um minuto." }, 429);
       if (res.status === 402) return json({ error: "Créditos AI esgotados. Adiciona créditos no workspace." }, 402);
+      if (res.status === 403) return json({ error: "Limite de créditos do workspace atingido — o assistente fica indisponível até ajustares o limite." }, 403);
       if (!res.ok) {
         const txt = await res.text();
         console.error("gateway error", res.status, txt);
