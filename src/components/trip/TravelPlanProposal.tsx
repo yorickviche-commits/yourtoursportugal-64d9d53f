@@ -1491,9 +1491,9 @@ const TravelPlanProposal = ({
             </p>
             <div className="flex items-center gap-3">
               {displayPlan.brand_logo ? (
-                <img src={displayPlan.brand_logo} alt="Logótipo" className="h-12 max-w-[160px] object-contain border rounded bg-white p-1" />
+                <img src={displayPlan.brand_logo} alt="Logótipo" className="h-[60px] max-w-[200px] object-contain border rounded p-1" />
               ) : (
-                <div className="h-12 w-[160px] border border-dashed rounded flex items-center justify-center text-[10px] text-muted-foreground">
+                <div className="h-[60px] w-[200px] border border-dashed rounded flex items-center justify-center text-[10px] text-muted-foreground">
                   Sem logótipo
                 </div>
               )}
