@@ -1508,7 +1508,8 @@ const TravelPlanProposal = ({
                     if (!file) return;
                     setUploadingLogo(true);
                     try {
-                      const url = await uploadImageFile(file, `logos/${leadCode}`);
+                      const clean = await removeWhiteBackground(file);
+                      const url = await uploadImageFile(clean, `logos/${leadCode}`);
                       setPlan(p => p ? { ...p, brand_logo: url } : p);
                       toast({ title: 'Logótipo carregado' });
                     } catch (err: any) {
