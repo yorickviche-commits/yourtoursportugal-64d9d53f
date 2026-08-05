@@ -1038,7 +1038,7 @@ const TravelPlanProposal = ({
       const token = `ytp-${leadCode.toLowerCase().replace(/[^a-z0-9]/g, '-')}`;
       const dateRange = startDate && endDate ? `${startDate} — ${endDate}` : startDate || '';
       const dayLabelByLang: Record<string, string> = { en: 'Day', fr: 'Jour', es: 'Día', pt: 'Dia', it: 'Giorno', de: 'Tag' };
-      const proposalDays = plan.days.map((d, i) => ({
+      const proposalDays = planToSave.days.map((d, i) => ({
         day_number: d.day_number,
         date_label: d.date || `${dayLabelByLang[proposalLang] || 'Day'} ${d.day_number}`,
         title: d.title,
@@ -1059,12 +1059,12 @@ const TravelPlanProposal = ({
 
       if (existingProposal) {
         await supabase.from('proposals').update({
-          title: plan.trip_title,
+          title: planToSave.trip_title,
           client_name: clientName,
           date_range: dateRange,
           participants: paxStr,
-          hero_image_url: plan.cover_image?.url || '',
-          summary_text: plan.narrative,
+          hero_image_url: planToSave.cover_image?.url || '',
+          summary_text: planToSave.narrative,
           days: proposalDays as any,
           language: proposalLang,
           total_value_eur: totalPVP || null,
@@ -1074,12 +1074,12 @@ const TravelPlanProposal = ({
         await supabase.from('proposals').insert({
           public_token: token,
           lead_id: leadId,
-          title: plan.trip_title,
+          title: planToSave.trip_title,
           client_name: clientName,
           date_range: dateRange,
           participants: paxStr,
-          hero_image_url: plan.cover_image?.url || '',
-          summary_text: plan.narrative,
+          hero_image_url: planToSave.cover_image?.url || '',
+          summary_text: planToSave.narrative,
           days: proposalDays as any,
           map_stops: [] as any,
           language: proposalLang,
@@ -1093,54 +1093,56 @@ const TravelPlanProposal = ({
       queryClient.invalidateQueries({ queryKey: ['travel_plan', leadId] });
       queryClient.invalidateQueries({ queryKey: ['proposals'] });
       toast({ title: 'Plano guardado!', description: 'Proposta cliente atualizada automaticamente.' });
+      setSaving(false);
 
-      // ── WeTravel deposit link (non-blocking) ──
-      try {
-        const [{ data: savedProposal }, { data: tripData }] = await Promise.all([
-          supabase.from('proposals').select('id, wetravel_checkout_url, deposit_amount_eur')
-            .eq('lead_id', leadId).maybeSingle(),
-          supabase.from('trips').select('total_value')
-            .eq('lead_id', leadId).order('updated_at', { ascending: false }).limit(1).maybeSingle(),
-        ]);
-        const totalValue = (tripData as any)?.total_value ?? totalPVP ?? 0;
-        if (savedProposal && totalValue > 0) {
+      // ── WeTravel deposit link (totalmente fora do caminho de gravação) ──
+      void (async () => {
+        try {
+          const [{ data: savedProposal }, { data: tripData }] = await Promise.all([
+            supabase.from('proposals').select('id, wetravel_checkout_url, deposit_amount_eur')
+              .eq('lead_id', leadId).maybeSingle(),
+            supabase.from('trips').select('total_value')
+              .eq('lead_id', leadId).order('updated_at', { ascending: false }).limit(1).maybeSingle(),
+          ]);
+          const totalValue = (tripData as any)?.total_value ?? totalPVP ?? 0;
+          if (!savedProposal || !(totalValue > 0)) return;
           if (savedProposal.wetravel_checkout_url) {
             setWetravelCheckoutUrl(savedProposal.wetravel_checkout_url);
             setWetravelDepositEur(savedProposal.deposit_amount_eur ?? null);
-          } else {
-            supabase.functions.invoke('create-wetravel-deposit', {
-              body: {
-                proposal_id: savedProposal.id,
-                total_value_eur: totalValue,
-                deposit_percent: 50,
-                title: plan.trip_title,
-                description: plan.narrative?.slice(0, 500) ?? '',
-                start_date: plan.days[0]?.date ?? travelDates ?? null,
-                end_date: plan.days[plan.days.length - 1]?.date ?? travelEndDate ?? null,
-                cover_image_url: plan.cover_image?.url ?? null,
-                client_name: clientName,
-              },
-            }).then(({ data: wt }: any) => {
-              if (wt?.checkout_url) {
-                setWetravelCheckoutUrl(wt.checkout_url);
-                setWetravelDepositEur(wt.deposit_amount_eur ?? null);
-                toast({
-                  title: '💳 Book Now link criado',
-                  description: `Depósito de €${wt.deposit_amount_eur} · 100% reembolsável`,
-                });
-              }
-            }).catch((err: any) => console.error('WeTravel (non-blocking):', err));
+            return;
           }
+          const { data: wt } = await supabase.functions.invoke('create-wetravel-deposit', {
+            body: {
+              proposal_id: savedProposal.id,
+              total_value_eur: totalValue,
+              deposit_percent: 50,
+              title: planToSave.trip_title,
+              description: planToSave.narrative?.slice(0, 500) ?? '',
+              start_date: planToSave.days[0]?.date ?? travelDates ?? null,
+              end_date: planToSave.days[planToSave.days.length - 1]?.date ?? travelEndDate ?? null,
+              cover_image_url: planToSave.cover_image?.url ?? null,
+              client_name: clientName,
+            },
+          });
+          if ((wt as any)?.checkout_url) {
+            setWetravelCheckoutUrl((wt as any).checkout_url);
+            setWetravelDepositEur((wt as any).deposit_amount_eur ?? null);
+            toast({
+              title: '💳 Book Now link criado',
+              description: `Depósito de €${(wt as any).deposit_amount_eur} · 100% reembolsável`,
+            });
+          }
+        } catch (err) {
+          console.error('WeTravel (non-blocking):', err);
         }
-      } catch (err) {
-        console.error('WeTravel setup error (non-blocking):', err);
-      }
+      })();
     } catch (e: any) {
       toast({ title: 'Erro ao guardar', description: e.message, variant: 'destructive' });
     } finally {
       setSaving(false);
     }
   }, [plan, closing, leadId, leadCode, clientName, pax, paxChildren, travelDates, travelEndDate, toast, queryClient]);
+
 
   // Edit helpers
   const updateDay = (dayIdx: number, updates: Partial<ProposalDay>) => {
