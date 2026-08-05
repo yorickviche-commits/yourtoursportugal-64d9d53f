@@ -95,6 +95,47 @@ export function CommunicationsWorkspace({
   const [sending, setSending] = useState(false);
   const [files, setFiles] = useState<{ filename: string; mimeType: string; contentBase64: string }[]>([]);
   const [showPreview, setShowPreview] = useState(true);
+  // Travel plan PDF — always attached by default on proposal emails
+  const [planPdf, setPlanPdf] = useState<{ filename: string; contentBase64: string } | null>(null);
+  const [planPdfLoading, setPlanPdfLoading] = useState(false);
+  const [attachPlanPdf, setAttachPlanPdf] = useState(true);
+
+  // Latest proposal for this lead (source for the travel plan PDF)
+  const { data: proposalRow } = useQuery({
+    queryKey: ['comms_proposal', scope, entityId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('proposals')
+        .select('*')
+        .eq(scope === 'lead' ? 'lead_id' : 'trip_id', entityId)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (error) throw error;
+      return data as ProposalLite | null;
+    },
+    enabled: !!entityId,
+  });
+
+  // Build the PDF once a proposal exists so it's ready as an attachment
+  useEffect(() => {
+    if (!proposalRow?.id || planPdf || planPdfLoading) return;
+    let cancelled = false;
+    setPlanPdfLoading(true);
+    (async () => {
+      try {
+        const weblink = proposalRow.public_token ? getProposalShareUrl(proposalRow.public_token) : '';
+        const { base64, filename } = await buildProposalPdfBase64(proposalRow, weblink);
+        if (!cancelled) setPlanPdf({ filename, contentBase64: base64 });
+      } catch (e) {
+        console.error('Travel plan PDF build failed', e);
+      } finally {
+        if (!cancelled) setPlanPdfLoading(false);
+      }
+    })();
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [proposalRow?.id]);
 
   const { data: history = [], isLoading } = useQuery({
     queryKey: ['comms_log', scope, entityId],
