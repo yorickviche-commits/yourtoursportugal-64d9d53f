@@ -568,7 +568,7 @@ const TravelPlanProposal = ({
       const url = node.getAttribute('data-map-embed') || '';
       const img = mapImages[i];
       if (!img) return null;
-      return `<div style="margin-top:16px;border:1px solid #e2e8f0;border-radius:8px;overflow:hidden"><a href="${url}" target="_blank" rel="noopener"><img src="${img.dataUrl}" alt="Route map" style="display:block;width:100%;height:auto" /></a></div>`;
+      return `<div style="margin-top:16px"><div style="border:1px solid #e2e8f0;border-radius:8px;overflow:hidden"><a href="${url}" target="_blank" rel="noopener"><img src="${img.dataUrl}" alt="Route map" style="display:block;width:100%;height:auto" /></a></div><div style="margin-top:6px;font-size:11px;font-weight:600"><a href="${url}" target="_blank" rel="noopener" style="color:#0066cc;text-decoration:none">Open route in Google Maps →</a></div></div>`;
     });
 
     // Printing from a dedicated top-level document makes the browser derive
