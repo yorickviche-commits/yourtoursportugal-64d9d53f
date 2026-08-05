@@ -23,6 +23,7 @@ import type { ImportedProduct } from '@/hooks/useMagpie';
 import { useUsedPhotos, extractPhotoId } from '@/hooks/useUsedPhotos';
 import { getProposalDict } from '@/lib/proposalI18n';
 import reviewsBanner from '@/assets/our-reviews-banner.png.asset.json';
+import foundersAsset from '@/assets/founders.png.asset.json';
 
 const ALL_REVIEWS_URL = 'https://yourtoursportugal.com/our-reviews/';
 
@@ -2162,10 +2163,22 @@ const TravelPlanProposal = ({
           <div>
             <h3 className="text-base font-serif font-bold text-slate-800 mb-2">{d.aboutUs}</h3>
             <p className="text-xs text-slate-700 leading-relaxed">{d.aboutBody}</p>
-            <p className="text-[11px] text-slate-500 mt-3">
-              info@yourtoursportugal.com · {d.website}: yourtoursportugal.com
+            <img
+              src={foundersAsset.url}
+              alt="Your Tours Portugal founders"
+              className="w-full rounded-lg border border-slate-200 object-cover mt-3"
+              style={{ printColorAdjust: 'exact', WebkitPrintColorAdjust: 'exact' } as any}
+            />
+            <p className="text-xs text-slate-700 leading-relaxed mt-3">{d.foundersBody}</p>
+            <p className="text-[11px] text-slate-600 mt-3">
+              <a href="mailto:reservas@yourtours.pt" className="text-slate-700 no-underline">reservas@yourtours.pt</a>
+              {' · '}
+              <a href="https://yourtoursportugal.com" className="text-slate-700 no-underline">yourtoursportugal.com</a>
+              {' · '}
+              <a href="https://wa.me/351919473029" className="text-slate-700 no-underline">+351 919 473 029</a>
             </p>
           </div>
+
         </div>
       </div>
 

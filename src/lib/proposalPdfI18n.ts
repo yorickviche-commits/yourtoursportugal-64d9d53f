@@ -30,6 +30,7 @@ export interface PdfDict {
   seeAllReviews: string;
   aboutTitle: string;
   aboutBody: string;
+  foundersBody: string;
 }
 
 const en: PdfDict = {
@@ -58,6 +59,7 @@ const en: PdfDict = {
   seeAllReviews: 'See All Reviews  \u2192',
   aboutTitle: 'About Your Tours Portugal',
   aboutBody: 'Your Tours Portugal is a bespoke travel agency specialised in authentic Portuguese experiences. We craft tailor-made itineraries that reveal the very best of local culture, gastronomy and craftsmanship with passionate local guides.',
+  foundersBody: 'Founded in 2016 by professional tour guides, Your Tours Portugal remains a 100% locally owned operator. Our founders still lead the team today, working with authentic local partners to deliver private, personalised experiences across the very best of Portugal and Spain.',
 };
 
 const pt: PdfDict = {
@@ -86,6 +88,7 @@ const pt: PdfDict = {
   seeAllReviews: 'Ver todas as avaliações  \u2192',
   aboutTitle: 'Sobre a Your Tours Portugal',
   aboutBody: 'A Your Tours Portugal é uma agência de viagens à medida especializada em experiências autênticas em Portugal. Criamos itinerários personalizados que revelam o melhor da cultura, gastronomia e artesanato português, com guias locais apaixonados.',
+  foundersBody: 'Fundada em 2016 por guias turísticos profissionais, a Your Tours Portugal continua a ser um operador 100% local. Os nossos fundadores lideram ainda hoje a equipa, trabalhando com parceiros locais autênticos para criar experiências privadas e personalizadas pelo melhor de Portugal e Espanha.',
 };
 
 const es: PdfDict = {
@@ -114,6 +117,7 @@ const es: PdfDict = {
   seeAllReviews: 'Ver todas las opiniones  \u2192',
   aboutTitle: 'Sobre Your Tours Portugal',
   aboutBody: 'Your Tours Portugal es una agencia de viajes a medida especializada en experiencias auténticas en Portugal. Creamos itinerarios personalizados que revelan lo mejor de la cultura, la gastronomía y la artesanía portuguesa, con guías locales apasionados.',
+  foundersBody: 'Fundada en 2016 por guías turísticos profesionales, Your Tours Portugal sigue siendo un operador 100% local. Nuestros fundadores continúan liderando el equipo, trabajando con socios locales auténticos para ofrecer experiencias privadas y personalizadas por lo mejor de Portugal y España.',
 };
 
 const fr: PdfDict = {
@@ -142,6 +146,7 @@ const fr: PdfDict = {
   seeAllReviews: 'Voir tous les avis  \u2192',
   aboutTitle: 'À propos de Your Tours Portugal',
   aboutBody: 'Your Tours Portugal est une agence de voyages sur mesure spécialisée dans les expériences authentiques au Portugal. Nous créons des itinéraires personnalisés qui révèlent le meilleur de la culture, de la gastronomie et de l’artisanat portugais, avec des guides locaux passionnés.',
+  foundersBody: 'Fondée en 2016 par des guides touristiques professionnels, Your Tours Portugal reste un opérateur 100% local. Nos fondateurs dirigent toujours l’équipe et travaillent avec des partenaires locaux authentiques pour proposer des expériences privées et personnalisées au meilleur du Portugal et de l’Espagne.',
 };
 
 const it: PdfDict = {
@@ -170,6 +175,7 @@ const it: PdfDict = {
   seeAllReviews: 'Vedi tutte le recensioni  \u2192',
   aboutTitle: 'Chi è Your Tours Portugal',
   aboutBody: 'Your Tours Portugal è un’agenzia di viaggi su misura specializzata in esperienze autentiche in Portogallo. Creiamo itinerari personalizzati che rivelano il meglio della cultura, della gastronomia e dell’artigianato portoghese, con guide locali appassionate.',
+  foundersBody: 'Fondata nel 2016 da guide turistiche professioniste, Your Tours Portugal è ancora un operatore 100% locale. I nostri fondatori guidano oggi il team e collaborano con partner locali autentici per offrire esperienze private e personalizzate nel meglio del Portogallo e della Spagna.',
 };
 
 const de: PdfDict = {
@@ -198,6 +204,7 @@ const de: PdfDict = {
   seeAllReviews: 'Alle Bewertungen ansehen  \u2192',
   aboutTitle: 'Über Your Tours Portugal',
   aboutBody: 'Your Tours Portugal ist eine Reiseagentur für individuelle Reisen mit Fokus auf authentische Erlebnisse in Portugal. Wir gestalten maßgeschneiderte Reiseverläufe, die das Beste aus Kultur, Gastronomie und Handwerk zeigen – mit leidenschaftlichen lokalen Guides.',
+  foundersBody: 'Your Tours Portugal wurde 2016 von professionellen Reiseleitern gegründet und ist bis heute ein 100% lokaler Anbieter. Unsere Gründer leiten das Team weiterhin persönlich und arbeiten mit authentischen lokalen Partnern zusammen, um private, individuelle Erlebnisse im Besten von Portugal und Spanien zu ermöglichen.',
 };
 
 const DICTS: Record<PdfLang, PdfDict> = { en, pt, es, fr, it, de };

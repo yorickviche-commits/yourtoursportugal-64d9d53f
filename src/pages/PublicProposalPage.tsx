@@ -5,6 +5,7 @@ import { MessageSquare, Check, Star, Phone, Mail, Globe, ChevronDown, ChevronUp,
 import { cn } from '@/lib/utils';
 import { getProposalDict, resolveProposalLang, encodeSentiment, decodeSentiment, Sentiment } from '@/lib/proposalI18n';
 import reviewsBanner from '@/assets/our-reviews-banner.png.asset.json';
+import foundersAsset from '@/assets/founders.png.asset.json';
 import { toMapEmbedSrc } from '@/lib/mapEmbed';
 import { RichText, stripBoldMarkers } from '@/lib/richText';
 
@@ -534,16 +535,27 @@ const PublicProposalPage = () => {
           <h2 className="text-2xl font-serif text-slate-800 mb-4">{dict.aboutUs}</h2>
           <div className="bg-white rounded-2xl border border-slate-200 p-6">
             <p className="text-slate-600 leading-relaxed mb-6">{dict.aboutBody}</p>
+            <img
+              src={foundersAsset.url}
+              alt="Your Tours Portugal founders"
+              loading="lazy"
+              className="w-full rounded-xl border border-slate-200 object-cover mb-6"
+            />
+            <p className="text-slate-600 leading-relaxed mb-6">{dict.foundersBody}</p>
             <div className="flex flex-wrap gap-3">
-              <a href="mailto:info@yourtoursportugal.com" className="flex items-center gap-2 px-4 py-2 bg-sky-100 text-sky-700 rounded-lg text-sm font-medium hover:bg-sky-200 transition-colors">
+              <a href="mailto:reservas@yourtours.pt" className="flex items-center gap-2 px-4 py-2 bg-sky-100 text-sky-700 rounded-lg text-sm font-medium hover:bg-sky-200 transition-colors">
                 <Mail className="h-4 w-4" /> Email
               </a>
               <a href="https://yourtoursportugal.com" target="_blank" rel="noopener" className="flex items-center gap-2 px-4 py-2 bg-slate-100 text-slate-700 rounded-lg text-sm font-medium hover:bg-slate-200 transition-colors">
                 <Globe className="h-4 w-4" /> {dict.website}
               </a>
+              <a href="https://wa.me/351919473029" target="_blank" rel="noopener" className="flex items-center gap-2 px-4 py-2 bg-emerald-100 text-emerald-700 rounded-lg text-sm font-medium hover:bg-emerald-200 transition-colors">
+                <Phone className="h-4 w-4" /> {dict.phoneLabel}
+              </a>
             </div>
           </div>
         </section>
+
       </div>
 
       {/* ─── FLOATING ANNOTATION BUTTON ─── */}
