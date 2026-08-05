@@ -61,7 +61,7 @@ export interface ProposalDay {
 }
 
 import { toMapEmbedSrc, parseGoogleMapsUrl } from '@/lib/mapEmbed';
-import { uploadDataUrlImage, isDataUrl } from '@/lib/uploadDataUrlImage';
+import { uploadDataUrlImage, isDataUrl, uploadImageFile } from '@/lib/uploadDataUrlImage';
 
 export { toMapEmbedSrc };
 
