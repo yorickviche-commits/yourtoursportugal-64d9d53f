@@ -1561,15 +1561,15 @@ const TravelPlanProposal = ({
           <div className="relative w-full aspect-[21/9] overflow-hidden">
             <img src={displayPlan.cover_image.url} alt={destination} className="w-full h-full object-cover" />
             {displayPlan.brand_logo && (
-              <div className="absolute top-3 left-3 bg-white/95 rounded-md shadow px-2 py-1">
-                <img src={displayPlan.brand_logo} alt="Logo" className="h-10 max-w-[150px] object-contain" />
+              <div className="absolute top-3 left-3">
+                <img src={displayPlan.brand_logo} alt="Logo" className="h-[50px] max-w-[188px] object-contain drop-shadow-[0_2px_6px_rgba(0,0,0,0.35)]" />
               </div>
             )}
           </div>
         )}
         {viewMode === 'preview' && !displayPlan.cover_image?.url && displayPlan.brand_logo && (
           <div className="px-6 pt-5">
-            <img src={displayPlan.brand_logo} alt="Logo" className="h-10 max-w-[150px] object-contain" />
+            <img src={displayPlan.brand_logo} alt="Logo" className="h-[50px] max-w-[188px] object-contain" />
           </div>
         )}
 
