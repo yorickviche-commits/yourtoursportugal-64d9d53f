@@ -528,7 +528,7 @@ export async function buildProposalPdfBase64(
   // ─── Final page: What Our Clients Say ───
   // Loads the bundled reviews screenshot via <img> + canvas so the image is
   // GUARANTEED to embed (no CORS/fetch dependency). Falls back to text page.
-  const loadReviewsImage = (): Promise<{ dataUrl: string; w: number; h: number } | null> =>
+  const loadImg = (url: string): Promise<{ dataUrl: string; w: number; h: number } | null> =>
     new Promise((resolve) => {
       try {
         const img = new Image();
@@ -545,13 +545,14 @@ export async function buildProposalPdfBase64(
           } catch { resolve(null); }
         };
         img.onerror = () => resolve(null);
-        img.src = reviewsCoverUrl;
+        img.src = url;
       } catch { resolve(null); }
     });
 
   try {
     doc.addPage();
-    const reviewsImg = await loadReviewsImage();
+    const reviewsImg = await loadImg(reviewsCoverUrl);
+
 
     doc.setTextColor(10, 37, 64);
     doc.setFont('helvetica', 'bold');
