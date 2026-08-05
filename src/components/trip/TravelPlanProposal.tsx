@@ -61,6 +61,7 @@ export interface ProposalDay {
 }
 
 import { toMapEmbedSrc, parseGoogleMapsUrl } from '@/lib/mapEmbed';
+import { buildRouteMapImage } from '@/lib/staticRouteMap';
 import { uploadDataUrlImage, isDataUrl, uploadImageFile, removeWhiteBackground } from '@/lib/uploadDataUrlImage';
 
 export { toMapEmbedSrc };
@@ -541,11 +542,34 @@ const TravelPlanProposal = ({
       .slice(0, 180);
   }, [clientName, destination, language, leadCode, plan, travelDates, travelEndDate, ytId]);
 
-  const handlePrintPdf = useCallback(() => {
+  const handlePrintPdf = useCallback(async () => {
     const filename = buildPdfFilename();
     if (!filename) return;
     const printRoot = document.querySelector<HTMLElement>('[data-print-root]');
     const printWindow = window.open('', '_blank');
+
+    // Google Maps iframes never render when printing, so each day's route map is
+    // rasterized to a static image (linked to the original Google Maps route).
+    const mapNodes = printRoot
+      ? Array.from(printRoot.querySelectorAll<HTMLElement>('[data-map-embed]'))
+      : [];
+    const mapImages = await Promise.all(
+      mapNodes.map(async node => {
+        const url = node.getAttribute('data-map-embed') || '';
+        if (!url) return null;
+        try {
+          return await buildRouteMapImage(url);
+        } catch {
+          return null;
+        }
+      }),
+    );
+    const mapReplacements = mapNodes.map((node, i) => {
+      const url = node.getAttribute('data-map-embed') || '';
+      const img = mapImages[i];
+      if (!img) return null;
+      return `<div style="margin-top:16px;border:1px solid #e2e8f0;border-radius:8px;overflow:hidden"><a href="${url}" target="_blank" rel="noopener"><img src="${img.dataUrl}" alt="Route map" style="display:block;width:100%;height:auto" /></a></div>`;
+    });
 
     // Printing from a dedicated top-level document makes the browser derive
     // the suggested PDF filename from this proposal title, never from the app
@@ -554,6 +578,12 @@ const TravelPlanProposal = ({
       const styles = Array.from(document.querySelectorAll('link[rel="stylesheet"], style'))
         .map(node => node.outerHTML)
         .join('\n');
+      const printClone = printRoot.cloneNode(true) as HTMLElement;
+      Array.from(printClone.querySelectorAll<HTMLElement>('[data-map-embed]')).forEach((node, i) => {
+        const html = mapReplacements[i];
+        if (html) node.outerHTML = html;
+        else node.remove();
+      });
       const safeTitle = filename
         .replace(/&/g, '&amp;')
         .replace(/</g, '&lt;')
@@ -570,7 +600,7 @@ const TravelPlanProposal = ({
             <title>${safeTitle}</title>
             ${styles}
           </head>
-          <body class="${document.body.className}">${printRoot.outerHTML}</body>
+          <body class="${document.body.className}">${printClone.outerHTML}</body>
         </html>`);
       printWindow.document.close();
       printWindow.document.title = filename;
@@ -1840,7 +1870,7 @@ const TravelPlanProposal = ({
                         const embed = toMapEmbedSrc(day.mapUrl);
                         if (!embed) return null;
                         return (
-                          <div className="mt-4 rounded-lg overflow-hidden border border-slate-200 aspect-[16/9]">
+                          <div className="mt-4 rounded-lg overflow-hidden border border-slate-200 aspect-[16/9]" data-map-embed={day.mapUrl}>
                             <iframe
                               src={embed}
                               className="w-full h-full"
