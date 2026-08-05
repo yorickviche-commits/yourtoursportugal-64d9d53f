@@ -1,5 +1,6 @@
 import jsPDF from 'jspdf';
 import reviewsCoverUrl from '@/assets/proposal-reviews-cover.png';
+import foundersAsset from '@/assets/founders.png.asset.json';
 import { parseGoogleMapsUrl } from '@/lib/mapEmbed';
 import { buildRouteMapImage, type RouteMapImage } from '@/lib/staticRouteMap';
 import { drawRichTextPdf, stripBoldMarkers } from '@/lib/richText';
@@ -601,7 +602,7 @@ export async function buildProposalPdfBase64(
 
     // ─── About Your Tours Portugal (own page, with founders photo) ───
     doc.addPage();
-    const foundersImg = await loadImg(foundersUrl);
+    const foundersImg = await loadImg(foundersAsset.url);
 
     let ay = 62;
     doc.setTextColor(10, 37, 64);
