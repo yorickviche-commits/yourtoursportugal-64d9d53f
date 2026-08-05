@@ -984,8 +984,28 @@ const TravelPlanProposal = ({
     if (!plan) return;
     setSaving(true);
     try {
-      const startDate = plan.days[0]?.date || travelDates || null;
-      const endDate = plan.days[plan.days.length - 1]?.date || travelEndDate || null;
+      // ── Normalizar imagens base64 → storage (evita payloads de vários MB) ──
+      let planToSave = plan;
+      const hasDataUrls =
+        isDataUrl(plan.cover_image?.url) ||
+        plan.days.some(d => (d.images || []).some(img => isDataUrl(img.url)));
+      if (hasDataUrls) {
+        const cover = plan.cover_image?.url
+          ? { ...plan.cover_image, url: await uploadDataUrlImage(plan.cover_image.url, `leads/${leadCode}`) }
+          : plan.cover_image;
+        const days = await Promise.all(plan.days.map(async d => ({
+          ...d,
+          images: await Promise.all((d.images || []).map(async img => ({
+            ...img,
+            url: await uploadDataUrlImage(img.url, `leads/${leadCode}`),
+          }))),
+        })));
+        planToSave = { ...plan, cover_image: cover, days };
+        setPlan(planToSave);
+      }
+
+      const startDate = planToSave.days[0]?.date || travelDates || null;
+      const endDate = planToSave.days[planToSave.days.length - 1]?.date || travelEndDate || null;
       const proposalLang = (language || 'EN').toLowerCase().slice(0, 2);
       const participantLabels: Record<string, { adult: string; adults: string; child: string; children: string }> = {
         en: { adult: 'adult', adults: 'adults', child: 'child', children: 'children' },
@@ -997,16 +1017,22 @@ const TravelPlanProposal = ({
       };
       const participantLabel = participantLabels[proposalLang] || participantLabels.en;
       const paxStr = `${pax} ${pax === 1 ? participantLabel.adult : participantLabel.adults}${paxChildren ? ` + ${paxChildren} ${paxChildren === 1 ? participantLabel.child : participantLabel.children}` : ''}`;
-      await supabase.from('travel_plans').delete().eq('lead_id', leadId);
       // Store cover_image in extra_instructions as JSON metadata
-      const metadata = JSON.stringify({ cover_image: plan.cover_image || null, closing, language });
-      const { error } = await supabase.from('travel_plans').insert({
-        lead_id: leadId, file_id: leadCode, trip_title: plan.trip_title,
+      const metadata = JSON.stringify({ cover_image: planToSave.cover_image || null, closing, language });
+      const { data: existingPlanRow } = await supabase
+        .from('travel_plans').select('id').eq('lead_id', leadId)
+        .order('updated_at', { ascending: false }).limit(1).maybeSingle();
+      const planPayload = {
+        lead_id: leadId, file_id: leadCode, trip_title: planToSave.trip_title,
         client_name: clientName, start_date: startDate, end_date: endDate,
-        pax: paxStr, narrative: plan.narrative, days: plan.days as any,
+        pax: paxStr, narrative: planToSave.narrative, days: planToSave.days as any,
         extra_instructions: metadata, status: 'draft',
-      });
+      };
+      const { error } = existingPlanRow
+        ? await supabase.from('travel_plans').update(planPayload).eq('id', existingPlanRow.id)
+        : await supabase.from('travel_plans').insert(planPayload);
       if (error) throw error;
+
 
       // Auto-create/update proposal from travel plan
       const token = `ytp-${leadCode.toLowerCase().replace(/[^a-z0-9]/g, '-')}`;
