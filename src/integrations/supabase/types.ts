@@ -2217,6 +2217,7 @@ export type Database = {
           approved_at: string | null
           booking_id: string | null
           booking_ref: string | null
+          brand_logo_url: string | null
           client_email: string | null
           client_name: string
           closing_terms: Json | null
@@ -2247,6 +2248,7 @@ export type Database = {
           approved_at?: string | null
           booking_id?: string | null
           booking_ref?: string | null
+          brand_logo_url?: string | null
           client_email?: string | null
           client_name?: string
           closing_terms?: Json | null
@@ -2277,6 +2279,7 @@ export type Database = {
           approved_at?: string | null
           booking_id?: string | null
           booking_ref?: string | null
+          brand_logo_url?: string | null
           client_email?: string | null
           client_name?: string
           closing_terms?: Json | null
