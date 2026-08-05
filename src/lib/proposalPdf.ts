@@ -3,6 +3,7 @@ import reviewsCoverUrl from '@/assets/proposal-reviews-cover.png';
 import { parseGoogleMapsUrl } from '@/lib/mapEmbed';
 import { buildRouteMapImage, type RouteMapImage } from '@/lib/staticRouteMap';
 import { drawRichTextPdf, stripBoldMarkers } from '@/lib/richText';
+import { getPdfDict } from '@/lib/proposalPdfI18n';
 
 const ALL_REVIEWS_URL = 'https://yourtoursportugal.com/our-reviews/';
 
@@ -37,6 +38,7 @@ export interface ProposalLite {
   hero_image_url?: string | null;
   wetravel_checkout_url?: string | null;
   closing_terms?: Record<string, any> | null;
+  language?: string | null;
   days?: ProposalDay[] | unknown;
 }
 
@@ -75,6 +77,7 @@ const accommodationLabel = (d: ProposalDay): string | null => {
 };
 
 export function buildProposalEmailText(p: ProposalLite, weblink: string): string {
+  const t = getPdfDict(p.language);
   const days = Array.isArray(p.days) ? (p.days as ProposalDay[]) : [];
   const headerBits = [
     p.client_name && `${p.client_name}`,
@@ -84,7 +87,7 @@ export function buildProposalEmailText(p: ProposalLite, weblink: string): string
   ].filter(Boolean);
 
   const lines: string[] = [];
-  lines.push(stripBoldMarkers(p.title || 'Your Travel Plan'));
+  lines.push(stripBoldMarkers(p.title || t.travelPlanFallback));
   if (headerBits.length) lines.push(headerBits.join(' · '));
   lines.push('');
   if (p.summary_text) {
@@ -93,32 +96,32 @@ export function buildProposalEmailText(p: ProposalLite, weblink: string): string
   }
 
   if (days.length) {
-    lines.push('Summary & Day-by-Day');
+    lines.push(t.summaryDayByDay);
     days.forEach((d, i) => {
-      lines.push(`Day ${d.day_number ?? i + 1} — ${stripBoldMarkers(d.title || '')}`.trim());
+      lines.push(`${t.day} ${d.day_number ?? i + 1} — ${stripBoldMarkers(d.title || '')}`.trim());
     });
     lines.push('');
     days.forEach((d, i) => {
-      lines.push(`Day ${d.day_number ?? i + 1} — ${stripBoldMarkers(d.title || '')}`.trim());
+      lines.push(`${t.day} ${d.day_number ?? i + 1} — ${stripBoldMarkers(d.title || '')}`.trim());
       const dl = dayDateLabel(d);
       if (dl) lines.push(dl);
       if (d.subtitle) lines.push(stripBoldMarkers(d.subtitle));
       const items = dayItems(d);
       if (items.length) {
-        lines.push('ITINERARY & INCLUDED:');
+        lines.push(t.itineraryIncluded);
         items.forEach(it => lines.push(`  • ${stripBoldMarkers(it)}`));
       }
       const acc = accommodationLabel(d);
-      if (acc) lines.push(`Night: ${stripBoldMarkers(acc)}`);
+      if (acc) lines.push(`${t.night}: ${stripBoldMarkers(acc)}`);
       lines.push('');
     });
   }
 
   if (weblink) {
-    lines.push('— Interactive Travel Plan (mobile-friendly):');
+    lines.push(t.interactiveLead);
     lines.push(weblink);
     lines.push('');
-    lines.push('The full PDF version is attached for your records.');
+    lines.push(t.attachedNote);
   }
   return lines.join('\n');
 }
@@ -128,6 +131,7 @@ export async function buildProposalPdfBase64(
   weblink: string,
   opts?: { idOverride?: string | null },
 ): Promise<{ base64: string; filename: string }> {
+  const t = getPdfDict(p.language);
   const doc = new jsPDF({ unit: 'pt', format: 'a4' });
   const pageW = doc.internal.pageSize.getWidth();
   const pageH = doc.internal.pageSize.getHeight();
@@ -190,7 +194,7 @@ export async function buildProposalPdfBase64(
   doc.text('Your Tours Portugal', margin, 42);
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(10);
-  doc.text('Tailored Travel Plan', margin, 60);
+  doc.text(t.headerSubtitle, margin, 60);
   doc.text('reservas@yourtours.pt', pageW - margin, 60, { align: 'right' });
   y = 110;
 
@@ -206,7 +210,7 @@ export async function buildProposalPdfBase64(
   doc.setTextColor(20, 20, 20);
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(20);
-  const title = stripBoldMarkers(p.title || 'Travel Plan');
+  const title = stripBoldMarkers(p.title || t.travelPlanFallback);
   const titleLines = doc.splitTextToSize(title, pageW - margin * 2);
   ensureSpace(titleLines.length * 24 + 6);
   doc.text(titleLines, margin, y);
@@ -236,10 +240,10 @@ export async function buildProposalPdfBase64(
     ensureSpace(20);
     doc.setTextColor(10, 37, 64);
     doc.setFont('helvetica', 'bold');
-    doc.text('Interactive version:', margin, y);
+    doc.text(t.interactiveVersion, margin, y);
     doc.setFont('helvetica', 'normal');
     doc.setTextColor(0, 102, 204);
-    doc.textWithLink(weblink, margin + 110, y, { url: weblink });
+    doc.textWithLink(weblink, margin + doc.getTextWidth(t.interactiveVersion) + 8, y, { url: weblink });
     y += 24;
   }
 
@@ -260,13 +264,13 @@ export async function buildProposalPdfBase64(
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(13);
     doc.setTextColor(10, 37, 64);
-    doc.text('Summary & Day-by-Day', margin, y);
+    doc.text(t.summaryDayByDay, margin, y);
     y += 18;
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(10);
     doc.setTextColor(60, 60, 60);
     days.forEach((d, i) => {
-      const line = `Day ${d.day_number ?? i + 1} — ${d.title || ''}`;
+      const line = `${t.day} ${d.day_number ?? i + 1} — ${d.title || ''}`;
       const est = doc.splitTextToSize(stripBoldMarkers(line), pageW - margin * 2);
       ensureSpace(est.length * 12 + 2);
       y = drawRichTextPdf(doc as any, line, {
@@ -286,7 +290,7 @@ export async function buildProposalPdfBase64(
     doc.setTextColor(10, 37, 64);
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(13);
-    const dayTitle = `Day ${d.day_number ?? idx + 1}${d.title ? ` — ${stripBoldMarkers(d.title)}` : ''}`;
+    const dayTitle = `${t.day} ${d.day_number ?? idx + 1}${d.title ? ` — ${stripBoldMarkers(d.title)}` : ''}`;
     doc.text(dayTitle, margin, y);
     const dl = dayDateLabel(d);
     if (dl) {
@@ -342,7 +346,7 @@ export async function buildProposalPdfBase64(
       doc.setFontSize(10);
       doc.setTextColor(10, 37, 64);
       ensureSpace(16);
-      doc.text('ITINERARY & INCLUDED:', margin, y);
+      doc.text(t.itineraryIncluded, margin, y);
       y += 14;
       doc.setFont('helvetica', 'normal');
       doc.setTextColor(50, 50, 50);
@@ -363,7 +367,7 @@ export async function buildProposalPdfBase64(
       doc.setFontSize(9);
       doc.setTextColor(120, 120, 120);
       ensureSpace(14);
-      doc.text(`Night: ${stripBoldMarkers(acc)}`, margin, y);
+      doc.text(`${t.night}: ${stripBoldMarkers(acc)}`, margin, y);
       y += 16;
     }
 
@@ -379,7 +383,7 @@ export async function buildProposalPdfBase64(
         doc.setFont('helvetica', 'bold');
         doc.setFontSize(10);
         doc.setTextColor(10, 37, 64);
-        doc.text(`Route map — Day ${d.day_number ?? idx + 1}`, margin, y + 10);
+        doc.text(`${t.routeMap} — ${t.day} ${d.day_number ?? idx + 1}`, margin, y + 10);
         y += 16;
         try {
           doc.addImage(routeImg.dataUrl, 'JPEG', margin, y, imgW, imgH, undefined, 'FAST');
@@ -390,7 +394,7 @@ export async function buildProposalPdfBase64(
           doc.setFont('helvetica', 'bold');
           doc.setFontSize(9);
           doc.setTextColor(0, 102, 204);
-          doc.textWithLink('Open route in Google Maps  →', margin, y + 8, { url: d.map_url });
+          doc.textWithLink(t.openRoute, margin, y + 8, { url: d.map_url });
           y += 20;
         } catch (e) {
           console.warn('route map addImage failed', e);
@@ -409,7 +413,7 @@ export async function buildProposalPdfBase64(
       doc.setFont('helvetica', 'bold');
       doc.setFontSize(10);
       doc.setTextColor(10, 37, 64);
-      doc.text(`Route map — Day ${d.day_number ?? idx + 1}`, margin + boxPad, y + 16);
+      doc.text(`${t.routeMap} — ${t.day} ${d.day_number ?? idx + 1}`, margin + boxPad, y + 16);
       if (linesText.length) {
         doc.setFont('helvetica', 'normal');
         doc.setFontSize(9);
@@ -420,7 +424,7 @@ export async function buildProposalPdfBase64(
       doc.setFontSize(9);
       doc.setTextColor(0, 102, 204);
       const linkY = y + boxH - 8;
-      doc.textWithLink('Open route in Google Maps  →', margin + boxPad, linkY, { url: d.map_url });
+      doc.textWithLink(t.openRoute, margin + boxPad, linkY, { url: d.map_url });
       y += boxH + 10;
       }
     }
@@ -449,7 +453,7 @@ export async function buildProposalPdfBase64(
           doc.setTextColor(100, 100, 100);
           doc.setFont('helvetica', 'normal');
           doc.setFontSize(9);
-          doc.text('TOTAL PRICE', margin + 14, y + 18);
+          doc.text(t.totalPrice, margin + 14, y + 18);
           doc.setTextColor(10, 37, 64);
           doc.setFont('helvetica', 'bold');
           doc.setFontSize(18);
@@ -473,7 +477,7 @@ export async function buildProposalPdfBase64(
           doc.setTextColor(255, 255, 255);
           doc.setFont('helvetica', 'bold');
           doc.setFontSize(13);
-          doc.textWithLink('BOOK NOW', btnX + btnW / 2, btnY + 22, {
+          doc.textWithLink(t.bookNow, btnX + btnW / 2, btnY + 22, {
             align: 'center',
             url: p.wetravel_checkout_url,
           });
@@ -484,23 +488,14 @@ export async function buildProposalPdfBase64(
       }
 
       const autoIncluded = days
-        .map((d, i) => `**Day ${d.day_number ?? i + 1} — ${stripBoldMarkers(d.title || '')}**\n${dayItems(d).slice(0, 6).map(b => `• ${b}`).join('\n')}`)
+        .map((d, i) => `**${t.day} ${d.day_number ?? i + 1} — ${stripBoldMarkers(d.title || '')}**\n${dayItems(d).slice(0, 6).map(b => `• ${b}`).join('\n')}`)
         .join('\n\n');
 
       const blocks: Array<{ heading: string; text: string }> = [
-        { heading: "What's Included", text: (closing.inclusionsOverride?.trim() || autoIncluded) },
-        {
-          heading: 'Reservation & Payment Conditions',
-          text: closing.payment || '• Deposit: 25% of the total amount to formalize the booking.\n• Final Payment: The remaining 75% must be settled up to 30 days before the tour date.',
-        },
-        {
-          heading: 'Cancellations & Refund Conditions',
-          text: closing.cancellation || '• Free cancellation with 100% refund up to 7 days prior to the tour date.\n• For cancellations made less than 30 days before the tour date, the total amount is non-refundable.',
-        },
-        {
-          heading: 'Important Notes',
-          text: closing.importantNotes || '• The rates presented include all the itinerary and experiences mentioned in the proposition.\n• Rates are valid on the date this proposal is sent and may change until final confirmation.\n• The rates include all taxes and personal accident insurance.',
-        },
+        { heading: t.included, text: (closing.inclusionsOverride?.trim() || autoIncluded) },
+        { heading: t.paymentConditions, text: closing.payment || t.paymentDefault },
+        { heading: t.cancellationConditions, text: closing.cancellation || t.cancellationDefault },
+        { heading: t.importantNotes, text: closing.importantNotes || t.importantDefault },
       ];
 
       blocks.forEach(({ heading, text }) => {
@@ -561,11 +556,11 @@ export async function buildProposalPdfBase64(
     doc.setTextColor(10, 37, 64);
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(24);
-    doc.text('What Our Clients Say', pageW / 2, 60, { align: 'center' });
+    doc.text(t.reviewsTitle, pageW / 2, 60, { align: 'center' });
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(11);
     doc.setTextColor(90, 90, 90);
-    doc.text('Trusted by hundreds of travellers exploring Portugal.', pageW / 2, 82, { align: 'center' });
+    doc.text(t.reviewsSubtitle, pageW / 2, 82, { align: 'center' });
 
     const imageTop = 100;
     const buttonReservedH = 90;
@@ -597,7 +592,7 @@ export async function buildProposalPdfBase64(
     doc.setTextColor(255, 255, 255);
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(12);
-    doc.textWithLink('See All Reviews  \u2192', pageW / 2, btnY + 26, {
+    doc.textWithLink(t.seeAllReviews, pageW / 2, btnY + 26, {
       align: 'center',
       url: ALL_REVIEWS_URL,
     });
@@ -608,11 +603,11 @@ export async function buildProposalPdfBase64(
     doc.setTextColor(10, 37, 64);
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(13);
-    doc.text('About Your Tours Portugal', pageW / 2, aboutY, { align: 'center' });
+    doc.text(t.aboutTitle, pageW / 2, aboutY, { align: 'center' });
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(9.5);
     doc.setTextColor(80, 80, 80);
-    const aboutBody = 'Your Tours Portugal is a bespoke travel agency specialised in authentic Portuguese experiences. We craft tailor-made itineraries that reveal the very best of local culture, gastronomy and craftsmanship with passionate local guides.';
+    const aboutBody = t.aboutBody;
     const aboutLines = doc.splitTextToSize(aboutBody, pageW - 120);
     doc.text(aboutLines, pageW / 2, aboutY + 16, { align: 'center' });
     doc.setTextColor(120, 120, 120);
