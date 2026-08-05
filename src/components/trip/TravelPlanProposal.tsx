@@ -694,15 +694,17 @@ const TravelPlanProposal = ({
     const days = Array.isArray(savedPlan.days) ? savedPlan.days as unknown as ProposalDay[] : [];
     // Restore cover_image + closing terms from extra_instructions metadata
     let cover_image: ProposalImage | undefined;
+    let brand_logo: string | undefined;
     try {
       const meta = savedPlan.extra_instructions ? JSON.parse(savedPlan.extra_instructions) : null;
       if (meta?.cover_image) cover_image = meta.cover_image;
+      if (meta?.brand_logo) brand_logo = meta.brand_logo;
       if (meta?.closing) setClosing({ ...DEFAULT_CLOSING, ...meta.closing });
       if (meta?.language && LANGUAGE_OPTIONS.some(o => o.value === String(meta.language).toUpperCase())) {
         setLanguage(String(meta.language).toUpperCase());
       }
     } catch { /* not JSON, ignore */ }
-    setPlan({ trip_title: savedPlan.trip_title || '', narrative: savedPlan.narrative || '', cover_image, days });
+    setPlan({ trip_title: savedPlan.trip_title || '', narrative: savedPlan.narrative || '', cover_image, brand_logo, days });
   }
 
   // Auto-sync per-day dates when concrete travel dates change in "Dados Gerais".
