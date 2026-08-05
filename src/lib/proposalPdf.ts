@@ -123,7 +123,11 @@ export function buildProposalEmailText(p: ProposalLite, weblink: string): string
   return lines.join('\n');
 }
 
-export async function buildProposalPdfBase64(p: ProposalLite, weblink: string): Promise<{ base64: string; filename: string }> {
+export async function buildProposalPdfBase64(
+  p: ProposalLite,
+  weblink: string,
+  opts?: { idOverride?: string | null },
+): Promise<{ base64: string; filename: string }> {
   const doc = new jsPDF({ unit: 'pt', format: 'a4' });
   const pageW = doc.internal.pageSize.getWidth();
   const pageH = doc.internal.pageSize.getHeight();
@@ -639,7 +643,7 @@ export async function buildProposalPdfBase64(p: ProposalLite, weblink: string): 
   const base64 = dataUri.split(',')[1] || '';
 
   const sanitize = (s: string) => s.replace(/[\\/:*?"<>|]+/g, ' ').replace(/\s+/g, ' ').trim();
-  const ytCode = sanitize(p.booking_ref || (p.id ? `YT-${String(p.id).slice(0, 4).toUpperCase()}` : 'YT'));
+  const ytCode = sanitize(opts?.idOverride || p.booking_ref || (p.id ? `YT-${String(p.id).slice(0, 4).toUpperCase()}` : 'YT'));
   const client = sanitize(p.client_name || 'Client');
   const dates = sanitize(p.date_range || '');
   const program = sanitize(p.title || 'Travel Plan');
