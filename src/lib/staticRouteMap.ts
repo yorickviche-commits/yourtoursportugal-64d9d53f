@@ -131,6 +131,26 @@ export async function buildRouteMapImage(
   }
   if (stopPoints.length < 1) stopPoints = inlineCoords;
 
+  // Order markers along the real route so the numbering matches the itinerary,
+  // and make sure the route start/end are always marked.
+  if (routePath.length > 1) {
+    const nearestIndex = (p: LatLng) => {
+      let best = 0, bestD = Infinity;
+      routePath.forEach((q, i) => {
+        const d = (q.lat - p.lat) ** 2 + (q.lng - p.lng) ** 2;
+        if (d < bestD) { bestD = d; best = i; }
+      });
+      return best;
+    };
+    const start = routePath[0];
+    const end = routePath[routePath.length - 1];
+    const near = (a: LatLng, b: LatLng) => Math.abs(a.lat - b.lat) < 0.02 && Math.abs(a.lng - b.lng) < 0.02;
+    if (!stopPoints.some(p => near(p, start))) stopPoints.push(start);
+    if (!stopPoints.some(p => near(p, end))) stopPoints.push(end);
+    stopPoints = stopPoints.sort((a, b) => nearestIndex(a) - nearestIndex(b));
+  }
+
+
   const linePath = routePath.length > 1 ? routePath : stopPoints;
   const fitPoints = routePath.length > 1 ? routePath : [...stopPoints, ...inlineCoords];
   if (fitPoints.length < 1) return null;
