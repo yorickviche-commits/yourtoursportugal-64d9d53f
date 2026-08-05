@@ -1,13 +1,21 @@
 import { useState, useEffect, useMemo } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
-import { Switch } from '@/components/ui/switch';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Calendar } from '@/components/ui/calendar';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Loader2, Copy, ExternalLink, CheckCircle2, Link2, Plus, Trash2 } from 'lucide-react';
+import {
+  Loader2, Copy, ExternalLink, CheckCircle2, Link2, CalendarIcon, ArrowRight, Lightbulb,
+} from 'lucide-react';
 import { toast } from 'sonner';
-import { usePaymentLinks, useCreatePaymentLink, usePublishPaymentLink, type PaymentLink, type ParticipantFees } from '@/hooks/usePaymentLinksQuery';
+import { format, parseISO, differenceInCalendarDays } from 'date-fns';
+import {
+  usePaymentLinks, useCreatePaymentLink, usePublishPaymentLink,
+  type PaymentLink, type ParticipantFees,
+} from '@/hooks/usePaymentLinksQuery';
+import PaymentPlanDialog, { type PaymentPlanValue } from './PaymentPlanDialog';
 import { cn } from '@/lib/utils';
 
 interface Props {
@@ -22,14 +30,48 @@ interface Props {
   defaultEndDate?: string | null;
 }
 
-const feeOptions: { value: ParticipantFees; label: string }[] = [
-  { value: 'all', label: 'Participante paga todas as taxas' },
-  { value: 'service', label: 'Participante paga taxa de serviço' },
-  { value: 'credit_card', label: 'Participante paga só taxa de cartão' },
-  { value: 'none', label: 'Organizador paga todas as taxas' },
-];
+type Payer = 'organizer' | 'participant';
 
-interface InstallmentRow { price: string; days: string }
+/** WeTravel's two fee questions map onto the single API field. */
+const toParticipantFees = (paymentFees: Payer, wetravelFee: Payer): ParticipantFees => {
+  if (paymentFees === 'participant' && wetravelFee === 'participant') return 'all';
+  if (paymentFees === 'participant' && wetravelFee === 'organizer') return 'credit_card';
+  if (paymentFees === 'organizer' && wetravelFee === 'participant') return 'service';
+  return 'none';
+};
+
+const iso = (d: Date) => format(d, 'yyyy-MM-dd');
+const pretty = (s?: string | null) => (s ? format(parseISO(s), 'MMM d, yyyy') : '');
+
+const Hint = ({ title, children }: { title: string; children: React.ReactNode }) => (
+  <div className="rounded-md border bg-muted/40 p-3">
+    <div className="flex items-center justify-between gap-2">
+      <p className="text-sm font-semibold">{title}</p>
+      <Lightbulb className="h-4 w-4 text-sky-500 shrink-0" />
+    </div>
+    <p className="text-xs text-muted-foreground mt-1.5">{children}</p>
+  </div>
+);
+
+const YesNo = ({ value, onChange }: { value: boolean; onChange: (v: boolean) => void }) => (
+  <div className="inline-flex rounded-md border overflow-hidden">
+    {[true, false].map(v => (
+      <button
+        key={String(v)}
+        type="button"
+        onClick={() => onChange(v)}
+        className={cn(
+          'h-9 w-14 text-sm transition-colors',
+          value === v
+            ? v ? 'bg-sky-400 text-white font-semibold' : 'bg-muted font-semibold'
+            : 'bg-background hover:bg-muted/60',
+        )}
+      >
+        {v ? 'Yes' : 'No'}
+      </button>
+    ))}
+  </div>
+);
 
 const PaymentLinkDialog = ({
   open, onOpenChange, leadId, proposalId = null,
@@ -46,15 +88,16 @@ const PaymentLinkDialog = ({
   const [endDate, setEndDate] = useState('');
   const [amount, setAmount] = useState('');
   const [currency, setCurrency] = useState('EUR');
-  const [fees, setFees] = useState<ParticipantFees>('all');
-  const [deadlineDays, setDeadlineDays] = useState('0');
 
-  // Deposit / payment plan
+  const [paymentFees, setPaymentFees] = useState<Payer>('participant');
+  const [wetravelFee, setWetravelFee] = useState<Payer>('participant');
+
   const [usePlan, setUsePlan] = useState(false);
-  const [deposit, setDeposit] = useState('');
-  const [installments, setInstallments] = useState<InstallmentRow[]>([]);
-  const [autoPay, setAutoPay] = useState(false);
-  const [partialPay, setPartialPay] = useState(false);
+  const [planOpen, setPlanOpen] = useState(false);
+  const [plan, setPlan] = useState<PaymentPlanValue | null>(null);
+
+  const [useExpiry, setUseExpiry] = useState(false);
+  const [expiresAt, setExpiresAt] = useState('');
 
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<PaymentLink | null>(null);
@@ -66,38 +109,32 @@ const PaymentLinkDialog = ({
     setStartDate(defaultStartDate || '');
     setEndDate(defaultEndDate || '');
     setAmount(defaultAmount > 0 ? defaultAmount.toFixed(2) : '');
-    setFees('all');
-    setDeadlineDays('0');
+    setCurrency('EUR');
+    setPaymentFees('participant');
+    setWetravelFee('participant');
     setUsePlan(false);
-    setDeposit('');
-    setInstallments([]);
-    setAutoPay(false);
-    setPartialPay(false);
+    setPlan(null);
+    setUseExpiry(false);
+    setExpiresAt('');
     setError(null);
     setResult(null);
   }, [open, defaultTitle, tripRef, defaultAmount, defaultStartDate, defaultEndDate]);
 
-  const today = new Date().toISOString().slice(0, 10);
+  const today = iso(new Date());
   const num = (v: string) => parseFloat((v || '').replace(',', '.'));
   const total = num(amount);
-  const depositValue = num(deposit) || 0;
-  const planSum = useMemo(
-    () => installments.reduce((a, i) => a + (num(i.price) || 0), depositValue),
-    [installments, depositValue],
-  );
-  const planBalanced = !usePlan || Math.abs(planSum - (total || 0)) <= 0.01;
 
   const pendingDraft = links.find(l => l.status === 'draft' && l.wetravel_uuid);
   const busy = createLink.isPending || publishLink.isPending;
 
+  const range = useMemo(() => ({
+    from: startDate ? parseISO(startDate) : undefined,
+    to: endDate ? parseISO(endDate) : undefined,
+  }), [startDate, endDate]);
+
   const copy = (url: string) => {
     navigator.clipboard.writeText(url);
     toast.success('Link copiado!');
-  };
-
-  const addInstallment = () => {
-    const remaining = Math.max(0, (total || 0) - planSum);
-    setInstallments(prev => [...prev, { price: remaining ? remaining.toFixed(2) : '', days: '30' }]);
   };
 
   const submit = async () => {
@@ -105,23 +142,23 @@ const PaymentLinkDialog = ({
     const cleanTitle = title.trim();
     if (!cleanTitle) return setError('Indica um título para o link.');
     if (cleanTitle.length > 70) return setError('O título não pode exceder 70 caracteres.');
-    if (!startDate || !endDate) return setError('As datas de início e fim são obrigatórias na WeTravel.');
+    if (!startDate || !endDate) return setError('As datas da viagem são obrigatórias na WeTravel.');
     if (endDate < startDate) return setError('A data de fim não pode ser anterior à de início.');
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(startDate) || !/^\d{4}-\d{2}-\d{2}$/.test(endDate)) {
-      return setError('Datas inválidas — usa o formato AAAA-MM-DD.');
-    }
     if (startDate < today) return setError(`A data de início (${startDate}) está no passado. Confirma o ano.`);
     if (isNaN(total) || total <= 0) return setError('Indica um montante maior que zero.');
-    if (usePlan) {
-      if (depositValue < 0 || depositValue > total) return setError('O depósito tem de estar entre 0 e o total.');
-      if (installments.length === 0) return setError('Adiciona pelo menos uma prestação ou desliga o plano de pagamento.');
-      if (installments.length > 18) return setError('Máximo de 18 prestações.');
-      for (const i of installments) {
-        if (!(num(i.price) >= 1)) return setError('Cada prestação tem de ser >= 1.');
-        if (!(parseInt(i.days) >= 0)) return setError('Indica os dias antes da partida de cada prestação.');
-      }
-      if (!planBalanced) return setError(`Depósito + prestações (${planSum.toFixed(2)}) tem de igualar o total (${total.toFixed(2)}).`);
+    if (usePlan && (!plan || plan.payments.length === 0)) {
+      return setError('Configura o plano de pagamento ou define "Add Deposit / Payment Plan" como No.');
     }
+    if (useExpiry && !expiresAt) return setError('Indica a data de expiração ou define "Add Expiration Date" como No.');
+
+    // Payment plan dates → days before departure (contrato da API mantém-se)
+    const start = parseISO(startDate);
+    const installments = usePlan && plan
+      ? plan.payments.map(p => ({
+          price: p.price,
+          days_before_departure: Math.max(0, differenceInCalendarDays(start, parseISO(p.date))),
+        }))
+      : [];
 
     try {
       const link = await createLink.mutateAsync({
@@ -133,14 +170,13 @@ const PaymentLinkDialog = ({
         end_date: endDate,
         amount_cents: Math.round(total * 100),
         currency,
-        participant_fees: fees,
-        days_before_departure: parseInt(deadlineDays) || 0,
-        deposit_cents: usePlan ? Math.round(depositValue * 100) : null,
-        installments: usePlan
-          ? installments.map(i => ({ price: num(i.price), days_before_departure: parseInt(i.days) || 0 }))
-          : [],
-        allow_auto_payment: usePlan ? autoPay : false,
-        allow_partial_payment: usePlan ? partialPay : false,
+        expires_at: useExpiry && expiresAt ? expiresAt : null,
+        participant_fees: toParticipantFees(paymentFees, wetravelFee),
+        days_before_departure: installments.length ? installments[0].days_before_departure : 0,
+        deposit_cents: usePlan && plan ? Math.round(plan.deposit * 100) : null,
+        installments,
+        allow_auto_payment: usePlan && plan ? plan.autoBilling : false,
+        allow_partial_payment: usePlan && plan ? plan.allowPartial : false,
       });
       setResult(link);
       toast.success('Link de pagamento criado e publicado.');
@@ -160,9 +196,16 @@ const PaymentLinkDialog = ({
     }
   };
 
+  const Row = ({ label, children }: { label: string; children: React.ReactNode }) => (
+    <div className="grid grid-cols-[110px_1fr] items-center gap-3">
+      <span className="text-sm font-medium text-muted-foreground">{label}</span>
+      <div>{children}</div>
+    </div>
+  );
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-3xl max-h-[92vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-base">
             <Link2 className="h-4 w-4" /> Link de pagamento WeTravel
@@ -190,7 +233,7 @@ const PaymentLinkDialog = ({
               </a>
             </div>
             <p className="text-[10px] text-muted-foreground">
-              Cola este link no campo "Link de pagamento WeTravel" da proposta para ativar o botão Book Now.
+              Ativa o link na lista de links da lead para mostrar o botão Book Now no PDF e no itinerário digital.
             </p>
           </div>
         )}
@@ -211,136 +254,225 @@ const PaymentLinkDialog = ({
         )}
 
         {!result && (
-          <div className="space-y-3">
-            <div>
-              <div className="flex items-center justify-between">
-                <Label className="text-xs">Título</Label>
-                <span className={cn('text-[10px]', title.length > 70 ? 'text-destructive' : 'text-muted-foreground')}>
-                  {title.length}/70
-                </span>
-              </div>
-              <Input value={title} maxLength={70} onChange={e => setTitle(e.target.value)} className="h-9 text-sm" />
-            </div>
-
-            <div>
-              <Label className="text-xs">Trip ID (referência YT)</Label>
-              <Input value={ref} onChange={e => setRef(e.target.value)} className="h-9 text-sm" />
-            </div>
-
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <Label className="text-xs">Data início *</Label>
-                <Input type="date" min={today} value={startDate} onChange={e => setStartDate(e.target.value)} className="h-9 text-sm" />
-              </div>
-              <div>
-                <Label className="text-xs">Data fim *</Label>
-                <Input type="date" min={startDate || today} value={endDate} onChange={e => setEndDate(e.target.value)} className="h-9 text-sm" />
-
-              </div>
-            </div>
-
-            <div className="grid grid-cols-3 gap-3">
-              <div className="col-span-2">
-                <Label className="text-xs">Montante total</Label>
-                <Input type="text" inputMode="decimal" value={amount} onChange={e => setAmount(e.target.value)} className="h-9 text-sm" />
-              </div>
-              <div>
-                <Label className="text-xs">Moeda</Label>
-                <Select value={currency} onValueChange={setCurrency}>
-                  <SelectTrigger className="h-9 text-sm"><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    {['EUR', 'USD', 'GBP'].map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-
-            {/* Deposit / payment plan */}
-            <div className="rounded-lg border p-3 space-y-3">
-              <div className="flex items-center justify-between">
-                <div>
-                  <Label className="text-xs font-semibold">Depósito / plano de pagamento</Label>
-                  <p className="text-[10px] text-muted-foreground">Depósito na reserva + prestações até à partida.</p>
+          <div className="grid gap-6 md:grid-cols-[1fr_260px]">
+            {/* ── Form (WeTravel layout) ── */}
+            <div className="space-y-4">
+              <Row label="Title">
+                <div className="relative">
+                  <Input
+                    value={title}
+                    maxLength={70}
+                    onChange={e => setTitle(e.target.value)}
+                    className="h-10 pr-12"
+                  />
+                  <span className={cn(
+                    'absolute right-3 top-1/2 -translate-y-1/2 text-xs',
+                    title.length > 70 ? 'text-destructive' : 'text-muted-foreground',
+                  )}>
+                    {70 - title.length}
+                  </span>
                 </div>
-                <Switch checked={usePlan} onCheckedChange={setUsePlan} />
-              </div>
+              </Row>
 
-              {usePlan && (
-                <div className="space-y-3">
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <Label className="text-xs">Depósito (na reserva)</Label>
-                      <Input type="text" inputMode="decimal" value={deposit} onChange={e => setDeposit(e.target.value)} placeholder="0.00" className="h-9 text-sm" />
-                    </div>
-                    <div>
-                      <Label className="text-xs">Prazo de reserva (dias antes)</Label>
-                      <Input type="number" min={0} value={deadlineDays} onChange={e => setDeadlineDays(e.target.value)} className="h-9 text-sm" />
-                    </div>
-                  </div>
+              <Row label="Trip ID">
+                <div className="relative">
+                  <Input value={ref} maxLength={64} onChange={e => setRef(e.target.value)} className="h-10 pr-12" />
+                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">
+                    {64 - ref.length}
+                  </span>
+                </div>
+              </Row>
 
-                  <div className="space-y-2">
-                    {installments.map((inst, idx) => (
-                      <div key={idx} className="flex items-end gap-2">
-                        <div className="flex-1">
-                          <Label className="text-[10px]">{idx === installments.length - 1 ? 'Pagamento final' : `${idx + 1}º pagamento`}</Label>
-                          <Input type="text" inputMode="decimal" value={inst.price}
-                            onChange={e => setInstallments(p => p.map((r, i) => i === idx ? { ...r, price: e.target.value } : r))}
-                            className="h-9 text-sm" />
-                        </div>
-                        <div className="w-28">
-                          <Label className="text-[10px]">Dias antes</Label>
-                          <Input type="number" min={0} value={inst.days}
-                            onChange={e => setInstallments(p => p.map((r, i) => i === idx ? { ...r, days: e.target.value } : r))}
-                            className="h-9 text-sm" />
-                        </div>
-                        <Button variant="ghost" size="sm" className="h-9 px-2 text-destructive"
-                          onClick={() => setInstallments(p => p.filter((_, i) => i !== idx))}>
-                          <Trash2 className="h-3.5 w-3.5" />
-                        </Button>
-                      </div>
-                    ))}
-                    <Button variant="outline" size="sm" className="text-xs h-8" onClick={addInstallment} disabled={installments.length >= 18}>
-                      <Plus className="h-3 w-3 mr-1" /> Adicionar prestação
+              <Row label="Trip Dates">
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button variant="outline" className="w-full justify-between font-normal h-10">
+                      <span className="flex items-center gap-2">
+                        <span className={cn(!startDate && 'text-muted-foreground')}>
+                          {pretty(startDate) || 'Start date'}
+                        </span>
+                        <ArrowRight className="h-3.5 w-3.5 text-muted-foreground" />
+                        <span className={cn(!endDate && 'text-muted-foreground')}>
+                          {pretty(endDate) || 'End date'}
+                        </span>
+                      </span>
+                      <CalendarIcon className="h-4 w-4 text-muted-foreground" />
                     </Button>
-                  </div>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar
+                      mode="range"
+                      numberOfMonths={2}
+                      selected={range as any}
+                      defaultMonth={range.from}
+                      onSelect={(r: any) => {
+                        setStartDate(r?.from ? iso(r.from) : '');
+                        setEndDate(r?.to ? iso(r.to) : r?.from ? iso(r.from) : '');
+                      }}
+                      initialFocus
+                    />
+                  </PopoverContent>
+                </Popover>
+              </Row>
 
-                  <div className={cn('text-[11px] font-medium', planBalanced ? 'text-muted-foreground' : 'text-destructive')}>
-                    Depósito + prestações: {planSum.toFixed(2)} {currency} / total {(total || 0).toFixed(2)} {currency}
-                  </div>
-
-                  <div className="flex items-center justify-between">
-                    <Label className="text-xs">Débito automático nas datas devidas</Label>
-                    <Switch checked={autoPay} onCheckedChange={setAutoPay} />
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <Label className="text-xs">Permitir pagamentos parciais</Label>
-                    <Switch checked={partialPay} onCheckedChange={setPartialPay} />
+              <div className="border-t pt-4 space-y-4">
+                <div>
+                  <p className="text-sm font-medium mb-1.5">Amount</p>
+                  <div className="flex gap-2">
+                    <Input
+                      value={amount}
+                      inputMode="decimal"
+                      onChange={e => setAmount(e.target.value)}
+                      className="h-10 w-40"
+                    />
+                    <Select value={currency} onValueChange={setCurrency}>
+                      <SelectTrigger className="h-10 w-24"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        {['EUR', 'USD', 'GBP'].map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
                   </div>
                 </div>
-              )}
+
+                <div>
+                  <p className="text-sm font-medium mb-1.5">Add Deposit / Payment Plan</p>
+                  <div className="flex items-center gap-3 flex-wrap">
+                    <YesNo
+                      value={usePlan}
+                      onChange={v => {
+                        setUsePlan(v);
+                        if (v) setPlanOpen(true);
+                      }}
+                    />
+                    {usePlan && (
+                      <Button variant="outline" size="sm" className="h-9 text-xs" onClick={() => setPlanOpen(true)}>
+                        {plan
+                          ? `Deposit ${plan.deposit.toFixed(2)} + ${plan.payments.length} payments · edit`
+                          : 'Configure plan'}
+                      </Button>
+                    )}
+                  </div>
+                </div>
+
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <div>
+                    <p className="text-sm font-medium mb-1.5">Add Expiration Date</p>
+                    <YesNo value={useExpiry} onChange={setUseExpiry} />
+                  </div>
+                  {useExpiry && (
+                    <div>
+                      <p className="text-sm font-medium mb-1.5">Active until</p>
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <Button variant="outline" className="w-full justify-between font-normal h-10">
+                            <span className={cn(!expiresAt && 'text-muted-foreground')}>
+                              {pretty(expiresAt) || 'Select a date'}
+                            </span>
+                            <CalendarIcon className="h-4 w-4 text-muted-foreground" />
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto p-0" align="start">
+                          <Calendar
+                            mode="single"
+                            selected={expiresAt ? parseISO(expiresAt) : undefined}
+                            onSelect={d => d && setExpiresAt(iso(d))}
+                            initialFocus
+                          />
+                        </PopoverContent>
+                      </Popover>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <div className="border-t pt-4 space-y-4">
+                <p className="text-sm font-semibold">Who pays the fees?</p>
+
+                <div>
+                  <p className="text-sm text-muted-foreground mb-2">
+                    Payment fees (when applicable) are paid by:
+                  </p>
+                  <RadioGroup
+                    value={paymentFees}
+                    onValueChange={v => setPaymentFees(v as Payer)}
+                    className="flex items-center gap-6"
+                  >
+                    <label className="flex items-center gap-2 text-sm">
+                      <RadioGroupItem value="organizer" /> Organizer
+                    </label>
+                    <label className="flex items-center gap-2 text-sm">
+                      <RadioGroupItem value="participant" /> Participant
+                    </label>
+                  </RadioGroup>
+                </div>
+
+                <div>
+                  <p className="text-sm text-muted-foreground mb-2">WeTravel fee is paid by:</p>
+                  <RadioGroup
+                    value={wetravelFee}
+                    onValueChange={v => setWetravelFee(v as Payer)}
+                    className="flex items-center gap-6"
+                  >
+                    <label className="flex items-center gap-2 text-sm">
+                      <RadioGroupItem value="organizer" /> Organizer
+                    </label>
+                    <label className="flex items-center gap-2 text-sm">
+                      <RadioGroupItem value="participant" /> Participant
+                    </label>
+                  </RadioGroup>
+                </div>
+              </div>
+
+              {error && <p className="text-sm text-destructive">{error}</p>}
+
+              <div className="flex items-center gap-4 pt-2">
+                <Button
+                  className="bg-emerald-600 hover:bg-emerald-700 text-white px-10"
+                  onClick={submit}
+                  disabled={busy}
+                >
+                  {createLink.isPending
+                    ? <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    : <Link2 className="h-4 w-4 mr-2" />}
+                  Publish
+                </Button>
+                <span className="text-xs text-muted-foreground">
+                  {createLink.isPending ? 'Saving as draft…' : 'Saved as draft'}
+                </span>
+                <Button variant="ghost" size="sm" onClick={() => onOpenChange(false)} disabled={busy}>
+                  Cancelar
+                </Button>
+              </div>
             </div>
 
-            <div>
-              <Label className="text-xs">Quem paga as taxas?</Label>
-              <Select value={fees} onValueChange={v => setFees(v as ParticipantFees)}>
-                <SelectTrigger className="h-9 text-sm"><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  {feeOptions.map(o => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
-                </SelectContent>
-              </Select>
-            </div>
-
-            {error && <p className="text-xs text-destructive">{error}</p>}
-
-            <div className="flex justify-end gap-2 pt-1">
-              <Button variant="ghost" size="sm" onClick={() => onOpenChange(false)} disabled={busy}>Cancelar</Button>
-              <Button size="sm" onClick={submit} disabled={busy}>
-                {createLink.isPending ? <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" /> : <Link2 className="h-3.5 w-3.5 mr-1" />}
-                Criar e publicar
-              </Button>
+            {/* ── Hints (like WeTravel) ── */}
+            <div className="space-y-3">
+              <Hint title="Add Payment Plan">
+                Add a deposit and/or payment plan for this trip. If you want a payment plan without a
+                deposit, set the deposit to zero.
+              </Hint>
+              <Hint title="Expiration Date">
+                Set an expiration date for this payment link.
+              </Hint>
+              <Hint title="Fees">
+                Participant pays all fees by default — switch to Organizer to absorb them in the price.
+              </Hint>
             </div>
           </div>
         )}
+
+        <PaymentPlanDialog
+          open={planOpen}
+          onOpenChange={o => {
+            setPlanOpen(o);
+            if (!o && !plan) setUsePlan(false);
+          }}
+          total={isNaN(total) ? 0 : total}
+          currency={currency}
+          departure={startDate || null}
+          value={plan}
+          onSave={setPlan}
+        />
       </DialogContent>
     </Dialog>
   );
