@@ -1483,6 +1483,61 @@ const TravelPlanProposal = ({
 
       {/* ─── PROPOSAL ─── */}
       <div data-print-root className="bg-white rounded-xl border shadow-sm overflow-hidden print:shadow-none print:border-0 print:rounded-none">
+        {/* BRAND LOGO (B2B branded itineraries) */}
+        {viewMode === 'edit' && (
+          <div className="p-4 pb-0 print:hidden">
+            <p className="text-[10px] uppercase font-bold text-muted-foreground mb-2">
+              Logótipo (itinerário B2B — canto superior esquerdo)
+            </p>
+            <div className="flex items-center gap-3">
+              {displayPlan.brand_logo ? (
+                <img src={displayPlan.brand_logo} alt="Logótipo" className="h-12 max-w-[160px] object-contain border rounded bg-white p-1" />
+              ) : (
+                <div className="h-12 w-[160px] border border-dashed rounded flex items-center justify-center text-[10px] text-muted-foreground">
+                  Sem logótipo
+                </div>
+              )}
+              <label className="inline-flex">
+                <input
+                  type="file"
+                  accept="image/png,image/jpeg,image/webp,image/svg+xml"
+                  className="hidden"
+                  onChange={async e => {
+                    const file = e.target.files?.[0];
+                    e.target.value = '';
+                    if (!file) return;
+                    setUploadingLogo(true);
+                    try {
+                      const url = await uploadImageFile(file, `logos/${leadCode}`);
+                      setPlan(p => p ? { ...p, brand_logo: url } : p);
+                      toast({ title: 'Logótipo carregado' });
+                    } catch (err: any) {
+                      toast({ title: 'Erro ao carregar logótipo', description: err.message, variant: 'destructive' });
+                    } finally {
+                      setUploadingLogo(false);
+                    }
+                  }}
+                />
+                <Button asChild variant="outline" size="sm" className="text-xs gap-1" disabled={uploadingLogo}>
+                  <span>
+                    {uploadingLogo ? <Loader2 className="h-3 w-3 animate-spin" /> : <ImageIcon className="h-3 w-3" />}
+                    {displayPlan.brand_logo ? 'Substituir' : 'Carregar logótipo'}
+                  </span>
+                </Button>
+              </label>
+              {displayPlan.brand_logo && (
+                <Button variant="ghost" size="sm" className="text-xs text-destructive"
+                  onClick={() => setPlan(p => p ? { ...p, brand_logo: undefined } : p)}>
+                  Remover
+                </Button>
+              )}
+            </div>
+            <p className="text-[10px] text-muted-foreground mt-1">
+              Aparece no canto superior esquerdo do PDF e do itinerário digital (guardar para aplicar).
+            </p>
+          </div>
+        )}
+
         {/* COVER IMAGE */}
         {viewMode === 'edit' && (
           <div className="p-4 pb-0 print:hidden">
@@ -1502,8 +1557,18 @@ const TravelPlanProposal = ({
           </div>
         )}
         {viewMode === 'preview' && displayPlan.cover_image?.url && (
-          <div className="w-full aspect-[21/9] overflow-hidden">
+          <div className="relative w-full aspect-[21/9] overflow-hidden">
             <img src={displayPlan.cover_image.url} alt={destination} className="w-full h-full object-cover" />
+            {displayPlan.brand_logo && (
+              <div className="absolute top-3 left-3 bg-white/95 rounded-md shadow px-2 py-1">
+                <img src={displayPlan.brand_logo} alt="Logo" className="h-10 max-w-[150px] object-contain" />
+              </div>
+            )}
+          </div>
+        )}
+        {viewMode === 'preview' && !displayPlan.cover_image?.url && displayPlan.brand_logo && (
+          <div className="px-6 pt-5">
+            <img src={displayPlan.brand_logo} alt="Logo" className="h-10 max-w-[150px] object-contain" />
           </div>
         )}
 
