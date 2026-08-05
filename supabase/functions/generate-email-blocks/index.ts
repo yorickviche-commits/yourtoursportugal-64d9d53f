@@ -152,7 +152,7 @@ VOICE (founder style):
 - Every email ends with defined next steps: action + who + when (Lisbon time).
 
 WRITE THE ENTIRE EMAIL IN ${language}. Subject included.
-SUBJECT RULE: the subject MUST always contain the reference code ${lead?.yt_id || lead?.lead_code || proposal?.booking_ref || ""} (e.g. "Douro Valley Private Tour - YT5014"). Never omit it.
+SUBJECT RULE: the subject MUST follow EXACTLY this order and format: "YTID - Trip Name - Dates - Client Name" (e.g. "YT5014 - Douro Valley Private Tour - 12-16 Oct 2026 - John Smith"). No extra words, no prefixes, no punctuation other than the " - " separators.
 Never invent prices, dates, inclusions or supplier names that are not in the context.
 Do not write unsubscribe text, do not repeat the itinerary day-by-day in prose (the program block is rendered separately by the system).`;
 
@@ -328,10 +328,14 @@ Return ONLY JSON with this exact shape:
           action: dropFirstPerson(s?.action || ""),
         }));
       }
-      if (ytRef && typeof result.subject === "string" && !result.subject.includes(ytRef)) {
-        result.subject = `${result.subject.trim()} - ${ytRef}`;
-      }
+      // Subject is always deterministic: YTID - Trip Name - Dates - Client Name
+      const tripName = String(proposal?.title || lead?.destination || "").trim();
+      const subjectDates = String(proposal?.date_range || lead?.travel_dates || "").trim();
+      const clientName = String(lead?.client_name || proposal?.client_name || "").trim();
+      const subjectParts = [ytRef, tripName, subjectDates, clientName].filter(Boolean);
+      if (subjectParts.length) result.subject = subjectParts.join(" - ");
     }
+
 
     return new Response(
       JSON.stringify({
