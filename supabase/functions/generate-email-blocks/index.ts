@@ -230,14 +230,28 @@ Return ONLY JSON with this exact shape:
 }`;
     }
 
-    /* ── AI call: Gemini direct → Lovable gateway ────────────────────── */
+    /* ── AI call: Gemini → OpenAI → Claude → Gateway → local template ─── */
     const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY");
+    const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
+    const ANTHROPIC_API_KEY = Deno.env.get("ANTHROPIC_API_KEY") || Deno.env.get("CLAUDE_API_KEY");
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
 
-    const callGemini = async () => {
+    const parseJson = (raw: string) => {
+      const cleaned = String(raw || "").replace(/```json\s*/g, "").replace(/```\s*/g, "").trim();
+      try {
+        return JSON.parse(cleaned);
+      } catch {
+        const s = cleaned.indexOf("{");
+        const e = cleaned.lastIndexOf("}");
+        if (s >= 0 && e > s) return JSON.parse(cleaned.slice(s, e + 1));
+        throw new Error("Model did not return JSON");
+      }
+    };
+
+    const callGemini = async (model: string) => {
       if (!GEMINI_API_KEY) throw new Error("GEMINI_API_KEY not configured");
       const r = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`,
+        `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${GEMINI_API_KEY}`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -247,11 +261,49 @@ Return ONLY JSON with this exact shape:
           }),
         },
       );
-      if (!r.ok) throw new Error(`Gemini ${r.status}: ${await r.text()}`);
+      if (!r.ok) throw new Error(`Gemini(${model}) ${r.status}: ${(await r.text()).slice(0, 400)}`);
       const gd = await r.json();
-      const raw = (gd.candidates?.[0]?.content?.parts?.[0]?.text || "")
-        .replace(/```json\s*/g, "").replace(/```\s*/g, "").trim();
-      return JSON.parse(raw);
+      return parseJson(gd.candidates?.[0]?.content?.parts?.[0]?.text || "");
+    };
+
+    const callOpenAI = async (model: string) => {
+      if (!OPENAI_API_KEY) throw new Error("OPENAI_API_KEY not configured");
+      const r = await fetch("https://api.openai.com/v1/chat/completions", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${OPENAI_API_KEY}`, "Content-Type": "application/json" },
+        body: JSON.stringify({
+          model,
+          response_format: { type: "json_object" },
+          messages: [
+            { role: "system", content: systemPrompt },
+            { role: "user", content: `${userPrompt}\n\nReturn ONLY valid JSON.` },
+          ],
+        }),
+      });
+      if (!r.ok) throw new Error(`OpenAI(${model}) ${r.status}: ${(await r.text()).slice(0, 400)}`);
+      const d = await r.json();
+      return parseJson(d.choices?.[0]?.message?.content || "");
+    };
+
+    const callClaude = async (model: string) => {
+      if (!ANTHROPIC_API_KEY) throw new Error("ANTHROPIC_API_KEY not configured");
+      const r = await fetch("https://api.anthropic.com/v1/messages", {
+        method: "POST",
+        headers: {
+          "x-api-key": ANTHROPIC_API_KEY,
+          "anthropic-version": "2023-06-01",
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          model,
+          max_tokens: 2000,
+          system: `${systemPrompt}\n\nAlways answer with ONLY valid JSON, no prose.`,
+          messages: [{ role: "user", content: `${userPrompt}\n\nReturn ONLY valid JSON.` }],
+        }),
+      });
+      if (!r.ok) throw new Error(`Claude(${model}) ${r.status}: ${(await r.text()).slice(0, 400)}`);
+      const d = await r.json();
+      return parseJson((d.content || []).map((c: any) => c?.text || "").join(""));
     };
 
     const callGateway = async () => {
@@ -269,40 +321,62 @@ Return ONLY JSON with this exact shape:
           ],
         }),
       });
-      if (!r.ok) {
-        const t = await r.text();
-        const err: any = new Error(`Gateway ${r.status}: ${t}`);
-        err.status = r.status;
-        throw err;
-      }
+      if (!r.ok) throw new Error(`Gateway ${r.status}: ${(await r.text()).slice(0, 400)}`);
       const d = await r.json();
-      const raw = (d.choices?.[0]?.message?.content || "")
-        .replace(/```json\s*/g, "").replace(/```\s*/g, "").trim();
-      return JSON.parse(raw);
+      return parseJson(d.choices?.[0]?.message?.content || "");
     };
 
-    let result: any;
-    try {
-      result = await callGemini();
-    } catch (e1) {
-      console.error("Gemini direct failed:", e1);
+    /* Deterministic offline fallback — the composer must NEVER hard-fail. */
+    const localFallback = () => {
+      const first = String(lead?.client_name || "").trim().split(/\s+/)[0] || "there";
+      const tripName = String(program?.title || lead?.destination || "your trip").trim();
+      const dates = String(program?.dateLabel || lead?.travel_dates || "").trim();
+      const total = program?.totalEur ? `${program.totalEur} EUR` : "";
+      if (mode === "block") {
+        return { text: String(body.currentText || "").trim() || `We are following up on ${tripName}. Please let us know your thoughts and we will take care of the next steps.` };
+      }
+      const bits = [
+        `Thank you for your interest in ${tripName}${dates ? ` (${dates})` : ""}.`,
+        `We have prepared everything below for your review${total ? `, with a total of **${total}**` : ""}.`,
+      ];
+      return {
+        subject: "",
+        greeting: `Hi ${first},`,
+        opening: bits.join(" "),
+        main: withProgram
+          ? `Here is the day-by-day programme we have put together for you. Everything is fully flexible — we can adjust pace, experiences or accommodation to match exactly what you have in mind.`
+          : `${customNotes ? `${customNotes}\n\n` : ""}Please let us know how you would like to proceed and we will prepare the next step.`,
+        closing: `If anything should be adjusted, just tell us and we will update it right away.`,
+        next_steps: [
+          { action: "Review the programme and share your feedback", responsible: "You", timeframe: "next 48h" },
+          { action: "Adjust the programme and confirm availability", responsible: "Your Tours Portugal", timeframe: "within 24h of your reply" },
+        ],
+        signature: `${senderName}\nYour Tours Portugal\nreservas@yourtours.pt`,
+        _fallback: true,
+      };
+    };
+
+    const attempts: Array<[string, () => Promise<any>]> = [
+      ["gemini-2.5-flash", () => callGemini("gemini-2.5-flash")],
+      ["gpt-4o-mini", () => callOpenAI("gpt-4o-mini")],
+      ["claude-3-5-haiku", () => callClaude("claude-3-5-haiku-latest")],
+      ["gemini-2.0-flash", () => callGemini("gemini-2.0-flash")],
+      ["gemini-1.5-flash", () => callGemini("gemini-1.5-flash")],
+      ["lovable-gateway", () => callGateway()],
+    ];
+
+    let result: any = null;
+    let providerUsed = "local-template";
+    for (const [name, fn] of attempts) {
       try {
-        result = await callGateway();
-      } catch (e2: any) {
-        console.error("Gateway failed:", e2);
-        const status = e2?.status === 402 || e2?.status === 429 ? e2.status : 502;
-        return new Response(
-          JSON.stringify({
-            error: status === 402
-              ? "Créditos de AI esgotados. Adicione créditos nas configurações do workspace."
-              : status === 429
-                ? "Limite de pedidos AI atingido. Tente novamente em alguns instantes."
-                : "Serviços de AI indisponíveis.",
-          }),
-          { status, headers: { ...corsHeaders, "Content-Type": "application/json" } },
-        );
+        result = await fn();
+        if (result) { providerUsed = name; break; }
+      } catch (err) {
+        console.error(`AI provider ${name} failed:`, err instanceof Error ? err.message : err);
       }
     }
+    if (!result) result = localFallback();
+
 
     const ytRef = String(lead?.yt_id || lead?.lead_code || proposal?.booking_ref || "").trim();
     const dropFirstPerson = (t: string) =>
