@@ -80,16 +80,18 @@ export interface RouteMapImage {
   stops: string[];
 }
 
-const routeCache = new Map<string, { polyline: string | null; stops: string[] } | null>();
+const routeCache = new Map<string, { polyline: string | null; stops: string[]; image?: string | null } | null>();
 
-async function fetchRoute(mapUrl: string) {
+async function fetchRoute(mapUrl: string, width = 640, height = 300) {
   const key = mapUrl.trim();
   if (routeCache.has(key)) return routeCache.get(key)!;
   try {
-    const { data, error } = await supabase.functions.invoke('route-map-image', { body: { mapUrl: key } });
+    const { data, error } = await supabase.functions.invoke('route-map-image', {
+      body: { mapUrl: key, width, height },
+    });
     if (error) throw error;
-    const d = data as { polyline?: string | null; stops?: string[] } | null;
-    const res = d ? { polyline: d.polyline ?? null, stops: d.stops || [] } : null;
+    const d = data as { polyline?: string | null; stops?: string[]; image?: string | null } | null;
+    const res = d ? { polyline: d.polyline ?? null, stops: d.stops || [], image: d.image ?? null } : null;
     routeCache.set(key, res);
     return res;
   } catch (e) {
@@ -109,7 +111,13 @@ export async function buildRouteMapImage(
 ): Promise<RouteMapImage | null> {
   if (typeof document === 'undefined' || !mapUrl) return null;
 
-  const route = await fetchRoute(mapUrl);
+  const route = await fetchRoute(mapUrl, 640, Math.round((640 * height) / width));
+
+  // Preferred path: the server-rendered Google Static Map (no browser tile /
+  // CORS / canvas-taint issues, which is what left the PDF box empty).
+  if (route?.image) {
+    return { dataUrl: route.image, width: 1280, height: Math.round((1280 * height) / width), stops: route.stops || [] };
+  }
   const parsed = parseGoogleMapsUrl(mapUrl);
   const labels = (route?.stops?.length ? route.stops : parsed.waypoints).filter(Boolean);
 

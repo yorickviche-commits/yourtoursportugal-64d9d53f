@@ -568,9 +568,19 @@ const TravelPlanProposal = ({
     const mapReplacements = mapNodes.map((node, i) => {
       const url = node.getAttribute('data-map-embed') || '';
       const img = mapImages[i];
-      if (!img) return null;
-      return `<div style="margin-top:16px"><div style="border:1px solid #e2e8f0;border-radius:8px;overflow:hidden"><a href="${url}" target="_blank" rel="noopener"><img src="${img.dataUrl}" alt="Route map" style="display:block;width:100%;height:auto" /></a></div><div style="margin-top:6px;font-size:11px;font-weight:600"><a href="${url}" target="_blank" rel="noopener" style="color:#0066cc;text-decoration:none">Open route in Google Maps →</a></div></div>`;
+      const link = `<div style="margin-top:6px;font-size:11px;font-weight:600"><a href="${url}" target="_blank" rel="noopener" style="color:#0066cc;text-decoration:none">Open route in Google Maps →</a></div>`;
+      if (!img) {
+        // Never leave an empty framed box in the PDF: keep only the route link.
+        console.warn('Route map image unavailable for', url);
+        return `<div style="margin-top:16px">${link}</div>`;
+      }
+      // The image source is injected via the DOM afterwards (huge data URLs get
+      // truncated when serialized through document.write, which left the PDF
+      // showing an empty framed box).
+      return `<div style="margin-top:16px"><div style="border:1px solid #e2e8f0;border-radius:8px;overflow:hidden"><a href="${url}" target="_blank" rel="noopener"><img data-route-map="${i}" alt="Route map" style="display:block;width:100%;height:auto" /></a></div>${link}</div>`;
     });
+
+
 
     // Printing from a dedicated top-level document makes the browser derive
     // the suggested PDF filename from this proposal title, never from the app
@@ -606,7 +616,16 @@ const TravelPlanProposal = ({
       printWindow.document.close();
       printWindow.document.title = filename;
 
+      // Inject the rasterized route maps directly (no serialization limits).
+      Array.from(printWindow.document.querySelectorAll<HTMLImageElement>('img[data-route-map]')).forEach(image => {
+        const idx = Number(image.getAttribute('data-route-map'));
+        const src = mapImages[idx]?.dataUrl;
+        if (src) image.src = src;
+        else image.closest('div')?.remove();
+      });
+
       const images = Array.from(printWindow.document.images);
+
       const imagesReady = Promise.all(images.map(image => image.complete
         ? Promise.resolve()
         : new Promise<void>(resolve => {
@@ -623,11 +642,29 @@ const TravelPlanProposal = ({
       return;
     }
 
-    // Popup-blocker fallback: retain the same personalized name in the
-    // current document before opening the native print dialog.
+    // Popup-blocker fallback: swap the live Google Maps iframes for the static
+    // route images (iframes print blank), print, then restore the DOM.
     document.title = filename;
+    const originals = mapNodes.map((node, i) => {
+      const html = mapReplacements[i];
+      if (!html) return null;
+      const holder = document.createElement('div');
+      holder.innerHTML = html;
+      const replacement = holder.firstElementChild as HTMLElement | null;
+      if (!replacement || !node.parentNode) return null;
+      replacement.querySelectorAll<HTMLImageElement>('img[data-route-map]').forEach(image => {
+        const src = mapImages[Number(image.getAttribute('data-route-map'))]?.dataUrl;
+        if (src) image.src = src;
+      });
+      node.parentNode.replaceChild(replacement, node);
+      return { node, replacement };
+    });
     window.print();
+    originals.forEach(entry => {
+      if (entry?.replacement.parentNode) entry.replacement.parentNode.replaceChild(entry.node, entry.replacement);
+    });
   }, [buildPdfFilename]);
+
 
   // Keep the document title aligned with the custom PDF filename while this
   // view is mounted, so any print path (button, Ctrl+P) saves as

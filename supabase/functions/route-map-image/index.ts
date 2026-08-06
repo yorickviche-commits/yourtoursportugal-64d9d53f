@@ -90,7 +90,38 @@ Deno.serve(async (req) => {
       }
     }
 
-    return json({ polyline, stops, hasRoute: !!polyline });
+    // Rasterize server-side with the Google Static Maps API so the PDF gets a
+    // real Google-looking map even when the browser cannot load map tiles.
+    let image: string | null = null;
+    try {
+      const params = new URLSearchParams();
+      params.set('size', `${Math.min(width, 640)}x${Math.min(height, 640)}`);
+      params.set('scale', '2');
+      params.set('maptype', 'roadmap');
+      params.set('language', 'en');
+      if (polyline) params.append('path', `color:0x2a3ad6ff|weight:5|enc:${polyline}`);
+      stops.forEach((s, i) => {
+        params.append('markers', `color:0x0a2540|label:${i + 1}|${s}`);
+      });
+      const imgRes = await fetch(`${GATEWAY}/maps/api/staticmap?${params.toString()}`, { headers: h });
+      if (imgRes.ok) {
+        const buf = new Uint8Array(await imgRes.arrayBuffer());
+        let bin = '';
+        for (let i = 0; i < buf.length; i += 8192) {
+          bin += String.fromCharCode(...buf.subarray(i, i + 8192));
+        }
+        const type = imgRes.headers.get('content-type') || 'image/png';
+        if (buf.length > 1000 && type.startsWith('image/')) {
+          image = `data:${type};base64,${btoa(bin)}`;
+        }
+      } else {
+        console.error('Static Maps failed', imgRes.status, (await imgRes.text()).slice(0, 300));
+      }
+    } catch (e) {
+      console.error('Static Maps error', e);
+    }
+
+    return json({ polyline, stops, hasRoute: !!polyline, image, width, height });
   } catch (e) {
     console.error('route-map-image error', e);
     return json({ error: (e as Error).message }, 500);
