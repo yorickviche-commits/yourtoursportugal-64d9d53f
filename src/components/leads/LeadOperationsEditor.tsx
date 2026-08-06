@@ -13,6 +13,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { cn, formatDayLabelPT } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
+import { openSupplierFileByUrl } from '@/lib/supplierFileUrl';
 import { useToast } from '@/hooks/use-toast';
 import { useLeadOperationsQuery, useSaveLeadOperations, useUpsertLeadOperation, DbLeadOperation } from '@/hooks/useLeadOperationsQuery';
 import { useUnsavedChangesGuard } from '@/hooks/useUnsavedChangesGuard';

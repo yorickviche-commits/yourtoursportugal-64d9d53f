@@ -12,6 +12,7 @@ import BookingRequestDialog from './BookingRequestDialog';
 import BookingEmailHistory from './BookingEmailHistory';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
+import { openSupplierFileByUrl } from '@/lib/supplierFileUrl';
 import { format, addDays, parseISO } from 'date-fns';
 import { pt } from 'date-fns/locale';
 
@@ -371,9 +372,9 @@ const OperationsTable = ({ costItems, tripId, tripCode, startDate }: OperationsT
                                   <Upload className={cn("h-3 w-3", invoiceUrl ? 'text-[hsl(var(--success))]' : 'text-muted-foreground')} />
                                 </button>
                                 {invoiceUrl && (
-                                  <a href={invoiceUrl} target="_blank" rel="noopener noreferrer" className="p-1 hover:bg-muted rounded" title={invoiceName || 'Abrir último ficheiro'}>
+                                  <button type="button" onClick={() => openSupplierFileByUrl(invoiceUrl)} className="p-1 hover:bg-muted rounded" title={invoiceName || 'Abrir último ficheiro'}>
                                     <FileText className="h-3 w-3 text-[hsl(var(--success))]" />
-                                  </a>
+                                  </button>
                                 )}
                               </>
                             )}
