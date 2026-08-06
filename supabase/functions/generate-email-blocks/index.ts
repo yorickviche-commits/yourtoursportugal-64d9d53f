@@ -414,6 +414,7 @@ Return ONLY JSON with this exact shape:
     return new Response(
       JSON.stringify({
         purpose_resolved: purpose,
+        provider: providerUsed,
         include_program: withProgram,
         missing_info: missing,
         program,
