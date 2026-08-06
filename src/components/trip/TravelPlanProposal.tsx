@@ -616,7 +616,16 @@ const TravelPlanProposal = ({
       printWindow.document.close();
       printWindow.document.title = filename;
 
+      // Inject the rasterized route maps directly (no serialization limits).
+      Array.from(printWindow.document.querySelectorAll<HTMLImageElement>('img[data-route-map]')).forEach(image => {
+        const idx = Number(image.getAttribute('data-route-map'));
+        const src = mapImages[idx]?.dataUrl;
+        if (src) image.src = src;
+        else image.closest('div')?.remove();
+      });
+
       const images = Array.from(printWindow.document.images);
+
       const imagesReady = Promise.all(images.map(image => image.complete
         ? Promise.resolve()
         : new Promise<void>(resolve => {
