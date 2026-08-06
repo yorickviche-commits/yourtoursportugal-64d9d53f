@@ -629,11 +629,25 @@ const TravelPlanProposal = ({
       return;
     }
 
-    // Popup-blocker fallback: retain the same personalized name in the
-    // current document before opening the native print dialog.
+    // Popup-blocker fallback: swap the live Google Maps iframes for the static
+    // route images (iframes print blank), print, then restore the DOM.
     document.title = filename;
+    const originals = mapNodes.map((node, i) => {
+      const html = mapReplacements[i];
+      if (!html) return null;
+      const holder = document.createElement('div');
+      holder.innerHTML = html;
+      const replacement = holder.firstElementChild as HTMLElement | null;
+      if (!replacement || !node.parentNode) return null;
+      node.parentNode.replaceChild(replacement, node);
+      return { node, replacement };
+    });
     window.print();
+    originals.forEach(entry => {
+      if (entry?.replacement.parentNode) entry.replacement.parentNode.replaceChild(entry.node, entry.replacement);
+    });
   }, [buildPdfFilename]);
+
 
   // Keep the document title aligned with the custom PDF filename while this
   // view is mounted, so any print path (button, Ctrl+P) saves as
