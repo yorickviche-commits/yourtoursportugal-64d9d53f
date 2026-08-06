@@ -8,10 +8,11 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
-  Sparkles, Loader2, Send, Wand2, Paperclip, LinkIcon, X, Eye, CheckCircle2, AlertTriangle,
+  Sparkles, Loader2, Send, Wand2, Paperclip, LinkIcon, X, Eye, CheckCircle2, AlertTriangle, PencilLine,
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -96,6 +97,11 @@ export function CommunicationsWorkspace({
   const [sending, setSending] = useState(false);
   const [files, setFiles] = useState<{ filename: string; mimeType: string; contentBase64: string }[]>([]);
   const [showPreview, setShowPreview] = useState(true);
+  // Manual on/off switches for every block (used when AI fails or for full control)
+  const [enabled, setEnabled] = useState<Record<string, boolean>>({
+    greeting: true, opening: true, main: true, closing: true,
+    signature: true, next_steps: true, links: true,
+  });
   // Travel plan PDF — always attached by default on proposal emails
   const [planPdf, setPlanPdf] = useState<{ filename: string; contentBase64: string } | null>(null);
   const [planPdfLoading, setPlanPdfLoading] = useState(false);
@@ -174,10 +180,102 @@ export function CommunicationsWorkspace({
 
   const hasContent = !!(blocks.subject || blocks.opening || blocks.main);
 
+  /** Blocks with the manually disabled sections stripped out. */
+  const effectiveBlocks = useMemo<EmailBlocks>(() => ({
+    ...blocks,
+    greeting: enabled.greeting ? blocks.greeting : '',
+    opening: enabled.opening ? blocks.opening : '',
+    main: enabled.main ? blocks.main : '',
+    closing: enabled.closing ? blocks.closing : '',
+    signature: enabled.signature ? blocks.signature : '',
+    next_steps: enabled.next_steps ? blocks.next_steps : [],
+    links: enabled.links ? blocks.links : [],
+  }), [blocks, enabled]);
+
   const previewHtml = useMemo(
-    () => buildEmailHtml(blocks, blocks.includeProgram ? program : null),
-    [blocks, program],
+    () => buildEmailHtml(effectiveBlocks, effectiveBlocks.includeProgram ? program : null),
+    [effectiveBlocks, program],
   );
+
+  /** Program object built straight from the saved proposal (no AI needed). */
+  const programFromProposal = useMemo<ProgramLite | null>(() => {
+    if (!proposalRow) return null;
+    const rawDays = Array.isArray((proposalRow as any).days) ? (proposalRow as any).days : [];
+    return {
+      title: proposalRow.title || '',
+      clientName: proposalRow.client_name || clientName || '',
+      ytCode: leadRef?.yt_id || leadRef?.lead_code || proposalRow.booking_ref || '',
+      dateLabel: proposalRow.date_range || '',
+      publicToken: proposalRow.public_token,
+      weblink: proposalRow.public_token ? getProposalShareUrl(proposalRow.public_token) : undefined,
+      heroImageUrl: proposalRow.hero_image_url || null,
+      totalEur: proposalRow.total_value_eur ?? null,
+      currency: 'EUR',
+      importantNotes: (proposalRow.closing_terms as any)?.important_notes
+        || (proposalRow.closing_terms as any)?.notes || null,
+      bookNowUrl: proposalRow.wetravel_checkout_url || null,
+      days: rawDays.map((d: any, i: number) => ({
+        day_number: d.day_number ?? i + 1,
+        title: d.title || '',
+        subtitle: d.subtitle || '',
+        date_label: d.date_label || d.date || '',
+        items: Array.isArray(d.items) ? d.items.map(String)
+          : Array.isArray(d.highlights) ? d.highlights.map(String) : [],
+      })),
+    };
+  }, [proposalRow, leadRef, clientName]);
+
+  /**
+   * Manual draft: fills every field from the imported lead / proposal data
+   * without calling any AI provider. Safety net when AI is unavailable.
+   */
+  const buildManual = () => {
+    const pt = lang === 'PT';
+    const prog = programFromProposal;
+    const first = (proposalRow?.client_name || clientName || '').split(' ')[0];
+    const parts = [prog?.ytCode, prog?.title, prog?.dateLabel, proposalRow?.client_name || clientName]
+      .filter(Boolean);
+    setProgram(prog);
+    setResolved('manual');
+    setBlocks({
+      subject: parts.join(' - '),
+      greeting: textToHtml(pt ? `Olá ${first || ''},`.trim() : `Dear ${first || 'traveller'},`),
+      opening: textToHtml(pt
+        ? 'Obrigado pelo seu contacto. Segue em anexo e em link a proposta que preparámos para a sua viagem em Portugal.'
+        : 'Thank you for reaching out. Please find below the travel plan we have prepared for your trip to Portugal.'),
+      main: textToHtml(proposalRow?.summary_text
+        || (pt
+          ? 'Preparámos este programa com base no que nos partilhou. Podemos ajustar ritmo, experiências e alojamento conforme preferir.'
+          : 'We have designed this program based on what you shared with us. We can fine-tune pace, experiences and accommodation as you prefer.')),
+      closing: textToHtml(pt
+        ? 'Ficamos ao seu inteiro dispor para qualquer ajuste ou questão.'
+        : 'We remain at your full disposal for any adjustment or question.'),
+      next_steps: [
+        {
+          action: pt ? 'Rever o itinerário digital' : 'Review the digital itinerary',
+          responsible: pt ? 'Cliente' : 'You',
+          timeframe: pt ? '48h' : '48h',
+        },
+        {
+          action: pt ? 'Confirmar reserva com depósito' : 'Confirm the booking with the deposit',
+          responsible: pt ? 'Cliente' : 'You',
+          timeframe: pt ? 'Após aprovação' : 'After approval',
+        },
+      ],
+      signature: textToHtml(`${salesOwner || 'Your Tours Portugal'}\nYour Tours Portugal\nreservas@yourtours.pt | +351 919 473 029`),
+      includeProgram: !!prog,
+      includePrice: !!prog?.totalEur,
+      links: [
+        ...(prog?.publicToken
+          ? [{ label: pt ? 'Itinerário digital' : 'Digital itinerary', url: getProposalAppUrl(prog.publicToken), enabled: true }]
+          : []),
+        ...(prog?.bookNowUrl ? [{ label: pt ? 'Pagamento seguro' : 'Secure payment', url: prog.bookNowUrl, enabled: true }] : []),
+        { label: 'yourtours.pt', url: 'https://www.yourtours.pt', enabled: true },
+      ],
+      attachments: [],
+    });
+    toast({ title: pt ? 'Rascunho manual criado' : 'Manual draft created', description: 'Todos os campos foram pré-preenchidos com os dados da lead/proposta.' });
+  };
 
   const invokeAi = async (payload: Record<string, unknown>) => {
     const { data, error } = await supabase.functions.invoke('generate-email-blocks', {
@@ -268,13 +366,13 @@ export function CommunicationsWorkspace({
     const w: string[] = [];
     if (!to.trim()) w.push('Destinatário em falta.');
     if (!blocks.subject.trim()) w.push('Assunto em falta.');
-    if (!blocks.signature) w.push('Assinatura em falta.');
+    if (enabled.signature && !blocks.signature) w.push('Assinatura em falta.');
     if (clientName && blocks.greeting && !blocks.greeting.toLowerCase().includes(clientName.split(' ')[0].toLowerCase()))
       w.push('A saudação não menciona o nome do cliente.');
     if (blocks.includeProgram && !program) w.push('Bloco de programa ativo mas sem proposta associada.');
-    if (!blocks.next_steps.some(s => s.action?.trim())) w.push('Sem "Next Steps" definidos.');
+    if (enabled.next_steps && !blocks.next_steps.some(s => s.action?.trim())) w.push('Sem "Next Steps" definidos.');
     return w;
-  }, [to, blocks, clientName, program]);
+  }, [to, blocks, clientName, program, enabled]);
 
   const send = async () => {
     if (!to.trim() || !blocks.subject.trim()) {
@@ -291,7 +389,7 @@ export function CommunicationsWorkspace({
           bcc: bcc.trim() || undefined,
           subject: blocks.subject,
           html,
-          body: buildEmailPlain(blocks, blocks.includeProgram ? program : null),
+          body: buildEmailPlain(effectiveBlocks, effectiveBlocks.includeProgram ? program : null),
           attachments: [
             ...(attachPlanPdf && planPdf
               ? [{ filename: planPdf.filename, mimeType: 'application/pdf', contentBase64: planPdf.contentBase64 }]
@@ -329,8 +427,16 @@ export function CommunicationsWorkspace({
     title, blockKey, minHeight = 90,
   }: { title: string; blockKey: 'greeting' | 'opening' | 'main' | 'closing' | 'signature'; minHeight?: number }) => (
     <div className="rounded-lg border bg-card">
-      <div className="flex items-center gap-1 border-b px-3 py-1.5">
-        <span className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">{title}</span>
+      <div className="flex items-center gap-1.5 border-b px-3 py-1.5">
+        <Switch
+          checked={enabled[blockKey] !== false}
+          onCheckedChange={v => setEnabled(p => ({ ...p, [blockKey]: v }))}
+          className="scale-[0.7]"
+        />
+        <span className={cn(
+          'text-[11px] font-semibold uppercase tracking-wide',
+          enabled[blockKey] === false ? 'text-muted-foreground/50 line-through' : 'text-muted-foreground',
+        )}>{title}</span>
         <div className="ml-auto flex flex-wrap items-center gap-1">
           {REWRITES.map(r => (
             <Button
@@ -346,7 +452,7 @@ export function CommunicationsWorkspace({
           ))}
         </div>
       </div>
-      <div className="p-2">
+      <div className={cn('p-2', enabled[blockKey] === false && 'opacity-40')}>
         <RichHtmlEditor
           value={String(blocks[blockKey] || '')}
           onChange={v => setBlocks(p => ({ ...p, [blockKey]: v }))}
@@ -397,10 +503,18 @@ export function CommunicationsWorkspace({
               <SelectContent>{PURPOSES.map(p => <SelectItem key={p.value} value={p.value} className="text-xs">{p.label}</SelectItem>)}</SelectContent>
             </Select>
           </div>
-          <div className="flex items-end">
-            <Button onClick={generate} disabled={generating} className="h-8 w-full gap-1.5 text-xs">
+          <div className="flex items-end gap-1.5">
+            <Button onClick={generate} disabled={generating} className="h-8 flex-1 gap-1.5 text-xs">
               {generating ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Wand2 className="h-3.5 w-3.5" />}
               Gerar Email
+            </Button>
+            <Button
+              variant="outline"
+              onClick={buildManual}
+              className="h-8 gap-1.5 text-xs"
+              title="Criar rascunho manual com todos os campos pré-preenchidos (sem AI)"
+            >
+              <PencilLine className="h-3.5 w-3.5" /> Manual
             </Button>
           </div>
           <div className="md:col-span-4">
@@ -422,7 +536,7 @@ export function CommunicationsWorkspace({
         )}
       </div>
 
-      {hasContent && (
+      {(hasContent || !!proposalRow) && (
         <div className="grid gap-4 lg:grid-cols-2">
           {/* Blocks */}
           <div className="space-y-3">
@@ -460,6 +574,8 @@ export function CommunicationsWorkspace({
             {/* Next steps */}
             <div className="rounded-lg border bg-card">
               <div className="flex items-center border-b px-3 py-1.5">
+                <Switch checked={enabled.next_steps !== false} className="mr-1.5 scale-[0.7]"
+                  onCheckedChange={v => setEnabled(p => ({ ...p, next_steps: v }))} />
                 <span className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Your Next Steps</span>
                 <Button variant="ghost" size="sm" className="ml-auto h-6 px-1.5 text-[10px]"
                   onClick={() => setBlocks(p => ({ ...p, next_steps: [...p.next_steps, { action: '', responsible: '', timeframe: '' }] }))}>
@@ -488,6 +604,8 @@ export function CommunicationsWorkspace({
             {/* Links */}
             <div className="rounded-lg border bg-card">
               <div className="flex items-center gap-1.5 border-b px-3 py-1.5">
+                <Switch checked={enabled.links !== false} className="scale-[0.7]"
+                  onCheckedChange={v => setEnabled(p => ({ ...p, links: v }))} />
                 <LinkIcon className="h-3.5 w-3.5 text-muted-foreground" />
                 <span className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Links úteis</span>
               </div>
