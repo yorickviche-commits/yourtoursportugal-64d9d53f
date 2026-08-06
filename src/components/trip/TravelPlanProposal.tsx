@@ -652,6 +652,10 @@ const TravelPlanProposal = ({
       holder.innerHTML = html;
       const replacement = holder.firstElementChild as HTMLElement | null;
       if (!replacement || !node.parentNode) return null;
+      replacement.querySelectorAll<HTMLImageElement>('img[data-route-map]').forEach(image => {
+        const src = mapImages[Number(image.getAttribute('data-route-map'))]?.dataUrl;
+        if (src) image.src = src;
+      });
       node.parentNode.replaceChild(replacement, node);
       return { node, replacement };
     });
