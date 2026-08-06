@@ -13,6 +13,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { cn, formatDayLabelPT } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
+import { openSupplierFileByUrl } from '@/lib/supplierFileUrl';
 import { useToast } from '@/hooks/use-toast';
 import { useLeadOperationsQuery, useSaveLeadOperations, useUpsertLeadOperation, DbLeadOperation } from '@/hooks/useLeadOperationsQuery';
 import { useUnsavedChangesGuard } from '@/hooks/useUnsavedChangesGuard';
@@ -597,9 +598,10 @@ const LeadOperationsEditor = ({ activeVersion, leadId, leadCode, pvpTotal = 0, s
                               {uploadingId === row.itemKey ? (
                                 <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />
                               ) : row.invoiceUrl ? (
-                                <a href={row.invoiceUrl} target="_blank" rel="noopener noreferrer" className="p-1 hover:bg-muted rounded" title={row.invoiceName || 'Ver fatura'}>
+                                <button type="button" onClick={() => openSupplierFileByUrl(row.invoiceUrl)} className="p-1 hover:bg-muted rounded" title={row.invoiceName || 'Ver fatura'}>
                                   <FileText className="h-3 w-3 text-[hsl(var(--success))]" />
-                                </a>
+                                </button>
+
                               ) : (
                                 <button
                                   className="p-1 hover:bg-muted rounded"
