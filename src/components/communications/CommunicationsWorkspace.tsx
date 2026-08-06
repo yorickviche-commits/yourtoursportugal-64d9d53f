@@ -423,9 +423,11 @@ export function CommunicationsWorkspace({
     }
   };
 
-  const BlockCard = ({
-    title, blockKey, minHeight = 90,
-  }: { title: string; blockKey: 'greeting' | 'opening' | 'main' | 'closing' | 'signature'; minHeight?: number }) => (
+  const renderBlock = (
+    title: string,
+    blockKey: 'greeting' | 'opening' | 'main' | 'closing' | 'signature',
+    minHeight = 90,
+  ) => (
     <div className="rounded-lg border bg-card">
       <div className="flex items-center gap-1.5 border-b px-3 py-1.5">
         <Switch
@@ -545,9 +547,9 @@ export function CommunicationsWorkspace({
               <Input value={blocks.subject} onChange={e => setBlocks(p => ({ ...p, subject: e.target.value }))} className="h-8 text-xs" />
             </div>
 
-            <BlockCard title="Saudação" blockKey="greeting" minHeight={44} />
-            <BlockCard title="Abertura" blockKey="opening" />
-            <BlockCard title="Conteúdo principal" blockKey="main" minHeight={130} />
+            {renderBlock('Saudação', 'greeting', 44)}
+            {renderBlock('Abertura', 'opening')}
+            {renderBlock('Conteúdo principal', 'main', 130)}
 
             {/* Program toggles */}
             <div className="rounded-lg border bg-card p-3">
@@ -569,7 +571,7 @@ export function CommunicationsWorkspace({
               )}
             </div>
 
-            <BlockCard title="Fecho" blockKey="closing" minHeight={70} />
+            {renderBlock('Fecho', 'closing', 70)}
 
             {/* Next steps */}
             <div className="rounded-lg border bg-card">
@@ -668,7 +670,7 @@ export function CommunicationsWorkspace({
               </div>
             </div>
 
-            <BlockCard title="Assinatura" blockKey="signature" minHeight={70} />
+            {renderBlock('Assinatura', 'signature', 70)}
           </div>
 
           {/* Preview + send */}
