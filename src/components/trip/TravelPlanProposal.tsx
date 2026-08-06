@@ -2160,7 +2160,10 @@ const TravelPlanProposal = ({
             </div>
           </div>
 
-          <div>
+          <div
+            className="rounded-xl border border-slate-200 bg-slate-50 p-4 md:p-5"
+            style={{ backgroundColor: '#f8fafc', printColorAdjust: 'exact', WebkitPrintColorAdjust: 'exact' } as any}
+          >
             <h3 className="text-base font-serif font-bold text-slate-800 mb-2">{d.aboutUs}</h3>
             <p className="text-xs text-slate-700 leading-relaxed">{d.aboutBody}</p>
             <img
@@ -2170,14 +2173,26 @@ const TravelPlanProposal = ({
               style={{ printColorAdjust: 'exact', WebkitPrintColorAdjust: 'exact' } as any}
             />
             <p className="text-xs text-slate-700 leading-relaxed mt-3">{d.foundersBody}</p>
-            <p className="text-[11px] text-slate-600 mt-3">
-              <a href="mailto:reservas@yourtours.pt" className="text-slate-700 no-underline">reservas@yourtours.pt</a>
-              {' · '}
-              <a href="https://yourtoursportugal.com" className="text-slate-700 no-underline">yourtoursportugal.com</a>
-              {' · '}
-              <a href="https://wa.me/351919473029" className="text-slate-700 no-underline">+351 919 473 029</a>
-            </p>
+            <div className="flex flex-wrap justify-center gap-2 mt-4">
+              {[
+                { label: 'reservas@yourtours.pt', href: 'mailto:reservas@yourtours.pt', bg: '#0a2540' },
+                { label: 'yourtoursportugal.com', href: 'https://yourtoursportugal.com', bg: '#0a2540' },
+                { label: '+351 919 473 029', href: 'https://wa.me/351919473029', bg: '#128c7e' },
+              ].map(b => (
+                <a
+                  key={b.href}
+                  href={b.href}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center justify-center rounded-md px-4 py-2 text-[11px] font-bold text-white no-underline"
+                  style={{ backgroundColor: b.bg, color: '#ffffff', printColorAdjust: 'exact', WebkitPrintColorAdjust: 'exact' } as any}
+                >
+                  {b.label}
+                </a>
+              ))}
+            </div>
           </div>
+
 
         </div>
       </div>
