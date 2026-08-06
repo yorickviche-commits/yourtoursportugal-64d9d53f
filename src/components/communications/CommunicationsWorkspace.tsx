@@ -366,13 +366,13 @@ export function CommunicationsWorkspace({
     const w: string[] = [];
     if (!to.trim()) w.push('Destinatário em falta.');
     if (!blocks.subject.trim()) w.push('Assunto em falta.');
-    if (!blocks.signature) w.push('Assinatura em falta.');
+    if (enabled.signature && !blocks.signature) w.push('Assinatura em falta.');
     if (clientName && blocks.greeting && !blocks.greeting.toLowerCase().includes(clientName.split(' ')[0].toLowerCase()))
       w.push('A saudação não menciona o nome do cliente.');
     if (blocks.includeProgram && !program) w.push('Bloco de programa ativo mas sem proposta associada.');
-    if (!blocks.next_steps.some(s => s.action?.trim())) w.push('Sem "Next Steps" definidos.');
+    if (enabled.next_steps && !blocks.next_steps.some(s => s.action?.trim())) w.push('Sem "Next Steps" definidos.');
     return w;
-  }, [to, blocks, clientName, program]);
+  }, [to, blocks, clientName, program, enabled]);
 
   const send = async () => {
     if (!to.trim() || !blocks.subject.trim()) {
