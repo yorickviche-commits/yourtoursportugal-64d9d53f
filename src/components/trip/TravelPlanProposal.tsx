@@ -574,8 +574,12 @@ const TravelPlanProposal = ({
         console.warn('Route map image unavailable for', url);
         return `<div style="margin-top:16px">${link}</div>`;
       }
-      return `<div style="margin-top:16px"><div style="border:1px solid #e2e8f0;border-radius:8px;overflow:hidden"><a href="${url}" target="_blank" rel="noopener"><img src="${img.dataUrl}" alt="Route map" style="display:block;width:100%;height:auto" /></a></div>${link}</div>`;
+      // The image source is injected via the DOM afterwards (huge data URLs get
+      // truncated when serialized through document.write, which left the PDF
+      // showing an empty framed box).
+      return `<div style="margin-top:16px"><div style="border:1px solid #e2e8f0;border-radius:8px;overflow:hidden"><a href="${url}" target="_blank" rel="noopener"><img data-route-map="${i}" alt="Route map" style="display:block;width:100%;height:auto" /></a></div>${link}</div>`;
     });
+
 
 
     // Printing from a dedicated top-level document makes the browser derive
