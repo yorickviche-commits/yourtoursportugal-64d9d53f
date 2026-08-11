@@ -135,11 +135,24 @@ export const useDeleteLead = () => {
 
   return useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase.from('leads').delete().eq('id', id);
+      const { data, error } = await supabase
+        .from('leads')
+        .delete()
+        .eq('id', id)
+        .select('id');
       if (error) throw error;
+      if (!data || data.length === 0) {
+        throw new Error('Não foi possível remover a lead — apenas administradores podem eliminar leads.');
+      }
+      return id;
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['leads'] });
+    onSuccess: (id) => {
+      // Remove immediately from cached list, then refetch from server
+      queryClient.setQueryData<DbLead[]>(['leads'], (old) =>
+        old ? old.filter((l) => l.id !== id) : old,
+      );
+      queryClient.removeQueries({ queryKey: ['leads', id] });
+      queryClient.refetchQueries({ queryKey: ['leads'], exact: true });
     },
   });
 };
