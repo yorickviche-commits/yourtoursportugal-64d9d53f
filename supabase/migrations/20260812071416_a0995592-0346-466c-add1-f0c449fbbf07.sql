@@ -1,0 +1,1 @@
+ALTER TABLE public.leads ADD COLUMN IF NOT EXISTS client_type text NOT NULL DEFAULT 'B2C';

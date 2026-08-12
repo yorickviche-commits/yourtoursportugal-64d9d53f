@@ -1152,6 +1152,7 @@ export type Database = {
           assigned_agents: string[]
           budget_level: string | null
           client_name: string
+          client_type: string
           comfort_level: string | null
           created_at: string
           created_by: string | null
@@ -1184,6 +1185,7 @@ export type Database = {
           assigned_agents?: string[]
           budget_level?: string | null
           client_name?: string
+          client_type?: string
           comfort_level?: string | null
           created_at?: string
           created_by?: string | null
@@ -1216,6 +1218,7 @@ export type Database = {
           assigned_agents?: string[]
           budget_level?: string | null
           client_name?: string
+          client_type?: string
           comfort_level?: string | null
           created_at?: string
           created_by?: string | null
