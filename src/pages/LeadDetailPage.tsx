@@ -9,6 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import TagSelect from '@/components/TagSelect';
+import { normalizeClientType } from '@/components/ClientTypeBadge';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
@@ -412,6 +413,7 @@ const LeadDetailPage = ({ mode = 'lead' }: { mode?: 'lead' | 'booking' } = {}) =
     clientName: '', email: '', phone: '', travelDates: '', travelEndDate: '',
     numberOfDays: 0, datesType: 'estimated' as 'concrete' | 'estimated' | 'flexible',
     pax: 2, paxChildren: 0, paxInfants: 0, budgetLevel: '', notes: '', salesOwner: '',
+    clientType: 'B2C' as 'B2C' | 'B2B',
   });
   const [leadStatus, setLeadStatus] = useState<LeadStatus>('new');
   const [categoria, setCategoria] = useState<string[]>([]);
@@ -485,6 +487,7 @@ const LeadDetailPage = ({ mode = 'lead' }: { mode?: 'lead' | 'booking' } = {}) =
       budgetLevel: lead.budget_level || '',
       notes: lead.notes || '',
       salesOwner: lead.sales_owner || '',
+      clientType: normalizeClientType((lead as any).client_type),
     });
     setLeadStatus((lead.status as LeadStatus) || 'new');
     setCategoria(lead.comfort_level ? [lead.comfort_level] : []);
@@ -520,6 +523,7 @@ const LeadDetailPage = ({ mode = 'lead' }: { mode?: 'lead' | 'booking' } = {}) =
           budget_level: formState.budgetLevel,
           notes: formState.notes,
           sales_owner: formState.salesOwner,
+          client_type: formState.clientType,
           status: leadStatus,
           destination: destino.join(', ') || 'A definir',
           comfort_level: categoria[0] || '',
@@ -554,6 +558,7 @@ const LeadDetailPage = ({ mode = 'lead' }: { mode?: 'lead' | 'booking' } = {}) =
     if ((l.budget_level || '') !== formState.budgetLevel) return true;
     if ((l.notes || '') !== formState.notes) return true;
     if ((l.sales_owner || '') !== formState.salesOwner) return true;
+    if (normalizeClientType((l as any).client_type) !== formState.clientType) return true;
     if ((l.comfort_level || '') !== (categoria[0] || '')) return true;
     const savedDest = (l.destination ? String(l.destination).split(', ').filter(Boolean) : []).join('|');
     if (savedDest !== destino.join('|')) return true;
@@ -775,6 +780,22 @@ const LeadDetailPage = ({ mode = 'lead' }: { mode?: 'lead' | 'booking' } = {}) =
                 <div>
                   <label className="text-[10px] text-muted-foreground uppercase">Criador da Simulação</label>
                   <Input className="h-8 text-xs mt-1" value={formState.salesOwner} onChange={e => updateFormField('salesOwner', e.target.value)} />
+                </div>
+                <div>
+                  <label className="text-[10px] text-muted-foreground uppercase font-bold">Tipo de Cliente</label>
+                  <div className="flex gap-2 mt-1">
+                    {(['B2C', 'B2B'] as const).map(t => (
+                      <button key={t} type="button" onClick={() => updateFormField('clientType', t)}
+                        className={cn("px-3 py-1.5 text-xs font-bold rounded border transition-colors",
+                          formState.clientType === t
+                            ? t === 'B2B'
+                              ? "bg-[hsl(var(--warning))] text-white border-[hsl(var(--warning))]"
+                              : "bg-[hsl(var(--info))] text-white border-[hsl(var(--info))]"
+                            : "border-border text-muted-foreground hover:text-foreground")}>
+                        {t}
+                      </button>
+                    ))}
+                  </div>
                 </div>
                 <div>
                   <label className="text-[10px] text-muted-foreground uppercase">Data</label>
