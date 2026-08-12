@@ -75,6 +75,7 @@ export const useCreateLead = () => {
         .insert({
           client_name: lead.client_name || '',
           email: lead.email || '',
+          client_type: lead.client_type || 'B2C',
           phone: lead.phone || '',
           destination: lead.destination || '',
           travel_dates: lead.travel_dates || '',
