@@ -8,6 +8,7 @@ export interface DbLead {
   yt_id: string | null;
   client_name: string;
   email: string;
+  client_type: string;
   phone: string;
   destination: string;
   travel_dates: string;
