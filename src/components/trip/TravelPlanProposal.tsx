@@ -501,6 +501,17 @@ const TravelPlanProposal = ({
   const normalizedDefaultLang = (defaultLanguage || 'EN').toUpperCase();
   const initialLang = LANGUAGE_OPTIONS.some(o => o.value === normalizedDefaultLang) ? normalizedDefaultLang : 'EN';
   const [language, setLanguage] = useState<string>(initialLang);
+  // Keep the fixed closing terms (payment / cancellation / notes / closing message)
+  // in the proposal language whenever they were never manually customised.
+  useEffect(() => {
+    setClosing(prev => {
+      const next = { ...prev };
+      (['payment', 'cancellation', 'importantNotes', 'closingMessage'] as const).forEach(f => {
+        next[f] = resolveClosingText(f, prev[f], language);
+      });
+      return next;
+    });
+  }, [language]);
   // Manual mode: product picker target — 'new' appends a new day, number = append into that day
   const [pickerTarget, setPickerTarget] = useState<'new' | number | null>(null);
   const [collapsedDays, setCollapsedDays] = useState<Set<number>>(new Set());
