@@ -948,7 +948,7 @@ const PricingConditions = ({ proposal, lang }: { proposal: any; lang: string }) 
                 rel="noopener noreferrer"
                 className="inline-flex items-center justify-center gap-2 bg-[#0a2540] hover:bg-[#123a63] text-white px-8 py-4 rounded-lg font-extrabold uppercase tracking-wide text-base shadow-lg transition shrink-0"
               >
-                Book Now
+                {getPdfDict(lang).bookNow}
               </a>
             )}
           </div>
