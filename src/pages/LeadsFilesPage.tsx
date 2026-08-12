@@ -10,6 +10,7 @@ import AISimulationForm from '@/components/leads/AISimulationForm';
 import NewLeadDialog from '@/components/NewLeadDialog';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { Skeleton } from '@/components/ui/skeleton';
+import ClientTypeBadge from '@/components/ClientTypeBadge';
 import StatusBadge from '@/components/StatusBadge';
 import { displayLeadCode } from '@/lib/leadCode';
 import LeadAgentsCell from '@/components/LeadAgentsCell';
@@ -119,7 +120,10 @@ const LeadsFilesPage = () => {
                   className="bg-card rounded-lg border p-4 active:bg-muted/50 transition-colors cursor-pointer">
                   <div className="flex items-start justify-between">
                     <div className="min-w-0 flex-1">
-                      <p className="text-sm font-semibold truncate">{lead.client_name}</p>
+                      <div className="flex items-center gap-1.5 min-w-0">
+                        <p className="text-sm font-semibold truncate">{lead.client_name}</p>
+                        <ClientTypeBadge value={(lead as any).client_type} />
+                      </div>
                       <p className="text-xs text-muted-foreground mt-0.5">{lead.destination || '—'} · {lead.pax} pax · {lead.number_of_days || '—'} dias</p>
                     </div>
                     <StatusBadge label={badge.label} className={badge.className} />
@@ -148,6 +152,7 @@ const LeadsFilesPage = () => {
                 <tr className="border-b border-border bg-muted/50">
                   <th className="text-left px-3 py-2.5 font-medium text-muted-foreground text-xs">Id</th>
                   <th className="text-left px-3 py-2.5 font-medium text-muted-foreground text-xs">Nome</th>
+                  <th className="text-center px-2 py-2.5 font-medium text-muted-foreground text-xs">Tipo</th>
                   <th className="text-left px-3 py-2.5 font-medium text-muted-foreground text-xs">Destino</th>
                   <th className="text-center px-2 py-2.5 font-medium text-muted-foreground text-xs">Dias</th>
                   <th className="text-left px-3 py-2.5 font-medium text-muted-foreground text-xs">Datas</th>
@@ -176,6 +181,7 @@ const LeadsFilesPage = () => {
                       className="border-b border-border last:border-0 hover:bg-muted/30 transition-colors cursor-pointer">
                       <td className="px-3 py-3 text-xs text-muted-foreground whitespace-nowrap">{displayLeadCode(lead)}</td>
                       <td className="px-3 py-3"><p className="text-xs font-medium text-[hsl(var(--info))] hover:underline">{lead.client_name}</p></td>
+                      <td className="px-2 py-3 text-center"><ClientTypeBadge value={(lead as any).client_type} /></td>
                       <td className="px-3 py-3 text-xs text-foreground">{lead.destination}</td>
                       <td className="px-2 py-3 text-xs text-center text-foreground">{lead.number_of_days || '—'}</td>
                       <td className="px-3 py-3 text-xs text-muted-foreground">{lead.travel_dates}</td>
@@ -202,7 +208,7 @@ const LeadsFilesPage = () => {
                   );
                 })}
                 {filteredLeads.length === 0 && (
-                  <tr><td colSpan={11} className="px-4 py-8 text-center text-sm text-muted-foreground">Sem simulações encontradas</td></tr>
+                  <tr><td colSpan={12} className="px-4 py-8 text-center text-sm text-muted-foreground">Sem simulações encontradas</td></tr>
                 )}
               </tbody>
             </table>
