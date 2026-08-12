@@ -5,6 +5,7 @@ import { parseGoogleMapsUrl } from '@/lib/mapEmbed';
 import { buildRouteMapImage, type RouteMapImage } from '@/lib/staticRouteMap';
 import { drawRichTextPdf, stripBoldMarkers } from '@/lib/richText';
 import { getPdfDict } from '@/lib/proposalPdfI18n';
+import { resolveClosingText } from '@/lib/closingTermsI18n';
 
 const ALL_REVIEWS_URL = 'https://yourtoursportugal.com/our-reviews/';
 
