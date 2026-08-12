@@ -20,6 +20,7 @@ type Mode = 'manual' | 'ai';
 
 interface FormData {
   ytId: string;
+  clientType: 'B2C' | 'B2B';
   clientName: string;
   email: string;
   phone: string;
@@ -38,7 +39,7 @@ interface FormData {
 }
 
 const emptyForm: FormData = {
-  ytId: '', clientName: '', email: '', phone: '', travelDates: '', travelEndDate: '', datesType: 'estimated',
+  ytId: '', clientType: 'B2C', clientName: '', email: '', phone: '', travelDates: '', travelEndDate: '', datesType: 'estimated',
   numberOfDays: 0, pax: 2, language: ['EN'], budget: '', destination: [], request: '', preferences: '',
   travelStyle: [], comfortLevel: '',
 };
@@ -69,6 +70,7 @@ const NewLeadDialog = ({ open, onOpenChange }: { open: boolean; onOpenChange: (v
       const e = data.extracted;
       setForm({
         ytId: form.ytId,
+        clientType: form.clientType,
         clientName: e.clientName || '', email: e.email || '', phone: e.phone || '',
         travelDates: e.travelStartDate || e.travelDates || '', 
         travelEndDate: e.travelEndDate || '',
@@ -101,6 +103,7 @@ const NewLeadDialog = ({ open, onOpenChange }: { open: boolean; onOpenChange: (v
     try {
       const newLead = await createLead.mutateAsync({
         yt_id: form.ytId.trim(),
+        client_type: form.clientType,
         client_name: form.clientName,
         email: form.email,
         phone: form.phone,
@@ -164,6 +167,22 @@ const NewLeadDialog = ({ open, onOpenChange }: { open: boolean; onOpenChange: (v
 
         {mode === 'manual' && (
           <div className="space-y-4">
+            <div>
+              <Label className="text-[10px] text-muted-foreground uppercase">Tipo de Cliente *</Label>
+              <div className="flex gap-2 mt-1">
+                {(['B2C', 'B2B'] as const).map(t => (
+                  <button key={t} type="button" onClick={() => updateField('clientType', t)}
+                    className={cn("px-3 py-1.5 text-xs font-bold rounded border transition-colors",
+                      form.clientType === t
+                        ? t === 'B2B'
+                          ? "bg-[hsl(var(--warning))] text-white border-[hsl(var(--warning))]"
+                          : "bg-[hsl(var(--info))] text-white border-[hsl(var(--info))]"
+                        : "border-border text-muted-foreground hover:text-foreground")}>
+                    {t}
+                  </button>
+                ))}
+              </div>
+            </div>
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <Label className="text-[10px] text-muted-foreground uppercase">ID YT *</Label>

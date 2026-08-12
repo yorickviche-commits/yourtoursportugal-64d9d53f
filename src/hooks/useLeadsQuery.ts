@@ -8,6 +8,7 @@ export interface DbLead {
   yt_id: string | null;
   client_name: string;
   email: string;
+  client_type: string;
   phone: string;
   destination: string;
   travel_dates: string;
@@ -74,6 +75,7 @@ export const useCreateLead = () => {
         .insert({
           client_name: lead.client_name || '',
           email: lead.email || '',
+          client_type: lead.client_type || 'B2C',
           phone: lead.phone || '',
           destination: lead.destination || '',
           travel_dates: lead.travel_dates || '',
