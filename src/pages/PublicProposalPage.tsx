@@ -8,6 +8,8 @@ import reviewsBanner from '@/assets/our-reviews-banner.png.asset.json';
 import foundersAsset from '@/assets/founders.png.asset.json';
 import { toMapEmbedSrc } from '@/lib/mapEmbed';
 import { RichText, stripBoldMarkers } from '@/lib/richText';
+import { resolveClosingText } from '@/lib/closingTermsI18n';
+import { getPdfDict } from '@/lib/proposalPdfI18n';
 
 const TERMS_URL = 'https://drive.google.com/file/d/12AkvW2Ob0LtcooaciWY4e-nEx7hlOnQC/view?usp=sharing';
 
@@ -918,9 +920,9 @@ const PricingConditions = ({ proposal, lang }: { proposal: any; lang: string }) 
     .map(d => `**${dayLabel} ${d.day_number} — ${stripBoldMarkers(d.title || '')}**\n${(d.items || []).slice(0, 6).map(b => `• ${stripBoldMarkers(b)}`).join('\n')}`)
     .join('\n\n');
   const includedText: string = closing.inclusionsOverride?.trim() || autoIncluded;
-  const paymentText: string = closing.payment || '• Deposit: 25% of the total amount to formalize the booking.\n• Final Payment: The remaining 75% must be settled up to 30 days before the tour date.';
-  const cancellationText: string = closing.cancellation || '• Free cancellation with 100% refund up to 7 days prior to the tour date.\n• For cancellations made less than 30 days before the tour date, the total amount is non-refundable.';
-  const notesText: string = closing.importantNotes || '• The rates presented include all the itinerary and experiences mentioned in the proposition.\n• Rates are valid on the date this proposal is sent and may change until final confirmation.\n• The rates include all taxes and personal accident insurance.';
+  const paymentText: string = resolveClosingText('payment', closing.payment, lang);
+  const cancellationText: string = resolveClosingText('cancellation', closing.cancellation, lang);
+  const notesText: string = resolveClosingText('importantNotes', closing.importantNotes, lang);
   const hasAny = total > 0 || includedText || paymentText || cancellationText || notesText;
   if (!hasAny) return null;
 
@@ -947,7 +949,7 @@ const PricingConditions = ({ proposal, lang }: { proposal: any; lang: string }) 
                 rel="noopener noreferrer"
                 className="inline-flex items-center justify-center gap-2 bg-[#0a2540] hover:bg-[#123a63] text-white px-8 py-4 rounded-lg font-extrabold uppercase tracking-wide text-base shadow-lg transition shrink-0"
               >
-                Book Now
+                {getPdfDict(lang).bookNow}
               </a>
             )}
           </div>

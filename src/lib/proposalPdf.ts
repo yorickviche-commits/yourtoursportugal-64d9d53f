@@ -5,6 +5,7 @@ import { parseGoogleMapsUrl } from '@/lib/mapEmbed';
 import { buildRouteMapImage, type RouteMapImage } from '@/lib/staticRouteMap';
 import { drawRichTextPdf, stripBoldMarkers } from '@/lib/richText';
 import { getPdfDict } from '@/lib/proposalPdfI18n';
+import { resolveClosingText } from '@/lib/closingTermsI18n';
 
 const ALL_REVIEWS_URL = 'https://yourtoursportugal.com/our-reviews/';
 
@@ -494,9 +495,9 @@ export async function buildProposalPdfBase64(
 
       const blocks: Array<{ heading: string; text: string }> = [
         { heading: t.included, text: (closing.inclusionsOverride?.trim() || autoIncluded) },
-        { heading: t.paymentConditions, text: closing.payment || t.paymentDefault },
-        { heading: t.cancellationConditions, text: closing.cancellation || t.cancellationDefault },
-        { heading: t.importantNotes, text: closing.importantNotes || t.importantDefault },
+        { heading: t.paymentConditions, text: resolveClosingText('payment', closing.payment, p.language) },
+        { heading: t.cancellationConditions, text: resolveClosingText('cancellation', closing.cancellation, p.language) },
+        { heading: t.importantNotes, text: resolveClosingText('importantNotes', closing.importantNotes, p.language) },
       ];
 
       blocks.forEach(({ heading, text }) => {

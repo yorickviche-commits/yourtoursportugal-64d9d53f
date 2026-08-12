@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { RichInput, RichTextarea } from '@/components/ui/rich-editable';
 import { RichText } from '@/lib/richText';
+import { resolveClosingText } from '@/lib/closingTermsI18n';
 import { Card, CardContent } from '@/components/ui/card';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -501,6 +502,17 @@ const TravelPlanProposal = ({
   const normalizedDefaultLang = (defaultLanguage || 'EN').toUpperCase();
   const initialLang = LANGUAGE_OPTIONS.some(o => o.value === normalizedDefaultLang) ? normalizedDefaultLang : 'EN';
   const [language, setLanguage] = useState<string>(initialLang);
+  // Keep the fixed closing terms (payment / cancellation / notes / closing message)
+  // in the proposal language whenever they were never manually customised.
+  useEffect(() => {
+    setClosing(prev => {
+      const next = { ...prev };
+      (['payment', 'cancellation', 'importantNotes', 'closingMessage'] as const).forEach(f => {
+        next[f] = resolveClosingText(f, prev[f], language);
+      });
+      return next;
+    });
+  }, [language]);
   // Manual mode: product picker target — 'new' appends a new day, number = append into that day
   const [pickerTarget, setPickerTarget] = useState<'new' | number | null>(null);
   const [collapsedDays, setCollapsedDays] = useState<Set<number>>(new Set());
@@ -768,7 +780,14 @@ const TravelPlanProposal = ({
       const meta = savedPlan.extra_instructions ? JSON.parse(savedPlan.extra_instructions) : null;
       if (meta?.cover_image) cover_image = meta.cover_image;
       if (meta?.brand_logo) brand_logo = meta.brand_logo;
-      if (meta?.closing) setClosing({ ...DEFAULT_CLOSING, ...meta.closing });
+      if (meta?.closing) {
+        const metaLang = meta?.language ? String(meta.language) : language;
+        const merged = { ...DEFAULT_CLOSING, ...meta.closing } as ClosingTerms;
+        (['payment', 'cancellation', 'importantNotes', 'closingMessage'] as const).forEach(f => {
+          merged[f] = resolveClosingText(f, merged[f], metaLang);
+        });
+        setClosing(merged);
+      }
       if (meta?.language && LANGUAGE_OPTIONS.some(o => o.value === String(meta.language).toUpperCase())) {
         setLanguage(String(meta.language).toUpperCase());
       }
