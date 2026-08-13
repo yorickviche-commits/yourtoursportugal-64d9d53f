@@ -143,6 +143,7 @@ const PaymentLinkDialog = ({
             })),
             autoBilling: !!editLink.allow_auto_payment,
             allowPartial: !!editLink.allow_partial_payment,
+            autoAdjust: true,
           }
         : null);
       setUseExpiry(!!editLink.expires_at);
