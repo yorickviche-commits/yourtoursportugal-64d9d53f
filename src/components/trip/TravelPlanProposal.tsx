@@ -566,7 +566,7 @@ const TravelPlanProposal = ({
     // "YT#### - Client - Program - Dates".
     const printFrame = document.createElement('iframe');
     printFrame.setAttribute('aria-hidden', 'true');
-    printFrame.style.cssText = 'position:fixed;right:0;bottom:0;width:794px;height:0;border:0;opacity:0;';
+    printFrame.style.cssText = 'position:fixed;left:-10000px;top:0;width:794px;height:1123px;border:0;opacity:0;';
     document.body.appendChild(printFrame);
     const printWindow = printFrame.contentWindow;
 
@@ -659,9 +659,13 @@ const TravelPlanProposal = ({
         printWindow.document.title = filename;
         printWindow.focus();
         printWindow.print();
+        // Keep the frame around long enough for the print dialog to read it.
+        window.setTimeout(() => printFrame.remove(), 60000);
       });
       return;
     }
+
+    printFrame.remove();
 
     // Popup-blocker fallback: swap the live Google Maps iframes for the static
     // route images (iframes print blank), print, then restore the DOM.
