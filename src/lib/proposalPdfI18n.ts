@@ -17,6 +17,7 @@ export interface PdfDict {
   routeMap: string;
   openRoute: string;
   totalPrice: string;
+  totalPriceNet: string;
   bookNow: string;
   included: string;
   paymentConditions: string;
@@ -46,6 +47,7 @@ const en: PdfDict = {
   routeMap: 'Route map',
   openRoute: 'Open route in Google Maps  →',
   totalPrice: 'TOTAL PRICE',
+  totalPriceNet: 'TOTAL NET PRICE',
   bookNow: 'BOOK NOW',
   included: "What's Included",
   paymentConditions: 'Reservation & Payment Conditions',
@@ -75,6 +77,7 @@ const pt: PdfDict = {
   routeMap: 'Mapa da rota',
   openRoute: 'Abrir rota no Google Maps  →',
   totalPrice: 'PREÇO TOTAL',
+  totalPriceNet: 'PREÇO TOTAL NET',
   bookNow: 'RESERVAR',
   included: 'O que está incluído',
   paymentConditions: 'Condições de Reserva e Pagamento',
@@ -104,6 +107,7 @@ const es: PdfDict = {
   routeMap: 'Mapa de la ruta',
   openRoute: 'Abrir ruta en Google Maps  →',
   totalPrice: 'PRECIO TOTAL',
+  totalPriceNet: 'PRECIO TOTAL NETO',
   bookNow: 'RESERVAR',
   included: 'Qué incluye',
   paymentConditions: 'Condiciones de Reserva y Pago',
@@ -133,6 +137,7 @@ const fr: PdfDict = {
   routeMap: 'Carte de l’itinéraire',
   openRoute: 'Ouvrir l’itinéraire dans Google Maps  →',
   totalPrice: 'PRIX TOTAL',
+  totalPriceNet: 'PRIX TOTAL NET',
   bookNow: 'RÉSERVER',
   included: 'Ce qui est inclus',
   paymentConditions: 'Conditions de Réservation et de Paiement',
@@ -162,6 +167,7 @@ const it: PdfDict = {
   routeMap: 'Mappa del percorso',
   openRoute: 'Apri il percorso su Google Maps  →',
   totalPrice: 'PREZZO TOTALE',
+  totalPriceNet: 'PREZZO TOTALE NETTO',
   bookNow: 'PRENOTA ORA',
   included: 'Cosa è incluso',
   paymentConditions: 'Condizioni di Prenotazione e Pagamento',
@@ -191,6 +197,7 @@ const de: PdfDict = {
   routeMap: 'Routenkarte',
   openRoute: 'Route in Google Maps öffnen  →',
   totalPrice: 'GESAMTPREIS',
+  totalPriceNet: 'GESAMTPREIS NETTO',
   bookNow: 'JETZT BUCHEN',
   included: 'Was inklusive ist',
   paymentConditions: 'Buchungs- und Zahlungsbedingungen',
