@@ -14,6 +14,8 @@ export interface PdfDict {
   day: string;
   itineraryIncluded: string;
   night: string;
+  nights: string;
+  accommodation: string;
   routeMap: string;
   openRoute: string;
   totalPrice: string;
@@ -44,6 +46,8 @@ const en: PdfDict = {
   day: 'Day',
   itineraryIncluded: 'ITINERARY & INCLUDED:',
   night: 'Night',
+  nights: 'Nights',
+  accommodation: 'Accommodation',
   routeMap: 'Route map',
   openRoute: 'Open route in Google Maps  →',
   totalPrice: 'TOTAL PRICE',
@@ -74,6 +78,8 @@ const pt: PdfDict = {
   day: 'Dia',
   itineraryIncluded: 'ITINERÁRIO E INCLUÍDO:',
   night: 'Noite',
+  nights: 'Noites',
+  accommodation: 'Alojamento',
   routeMap: 'Mapa da rota',
   openRoute: 'Abrir rota no Google Maps  →',
   totalPrice: 'PREÇO TOTAL',
@@ -104,6 +110,8 @@ const es: PdfDict = {
   day: 'Día',
   itineraryIncluded: 'ITINERARIO E INCLUIDO:',
   night: 'Noche',
+  nights: 'Noches',
+  accommodation: 'Alojamiento',
   routeMap: 'Mapa de la ruta',
   openRoute: 'Abrir ruta en Google Maps  →',
   totalPrice: 'PRECIO TOTAL',
@@ -134,6 +142,8 @@ const fr: PdfDict = {
   day: 'Jour',
   itineraryIncluded: 'ITINÉRAIRE & INCLUS :',
   night: 'Nuit',
+  nights: 'Nuits',
+  accommodation: 'Hébergement',
   routeMap: 'Carte de l’itinéraire',
   openRoute: 'Ouvrir l’itinéraire dans Google Maps  →',
   totalPrice: 'PRIX TOTAL',
@@ -164,6 +174,8 @@ const it: PdfDict = {
   day: 'Giorno',
   itineraryIncluded: 'ITINERARIO E INCLUSO:',
   night: 'Notte',
+  nights: 'Notti',
+  accommodation: 'Alloggio',
   routeMap: 'Mappa del percorso',
   openRoute: 'Apri il percorso su Google Maps  →',
   totalPrice: 'PREZZO TOTALE',

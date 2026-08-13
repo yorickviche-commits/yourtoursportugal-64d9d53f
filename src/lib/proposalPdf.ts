@@ -455,7 +455,7 @@ export async function buildProposalPdfBase64(
           doc.setTextColor(100, 100, 100);
           doc.setFont('helvetica', 'normal');
           doc.setFontSize(9);
-          doc.text(t.totalPrice, margin + 14, y + 18);
+          doc.text(closing.netPricing ? t.totalPriceNet : t.totalPrice, margin + 14, y + 18);
           doc.setTextColor(10, 37, 64);
           doc.setFont('helvetica', 'bold');
           doc.setFontSize(18);
@@ -493,7 +493,21 @@ export async function buildProposalPdfBase64(
         .map((d, i) => `**${t.day} ${d.day_number ?? i + 1} — ${stripBoldMarkers(d.title || '')}**\n${dayItems(d).slice(0, 6).map(b => `• ${b}`).join('\n')}`)
         .join('\n\n');
 
+      // Accommodation block (hotel + nights only), when enabled in Costing
+      const acc: any[] = Array.isArray(closing.accommodation) ? closing.accommodation : [];
+      const accText = acc
+        .map(a => {
+          const nights = Number(a?.nights) || 0;
+          const label = String(a?.name || '').trim();
+          if (!label) return '';
+          const unit = nights === 1 ? t.night : t.nights;
+          return nights > 0 ? `• ${label} — ${nights} ${unit}` : `• ${label}`;
+        })
+        .filter(Boolean)
+        .join('\n');
+
       const blocks: Array<{ heading: string; text: string }> = [
+        ...(accText ? [{ heading: t.accommodation, text: accText }] : []),
         { heading: t.included, text: (closing.inclusionsOverride?.trim() || autoIncluded) },
         { heading: t.paymentConditions, text: resolveClosingText('payment', closing.payment, p.language) },
         { heading: t.cancellationConditions, text: resolveClosingText('cancellation', closing.cancellation, p.language) },
