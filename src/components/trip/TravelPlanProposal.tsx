@@ -483,6 +483,8 @@ const TravelPlanProposal = ({
   defaultLanguage,
   routeMapPath, exactItineraryPdfPath,
   onGoToCosting,
+  accommodation = [],
+  netPricing = false,
 }: TravelPlanProposalProps) => {
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -1179,7 +1181,7 @@ const TravelPlanProposal = ({
           days: proposalDays as any,
           language: proposalLang,
           total_value_eur: totalPVP || null,
-          closing_terms: closing as any,
+          closing_terms: { ...closing, accommodation, netPricing } as any,
         }).eq('id', existingProposal.id);
       } else {
         await supabase.from('proposals').insert({
@@ -1197,7 +1199,7 @@ const TravelPlanProposal = ({
           language: proposalLang,
           status: 'draft',
           total_value_eur: totalPVP || null,
-          closing_terms: closing as any,
+          closing_terms: { ...closing, accommodation, netPricing } as any,
         });
         console.log(`[YTP] Proposal created — public URL: /proposal/${token}`);
       }
