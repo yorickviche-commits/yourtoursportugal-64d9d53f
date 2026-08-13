@@ -1,8 +1,17 @@
+import { useState } from 'react';
 import { Button } from '@/components/ui/button';
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import PaymentLinkDialog from './PaymentLinkDialog';
 import { Switch } from '@/components/ui/switch';
-import { Copy, ExternalLink, Loader2, AlertTriangle } from 'lucide-react';
+import { Copy, ExternalLink, Loader2, AlertTriangle, Pencil, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
-import { usePaymentLinks, usePublishPaymentLink, useSetPaymentLinkActive } from '@/hooks/usePaymentLinksQuery';
+import {
+  usePaymentLinks, usePublishPaymentLink, useSetPaymentLinkActive, useDeletePaymentLink,
+  type PaymentLink,
+} from '@/hooks/usePaymentLinksQuery';
 import { cn } from '@/lib/utils';
 
 const statusLabel: Record<string, { label: string; cls: string }> = {
@@ -22,6 +31,21 @@ const PaymentLinksList = ({ leadId }: Props) => {
   const { data: links = [], isLoading } = usePaymentLinks(leadId);
   const publish = usePublishPaymentLink();
   const setActive = useSetPaymentLinkActive();
+  const removeLink = useDeletePaymentLink();
+  const [editing, setEditing] = useState<PaymentLink | null>(null);
+  const [pendingDelete, setPendingDelete] = useState<PaymentLink | null>(null);
+
+  const confirmDelete = () => {
+    const target = pendingDelete;
+    if (!target) return;
+    removeLink.mutateAsync(target.id)
+      .then((warning) => {
+        if (warning) toast.warning(warning);
+        else toast.success('Link eliminado na plataforma e na WeTravel.');
+        setPendingDelete(null);
+      })
+      .catch((e: any) => toast.error(e.message || 'Erro ao eliminar o link.'));
+  };
 
   const toggleActive = (l: { id: string; url: string | null; is_active: boolean }, next: boolean) => {
     if (next && !l.url) {
@@ -97,6 +121,24 @@ const PaymentLinksList = ({ leadId }: Props) => {
                       {publish.isPending ? <Loader2 className="h-3 w-3 animate-spin" /> : 'Retomar publicação'}
                     </Button>
                   ) : null}
+                  {l.status !== 'published' && (
+                    <Button
+                      size="sm" variant="ghost" className="h-7 px-2"
+                      title="Editar link"
+                      onClick={() => setEditing(l)}
+                    >
+                      <Pencil className="h-3 w-3" />
+                    </Button>
+                  )}
+                  <Button
+                    size="sm" variant="ghost"
+                    className="h-7 px-2 text-destructive hover:text-destructive"
+                    title="Eliminar link"
+                    disabled={removeLink.isPending}
+                    onClick={() => setPendingDelete(l)}
+                  >
+                    <Trash2 className="h-3 w-3" />
+                  </Button>
                 </div>
               </div>
               {l.url && (
@@ -125,6 +167,36 @@ const PaymentLinksList = ({ leadId }: Props) => {
           );
         })}
       </div>
+
+      <PaymentLinkDialog
+        open={!!editing}
+        onOpenChange={o => { if (!o) setEditing(null); }}
+        leadId={leadId}
+        editLink={editing}
+      />
+
+      <AlertDialog open={!!pendingDelete} onOpenChange={o => { if (!o) setPendingDelete(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Eliminar link de pagamento?</AlertDialogTitle>
+            <AlertDialogDescription>
+              O link "{pendingDelete?.title}" é removido da plataforma e da WeTravel. Se estiver ativo,
+              o botão "Book Now" deixa de aparecer na proposta e no PDF. Esta ação não pode ser revertida.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={removeLink.isPending}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              disabled={removeLink.isPending}
+              onClick={(e) => { e.preventDefault(); confirmDelete(); }}
+            >
+              {removeLink.isPending ? <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" /> : null}
+              Eliminar
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };
