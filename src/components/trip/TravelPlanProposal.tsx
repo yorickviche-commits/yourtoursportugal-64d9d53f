@@ -98,6 +98,10 @@ interface TravelPlanProposalProps {
   routeMapPath?: string;
   exactItineraryPdfPath?: string;
   onGoToCosting?: () => void;
+  /** Accommodation block from Costing (day 0), shown to the client when enabled. */
+  accommodation?: { name: string; nights: number }[];
+  /** B2B leads see "TOTAL NET PRICE" instead of "TOTAL PRICE". */
+  netPricing?: boolean;
 }
 
 interface ClosingTerms {
