@@ -91,6 +91,41 @@ export const useCreatePaymentLink = () => {
   });
 };
 
+export const useUpdatePaymentLink = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (input: CreatePaymentLinkInput & { payment_link_id: string }) =>
+      invokeFn({ action: 'update', ...input }),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['payment_links'] }); },
+  });
+};
+
+export const useDeletePaymentLink = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (paymentLinkId: string) => {
+      const { data, error } = await supabase.functions.invoke('wetravel-create-payment-link', {
+        body: { action: 'delete', payment_link_id: paymentLinkId },
+      });
+      if (error) {
+        let msg = error.message;
+        try {
+          const ctx: any = (error as any).context;
+          const parsed = ctx && typeof ctx.json === 'function' ? await ctx.json() : null;
+          if (parsed?.error) msg = typeof parsed.error === 'string' ? parsed.error : JSON.stringify(parsed.error);
+        } catch { /* keep generic message */ }
+        throw new Error(msg);
+      }
+      if ((data as any)?.error) throw new Error((data as any).error);
+      return (data as any)?.warning as string | null;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['payment_links'] });
+      qc.invalidateQueries({ queryKey: ['proposals'] });
+    },
+  });
+};
+
 export const usePublishPaymentLink = () => {
   const qc = useQueryClient();
   return useMutation({
