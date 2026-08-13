@@ -206,6 +206,8 @@ const de: PdfDict = {
   day: 'Tag',
   itineraryIncluded: 'PROGRAMM & INKLUSIVE:',
   night: 'Übernachtung',
+  nights: 'Nächte',
+  accommodation: 'Unterkunft',
   routeMap: 'Routenkarte',
   openRoute: 'Route in Google Maps öffnen  →',
   totalPrice: 'GESAMTPREIS',
