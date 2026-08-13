@@ -559,7 +559,16 @@ const TravelPlanProposal = ({
     const filename = buildPdfFilename();
     if (!filename) return;
     const printRoot = document.querySelector<HTMLElement>('[data-print-root]');
-    const printWindow = window.open('', '_blank');
+
+    // Chrome ignores the title of `about:blank` popups when suggesting the PDF
+    // filename (which produced unnamed files). Printing from a hidden iframe
+    // whose own document carries the title restores
+    // "YT#### - Client - Program - Dates".
+    const printFrame = document.createElement('iframe');
+    printFrame.setAttribute('aria-hidden', 'true');
+    printFrame.style.cssText = 'position:fixed;right:0;bottom:0;width:794px;height:0;border:0;opacity:0;';
+    document.body.appendChild(printFrame);
+    const printWindow = printFrame.contentWindow;
 
     // Google Maps iframes never render when printing, so each day's route map is
     // rasterized to a static image (linked to the original Google Maps route).
