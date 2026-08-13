@@ -14,9 +14,12 @@ export interface PdfDict {
   day: string;
   itineraryIncluded: string;
   night: string;
+  nights: string;
+  accommodation: string;
   routeMap: string;
   openRoute: string;
   totalPrice: string;
+  totalPriceNet: string;
   bookNow: string;
   included: string;
   paymentConditions: string;
@@ -43,9 +46,12 @@ const en: PdfDict = {
   day: 'Day',
   itineraryIncluded: 'ITINERARY & INCLUDED:',
   night: 'Night',
+  nights: 'Nights',
+  accommodation: 'Accommodation',
   routeMap: 'Route map',
   openRoute: 'Open route in Google Maps  →',
   totalPrice: 'TOTAL PRICE',
+  totalPriceNet: 'TOTAL NET PRICE',
   bookNow: 'BOOK NOW',
   included: "What's Included",
   paymentConditions: 'Reservation & Payment Conditions',
@@ -72,9 +78,12 @@ const pt: PdfDict = {
   day: 'Dia',
   itineraryIncluded: 'ITINERÁRIO E INCLUÍDO:',
   night: 'Noite',
+  nights: 'Noites',
+  accommodation: 'Alojamento',
   routeMap: 'Mapa da rota',
   openRoute: 'Abrir rota no Google Maps  →',
   totalPrice: 'PREÇO TOTAL',
+  totalPriceNet: 'PREÇO TOTAL NET',
   bookNow: 'RESERVAR',
   included: 'O que está incluído',
   paymentConditions: 'Condições de Reserva e Pagamento',
@@ -101,9 +110,12 @@ const es: PdfDict = {
   day: 'Día',
   itineraryIncluded: 'ITINERARIO E INCLUIDO:',
   night: 'Noche',
+  nights: 'Noches',
+  accommodation: 'Alojamiento',
   routeMap: 'Mapa de la ruta',
   openRoute: 'Abrir ruta en Google Maps  →',
   totalPrice: 'PRECIO TOTAL',
+  totalPriceNet: 'PRECIO TOTAL NETO',
   bookNow: 'RESERVAR',
   included: 'Qué incluye',
   paymentConditions: 'Condiciones de Reserva y Pago',
@@ -130,9 +142,12 @@ const fr: PdfDict = {
   day: 'Jour',
   itineraryIncluded: 'ITINÉRAIRE & INCLUS :',
   night: 'Nuit',
+  nights: 'Nuits',
+  accommodation: 'Hébergement',
   routeMap: 'Carte de l’itinéraire',
   openRoute: 'Ouvrir l’itinéraire dans Google Maps  →',
   totalPrice: 'PRIX TOTAL',
+  totalPriceNet: 'PRIX TOTAL NET',
   bookNow: 'RÉSERVER',
   included: 'Ce qui est inclus',
   paymentConditions: 'Conditions de Réservation et de Paiement',
@@ -159,9 +174,12 @@ const it: PdfDict = {
   day: 'Giorno',
   itineraryIncluded: 'ITINERARIO E INCLUSO:',
   night: 'Notte',
+  nights: 'Notti',
+  accommodation: 'Alloggio',
   routeMap: 'Mappa del percorso',
   openRoute: 'Apri il percorso su Google Maps  →',
   totalPrice: 'PREZZO TOTALE',
+  totalPriceNet: 'PREZZO TOTALE NETTO',
   bookNow: 'PRENOTA ORA',
   included: 'Cosa è incluso',
   paymentConditions: 'Condizioni di Prenotazione e Pagamento',
@@ -188,9 +206,12 @@ const de: PdfDict = {
   day: 'Tag',
   itineraryIncluded: 'PROGRAMM & INKLUSIVE:',
   night: 'Übernachtung',
+  nights: 'Nächte',
+  accommodation: 'Unterkunft',
   routeMap: 'Routenkarte',
   openRoute: 'Route in Google Maps öffnen  →',
   totalPrice: 'GESAMTPREIS',
+  totalPriceNet: 'GESAMTPREIS NETTO',
   bookNow: 'JETZT BUCHEN',
   included: 'Was inklusive ist',
   paymentConditions: 'Buchungs- und Zahlungsbedingungen',

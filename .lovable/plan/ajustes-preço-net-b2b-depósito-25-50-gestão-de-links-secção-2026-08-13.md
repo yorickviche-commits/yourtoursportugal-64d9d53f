@@ -7,14 +7,17 @@ Quando a lead está marcada como **B2B**, o rótulo do preço passa a ser "Preç
 ## 2. Depósito com botões 25% / 50% (janela WeTravel)
 
 Na configuração do plano de pagamento, junto ao campo *Deposit due at booking*:
+
 - dois botões **25%** e **50%** que calculam automaticamente o montante a partir do total;
 - o valor calculado fica no campo e continua totalmente editável à mão (valor absoluto livre);
 - as prestações seguintes são recalculadas com o novo depósito, como já acontece hoje;
-- o botão fica visualmente ativo quando o valor corresponde exatamente a 25% ou 50%.
+- o botão fica visualmente ativo quando o valor corresponde exatamente a 25% ou 50%.  
+
 
 ## 3. Editar e eliminar links de pagamento (custos)
 
 Na lista de links dentro da secção Custos:
+
 - **Editar**: disponível apenas em links ainda **não publicados** (pendentes), onde a WeTravel permite alterar; abre a mesma janela pré-preenchida e grava as alterações.
 - **Eliminar**: disponível em qualquer link. Elimina o link na WeTravel e remove-o também da plataforma. Se o link estava ativo, o botão *Book Now* é desativado nas propostas dessa lead.
 - Confirmação antes de eliminar, com aviso claro de que o link deixa de funcionar para o cliente.

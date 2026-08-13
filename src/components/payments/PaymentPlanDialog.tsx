@@ -167,16 +167,38 @@ const PaymentPlanDialog = ({ open, onOpenChange, total, currency, departure, val
           <div className="flex items-center gap-4 py-3 border-b">
             <span className="text-sm font-medium w-28 shrink-0">Deposit</span>
             <span className="flex-1 text-sm text-muted-foreground">Due at booking</span>
-            <div className="relative w-44">
-              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
-                {currency === 'EUR' ? '€' : currency === 'USD' ? '$' : '£'}
-              </span>
-              <Input
-                value={deposit}
-                inputMode="decimal"
-                onChange={e => changeDeposit(e.target.value)}
-                className="pl-7 h-10"
-              />
+            <div className="flex items-center gap-2">
+              <div className="inline-flex rounded-md border overflow-hidden">
+                {[25, 50].map(pct => {
+                  const value = Math.round(total * (pct / 100) * 100) / 100;
+                  const active = total > 0 && Math.abs(depositValue - value) < 0.005;
+                  return (
+                    <button
+                      key={pct}
+                      type="button"
+                      title={`${pct}% do total`}
+                      onClick={() => changeDeposit(value.toFixed(2))}
+                      className={cn(
+                        'h-10 w-14 text-sm border-r last:border-r-0 transition-colors',
+                        active ? 'bg-sky-400 text-white font-semibold' : 'bg-background hover:bg-muted',
+                      )}
+                    >
+                      {pct}%
+                    </button>
+                  );
+                })}
+              </div>
+              <div className="relative w-44">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
+                  {currency === 'EUR' ? '€' : currency === 'USD' ? '$' : '£'}
+                </span>
+                <Input
+                  value={deposit}
+                  inputMode="decimal"
+                  onChange={e => changeDeposit(e.target.value)}
+                  className="pl-7 h-10"
+                />
+              </div>
             </div>
           </div>
 

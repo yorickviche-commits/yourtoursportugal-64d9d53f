@@ -329,6 +329,18 @@ const LeadDetailPage = ({ mode = 'lead' }: { mode?: 'lead' | 'booking' } = {}) =
     enabled: !!id && !!lead,
   });
 
+  // Accommodation block (Costing day 0) shown to the client when not hidden.
+  const proposalAccommodation = useMemo(() => {
+    const acc = costingDays.find(d => d.day === 0);
+    if (!acc || acc.date === 'hidden') return [];
+    return (acc.items || [])
+      .filter(i => i.status !== 'eliminar' && (i.description || '').trim())
+      .map(i => ({
+        name: i.description.trim(),
+        nights: i.pricingType === 'per_night' ? Number(i.numAdults) || 0 : 0,
+      }));
+  }, [costingDays]);
+
   // Load persisted costing data
   const { data: savedCostingDays } = useQuery({
     queryKey: ['lead_costing', id, lead?.active_version],
@@ -945,6 +957,8 @@ const LeadDetailPage = ({ mode = 'lead' }: { mode?: 'lead' | 'booking' } = {}) =
             defaultLanguage={idioma[0]}
             routeMapPath={(lead as any).route_map_path || undefined}
             exactItineraryPdfPath={(lead as any).exact_itinerary_pdf_path || undefined}
+            accommodation={proposalAccommodation}
+            netPricing={(lead as any).client_type === 'B2B'}
             onGoToCosting={() => setActiveTab('custos')}
           />
         )}

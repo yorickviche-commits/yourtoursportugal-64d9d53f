@@ -98,6 +98,10 @@ interface TravelPlanProposalProps {
   routeMapPath?: string;
   exactItineraryPdfPath?: string;
   onGoToCosting?: () => void;
+  /** Accommodation block from Costing (day 0), shown to the client when enabled. */
+  accommodation?: { name: string; nights: number }[];
+  /** B2B leads see "TOTAL NET PRICE" instead of "TOTAL PRICE". */
+  netPricing?: boolean;
 }
 
 interface ClosingTerms {
@@ -479,6 +483,8 @@ const TravelPlanProposal = ({
   defaultLanguage,
   routeMapPath, exactItineraryPdfPath,
   onGoToCosting,
+  accommodation = [],
+  netPricing = false,
 }: TravelPlanProposalProps) => {
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -559,7 +565,16 @@ const TravelPlanProposal = ({
     const filename = buildPdfFilename();
     if (!filename) return;
     const printRoot = document.querySelector<HTMLElement>('[data-print-root]');
-    const printWindow = window.open('', '_blank');
+
+    // Chrome ignores the title of `about:blank` popups when suggesting the PDF
+    // filename (which produced unnamed files). Printing from a hidden iframe
+    // whose own document carries the title restores
+    // "YT#### - Client - Program - Dates".
+    const printFrame = document.createElement('iframe');
+    printFrame.setAttribute('aria-hidden', 'true');
+    printFrame.style.cssText = 'position:fixed;left:-10000px;top:0;width:794px;height:1123px;border:0;opacity:0;';
+    document.body.appendChild(printFrame);
+    const printWindow = printFrame.contentWindow;
 
     // Google Maps iframes never render when printing, so each day's route map is
     // rasterized to a static image (linked to the original Google Maps route).
@@ -650,9 +665,13 @@ const TravelPlanProposal = ({
         printWindow.document.title = filename;
         printWindow.focus();
         printWindow.print();
+        // Keep the frame around long enough for the print dialog to read it.
+        window.setTimeout(() => printFrame.remove(), 60000);
       });
       return;
     }
+
+    printFrame.remove();
 
     // Popup-blocker fallback: swap the live Google Maps iframes for the static
     // route images (iframes print blank), print, then restore the DOM.
@@ -1162,7 +1181,7 @@ const TravelPlanProposal = ({
           days: proposalDays as any,
           language: proposalLang,
           total_value_eur: totalPVP || null,
-          closing_terms: closing as any,
+          closing_terms: { ...closing, accommodation, netPricing } as any,
         }).eq('id', existingProposal.id);
       } else {
         await supabase.from('proposals').insert({
@@ -1180,7 +1199,7 @@ const TravelPlanProposal = ({
           language: proposalLang,
           status: 'draft',
           total_value_eur: totalPVP || null,
-          closing_terms: closing as any,
+          closing_terms: { ...closing, accommodation, netPricing } as any,
         });
         console.log(`[YTP] Proposal created — public URL: /proposal/${token}`);
       }

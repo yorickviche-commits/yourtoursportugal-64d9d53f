@@ -102,6 +102,118 @@ serve(async (req) => {
       return await publish(supabase, row, token);
     }
 
+    // ── Update a link that is NOT published yet ───────────────────
+    if (action === "update") {
+      const { payment_link_id } = body;
+      if (!payment_link_id) return json({ error: "payment_link_id obrigatório" }, 422);
+      const { data: row, error } = await supabase
+        .from("payment_links").select("*").eq("id", payment_link_id).maybeSingle();
+      if (error || !row) return json({ error: "Link não encontrado" }, 404);
+      if (row.status === "published") {
+        return json({ error: "A WeTravel não permite editar um link já publicado — elimina-o e cria um novo." }, 422);
+      }
+
+      const v = validateInput(body, row);
+      if ("error" in v) return json({ error: v.error }, 422);
+
+      const { data: updated, error: updErr } = await supabase
+        .from("payment_links")
+        .update({
+          title: v.title, trip_ref: v.trip_ref,
+          start_date: v.start_date, end_date: v.end_date,
+          amount_cents: v.cents, currency: v.currency,
+          expires_at: v.expires_at, participant_fees: v.participant_fees,
+          days_before_departure: v.days_before_departure,
+          deposit_cents: v.deposit_cents, installments: v.installments,
+          allow_auto_payment: v.allow_auto_payment,
+          allow_partial_payment: v.allow_partial_payment,
+          last_error: null,
+        })
+        .eq("id", row.id).select("*").single();
+      if (updErr) throw new Error(updErr.message);
+
+      // Mirror the change on WeTravel when the draft already exists there.
+      if (updated.wetravel_uuid) {
+        const token = await getAccessToken(refreshToken);
+        const payload = JSON.stringify(toWeTravelPayload({
+          title: updated.title,
+          tripRef: updated.trip_ref,
+          startDate: updated.start_date,
+          endDate: updated.end_date,
+          amountCents: updated.amount_cents,
+          currency: updated.currency,
+          participantFees: updated.participant_fees,
+          daysBeforeDeparture: updated.days_before_departure,
+          depositCents: updated.deposit_cents,
+          installments: (updated.installments ?? []) as any,
+          allowAutoPayment: updated.allow_auto_payment,
+          allowPartialPayment: updated.allow_partial_payment,
+        }));
+        const url = `${WETRAVEL.baseUrl}${WETRAVEL.paymentLinksPath}/${updated.wetravel_uuid}`;
+        const headers = {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+          Accept: "application/json",
+        };
+        try {
+          await wtFetch(url, { method: "PUT", headers, body: payload });
+        } catch (e) {
+          try {
+            await wtFetch(url, { method: "PATCH", headers, body: payload });
+          } catch (e2) {
+            const msg = e2 instanceof Error ? e2.message : String(e2);
+            await supabase.from("payment_links").update({ last_error: msg }).eq("id", row.id);
+            return json({ error: `Alterações guardadas na plataforma, mas a WeTravel recusou a edição: ${msg}` }, 502);
+          }
+        }
+      }
+
+      return json({ payment_link: updated });
+    }
+
+    // ── Delete a link (WeTravel + platform) ───────────────────────
+    if (action === "delete") {
+      const { payment_link_id } = body;
+      if (!payment_link_id) return json({ error: "payment_link_id obrigatório" }, 422);
+      const { data: row, error } = await supabase
+        .from("payment_links").select("*").eq("id", payment_link_id).maybeSingle();
+      if (error || !row) return json({ error: "Link não encontrado" }, 404);
+
+      let warning: string | null = null;
+      if (row.wetravel_uuid) {
+        try {
+          const token = await getAccessToken(refreshToken);
+          await wtFetch(`${WETRAVEL.baseUrl}${WETRAVEL.paymentLinksPath}/${row.wetravel_uuid}`, {
+            method: "DELETE",
+            headers: {
+              Authorization: `Bearer ${token}`,
+              Accept: "application/json",
+            },
+          });
+        } catch (e) {
+          const msg = e instanceof Error ? e.message : String(e);
+          if (e instanceof HttpError && (e.status === 404 || e.status === 405 || e.status === 422)) {
+            warning = `O link foi removido da plataforma, mas a WeTravel não permitiu apagá-lo automaticamente — arquiva-o manualmente. (${msg})`;
+          } else {
+            return json({ error: `Não foi possível eliminar o link na WeTravel: ${msg}` }, 502);
+          }
+        }
+      }
+
+      // Drop the Book Now button whenever the active link disappears.
+      if (row.is_active) {
+        await supabase.from("proposals")
+          .update({ wetravel_checkout_url: null }).eq("lead_id", row.lead_id);
+      }
+
+      const { error: delErr } = await supabase.from("payment_links").delete().eq("id", row.id);
+      if (delErr) throw new Error(delErr.message);
+
+      return json({ deleted: true, warning });
+    }
+
+
+
     // ── Create ───────────────────────────────────────────────────
     const {
       lead_id, proposal_id = null, title, trip_ref = null,
@@ -269,4 +381,70 @@ async function publish(supabase: SupabaseClient, row: any, token: string) {
       .update({ status: "draft", last_error: msg }).eq("id", row.id);
     return json({ error: msg, payment_link_id: row.id, resumable: true }, 502);
   }
+}
+
+/**
+ * Shared validation for the `update` action. Mirrors the checks used on create,
+ * falling back to the stored row when a field is not sent.
+ */
+function validateInput(body: any, row: any):
+  | { error: string }
+  | {
+      title: string; trip_ref: string | null; start_date: string; end_date: string;
+      cents: number; currency: string; expires_at: string | null;
+      participant_fees: string; days_before_departure: number;
+      deposit_cents: number | null; installments: any[];
+      allow_auto_payment: boolean; allow_partial_payment: boolean;
+    } {
+  const title = String(body.title ?? row.title ?? "").trim();
+  if (!title) return { error: "Título é obrigatório" };
+  if (title.length > 70) return { error: "O título não pode exceder 70 caracteres" };
+
+  const cents = Number(body.amount_cents ?? row.amount_cents);
+  if (!Number.isInteger(cents) || cents <= 0) return { error: "Montante inválido — deve ser maior que zero" };
+
+  const start_date = String(body.start_date ?? row.start_date ?? "");
+  const end_date = String(body.end_date ?? row.end_date ?? "");
+  const isDate = (v: string) => /^\d{4}-\d{2}-\d{2}$/.test(v);
+  if (!isDate(start_date) || !isDate(end_date)) return { error: "Datas de início e fim são obrigatórias (AAAA-MM-DD)" };
+  if (end_date < start_date) return { error: "A data de fim não pode ser anterior à de início" };
+
+  const participant_fees = String(body.participant_fees ?? row.participant_fees);
+  if (!["all", "none", "credit_card", "service"].includes(participant_fees)) {
+    return { error: "Opção de taxas inválida" };
+  }
+
+  const rawDeposit = body.deposit_cents === undefined ? row.deposit_cents : body.deposit_cents;
+  const deposit_cents = rawDeposit == null ? null : Number(rawDeposit);
+  if (deposit_cents != null && (!Number.isInteger(deposit_cents) || deposit_cents < 0 || deposit_cents > cents)) {
+    return { error: "Depósito inválido — deve estar entre 0 e o montante total" };
+  }
+
+  const installments = Array.isArray(body.installments) ? body.installments : (row.installments ?? []);
+  if (installments.length > 18) return { error: "Máximo de 18 prestações" };
+  for (const it of installments) {
+    const p = Number(it?.price);
+    const d = Number(it?.days_before_departure);
+    if (!isFinite(p) || p < 1) return { error: "Cada prestação deve ter valor >= 1" };
+    if (!Number.isInteger(d) || d < 0) return { error: "Dias antes da partida inválidos" };
+  }
+  if (installments.length > 0) {
+    const sum = installments.reduce((a: number, it: any) => a + Number(it.price), 0) + (deposit_cents ?? 0) / 100;
+    if (Math.abs(sum - cents / 100) > 0.01) {
+      return { error: `Depósito + prestações (${sum.toFixed(2)}) tem de igualar o total (${(cents / 100).toFixed(2)})` };
+    }
+  }
+
+  return {
+    title,
+    trip_ref: body.trip_ref === undefined ? row.trip_ref : (body.trip_ref || null),
+    start_date, end_date, cents,
+    currency: String(body.currency ?? row.currency ?? "EUR"),
+    expires_at: body.expires_at === undefined ? row.expires_at : (body.expires_at || null),
+    participant_fees,
+    days_before_departure: Number(body.days_before_departure ?? row.days_before_departure) || 0,
+    deposit_cents, installments,
+    allow_auto_payment: body.allow_auto_payment === undefined ? !!row.allow_auto_payment : !!body.allow_auto_payment,
+    allow_partial_payment: body.allow_partial_payment === undefined ? !!row.allow_partial_payment : !!body.allow_partial_payment,
+  };
 }

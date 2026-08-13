@@ -10,9 +10,9 @@ import {
   Loader2, Copy, ExternalLink, CheckCircle2, Link2, CalendarIcon, ArrowRight, Lightbulb,
 } from 'lucide-react';
 import { toast } from 'sonner';
-import { format, parseISO, differenceInCalendarDays } from 'date-fns';
+import { format, parseISO, differenceInCalendarDays, subDays } from 'date-fns';
 import {
-  usePaymentLinks, useCreatePaymentLink, usePublishPaymentLink,
+  usePaymentLinks, useCreatePaymentLink, usePublishPaymentLink, useUpdatePaymentLink,
   type PaymentLink, type ParticipantFees,
 } from '@/hooks/usePaymentLinksQuery';
 import PaymentPlanDialog, { type PaymentPlanValue } from './PaymentPlanDialog';
@@ -28,9 +28,19 @@ interface Props {
   defaultAmount?: number; // in currency units (EUR)
   defaultStartDate?: string | null;
   defaultEndDate?: string | null;
+  /** When set, the dialog edits this (unpublished) link instead of creating one. */
+  editLink?: PaymentLink | null;
 }
 
 type Payer = 'organizer' | 'participant';
+
+/** Reverse of `toParticipantFees`, to rehydrate the form when editing. */
+const fromParticipantFees = (v?: ParticipantFees | null): { paymentFees: Payer; wetravelFee: Payer } => {
+  if (v === 'all') return { paymentFees: 'participant', wetravelFee: 'participant' };
+  if (v === 'credit_card') return { paymentFees: 'participant', wetravelFee: 'organizer' };
+  if (v === 'service') return { paymentFees: 'organizer', wetravelFee: 'participant' };
+  return { paymentFees: 'organizer', wetravelFee: 'organizer' };
+};
 
 /** WeTravel's two fee questions map onto the single API field. */
 const toParticipantFees = (paymentFees: Payer, wetravelFee: Payer): ParticipantFees => {
@@ -76,11 +86,12 @@ const YesNo = ({ value, onChange }: { value: boolean; onChange: (v: boolean) => 
 const PaymentLinkDialog = ({
   open, onOpenChange, leadId, proposalId = null,
   defaultTitle = '', tripRef = null, defaultAmount = 0,
-  defaultStartDate = null, defaultEndDate = null,
+  defaultStartDate = null, defaultEndDate = null, editLink = null,
 }: Props) => {
   const { data: links = [] } = usePaymentLinks(leadId);
   const createLink = useCreatePaymentLink();
   const publishLink = usePublishPaymentLink();
+  const updateLink = useUpdatePaymentLink();
 
   const [title, setTitle] = useState('');
   const [ref, setRef] = useState('');
@@ -104,6 +115,42 @@ const PaymentLinkDialog = ({
 
   useEffect(() => {
     if (!open) return;
+    setError(null);
+    setResult(null);
+
+    if (editLink) {
+      const fees = fromParticipantFees(editLink.participant_fees as ParticipantFees);
+      const start = editLink.start_date || '';
+      const inst = Array.isArray(editLink.installments) ? (editLink.installments as any[]) : [];
+      setTitle((editLink.title || '').slice(0, 70));
+      setRef(editLink.trip_ref || '');
+      setStartDate(start);
+      setEndDate(editLink.end_date || '');
+      setAmount((editLink.amount_cents / 100).toFixed(2));
+      setCurrency(editLink.currency || 'EUR');
+      setPaymentFees(fees.paymentFees);
+      setWetravelFee(fees.wetravelFee);
+      const hasPlan = (editLink.deposit_cents ?? 0) > 0 || inst.length > 0;
+      setUsePlan(hasPlan);
+      setPlan(hasPlan && start
+        ? {
+            deposit: (editLink.deposit_cents ?? 0) / 100,
+            // Stored as "days before departure"; converted back into dates.
+            payments: inst.map((i: any, idx: number) => ({
+              id: `p${idx}`,
+              price: Number(i?.price) || 0,
+              date: iso(subDays(parseISO(start), Number(i?.days_before_departure) || 0)),
+            })),
+            autoBilling: !!editLink.allow_auto_payment,
+            allowPartial: !!editLink.allow_partial_payment,
+            autoAdjust: true,
+          }
+        : null);
+      setUseExpiry(!!editLink.expires_at);
+      setExpiresAt(editLink.expires_at ? editLink.expires_at.slice(0, 10) : '');
+      return;
+    }
+
     setTitle((defaultTitle || '').slice(0, 70));
     setRef(tripRef || '');
     setStartDate(defaultStartDate || '');
@@ -116,16 +163,14 @@ const PaymentLinkDialog = ({
     setPlan(null);
     setUseExpiry(false);
     setExpiresAt('');
-    setError(null);
-    setResult(null);
-  }, [open, defaultTitle, tripRef, defaultAmount, defaultStartDate, defaultEndDate]);
+  }, [open, editLink, defaultTitle, tripRef, defaultAmount, defaultStartDate, defaultEndDate]);
 
   const today = iso(new Date());
   const num = (v: string) => parseFloat((v || '').replace(',', '.'));
   const total = num(amount);
 
   const pendingDraft = links.find(l => l.status === 'draft' && l.wetravel_uuid);
-  const busy = createLink.isPending || publishLink.isPending;
+  const busy = createLink.isPending || publishLink.isPending || updateLink.isPending;
 
   const range = useMemo(() => ({
     from: startDate ? parseISO(startDate) : undefined,
@@ -144,7 +189,7 @@ const PaymentLinkDialog = ({
     if (cleanTitle.length > 70) return setError('O título não pode exceder 70 caracteres.');
     if (!startDate || !endDate) return setError('As datas da viagem são obrigatórias na WeTravel.');
     if (endDate < startDate) return setError('A data de fim não pode ser anterior à de início.');
-    if (startDate < today) return setError(`A data de início (${startDate}) está no passado. Confirma o ano.`);
+    if (!editLink && startDate < today) return setError(`A data de início (${startDate}) está no passado. Confirma o ano.`);
     if (isNaN(total) || total <= 0) return setError('Indica um montante maior que zero.');
     if (usePlan && (!plan || plan.payments.length === 0)) {
       return setError('Configura o plano de pagamento ou define "Add Deposit / Payment Plan" como No.');
@@ -160,8 +205,7 @@ const PaymentLinkDialog = ({
         }))
       : [];
 
-    try {
-      const link = await createLink.mutateAsync({
+    const payload = {
         lead_id: leadId,
         proposal_id: proposalId,
         title: cleanTitle,
@@ -177,11 +221,20 @@ const PaymentLinkDialog = ({
         installments,
         allow_auto_payment: usePlan && plan ? plan.autoBilling : false,
         allow_partial_payment: usePlan && plan ? plan.allowPartial : false,
-      });
+    };
+
+    try {
+      if (editLink) {
+        await updateLink.mutateAsync({ ...payload, payment_link_id: editLink.id });
+        toast.success('Link atualizado.');
+        onOpenChange(false);
+        return;
+      }
+      const link = await createLink.mutateAsync(payload);
       setResult(link);
       toast.success('Link de pagamento criado e publicado.');
     } catch (e: any) {
-      setError(e.message || 'Erro ao criar o link de pagamento.');
+      setError(e.message || (editLink ? 'Erro ao atualizar o link.' : 'Erro ao criar o link de pagamento.'));
     }
   };
 
@@ -208,7 +261,7 @@ const PaymentLinkDialog = ({
       <DialogContent className="max-w-3xl max-h-[92vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-base">
-            <Link2 className="h-4 w-4" /> Link de pagamento WeTravel
+            <Link2 className="h-4 w-4" /> {editLink ? 'Editar link de pagamento' : 'Link de pagamento WeTravel'}
           </DialogTitle>
           <DialogDescription className="text-xs">
             O nome e email do pagador são recolhidos no checkout WeTravel.
@@ -239,7 +292,7 @@ const PaymentLinkDialog = ({
         )}
 
         {/* Pending publication */}
-        {!result && pendingDraft && (
+        {!result && !editLink && pendingDraft && (
           <div className="rounded-lg border border-amber-200 bg-amber-50 dark:bg-amber-950/20 p-3 space-y-2">
             <p className="text-xs font-semibold text-amber-700 dark:text-amber-300">Publicação pendente</p>
             <p className="text-[11px] text-muted-foreground">
@@ -431,14 +484,16 @@ const PaymentLinkDialog = ({
                   onClick={submit}
                   disabled={busy}
                 >
-                  {createLink.isPending
+                  {busy
                     ? <Loader2 className="h-4 w-4 mr-2 animate-spin" />
                     : <Link2 className="h-4 w-4 mr-2" />}
-                  Publish
+                  {editLink ? 'Guardar alterações' : 'Publish'}
                 </Button>
-                <span className="text-xs text-muted-foreground">
-                  {createLink.isPending ? 'Saving as draft…' : 'Saved as draft'}
-                </span>
+                {!editLink && (
+                  <span className="text-xs text-muted-foreground">
+                    {createLink.isPending ? 'Saving as draft…' : 'Saved as draft'}
+                  </span>
+                )}
                 <Button variant="ghost" size="sm" onClick={() => onOpenChange(false)} disabled={busy}>
                   Cancelar
                 </Button>
