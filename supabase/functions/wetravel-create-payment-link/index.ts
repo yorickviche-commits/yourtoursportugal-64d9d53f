@@ -102,6 +102,118 @@ serve(async (req) => {
       return await publish(supabase, row, token);
     }
 
+    // ── Update a link that is NOT published yet ───────────────────
+    if (action === "update") {
+      const { payment_link_id } = body;
+      if (!payment_link_id) return json({ error: "payment_link_id obrigatório" }, 422);
+      const { data: row, error } = await supabase
+        .from("payment_links").select("*").eq("id", payment_link_id).maybeSingle();
+      if (error || !row) return json({ error: "Link não encontrado" }, 404);
+      if (row.status === "published") {
+        return json({ error: "A WeTravel não permite editar um link já publicado — elimina-o e cria um novo." }, 422);
+      }
+
+      const v = validateInput(body, row);
+      if ("error" in v) return json({ error: v.error }, 422);
+
+      const { data: updated, error: updErr } = await supabase
+        .from("payment_links")
+        .update({
+          title: v.title, trip_ref: v.trip_ref,
+          start_date: v.start_date, end_date: v.end_date,
+          amount_cents: v.cents, currency: v.currency,
+          expires_at: v.expires_at, participant_fees: v.participant_fees,
+          days_before_departure: v.days_before_departure,
+          deposit_cents: v.deposit_cents, installments: v.installments,
+          allow_auto_payment: v.allow_auto_payment,
+          allow_partial_payment: v.allow_partial_payment,
+          last_error: null,
+        })
+        .eq("id", row.id).select("*").single();
+      if (updErr) throw new Error(updErr.message);
+
+      // Mirror the change on WeTravel when the draft already exists there.
+      if (updated.wetravel_uuid) {
+        const token = await getAccessToken(refreshToken);
+        const payload = JSON.stringify(toWeTravelPayload({
+          title: updated.title,
+          tripRef: updated.trip_ref,
+          startDate: updated.start_date,
+          endDate: updated.end_date,
+          amountCents: updated.amount_cents,
+          currency: updated.currency,
+          participantFees: updated.participant_fees,
+          daysBeforeDeparture: updated.days_before_departure,
+          depositCents: updated.deposit_cents,
+          installments: (updated.installments ?? []) as any,
+          allowAutoPayment: updated.allow_auto_payment,
+          allowPartialPayment: updated.allow_partial_payment,
+        }));
+        const url = `${WETRAVEL.baseUrl}${WETRAVEL.paymentLinksPath}/${updated.wetravel_uuid}`;
+        const headers = {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+          Accept: "application/json",
+        };
+        try {
+          await wtFetch(url, { method: "PUT", headers, body: payload });
+        } catch (e) {
+          try {
+            await wtFetch(url, { method: "PATCH", headers, body: payload });
+          } catch (e2) {
+            const msg = e2 instanceof Error ? e2.message : String(e2);
+            await supabase.from("payment_links").update({ last_error: msg }).eq("id", row.id);
+            return json({ error: `Alterações guardadas na plataforma, mas a WeTravel recusou a edição: ${msg}` }, 502);
+          }
+        }
+      }
+
+      return json({ payment_link: updated });
+    }
+
+    // ── Delete a link (WeTravel + platform) ───────────────────────
+    if (action === "delete") {
+      const { payment_link_id } = body;
+      if (!payment_link_id) return json({ error: "payment_link_id obrigatório" }, 422);
+      const { data: row, error } = await supabase
+        .from("payment_links").select("*").eq("id", payment_link_id).maybeSingle();
+      if (error || !row) return json({ error: "Link não encontrado" }, 404);
+
+      let warning: string | null = null;
+      if (row.wetravel_uuid) {
+        try {
+          const token = await getAccessToken(refreshToken);
+          await wtFetch(`${WETRAVEL.baseUrl}${WETRAVEL.paymentLinksPath}/${row.wetravel_uuid}`, {
+            method: "DELETE",
+            headers: {
+              Authorization: `Bearer ${token}`,
+              Accept: "application/json",
+            },
+          });
+        } catch (e) {
+          const msg = e instanceof Error ? e.message : String(e);
+          if (e instanceof HttpError && (e.status === 404 || e.status === 405 || e.status === 422)) {
+            warning = `O link foi removido da plataforma, mas a WeTravel não permitiu apagá-lo automaticamente — arquiva-o manualmente. (${msg})`;
+          } else {
+            return json({ error: `Não foi possível eliminar o link na WeTravel: ${msg}` }, 502);
+          }
+        }
+      }
+
+      // Drop the Book Now button whenever the active link disappears.
+      if (row.is_active) {
+        await supabase.from("proposals")
+          .update({ wetravel_checkout_url: null }).eq("lead_id", row.lead_id);
+      }
+
+      const { error: delErr } = await supabase.from("payment_links").delete().eq("id", row.id);
+      if (delErr) throw new Error(delErr.message);
+
+      return json({ deleted: true, warning });
+    }
+
+
+
     // ── Create ───────────────────────────────────────────────────
     const {
       lead_id, proposal_id = null, title, trip_ref = null,
