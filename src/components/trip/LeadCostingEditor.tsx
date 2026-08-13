@@ -31,7 +31,7 @@ export interface LeadCostItem {
   id: string;
   description: string;
   supplier: string;
-  pricingType: 'total' | 'per_person';
+  pricingType: 'total' | 'per_person' | 'per_night';
   numAdults: number;
   priceAdults: number;
   numChildren: number;
@@ -66,9 +66,20 @@ function genId() {
   return `ci-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
 }
 
+/**
+ * The Accommodation block lives outside the day-by-day itinerary and is stored
+ * as day 0. Its visibility on the proposal/PDF is persisted in `date`
+ * ("hidden" hides the block from the client).
+ */
+export const ACCOMMODATION_DAY = 0;
+export const isAccommodationDay = (d: { day: number }) => d.day === ACCOMMODATION_DAY;
+
 function calcItem(item: LeadCostItem): LeadCostItem {
   let netTotal: number;
-  if (item.pricingType === 'per_person') {
+  if (item.pricingType === 'per_night') {
+    // For accommodation rows the "Nº Adt" column holds the number of nights.
+    netTotal = item.priceAdults * (item.numAdults || 0);
+  } else if (item.pricingType === 'per_person') {
     netTotal = (item.priceAdults * item.numAdults) + (item.priceChildren * item.numChildren);
   } else {
     netTotal = item.priceAdults; // when TOTAL, priceAdults = total NET value
@@ -78,7 +89,7 @@ function calcItem(item: LeadCostItem): LeadCostItem {
   return { ...item, netTotal, pvpTotal: Math.round(pvpTotal * 100) / 100, profit: Math.round(profit * 100) / 100 };
 }
 
-function makeDefaultItem(description: string, pax: number, paxChildren: number, layer: CostLayer, pricingType: 'total' | 'per_person' = 'total'): LeadCostItem {
+function makeDefaultItem(description: string, pax: number, paxChildren: number, layer: CostLayer, pricingType: LeadCostItem['pricingType'] = 'total'): LeadCostItem {
   return calcItem({
     id: genId(), description, supplier: '', pricingType,
     numAdults: pax, priceAdults: 0, numChildren: paxChildren, priceChildren: 0,
@@ -342,7 +353,39 @@ const LeadCostingEditor = ({ costingDays, onChange, onSave, saving, plannerDays,
     onChange(updated);
   }, [costingDays, onChange]);
 
+  const hasAccommodationSection = costingDays.some(isAccommodationDay);
+
+  const addAccommodationSection = () => {
+    if (hasAccommodationSection) {
+      toggleDay(ACCOMMODATION_DAY);
+      return;
+    }
+    onChange([
+      { day: ACCOMMODATION_DAY, title: 'Alojamentos', date: '', items: [] },
+      ...costingDays,
+    ]);
+    setExpandedDays(prev => (prev.includes(ACCOMMODATION_DAY) ? prev : [...prev, ACCOMMODATION_DAY]));
+  };
+
+  const setAccommodationVisible = (dayIdx: number, visible: boolean) => {
+    const updated = [...costingDays];
+    updated[dayIdx] = { ...updated[dayIdx], date: visible ? '' : 'hidden' };
+    onChange(updated);
+  };
+
   const addItem = (dayIdx: number) => {
+    const isAcc = isAccommodationDay(costingDays[dayIdx]);
+    if (isAcc) {
+      const updated = [...costingDays];
+      const newItem = makeDefaultItem('', 1, 0, 'accommodation', 'per_night');
+      updated[dayIdx] = { ...updated[dayIdx], items: [...updated[dayIdx].items, newItem] };
+      onChange(updated);
+      return;
+    }
+    return addItineraryItem(dayIdx);
+  };
+
+  const addItineraryItem = (dayIdx: number) => {
     const updated = [...costingDays];
     const newItem = calcItem({
       id: genId(), description: '', supplier: '', pricingType: 'total',
@@ -476,6 +519,13 @@ const LeadCostingEditor = ({ costingDays, onChange, onSave, saving, plannerDays,
               Auto-Fulfill Budget
             </Button>
           )}
+          <Button
+            variant="outline" size="sm"
+            className="text-xs gap-1 border-purple-300 text-purple-700 dark:text-purple-300 hover:bg-purple-500/10"
+            onClick={addAccommodationSection}
+          >
+            <Plus className="h-3 w-3" /> {hasAccommodationSection ? 'Ver Alojamentos' : 'Secção Alojamentos'}
+          </Button>
           {plannerDays.length > 0 && (
             <Button variant="outline" size="sm" className="text-xs gap-1" onClick={populateFromPlanner}>
               <Plus className="h-3 w-3" /> Importar do Planner
@@ -527,16 +577,29 @@ const LeadCostingEditor = ({ costingDays, onChange, onSave, saving, plannerDays,
           const dayPVP = dayActiveItems.reduce((s, i) => s + i.pvpTotal, 0);
           const dayProfit = dayPVP - dayNet;
           const dayMargin = dayNet > 0 ? (dayProfit / dayNet) * 100 : 0;
+          const isAcc = isAccommodationDay(day);
+          const accVisible = day.date !== 'hidden';
 
           return (
             <Collapsible key={day.day} open={expanded} onOpenChange={() => toggleDay(day.day)}>
               <CollapsibleTrigger className="w-full flex items-center gap-3 p-4 hover:bg-muted/20 transition-colors text-left">
                 {expanded ? <ChevronDown className="h-4 w-4 text-muted-foreground" /> : <ChevronRight className="h-4 w-4 text-muted-foreground" />}
                 <div className="flex-1 min-w-0">
-                  <span className="text-xs text-[hsl(var(--info))] font-medium">Dia {day.day}.</span>
-                  <p className="text-sm font-bold text-[hsl(var(--info))] truncate">{day.title || 'Sem título'}</p>
-                  {(formatDayLabelPT(startDate, day.day) || day.date) && (
-                    <span className="text-[10px] text-muted-foreground capitalize">{formatDayLabelPT(startDate, day.day) || day.date}</span>
+                  {isAcc ? (
+                    <>
+                      <span className="text-xs text-purple-600 dark:text-purple-300 font-medium">🏨 Alojamentos</span>
+                      <p className="text-sm font-bold text-purple-700 dark:text-purple-300 truncate">
+                        Fora do day-by-day · preço por noite ou total
+                      </p>
+                    </>
+                  ) : (
+                    <>
+                      <span className="text-xs text-[hsl(var(--info))] font-medium">Dia {day.day}.</span>
+                      <p className="text-sm font-bold text-[hsl(var(--info))] truncate">{day.title || 'Sem título'}</p>
+                      {(formatDayLabelPT(startDate, day.day) || day.date) && (
+                        <span className="text-[10px] text-muted-foreground capitalize">{formatDayLabelPT(startDate, day.day) || day.date}</span>
+                      )}
+                    </>
                   )}
                 </div>
                 <div className="text-right shrink-0">
@@ -547,6 +610,18 @@ const LeadCostingEditor = ({ costingDays, onChange, onSave, saving, plannerDays,
 
               <CollapsibleContent>
                 <div className="px-4 pb-4">
+                  {isAcc && (
+                    <label className="flex items-center gap-2 mb-3 text-[11px] text-muted-foreground cursor-pointer">
+                      <input
+                        type="checkbox"
+                        className="h-3.5 w-3.5 accent-purple-600"
+                        checked={accVisible}
+                        onChange={e => setAccommodationVisible(dayIdx, e.target.checked)}
+                      />
+                      Mostrar alojamentos (nome + nº de noites) na proposta digital e no PDF
+                      {day.items.length === 0 && <span className="text-amber-600">— secção vazia, não aparece</span>}
+                    </label>
+                  )}
                   <button onClick={() => addItem(dayIdx)} className="mb-3 p-1 rounded-full border border-dashed border-muted-foreground/30 hover:border-[hsl(var(--info))] hover:bg-muted/20 transition-colors">
                     <Plus className="h-4 w-4 text-muted-foreground" />
                   </button>
@@ -558,10 +633,10 @@ const LeadCostingEditor = ({ costingDays, onChange, onSave, saving, plannerDays,
                         <tr className="bg-muted/30 text-muted-foreground uppercase">
                           <th className="w-[18px]"></th>
                           <th className="text-left px-1.5 py-1.5 font-medium w-[50px]">Camada</th>
-                          <th className="text-left px-1.5 py-1.5 font-medium min-w-[140px]">Atividade</th>
+                          <th className="text-left px-1.5 py-1.5 font-medium min-w-[140px]">{isAcc ? 'Alojamento' : 'Atividade'}</th>
                           <th className="text-left px-1.5 py-1.5 font-medium w-[110px]">Fornecedor</th>
-                          <th className="text-center px-1 py-1.5 font-medium w-[80px]">Por Pessoa/Total</th>
-                          <th className="text-center px-1 py-1.5 font-medium w-[55px]">Nº Adt</th>
+                          <th className="text-center px-1 py-1.5 font-medium w-[80px]">{isAcc ? 'Por Noite/Total' : 'Por Pessoa/Total'}</th>
+                          <th className="text-center px-1 py-1.5 font-medium w-[55px]">{isAcc ? 'Nº Noites' : 'Nº Adt'}</th>
                           <th className="text-center px-1 py-1.5 font-medium w-[65px]">Preço Adt</th>
                           <th className="text-center px-1 py-1.5 font-medium w-[55px]">Nº Cri</th>
                           <th className="text-center px-1 py-1.5 font-medium w-[65px]">Preço Cri</th>
@@ -613,7 +688,7 @@ const LeadCostingEditor = ({ costingDays, onChange, onSave, saving, plannerDays,
                                         ) : <span className="text-[9px] text-muted-foreground">—</span>}
                                       </td>
                                       <td className="px-1 py-1">
-                                        <Input className="h-7 text-xs border-0 bg-transparent shadow-none focus-visible:ring-1 px-1" defaultValue={item.description} onBlur={e => updateItem(dayIdx, itemIdx, { description: e.target.value })} placeholder="Atividade..." />
+                                        <Input className="h-7 text-xs border-0 bg-transparent shadow-none focus-visible:ring-1 px-1" defaultValue={item.description} onBlur={e => updateItem(dayIdx, itemIdx, { description: e.target.value })} placeholder={isAcc ? 'Hotel / alojamento...' : 'Atividade...'} />
                                       </td>
                                       <td className="px-1 py-1">
                                         <SupplierSearchDropdown value={item.supplier} onChange={v => updateItem(dayIdx, itemIdx, { supplier: v })} />
@@ -623,7 +698,9 @@ const LeadCostingEditor = ({ costingDays, onChange, onSave, saving, plannerDays,
                                           <SelectTrigger className="h-7 text-[10px] border-0 bg-transparent shadow-none"><SelectValue /></SelectTrigger>
                                           <SelectContent>
                                             <SelectItem value="total" className="text-xs">TOTAL</SelectItem>
-                                            <SelectItem value="per_person" className="text-xs">POR PESSOA</SelectItem>
+                                            {isAcc
+                                              ? <SelectItem value="per_night" className="text-xs">POR NOITE</SelectItem>
+                                              : <SelectItem value="per_person" className="text-xs">POR PESSOA</SelectItem>}
                                           </SelectContent>
                                         </Select>
                                       </td>
