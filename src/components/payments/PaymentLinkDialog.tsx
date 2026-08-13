@@ -483,14 +483,16 @@ const PaymentLinkDialog = ({
                   onClick={submit}
                   disabled={busy}
                 >
-                  {createLink.isPending
+                  {busy
                     ? <Loader2 className="h-4 w-4 mr-2 animate-spin" />
                     : <Link2 className="h-4 w-4 mr-2" />}
-                  Publish
+                  {editLink ? 'Guardar alterações' : 'Publish'}
                 </Button>
-                <span className="text-xs text-muted-foreground">
-                  {createLink.isPending ? 'Saving as draft…' : 'Saved as draft'}
-                </span>
+                {!editLink && (
+                  <span className="text-xs text-muted-foreground">
+                    {createLink.isPending ? 'Saving as draft…' : 'Saved as draft'}
+                  </span>
+                )}
                 <Button variant="ghost" size="sm" onClick={() => onOpenChange(false)} disabled={busy}>
                   Cancelar
                 </Button>
