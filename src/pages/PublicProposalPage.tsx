@@ -920,6 +920,17 @@ const PricingConditions = ({ proposal, lang }: { proposal: any; lang: string }) 
     .map(d => `**${dayLabel} ${d.day_number} — ${stripBoldMarkers(d.title || '')}**\n${(d.items || []).slice(0, 6).map(b => `• ${stripBoldMarkers(b)}`).join('\n')}`)
     .join('\n\n');
   const includedText: string = closing.inclusionsOverride?.trim() || autoIncluded;
+  const dict = getPdfDict(lang);
+  const accommodation: any[] = Array.isArray(closing.accommodation) ? closing.accommodation : [];
+  const accommodationText = accommodation
+    .map(a => {
+      const name = String(a?.name || '').trim();
+      if (!name) return '';
+      const nights = Number(a?.nights) || 0;
+      return nights > 0 ? `• ${name} — ${nights} ${nights === 1 ? dict.night : dict.nights}` : `• ${name}`;
+    })
+    .filter(Boolean)
+    .join('\n');
   const paymentText: string = resolveClosingText('payment', closing.payment, lang);
   const cancellationText: string = resolveClosingText('cancellation', closing.cancellation, lang);
   const notesText: string = resolveClosingText('importantNotes', closing.importantNotes, lang);
@@ -934,7 +945,9 @@ const PricingConditions = ({ proposal, lang }: { proposal: any; lang: string }) 
             <div className="text-left">
               {total > 0 && (
                 <>
-                  <p className="text-[10px] uppercase tracking-widest text-slate-500 mb-1">{L.total}</p>
+                  <p className="text-[10px] uppercase tracking-widest text-slate-500 mb-1">
+                    {closing.netPricing ? dict.totalPriceNet : L.total}
+                  </p>
                   <p className="text-4xl font-serif font-bold text-[#0a2540]">€ {total.toLocaleString('en-US')}</p>
                 </>
               )}
@@ -955,6 +968,12 @@ const PricingConditions = ({ proposal, lang }: { proposal: any; lang: string }) 
           </div>
         )}
         <div className="p-6 space-y-5">
+          {accommodationText && (
+            <div>
+              <h3 className="text-sm font-serif font-bold text-slate-800 mb-2">{dict.accommodation}</h3>
+              <RichText as="div" className="text-sm text-slate-700 whitespace-pre-wrap leading-relaxed" value={accommodationText} preserveNewlines />
+            </div>
+          )}
           {includedText && (
             <div>
               <h3 className="text-sm font-serif font-bold text-slate-800 mb-2">{L.included}</h3>
