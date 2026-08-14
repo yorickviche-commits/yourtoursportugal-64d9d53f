@@ -566,16 +566,6 @@ const TravelPlanProposal = ({
     if (!filename) return;
     const printRoot = document.querySelector<HTMLElement>('[data-print-root]');
 
-    // Chrome ignores the title of `about:blank` popups when suggesting the PDF
-    // filename (which produced unnamed files). Printing from a hidden iframe
-    // whose own document carries the title restores
-    // "YT#### - Client - Program - Dates".
-    const printFrame = document.createElement('iframe');
-    printFrame.setAttribute('aria-hidden', 'true');
-    printFrame.style.cssText = 'position:fixed;left:-10000px;top:0;width:794px;height:1123px;border:0;opacity:0;';
-    document.body.appendChild(printFrame);
-    const printWindow = printFrame.contentWindow;
-
     // Google Maps iframes never render when printing, so each day's route map is
     // rasterized to a static image (linked to the original Google Maps route).
     const mapNodes = printRoot
@@ -595,87 +585,21 @@ const TravelPlanProposal = ({
     const mapReplacements = mapNodes.map((node, i) => {
       const url = node.getAttribute('data-map-embed') || '';
       const img = mapImages[i];
-      const link = `<div style="margin-top:6px;font-size:11px;font-weight:600"><a href="${url}" target="_blank" rel="noopener" style="color:#0066cc;text-decoration:none">Open route in Google Maps →</a></div>`;
+      const link = `<div style="margin-top:6px;font-size:11px;font-weight:600"><a href="${url}" target="_blank" rel="noopener" style="color:#0066cc;text-decoration:none">${d.openRoute || 'Open route in Google Maps →'}</a></div>`;
       if (!img) {
         // Never leave an empty framed box in the PDF: keep only the route link.
         console.warn('Route map image unavailable for', url);
         return `<div style="margin-top:16px">${link}</div>`;
       }
-      // The image source is injected via the DOM afterwards (huge data URLs get
-      // truncated when serialized through document.write, which left the PDF
-      // showing an empty framed box).
       return `<div style="margin-top:16px"><div style="border:1px solid #e2e8f0;border-radius:8px;overflow:hidden"><a href="${url}" target="_blank" rel="noopener"><img data-route-map="${i}" alt="Route map" style="display:block;width:100%;height:auto" /></a></div>${link}</div>`;
     });
 
-
-
-    // Printing from a dedicated top-level document makes the browser derive
-    // the suggested PDF filename from this proposal title, never from the app
-    // or Lovable preview title. The rendered proposal itself is cloned intact.
-    if (printRoot && printWindow) {
-      const styles = Array.from(document.querySelectorAll('link[rel="stylesheet"], style'))
-        .map(node => node.outerHTML)
-        .join('\n');
-      const printClone = printRoot.cloneNode(true) as HTMLElement;
-      Array.from(printClone.querySelectorAll<HTMLElement>('[data-map-embed]')).forEach((node, i) => {
-        const html = mapReplacements[i];
-        if (html) node.outerHTML = html;
-        else node.remove();
-      });
-      const safeTitle = filename
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;');
-      const safeBase = document.baseURI.replace(/"/g, '&quot;');
-
-      printWindow.document.open();
-      printWindow.document.write(`<!doctype html>
-        <html lang="${document.documentElement.lang || 'en'}">
-          <head>
-            <meta charset="UTF-8" />
-            <base href="${safeBase}" />
-            <title>${safeTitle}</title>
-            ${styles}
-          </head>
-          <body class="${document.body.className}">${printClone.outerHTML}</body>
-        </html>`);
-      printWindow.document.close();
-      printWindow.document.title = filename;
-
-      // Inject the rasterized route maps directly (no serialization limits).
-      Array.from(printWindow.document.querySelectorAll<HTMLImageElement>('img[data-route-map]')).forEach(image => {
-        const idx = Number(image.getAttribute('data-route-map'));
-        const src = mapImages[idx]?.dataUrl;
-        if (src) image.src = src;
-        else image.closest('div')?.remove();
-      });
-
-      const images = Array.from(printWindow.document.images);
-
-      const imagesReady = Promise.all(images.map(image => image.complete
-        ? Promise.resolve()
-        : new Promise<void>(resolve => {
-            image.addEventListener('load', () => resolve(), { once: true });
-            image.addEventListener('error', () => resolve(), { once: true });
-          })));
-      const fontsReady = printWindow.document.fonts?.ready ?? Promise.resolve();
-
-      Promise.all([imagesReady, fontsReady]).then(() => {
-        printWindow.document.title = filename;
-        printWindow.focus();
-        printWindow.print();
-        // Keep the frame around long enough for the print dialog to read it.
-        window.setTimeout(() => printFrame.remove(), 60000);
-      });
-      return;
-    }
-
-    printFrame.remove();
-
-    // Popup-blocker fallback: swap the live Google Maps iframes for the static
-    // route images (iframes print blank), print, then restore the DOM.
+    // Print the live document in place: the browser keeps the text vectorial
+    // (a hidden iframe gets rasterized => blurry) and derives the suggested
+    // filename from THIS document's title.
+    const previousTitle = document.title;
     document.title = filename;
+
     const originals = mapNodes.map((node, i) => {
       const html = mapReplacements[i];
       if (!html) return null;
@@ -690,11 +614,35 @@ const TravelPlanProposal = ({
       node.parentNode.replaceChild(replacement, node);
       return { node, replacement };
     });
+
+    // Wait for the injected route maps and webfonts so nothing prints half-drawn.
+    const images = printRoot ? Array.from(printRoot.querySelectorAll('img')) : [];
+    await Promise.all([
+      Promise.all(images.map(image => image.complete
+        ? Promise.resolve()
+        : new Promise<void>(resolve => {
+            image.addEventListener('load', () => resolve(), { once: true });
+            image.addEventListener('error', () => resolve(), { once: true });
+          }))),
+      document.fonts?.ready ?? Promise.resolve(),
+    ]);
+
+    const restore = () => {
+      originals.forEach(entry => {
+        if (entry?.replacement.parentNode) entry.replacement.parentNode.replaceChild(entry.node, entry.replacement);
+      });
+      document.title = previousTitle;
+    };
+
+    window.addEventListener('afterprint', restore, { once: true });
     window.print();
-    originals.forEach(entry => {
-      if (entry?.replacement.parentNode) entry.replacement.parentNode.replaceChild(entry.node, entry.replacement);
-    });
-  }, [buildPdfFilename]);
+    // Safety net for browsers that never fire `afterprint`.
+    window.setTimeout(() => {
+      window.removeEventListener('afterprint', restore);
+      restore();
+    }, 3000);
+  }, [buildPdfFilename, d]);
+
 
 
   // Keep the document title aligned with the custom PDF filename while this
