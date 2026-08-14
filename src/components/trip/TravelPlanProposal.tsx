@@ -585,7 +585,7 @@ const TravelPlanProposal = ({
     const mapReplacements = mapNodes.map((node, i) => {
       const url = node.getAttribute('data-map-embed') || '';
       const img = mapImages[i];
-      const link = `<div style="margin-top:6px;font-size:11px;font-weight:600"><a href="${url}" target="_blank" rel="noopener" style="color:#0066cc;text-decoration:none">${d.openRoute || 'Open route in Google Maps →'}</a></div>`;
+      const link = `<div style="margin-top:6px;font-size:11px;font-weight:600"><a href="${url}" target="_blank" rel="noopener" style="color:#0066cc;text-decoration:none">Open route in Google Maps →</a></div>`;
       if (!img) {
         // Never leave an empty framed box in the PDF: keep only the route link.
         console.warn('Route map image unavailable for', url);
@@ -641,7 +641,7 @@ const TravelPlanProposal = ({
       window.removeEventListener('afterprint', restore);
       restore();
     }, 3000);
-  }, [buildPdfFilename, d]);
+  }, [buildPdfFilename]);
 
 
 
