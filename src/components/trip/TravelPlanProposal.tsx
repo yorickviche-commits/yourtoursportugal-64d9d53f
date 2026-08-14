@@ -2020,7 +2020,7 @@ const TravelPlanProposal = ({
           {/* Price Header */}
           <div className={`pb-4 border-b border-slate-200 flex flex-col sm:flex-row items-center gap-4 ${wetravelCheckoutUrl ? 'sm:justify-between text-center sm:text-left' : 'justify-center text-center'}`}>
             <div>
-              <p className="text-[10px] uppercase tracking-widest text-slate-500 mb-2">{t.totalPrice}</p>
+              <p className="text-[10px] uppercase tracking-widest text-slate-500 mb-2">{netPricing ? getPdfDict(language).totalPriceNet : t.totalPrice}</p>
               <p className="text-4xl font-serif font-bold text-slate-900">
                 {totalPVP > 0 ? `€ ${totalPVP.toLocaleString('en-US')}` : '— € —'}
               </p>
