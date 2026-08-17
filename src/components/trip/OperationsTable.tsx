@@ -230,7 +230,7 @@ const OperationsTable = ({ costItems, tripId, tripCode, startDate }: OperationsT
         <div className="flex items-center gap-4 ml-auto text-[10px]">
           <div className="flex items-center gap-1.5">
             <span className="h-2 w-2 rounded-full bg-[hsl(var(--success))]" />
-            <span>Confirmados: {confirmedCount}/{totalItems}</span>
+            <span>Reservados: {confirmedCount}/{totalItems}</span>
           </div>
           <div className="flex items-center gap-1.5">
             <span className="h-2 w-2 rounded-full bg-[hsl(var(--info))]" />
@@ -246,7 +246,7 @@ const OperationsTable = ({ costItems, tripId, tripCode, startDate }: OperationsT
       {itemsByDay.map(({ day, items: dayItems }) => {
         const expanded = expandedDays.has(day);
         const dayDate = getDayDate(day);
-        const dayConfirmed = dayItems.filter(ci => opsMap[ci.id]?.booking_status === 'confirmed').length;
+        const dayConfirmed = dayItems.filter(ci => normalizeBookingStatus(opsMap[ci.id]?.booking_status) === 'booked').length;
 
         return (
           <div key={day} className="border-b last:border-b-0">
