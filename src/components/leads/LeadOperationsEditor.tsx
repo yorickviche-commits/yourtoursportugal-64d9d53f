@@ -26,7 +26,11 @@ import LeadOpsAnalyticsPanel from '@/components/leads/LeadOpsAnalyticsPanel';
 import GuidePlanningDialog from '@/components/leads/GuidePlanningDialog';
 
 
-import { BOOKING_OPTIONS, PAYMENT_OPTIONS, INVOICE_OPTIONS, type OpsRow } from '@/components/leads/opsConstants';
+import {
+  BOOKING_OPTIONS, PAYMENT_OPTIONS, INVOICE_OPTIONS,
+  normalizeBookingStatus, normalizePaymentStatus, normalizeInvoiceStatus,
+  type OpsRow,
+} from '@/components/leads/opsConstants';
 
 export { BOOKING_OPTIONS, PAYMENT_OPTIONS, INVOICE_OPTIONS };
 export type { OpsRow };
@@ -162,9 +166,9 @@ const LeadOperationsEditor = ({ activeVersion, leadId, leadCode, pvpTotal = 0, s
         netValue: cost?.net ?? Number(op?.net_value ?? 0) ?? 0,
         realCost: op?.real_cost != null ? Number(op.real_cost) : null,
         scheduleTime: op?.schedule_time || '',
-        bookingStatus: op?.booking_status || 'not_requested',
-        paymentStatus: op?.payment_status || 'not_paid',
-        invoiceStatus: op?.invoice_status || 'no_invoice',
+        bookingStatus: normalizeBookingStatus(op?.booking_status),
+        paymentStatus: normalizePaymentStatus(op?.payment_status),
+        invoiceStatus: normalizeInvoiceStatus(op?.invoice_status),
         invoiceUrl: op?.invoice_file_url || null,
         invoiceName: op?.invoice_file_name || null,
         opId: op?.id,
@@ -212,9 +216,9 @@ const LeadOperationsEditor = ({ activeVersion, leadId, leadCode, pvpTotal = 0, s
           netValue: Number(op.net_value ?? 0),
           realCost: op.real_cost != null ? Number(op.real_cost) : null,
           scheduleTime: op.schedule_time || '',
-          bookingStatus: op.booking_status,
-          paymentStatus: op.payment_status,
-          invoiceStatus: op.invoice_status,
+          bookingStatus: normalizeBookingStatus(op.booking_status),
+          paymentStatus: normalizePaymentStatus(op.payment_status),
+          invoiceStatus: normalizeInvoiceStatus(op.invoice_status),
           invoiceUrl: op.invoice_file_url,
           invoiceName: op.invoice_file_name,
           opId: op.id,
@@ -242,9 +246,9 @@ const LeadOperationsEditor = ({ activeVersion, leadId, leadCode, pvpTotal = 0, s
       netValue: 0,
       realCost: null,
       scheduleTime: '',
-      bookingStatus: 'not_requested',
-      paymentStatus: 'not_paid',
-      invoiceStatus: 'no_invoice',
+      bookingStatus: 'neutral',
+      paymentStatus: 'neutral',
+      invoiceStatus: 'not_received',
       invoiceUrl: null,
       invoiceName: null,
     }]);
@@ -320,9 +324,9 @@ const LeadOperationsEditor = ({ activeVersion, leadId, leadCode, pvpTotal = 0, s
         activity_title: row.activityTitle,
         invoice_file_url: publicUrl,
         invoice_file_name: file.name,
-        invoice_status: 'invoice_received',
+        invoice_status: 'received',
       });
-      updateRow(row.itemKey, { invoiceUrl: publicUrl, invoiceName: file.name, invoiceStatus: 'invoice_received' });
+      updateRow(row.itemKey, { invoiceUrl: publicUrl, invoiceName: file.name, invoiceStatus: 'received' });
       setDirty(false);
       toast({ title: 'Fatura carregada com sucesso' });
     } catch (err: any) {
@@ -342,9 +346,9 @@ const LeadOperationsEditor = ({ activeVersion, leadId, leadCode, pvpTotal = 0, s
   }, [rows, dayTitles]);
 
   const totalItems = rows.length;
-  const confirmedCount = rows.filter(r => r.bookingStatus === 'confirmed').length;
+  const confirmedCount = rows.filter(r => r.bookingStatus === 'booked').length;
   const paidCount = rows.filter(r => r.paymentStatus === 'paid').length;
-  const invoicedCount = rows.filter(r => ['invoice_received', 'invoice_approved', 'invoice_paid'].includes(r.invoiceStatus)).length;
+  const invoicedCount = rows.filter(r => r.invoiceStatus === 'received').length;
 
   const toggleDay = (day: number) => {
     setExpandedDays(prev => {
@@ -410,7 +414,7 @@ const LeadOperationsEditor = ({ activeVersion, leadId, leadCode, pvpTotal = 0, s
         <div className="flex items-center gap-4 text-[10px] ml-auto">
           <div className="flex items-center gap-1.5">
             <span className="h-2 w-2 rounded-full bg-[hsl(var(--success))]" />
-            <span>Confirmados: {confirmedCount}/{totalItems}</span>
+            <span>Reservados: {confirmedCount}/{totalItems}</span>
           </div>
           <div className="flex items-center gap-1.5">
             <span className="h-2 w-2 rounded-full bg-[hsl(var(--info))]" />
@@ -434,7 +438,7 @@ const LeadOperationsEditor = ({ activeVersion, leadId, leadCode, pvpTotal = 0, s
       <div className="border border-t-0 rounded-b-lg overflow-hidden">
         {rowsByDay.map(({ day, title, items: dayItems }) => {
           const expanded = expandedDays.has(day);
-          const dayConfirmed = dayItems.filter(r => r.bookingStatus === 'confirmed').length;
+          const dayConfirmed = dayItems.filter(r => r.bookingStatus === 'booked').length;
           const dayNet = dayItems.reduce((s, r) => s + (r.netValue || 0), 0);
           const dayReal = dayItems.reduce((s, r) => s + (r.realCost ?? 0), 0);
 

@@ -4,12 +4,14 @@ import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Button } from '@/components/ui/button';
+import { cn } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 
 interface SupplierSearchDropdownProps {
   value: string;
   onChange: (value: string) => void;
+  className?: string;
 }
 
 const useSuppliersList = () => {
@@ -27,7 +29,7 @@ const useSuppliersList = () => {
   });
 };
 
-export default function SupplierSearchDropdown({ value, onChange }: SupplierSearchDropdownProps) {
+export default function SupplierSearchDropdown({ value, onChange, className }: SupplierSearchDropdownProps) {
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState('');
   const [addOpen, setAddOpen] = useState(false);
@@ -76,12 +78,12 @@ export default function SupplierSearchDropdown({ value, onChange }: SupplierSear
         <PopoverTrigger asChild>
           <button
             type="button"
-            className="h-7 w-full flex items-center justify-between text-xs px-1 bg-transparent hover:bg-muted/30 rounded transition-colors truncate text-left"
+            className={cn("w-full flex items-start justify-between text-xs px-1 bg-transparent hover:bg-muted/30 rounded transition-colors text-left gap-1", className)}
           >
-            <span className={value ? 'text-foreground' : 'text-muted-foreground'}>
+            <span className={cn("flex-1 leading-snug", value ? 'text-foreground' : 'text-muted-foreground')}>
               {value || 'Fornecedor...'}
             </span>
-            <ChevronDown className="h-3 w-3 text-muted-foreground shrink-0" />
+            <ChevronDown className="h-3 w-3 text-muted-foreground shrink-0 mt-0.5" />
           </button>
         </PopoverTrigger>
         <PopoverContent

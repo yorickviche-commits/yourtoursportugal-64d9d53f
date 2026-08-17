@@ -102,20 +102,23 @@ function summarizeDayStatus(items: DayPayload['items']): { prefix: string; label
   if (total === 0) return { prefix: '', label: 'Rascunho', colorId: '5' };
   const cancelled = items.filter(i => i.booking_status === 'cancelled').length;
   if (cancelled === total) return { prefix: 'CANCELADO', label: 'Cancelado', colorId: '11' };
-  const confirmed = items.filter(i => i.booking_status === 'confirmed').length;
+  const booked = items.filter(i => i.booking_status === 'booked').length;
   const paid = items.filter(i => i.payment_status === 'paid').length;
-  const invoiced = items.filter(i => ['invoice_received','invoice_approved','invoice_paid'].includes(i.invoice_status || '')).length;
-  if (confirmed === total && paid === total && invoiced === total) return { prefix: 'OK -', label: 'Confirmado + Pago + Faturado', colorId: '10' };
-  if (confirmed === total) return { prefix: '*', label: 'Confirmado', colorId: '9' };
-  if (confirmed > 0) return { prefix: '**', label: 'Parcial', colorId: '8' };
+  const invoiced = items.filter(i => i.invoice_status === 'received').length;
+  if (booked === total && paid === total && invoiced === total) return { prefix: 'OK -', label: 'Confirmado + Pago + Faturado', colorId: '10' };
+  if (booked === total) return { prefix: '*', label: 'Confirmado', colorId: '9' };
+  if (booked > 0) return { prefix: '**', label: 'Parcial', colorId: '8' };
   return { prefix: '', label: 'Por confirmar', colorId: '5' };
 }
 
 function bookingLabel(status: string | null): string {
   switch (status) {
+    case 'booked': return 'Reservado';
     case 'confirmed': return 'Reservado';
-    case 'cancelled': return 'Cancelado';
+    case 'sent': return 'Pedido enviado';
     case 'requested': return 'Pedido enviado';
+    case 'neutral': return 'Neutro';
+    case 'cancelled': return 'Cancelado';
     case 'pending': return 'Aguarda resposta';
     default: return 'Por reservar';
   }
@@ -180,7 +183,7 @@ function buildDescription(lead: any, day: DayPayload, dayIndex: number, totalDay
       const lines = [`• ${time} - ${supplier} | ${desc} - ${status}`];
       if (item.emailSentAt) lines.push(`    ◦ email enviado ${fmtDate(item.emailSentAt)}`);
       if (item.payment_status === 'paid') lines.push(`    ◦ Pago pelo BackOffice`);
-      if (['invoice_received','invoice_approved','invoice_paid'].includes(item.invoice_status || '')) {
+      if (item.invoice_status === 'received') {
         lines.push(`    ◦ Fatura recebida`);
       }
       return lines.join('\n');

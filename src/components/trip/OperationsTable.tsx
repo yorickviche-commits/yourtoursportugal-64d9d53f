@@ -17,28 +17,45 @@ import { format, addDays, parseISO } from 'date-fns';
 import { pt } from 'date-fns/locale';
 
 const BOOKING_OPTIONS = [
-  { value: 'not_requested', label: 'Não Pedido', className: 'bg-muted text-muted-foreground' },
-  { value: 'requested', label: 'Pedido', className: 'bg-[hsl(var(--info))]/15 text-[hsl(var(--info))]' },
-  { value: 'confirmed', label: 'Confirmado', className: 'bg-[hsl(var(--success))]/15 text-[hsl(var(--success))]' },
-  { value: 'declined', label: 'Recusado', className: 'bg-destructive/15 text-destructive' },
-  { value: 'cancelled', label: 'Cancelado', className: 'bg-destructive/15 text-destructive' },
-  { value: 'waitlisted', label: 'Em Espera', className: 'bg-[hsl(var(--warning))]/15 text-[hsl(var(--warning))]' },
+  { value: 'neutral', label: 'Neutro', className: 'bg-muted text-muted-foreground' },
+  { value: 'sent', label: 'Enviado', className: 'bg-[hsl(var(--info))]/15 text-[hsl(var(--info))]' },
+  { value: 'booked', label: 'Reservado', className: 'bg-[hsl(var(--success))]/15 text-[hsl(var(--success))]' },
 ];
 
 const PAYMENT_OPTIONS = [
-  { value: 'not_paid', label: 'Não Pago', className: 'bg-destructive/15 text-destructive' },
-  { value: 'partially_paid', label: 'Parcialmente Pago', className: 'bg-[hsl(var(--warning))]/15 text-[hsl(var(--warning))]' },
+  { value: 'neutral', label: 'Neutro', className: 'bg-muted text-muted-foreground' },
   { value: 'paid', label: 'Pago', className: 'bg-[hsl(var(--success))]/15 text-[hsl(var(--success))]' },
-  { value: 'refunded', label: 'Reembolsado', className: 'bg-purple-100 text-purple-700' },
+  { value: 'partially_paid', label: 'Pago Parcialmente', className: 'bg-[hsl(var(--warning))]/15 text-[hsl(var(--warning))]' },
+  { value: 'monthly_account', label: 'Conta Mensal', className: 'bg-[hsl(var(--info))]/15 text-[hsl(var(--info))]' },
+  { value: 'guide_to_pay', label: 'A Pagar pelo Guia', className: 'bg-purple-100 text-purple-700' },
+  { value: 'not_paid', label: 'Não Pago', className: 'bg-destructive/15 text-destructive' },
 ];
 
 const INVOICE_OPTIONS = [
-  { value: 'no_invoice', label: 'Sem Fatura', className: 'bg-muted text-muted-foreground' },
-  { value: 'invoice_requested', label: 'Pedida', className: 'bg-[hsl(var(--info))]/15 text-[hsl(var(--info))]' },
-  { value: 'invoice_received', label: 'Recebida', className: 'bg-[hsl(var(--warning))]/15 text-[hsl(var(--warning))]' },
-  { value: 'invoice_approved', label: 'Aprovada', className: 'bg-[hsl(var(--success))]/15 text-[hsl(var(--success))]' },
-  { value: 'invoice_paid', label: 'Paga', className: 'bg-[hsl(var(--success))]/15 text-[hsl(var(--success))]' },
+  { value: 'not_received', label: 'Não Recebida', className: 'bg-muted text-muted-foreground' },
+  { value: 'guide_pickup', label: 'A Levantar pelo Guia', className: 'bg-[hsl(var(--warning))]/15 text-[hsl(var(--warning))]' },
+  { value: 'received', label: 'Recebida', className: 'bg-[hsl(var(--success))]/15 text-[hsl(var(--success))]' },
 ];
+
+const normalizeBookingStatus = (s?: string | null) => {
+  if (!s) return 'neutral';
+  const v = s.toLowerCase();
+  if (v === 'confirmed') return 'booked';
+  if (v === 'requested') return 'sent';
+  return BOOKING_OPTIONS.some(o => o.value === v) ? v : 'neutral';
+};
+const normalizePaymentStatus = (s?: string | null) => {
+  if (!s) return 'neutral';
+  const v = s.toLowerCase();
+  if (v === 'refunded') return 'neutral';
+  return PAYMENT_OPTIONS.some(o => o.value === v) ? v : 'neutral';
+};
+const normalizeInvoiceStatus = (s?: string | null) => {
+  if (!s) return 'not_received';
+  const v = s.toLowerCase();
+  if (['invoice_received', 'invoice_approved', 'invoice_paid'].includes(v)) return 'received';
+  return INVOICE_OPTIONS.some(o => o.value === v) ? v : 'not_received';
+};
 
 interface OperationsTableProps {
   costItems: DbCostItem[];
@@ -142,7 +159,7 @@ const OperationsTable = ({ costItems, tripId, tripCode, startDate }: OperationsT
           trip_id: tripId,
           invoice_file_url: lastUrl,
           invoice_file_name: lastName,
-          invoice_status: 'invoice_received',
+          invoice_status: 'received',
         });
       }
 
@@ -187,9 +204,9 @@ const OperationsTable = ({ costItems, tripId, tripCode, startDate }: OperationsT
 
   // Summary stats
   const totalItems = costItems.length;
-  const confirmedCount = costItems.filter(ci => opsMap[ci.id]?.booking_status === 'confirmed').length;
-  const paidCount = costItems.filter(ci => opsMap[ci.id]?.payment_status === 'paid').length;
-  const invoicedCount = costItems.filter(ci => ['invoice_received', 'invoice_approved', 'invoice_paid'].includes(opsMap[ci.id]?.invoice_status || '')).length;
+  const confirmedCount = costItems.filter(ci => normalizeBookingStatus(opsMap[ci.id]?.booking_status) === 'booked').length;
+  const paidCount = costItems.filter(ci => normalizePaymentStatus(opsMap[ci.id]?.payment_status) === 'paid').length;
+  const invoicedCount = costItems.filter(ci => normalizeInvoiceStatus(opsMap[ci.id]?.invoice_status) === 'received').length;
 
   return (
     <div className="space-y-0">
@@ -213,7 +230,7 @@ const OperationsTable = ({ costItems, tripId, tripCode, startDate }: OperationsT
         <div className="flex items-center gap-4 ml-auto text-[10px]">
           <div className="flex items-center gap-1.5">
             <span className="h-2 w-2 rounded-full bg-[hsl(var(--success))]" />
-            <span>Confirmados: {confirmedCount}/{totalItems}</span>
+            <span>Reservados: {confirmedCount}/{totalItems}</span>
           </div>
           <div className="flex items-center gap-1.5">
             <span className="h-2 w-2 rounded-full bg-[hsl(var(--info))]" />
@@ -229,7 +246,7 @@ const OperationsTable = ({ costItems, tripId, tripCode, startDate }: OperationsT
       {itemsByDay.map(({ day, items: dayItems }) => {
         const expanded = expandedDays.has(day);
         const dayDate = getDayDate(day);
-        const dayConfirmed = dayItems.filter(ci => opsMap[ci.id]?.booking_status === 'confirmed').length;
+        const dayConfirmed = dayItems.filter(ci => normalizeBookingStatus(opsMap[ci.id]?.booking_status) === 'booked').length;
 
         return (
           <div key={day} className="border-b last:border-b-0">
@@ -240,7 +257,7 @@ const OperationsTable = ({ costItems, tripId, tripCode, startDate }: OperationsT
                   <span className="text-xs text-[hsl(var(--success))] font-medium">Dia {day}</span>
                   {dayDate && <span className="text-xs text-muted-foreground ml-2">— {dayDate}</span>}
                 </div>
-                <span className="text-[10px] text-muted-foreground">{dayConfirmed}/{dayItems.length} confirmados</span>
+                <span className="text-[10px] text-muted-foreground">{dayConfirmed}/{dayItems.length} reservados</span>
               </CollapsibleTrigger>
 
               <CollapsibleContent>
@@ -266,9 +283,9 @@ const OperationsTable = ({ costItems, tripId, tripCode, startDate }: OperationsT
                     {dayItems.map(item => {
                       const op = opsMap[item.id];
                       const scheduleTime = op?.schedule_time || '';
-                      const bookingStatus = op?.booking_status || 'not_requested';
-                      const paymentStatus = op?.payment_status || 'not_paid';
-                      const invoiceStatus = op?.invoice_status || 'no_invoice';
+                      const bookingStatus = normalizeBookingStatus(op?.booking_status);
+                      const paymentStatus = normalizePaymentStatus(op?.payment_status);
+                      const invoiceStatus = normalizeInvoiceStatus(op?.invoice_status);
                       const invoiceUrl = op?.invoice_file_url;
                       const invoiceName = op?.invoice_file_name;
                       const netValue = getItemNet(item);
