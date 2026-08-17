@@ -26,7 +26,11 @@ import LeadOpsAnalyticsPanel from '@/components/leads/LeadOpsAnalyticsPanel';
 import GuidePlanningDialog from '@/components/leads/GuidePlanningDialog';
 
 
-import { BOOKING_OPTIONS, PAYMENT_OPTIONS, INVOICE_OPTIONS, type OpsRow } from '@/components/leads/opsConstants';
+import {
+  BOOKING_OPTIONS, PAYMENT_OPTIONS, INVOICE_OPTIONS,
+  normalizeBookingStatus, normalizePaymentStatus, normalizeInvoiceStatus,
+  type OpsRow,
+} from '@/components/leads/opsConstants';
 
 export { BOOKING_OPTIONS, PAYMENT_OPTIONS, INVOICE_OPTIONS };
 export type { OpsRow };
