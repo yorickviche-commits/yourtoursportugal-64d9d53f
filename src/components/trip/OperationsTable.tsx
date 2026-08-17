@@ -159,7 +159,7 @@ const OperationsTable = ({ costItems, tripId, tripCode, startDate }: OperationsT
           trip_id: tripId,
           invoice_file_url: lastUrl,
           invoice_file_name: lastName,
-          invoice_status: 'invoice_received',
+          invoice_status: 'received',
         });
       }
 
