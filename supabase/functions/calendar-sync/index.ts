@@ -183,7 +183,7 @@ function buildDescription(lead: any, day: DayPayload, dayIndex: number, totalDay
       const lines = [`• ${time} - ${supplier} | ${desc} - ${status}`];
       if (item.emailSentAt) lines.push(`    ◦ email enviado ${fmtDate(item.emailSentAt)}`);
       if (item.payment_status === 'paid') lines.push(`    ◦ Pago pelo BackOffice`);
-      if (['invoice_received','invoice_approved','invoice_paid'].includes(item.invoice_status || '')) {
+      if (item.invoice_status === 'received') {
         lines.push(`    ◦ Fatura recebida`);
       }
       return lines.join('\n');
