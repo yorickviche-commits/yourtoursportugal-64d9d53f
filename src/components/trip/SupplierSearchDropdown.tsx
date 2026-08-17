@@ -10,6 +10,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 interface SupplierSearchDropdownProps {
   value: string;
   onChange: (value: string) => void;
+  className?: string;
 }
 
 const useSuppliersList = () => {
