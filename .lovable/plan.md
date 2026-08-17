@@ -33,10 +33,15 @@ Linhas já gravadas com estados antigos passam a ser lidas com equivalência aut
 
 Os contadores no topo ("Confirmados / Pagos / Faturas") passam a contar respetivamente Reservado, Pago (e Pago Parcialmente como parcial) e Recebida.
 
+## Melhoria de UI/UX no Costing
+
+Na tabela de Custos, as colunas **Atividade** e **Fornecedor** devem mostrar sempre o texto completo. As células alargam verticalmente (wrap) em vez de truncar com reticências, tal como já acontece na tabela de Operações. As restantes colunas mantêm-se compactas porque são dados curtos.
+
 ## Detalhes técnicos
 
 - `src/components/leads/opsConstants.ts`: substituir `BOOKING_OPTIONS`, `PAYMENT_OPTIONS`, `INVOICE_OPTIONS` pelos novos valores (`neutral | sent | booked`, `neutral | paid | partially_paid | monthly_account | guide_to_pay | not_paid`, `not_received | guide_pickup | received`) e adicionar mapas de normalização de valores legados.
 - Defaults ao criar/ler linhas em `LeadOperationsEditor.tsx` passam a `neutral` / `neutral` / `not_received`; a ação de anexar fatura marca `received`.
 - Ajustar contagens do cabeçalho e o painel de indicadores (`LeadOpsAnalyticsPanel.tsx`) e o PDF de planning do guia para os novos valores.
 - `supabase/functions/calendar-sync/index.ts`: reconhecer `booked` como confirmado e `received` como faturado, mantendo os valores antigos aceites.
+- `src/components/trip/LeadCostingEditor.tsx` / `src/components/trip/CostingTable.tsx`: aplicar `whitespace-normal break-words` nas colunas de descrição/atividade e fornecedor; remover `truncate` e larguras fixas que forcem corte.
 - A coluna continua `text` na base de dados — sem migração necessária.
