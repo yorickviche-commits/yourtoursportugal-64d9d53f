@@ -257,7 +257,7 @@ const OperationsTable = ({ costItems, tripId, tripCode, startDate }: OperationsT
                   <span className="text-xs text-[hsl(var(--success))] font-medium">Dia {day}</span>
                   {dayDate && <span className="text-xs text-muted-foreground ml-2">— {dayDate}</span>}
                 </div>
-                <span className="text-[10px] text-muted-foreground">{dayConfirmed}/{dayItems.length} confirmados</span>
+                <span className="text-[10px] text-muted-foreground">{dayConfirmed}/{dayItems.length} reservados</span>
               </CollapsibleTrigger>
 
               <CollapsibleContent>
