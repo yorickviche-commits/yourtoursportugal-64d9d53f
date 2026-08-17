@@ -687,11 +687,20 @@ const LeadCostingEditor = ({ costingDays, onChange, onSave, saving, plannerDays,
                                           </span>
                                         ) : <span className="text-[9px] text-muted-foreground">—</span>}
                                       </td>
-                                      <td className="px-1 py-1">
-                                        <Input className="h-7 text-xs border-0 bg-transparent shadow-none focus-visible:ring-1 px-1" defaultValue={item.description} onBlur={e => updateItem(dayIdx, itemIdx, { description: e.target.value })} placeholder={isAcc ? 'Hotel / alojamento...' : 'Atividade...'} />
+                                      <td className="px-1 py-1 align-middle min-w-[140px]">
+                                        <Input
+                                          className="h-auto min-h-7 text-xs border-0 bg-transparent shadow-none focus-visible:ring-1 px-1 py-1 whitespace-normal break-words leading-snug"
+                                          defaultValue={item.description}
+                                          onBlur={e => updateItem(dayIdx, itemIdx, { description: e.target.value })}
+                                          placeholder={isAcc ? 'Hotel / alojamento...' : 'Atividade...'}
+                                        />
                                       </td>
-                                      <td className="px-1 py-1">
-                                        <SupplierSearchDropdown value={item.supplier} onChange={v => updateItem(dayIdx, itemIdx, { supplier: v })} />
+                                      <td className="px-1 py-1 align-middle min-w-[110px]">
+                                        <SupplierSearchDropdown
+                                          value={item.supplier}
+                                          onChange={v => updateItem(dayIdx, itemIdx, { supplier: v })}
+                                          className="whitespace-normal break-words h-auto min-h-7 py-1"
+                                        />
                                       </td>
                                       <td className="px-1 py-1">
                                         <Select defaultValue={item.pricingType} onValueChange={v => updateItem(dayIdx, itemIdx, { pricingType: v as any })}>
