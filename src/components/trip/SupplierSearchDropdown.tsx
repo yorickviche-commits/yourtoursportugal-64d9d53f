@@ -77,12 +77,12 @@ export default function SupplierSearchDropdown({ value, onChange, className }: S
         <PopoverTrigger asChild>
           <button
             type="button"
-            className="h-7 w-full flex items-center justify-between text-xs px-1 bg-transparent hover:bg-muted/30 rounded transition-colors truncate text-left"
+            className={cn("w-full flex items-start justify-between text-xs px-1 bg-transparent hover:bg-muted/30 rounded transition-colors text-left gap-1", className)}
           >
-            <span className={value ? 'text-foreground' : 'text-muted-foreground'}>
+            <span className={cn("flex-1 leading-snug", value ? 'text-foreground' : 'text-muted-foreground')}>
               {value || 'Fornecedor...'}
             </span>
-            <ChevronDown className="h-3 w-3 text-muted-foreground shrink-0" />
+            <ChevronDown className="h-3 w-3 text-muted-foreground shrink-0 mt-0.5" />
           </button>
         </PopoverTrigger>
         <PopoverContent
