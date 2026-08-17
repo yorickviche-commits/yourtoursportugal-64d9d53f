@@ -110,7 +110,7 @@ const SupplierAgentPage = () => {
     return flatItems.filter(it => {
       if (!it.supplier) return false;
       const status = opsByKey[it.id]?.booking_status;
-      return !status || status === 'not_requested' || status === 'declined' || status === 'waitlisted';
+      return !status || status === 'neutral' || status === 'not_requested' || status === 'declined' || status === 'waitlisted';
     });
   }, [flatItems, opsByKey]);
 
