@@ -204,9 +204,9 @@ const OperationsTable = ({ costItems, tripId, tripCode, startDate }: OperationsT
 
   // Summary stats
   const totalItems = costItems.length;
-  const confirmedCount = costItems.filter(ci => opsMap[ci.id]?.booking_status === 'confirmed').length;
-  const paidCount = costItems.filter(ci => opsMap[ci.id]?.payment_status === 'paid').length;
-  const invoicedCount = costItems.filter(ci => ['invoice_received', 'invoice_approved', 'invoice_paid'].includes(opsMap[ci.id]?.invoice_status || '')).length;
+  const confirmedCount = costItems.filter(ci => normalizeBookingStatus(opsMap[ci.id]?.booking_status) === 'booked').length;
+  const paidCount = costItems.filter(ci => normalizePaymentStatus(opsMap[ci.id]?.payment_status) === 'paid').length;
+  const invoicedCount = costItems.filter(ci => normalizeInvoiceStatus(opsMap[ci.id]?.invoice_status) === 'received').length;
 
   return (
     <div className="space-y-0">
