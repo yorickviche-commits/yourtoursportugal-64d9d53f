@@ -346,9 +346,9 @@ const LeadOperationsEditor = ({ activeVersion, leadId, leadCode, pvpTotal = 0, s
   }, [rows, dayTitles]);
 
   const totalItems = rows.length;
-  const confirmedCount = rows.filter(r => r.bookingStatus === 'confirmed').length;
+  const confirmedCount = rows.filter(r => r.bookingStatus === 'booked').length;
   const paidCount = rows.filter(r => r.paymentStatus === 'paid').length;
-  const invoicedCount = rows.filter(r => ['invoice_received', 'invoice_approved', 'invoice_paid'].includes(r.invoiceStatus)).length;
+  const invoicedCount = rows.filter(r => r.invoiceStatus === 'received').length;
 
   const toggleDay = (day: number) => {
     setExpandedDays(prev => {
