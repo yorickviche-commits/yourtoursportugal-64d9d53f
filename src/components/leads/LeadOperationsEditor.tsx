@@ -438,7 +438,7 @@ const LeadOperationsEditor = ({ activeVersion, leadId, leadCode, pvpTotal = 0, s
       <div className="border border-t-0 rounded-b-lg overflow-hidden">
         {rowsByDay.map(({ day, title, items: dayItems }) => {
           const expanded = expandedDays.has(day);
-          const dayConfirmed = dayItems.filter(r => r.bookingStatus === 'confirmed').length;
+          const dayConfirmed = dayItems.filter(r => r.bookingStatus === 'booked').length;
           const dayNet = dayItems.reduce((s, r) => s + (r.netValue || 0), 0);
           const dayReal = dayItems.reduce((s, r) => s + (r.realCost ?? 0), 0);
 
