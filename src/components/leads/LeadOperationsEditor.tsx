@@ -414,7 +414,7 @@ const LeadOperationsEditor = ({ activeVersion, leadId, leadCode, pvpTotal = 0, s
         <div className="flex items-center gap-4 text-[10px] ml-auto">
           <div className="flex items-center gap-1.5">
             <span className="h-2 w-2 rounded-full bg-[hsl(var(--success))]" />
-            <span>Confirmados: {confirmedCount}/{totalItems}</span>
+            <span>Reservados: {confirmedCount}/{totalItems}</span>
           </div>
           <div className="flex items-center gap-1.5">
             <span className="h-2 w-2 rounded-full bg-[hsl(var(--info))]" />
