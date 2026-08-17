@@ -28,7 +28,7 @@ const useSuppliersList = () => {
   });
 };
 
-export default function SupplierSearchDropdown({ value, onChange }: SupplierSearchDropdownProps) {
+export default function SupplierSearchDropdown({ value, onChange, className }: SupplierSearchDropdownProps) {
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState('');
   const [addOpen, setAddOpen] = useState(false);
