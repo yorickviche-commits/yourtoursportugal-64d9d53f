@@ -246,9 +246,9 @@ const LeadOperationsEditor = ({ activeVersion, leadId, leadCode, pvpTotal = 0, s
       netValue: 0,
       realCost: null,
       scheduleTime: '',
-      bookingStatus: 'not_requested',
-      paymentStatus: 'not_paid',
-      invoiceStatus: 'no_invoice',
+      bookingStatus: 'neutral',
+      paymentStatus: 'neutral',
+      invoiceStatus: 'not_received',
       invoiceUrl: null,
       invoiceName: null,
     }]);
