@@ -324,9 +324,9 @@ const LeadOperationsEditor = ({ activeVersion, leadId, leadCode, pvpTotal = 0, s
         activity_title: row.activityTitle,
         invoice_file_url: publicUrl,
         invoice_file_name: file.name,
-        invoice_status: 'invoice_received',
+        invoice_status: 'received',
       });
-      updateRow(row.itemKey, { invoiceUrl: publicUrl, invoiceName: file.name, invoiceStatus: 'invoice_received' });
+      updateRow(row.itemKey, { invoiceUrl: publicUrl, invoiceName: file.name, invoiceStatus: 'received' });
       setDirty(false);
       toast({ title: 'Fatura carregada com sucesso' });
     } catch (err: any) {
