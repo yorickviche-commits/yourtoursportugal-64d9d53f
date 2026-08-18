@@ -13,7 +13,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { getProposalAppUrl } from '@/lib/proposalShare';
 import { generateGuidePlanningPdf } from '@/lib/guidePlanningPdf';
-import { BOOKING_OPTIONS, PAYMENT_OPTIONS, type OpsRow } from '@/components/leads/opsConstants';
+import { BOOKING_OPTIONS, PAYMENT_OPTIONS, INVOICE_OPTIONS, type OpsRow } from '@/components/leads/opsConstants';
 
 interface Props {
   open: boolean;
@@ -101,6 +101,7 @@ export default function GuidePlanningDialog({ open, onOpenChange, leadId, leadCo
           pax: r.pax,
           bookingLabel: labelOf(BOOKING_OPTIONS, r.bookingStatus),
           paymentLabel: labelOf(PAYMENT_OPTIONS, r.paymentStatus),
+          invoiceLabel: labelOf(INVOICE_OPTIONS, r.invoiceStatus),
           net: r.netValue,
           real: r.realCost,
         })),
