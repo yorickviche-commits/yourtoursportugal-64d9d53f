@@ -9,6 +9,7 @@ export interface GuidePlanRow {
   pax: number;
   bookingLabel: string;
   paymentLabel: string;
+  invoiceLabel?: string;
   net: number;
   real: number | null;
 }
@@ -45,7 +46,7 @@ export interface GuidePlanOptions {
 
 const NAVY = [10, 37, 64] as const;
 const GREY = [110, 118, 128] as const;
-const M = 14;
+const M = 12;
 
 const eur = (n: number) =>
   new Intl.NumberFormat('pt-PT', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(n || 0);
@@ -63,32 +64,35 @@ function link(doc: jsPDF, label: string, url: string, x: number, y: number, size
 
 export function generateGuidePlanningPdf(opts: GuidePlanOptions) {
   const { general: g, days, guideName, proposalUrl, showValues = false } = opts;
-  const doc = new jsPDF({ unit: 'mm', format: 'a4' });
+  const doc = new jsPDF({ unit: 'mm', format: 'a4', orientation: 'landscape' });
   const pageW = doc.internal.pageSize.getWidth();
+  const contentW = pageW - M * 2;
   let y = M;
 
-  // ── Header band
-  doc.setFillColor(NAVY[0], NAVY[1], NAVY[2]);
-  doc.rect(0, 0, pageW, 26, 'F');
-  doc.setTextColor(255, 255, 255);
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(14);
-  doc.text('PLANNING OPERACIONAL — GUIA', M, 12);
-  doc.setFont('helvetica', 'normal');
-  doc.setFontSize(9);
-  doc.text(
-    `${g.leadCode} · ${g.clientName}${guideName ? ` · Guia: ${guideName}` : ''}`,
-    M,
-    19,
-  );
-  doc.setTextColor(0, 0, 0);
-  y = 34;
+  const header = (subtitle?: string) => {
+    doc.setFillColor(NAVY[0], NAVY[1], NAVY[2]);
+    doc.rect(0, 0, pageW, 22, 'F');
+    doc.setTextColor(255, 255, 255);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(13);
+    doc.text('PLANNING OPERACIONAL — GUIA', M, 10);
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(9);
+    doc.text(
+      `${g.leadCode} · ${g.clientName}${guideName ? ` · Guia: ${guideName}` : ''}${subtitle ? ` · ${subtitle}` : ''}`,
+      M,
+      16.5,
+    );
+    doc.setTextColor(0, 0, 0);
+  };
 
-  // ── Dados gerais
+  // ── Page 1: general info
+  header();
+  y = 30;
+
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(10);
+  doc.setFontSize(11);
   doc.text('Dados Gerais', M, y);
-  y += 2;
 
   const paxLabel = [
     g.pax ? `${g.pax} adultos` : null,
@@ -106,59 +110,80 @@ export function generateGuidePlanningPdf(opts: GuidePlanOptions) {
     ['Pax', paxLabel],
     ['Nível / conforto', g.comfortLevel || '—'],
     ['Contacto cliente', [g.contactPhone, g.contactEmail].filter(Boolean).join(' · ') || '—'],
-    ['Notas', (g.notes || '—').slice(0, 500)],
+    ['Notas', (g.notes || '—').slice(0, 1200)],
   ];
 
   autoTable(doc, {
-    startY: y + 2,
+    startY: y + 4,
     margin: { left: M, right: M },
     theme: 'plain',
-    styles: { fontSize: 8.5, cellPadding: 1.4, textColor: [30, 30, 30] },
+    styles: { fontSize: 9, cellPadding: 1.8, textColor: [30, 30, 30], overflow: 'linebreak' },
     columnStyles: {
-      0: { cellWidth: 38, fontStyle: 'bold', textColor: [GREY[0], GREY[1], GREY[2]] },
-      1: { cellWidth: 'auto' },
+      0: { cellWidth: 44, fontStyle: 'bold', textColor: [GREY[0], GREY[1], GREY[2]] },
+      1: { cellWidth: contentW - 44 },
     },
     body: generalRows,
   });
-  y = (doc as any).lastAutoTable.finalY + 6;
+  y = (doc as any).lastAutoTable.finalY + 8;
+
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(10);
+  doc.text('Links & Anexos', M, y);
+  y += 6;
 
   if (proposalUrl) {
     link(doc, 'Programa comercial / proposta do cliente (abrir)', proposalUrl, M, y, 9);
-    y += 8;
+    y += 6;
+  } else {
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(8.5);
+    doc.setTextColor(GREY[0], GREY[1], GREY[2]);
+    doc.text('Sem programa comercial publicado.', M, y);
+    doc.setTextColor(0, 0, 0);
+    y += 6;
   }
 
-  // ── Days
   days.forEach(d => {
-    if (y > 250) { doc.addPage(); y = M + 4; }
+    if (!d.mapUrl) return;
+    if (y > doc.internal.pageSize.getHeight() - 20) { doc.addPage(); header(); y = 30; }
+    link(doc, `Dia ${d.day} — rota no Google Maps`, d.mapUrl, M, y, 8.5);
+    y += 5.5;
+  });
+
+  // ── One page per day
+  days.forEach(d => {
+    doc.addPage();
+    header(`Dia ${d.day}`);
+    y = 30;
 
     doc.setFillColor(240, 244, 248);
-    doc.rect(M, y - 4.5, pageW - M * 2, 8, 'F');
+    doc.rect(M, y - 5, contentW, 9, 'F');
     doc.setFont('helvetica', 'bold');
-    doc.setFontSize(10);
+    doc.setFontSize(11);
     doc.setTextColor(NAVY[0], NAVY[1], NAVY[2]);
-    doc.text(`DIA ${d.day} — ${d.title || ''}`.slice(0, 95), M + 2, y + 1);
+    doc.text(`DIA ${d.day} — ${d.title || ''}`.slice(0, 130), M + 2, y + 1.4);
     doc.setTextColor(0, 0, 0);
-    y += 8;
+    y += 10;
 
     const parsed = d.mapUrl ? parseGoogleMapsUrl(d.mapUrl) : null;
     if (d.mapUrl) {
       link(doc, 'Ver rota do dia no Google Maps', d.mapUrl, M + 2, y + 1);
-      y += 5;
+      y += 5.5;
       if (parsed?.waypoints?.length) {
         doc.setFont('helvetica', 'normal');
-        doc.setFontSize(7.5);
+        doc.setFontSize(8);
         doc.setTextColor(GREY[0], GREY[1], GREY[2]);
-        const wp = doc.splitTextToSize(`Pontos: ${parsed.waypoints.join(' → ')}`, pageW - M * 2 - 4);
+        const wp = doc.splitTextToSize(`Pontos: ${parsed.waypoints.join(' → ')}`, contentW - 4);
         doc.text(wp, M + 2, y + 1);
-        y += wp.length * 3.2;
+        y += wp.length * 3.4;
         doc.setTextColor(0, 0, 0);
       }
       y += 2;
     }
 
     const head = showValues
-      ? [['Hora', 'Atividade', 'FSE / Fornecedor', 'Pax', 'Reserva', 'Pagamento', 'NET', 'Real']]
-      : [['Hora', 'Atividade', 'FSE / Fornecedor', 'Pax', 'Reserva', 'Pagamento']];
+      ? [['Hora', 'Atividade', 'FSE / Fornecedor', 'Pax', 'Reserva', 'Pagamento', 'Fatura', 'NET', 'Real']]
+      : [['Hora', 'Atividade', 'FSE / Fornecedor', 'Pax', 'Reserva', 'Pagamento', 'Fatura']];
 
     const body = d.rows.map(r => {
       const base = [
@@ -166,30 +191,35 @@ export function generateGuidePlanningPdf(opts: GuidePlanOptions) {
         r.activity || '—',
         r.supplier || '—',
         r.pax ? String(r.pax) : '—',
-        r.bookingLabel,
-        r.paymentLabel,
+        r.bookingLabel || '—',
+        r.paymentLabel || '—',
+        r.invoiceLabel || '—',
       ];
       return showValues ? [...base, eur(r.net), r.real != null ? eur(r.real) : '—'] : base;
     });
+
+    // Column widths tuned for 273 mm of content width
+    const withValues = {
+      0: { cellWidth: 16 }, 1: { cellWidth: 78 }, 2: { cellWidth: 55 },
+      3: { cellWidth: 12, halign: 'center' as const }, 4: { cellWidth: 26 },
+      5: { cellWidth: 32 }, 6: { cellWidth: 28 },
+      7: { cellWidth: 13, halign: 'right' as const }, 8: { cellWidth: 13, halign: 'right' as const },
+    };
+    const noValues = {
+      0: { cellWidth: 18 }, 1: { cellWidth: 96 }, 2: { cellWidth: 63 },
+      3: { cellWidth: 14, halign: 'center' as const }, 4: { cellWidth: 28 },
+      5: { cellWidth: 34 }, 6: { cellWidth: 30 },
+    };
 
     autoTable(doc, {
       startY: y,
       margin: { left: M, right: M },
       head,
       body,
-      styles: { fontSize: 8, cellPadding: 1.6, overflow: 'linebreak', valign: 'middle' },
-      headStyles: { fillColor: [NAVY[0], NAVY[1], NAVY[2]], textColor: 255, fontSize: 7.5 },
+      styles: { fontSize: 9, cellPadding: 2, overflow: 'linebreak', valign: 'middle' },
+      headStyles: { fillColor: [NAVY[0], NAVY[1], NAVY[2]], textColor: 255, fontSize: 8.5 },
       alternateRowStyles: { fillColor: [248, 250, 252] },
-      columnStyles: showValues
-        ? {
-            0: { cellWidth: 14 }, 1: { cellWidth: 55 }, 2: { cellWidth: 32 },
-            3: { cellWidth: 10, halign: 'center' }, 4: { cellWidth: 22 }, 5: { cellWidth: 22 },
-            6: { cellWidth: 16, halign: 'right' }, 7: { cellWidth: 16, halign: 'right' },
-          }
-        : {
-            0: { cellWidth: 16 }, 1: { cellWidth: 74 }, 2: { cellWidth: 40 },
-            3: { cellWidth: 12, halign: 'center' }, 4: { cellWidth: 24 }, 5: { cellWidth: 24 },
-          },
+      columnStyles: showValues ? withValues : noValues,
     });
     y = (doc as any).lastAutoTable.finalY + 7;
   });
@@ -202,8 +232,8 @@ export function generateGuidePlanningPdf(opts: GuidePlanOptions) {
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(7.5);
     doc.setTextColor(GREY[0], GREY[1], GREY[2]);
-    doc.text('Your Tours Portugal — documento operacional interno', M, h - 8);
-    doc.text(`${i} / ${total}`, pageW - M, h - 8, { align: 'right' });
+    doc.text('Your Tours Portugal — documento operacional interno', M, h - 7);
+    doc.text(`${i} / ${total}`, pageW - M, h - 7, { align: 'right' });
     doc.setTextColor(0, 0, 0);
   }
 
