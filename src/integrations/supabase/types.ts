@@ -717,6 +717,7 @@ export type Database = {
         Row: {
           category: string | null
           depth: number
+          district: string | null
           drive_id: string
           id: string
           indexed_at: string
@@ -731,6 +732,7 @@ export type Database = {
         Insert: {
           category?: string | null
           depth?: number
+          district?: string | null
           drive_id: string
           id?: string
           indexed_at?: string
@@ -745,6 +747,7 @@ export type Database = {
         Update: {
           category?: string | null
           depth?: number
+          district?: string | null
           drive_id?: string
           id?: string
           indexed_at?: string
