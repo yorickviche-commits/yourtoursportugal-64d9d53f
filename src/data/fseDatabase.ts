@@ -1,4 +1,11 @@
-// FSE Database mock data — will be replaced by Supabase table `fse_documents`
+// FSE structure helpers.
+// Source of truth for the tree is the Drive index (`fse_drive_index`), which
+// mirrors the folder "Nova pasta comercial claudio yt 2026 2027":
+//   REGIÃO > DISTRITO > CATEGORIA > FORNECEDOR > ficheiros
+// The lists below are only the official baseline (7 regions + districts) used
+// for manual entry and as fallback before the index is synced.
+
+import { supabase } from "@/integrations/supabase/client";
 
 export interface FSEDocument {
   name: string;
@@ -19,136 +26,89 @@ export interface FSEDestination {
   categories: FSECategory[];
 }
 
-const CATEGORY_DEFS = [
-  { id: "mon", label: "0 - Monumentos Nacionais", shortLabel: "Monumentos" },
-  { id: "aloj", label: "1 - Alojamento", shortLabel: "Alojamento" },
-  { id: "anim", label: "2 - Animação Turística", shortLabel: "Anim. Turística" },
-  { id: "guias", label: "3 - Guias Externos", shortLabel: "Guias Externos" },
-  { id: "quintas", label: "4 - Quintas & Caves", shortLabel: "Quintas & Caves" },
-  { id: "rest", label: "5 - Restauração", shortLabel: "Restauração" },
-  { id: "mar", label: "6 - Transp. Marítimos", shortLabel: "Transp. Marítimos" },
-  { id: "terr", label: "7 - Transp. Terrestres", shortLabel: "Transp. Terrestres" },
-] as const;
-
-type CatId = typeof CATEGORY_DEFS[number]["id"];
-
-// Raw seed: { destination: { catId: { count, multi?, docs? } } }
-interface SeedEntry { count: number; multi?: boolean; docs?: FSEDocument[] }
-
-const seed: Record<string, Partial<Record<CatId, SeedEntry>>> = {
-  "Açores": {},
-  "Alentejo": {
-    aloj: { count: 1, docs: [{ name: "Hotel Rural Alentejo", status: "active", docCount: 1 }] },
-    quintas: { count: 1, docs: [{ name: "Herdade do Esporão", status: "active", docCount: 1 }] },
-    rest: { count: 1, docs: [{ name: "Restaurante Fialho", status: "active", docCount: 1 }] },
-  },
-  "Algarve": {
-    anim: { count: 1, docs: [{ name: "AlgarExperience", status: "active", docCount: 1 }] },
-    quintas: { count: 1, docs: [{ name: "Quinta dos Vales", status: "active", docCount: 1 }] },
-    rest: { count: 1, docs: [{ name: "Restaurante Bon Bon", status: "active", docCount: 1 }] },
-    mar: { count: 1, docs: [{ name: "Passeios de Barco Algarve", status: "active", docCount: 1 }] },
-  },
-  "Centro": {
-    anim: { count: 1, docs: [{ name: "Centro Aventura", status: "active", docCount: 1 }] },
-    quintas: { count: 1, docs: [{ name: "Quinta das Lágrimas", status: "active", docCount: 1 }] },
-    rest: { count: 1, docs: [{ name: "Restaurante Pedro dos Leitões", status: "active", docCount: 1 }] },
-    mar: { count: 1, docs: [{ name: "Passeios Rio Mondego", status: "active", docCount: 1 }] },
-  },
-  "Douro": {
-    quintas: { count: 18, docs: Array.from({ length: 18 }, (_, i) => ({
-      name: `Quinta Douro ${i + 1}`,
-      status: "active" as const,
-      docCount: 1,
-    }))},
-    rest: { count: 1, docs: [{ name: "DOC Restaurante", status: "active", docCount: 1 }] },
-    mar: { count: 1, docs: [{ name: "Cruzeiros Douro", status: "active", docCount: 1 }] },
-  },
-  "Lisboa": {
-    anim: { count: 3, multi: true, docs: [
-      { name: "Living Tours (saída Lisboa)", status: "multi-destination", docCount: 1, googleDriveUrl: "#" },
-      { name: "2Feel (saída Lisboa)", status: "multi-destination", docCount: 1, googleDriveUrl: "#" },
-      { name: "LX Tours", status: "active", docCount: 1 },
-    ]},
-    rest: { count: 2, docs: [
-      { name: "Belcanto", status: "active", docCount: 1 },
-      { name: "Time Out Market", status: "active", docCount: 1 },
-    ]},
-    mar: { count: 1, docs: [{ name: "Lisbon by Boat", status: "active", docCount: 1 }] },
-    terr: { count: 2, multi: true, docs: [
-      { name: "Living Tours Transfers (saída Lisboa)", status: "multi-destination", docCount: 1, googleDriveUrl: "#" },
-      { name: "2Feel Transfers (saída Lisboa)", status: "multi-destination", docCount: 1, googleDriveUrl: "#" },
-    ]},
-  },
-  "Madeira": {},
-  "Norte": {
-    anim: { count: 1, docs: [{ name: "Peneda Gerês Tours", status: "active", docCount: 1 }] },
-    quintas: { count: 1, docs: [{ name: "Quinta de Covela", status: "active", docCount: 1 }] },
-    rest: { count: 1, docs: [{ name: "Restaurante DOP", status: "active", docCount: 1 }] },
-    mar: { count: 1, docs: [{ name: "Rio Douro Navegações", status: "active", docCount: 1 }] },
-    terr: { count: 1, docs: [{ name: "Norte Transfer Service", status: "active", docCount: 1 }] },
-  },
-  "Porto": {
-    anim: { count: 2, multi: true, docs: [
-      { name: "Living Tours (saída Porto)", status: "multi-destination", docCount: 1, googleDriveUrl: "#" },
-      { name: "2Feel (saída Porto)", status: "multi-destination", docCount: 1, googleDriveUrl: "#" },
-    ]},
-    guias: { count: 1, docs: [{ name: "Porto Walking Tours", status: "active", docCount: 1 }] },
-    quintas: { count: 9, docs: Array.from({ length: 9 }, (_, i) => ({
-      name: `Quinta Porto ${i + 1}`,
-      status: "active" as const,
-      docCount: 1,
-    }))},
-    rest: { count: 1, docs: [{ name: "Cantinho do Avillez", status: "active", docCount: 1 }] },
-    mar: { count: 1, docs: [{ name: "Cruzeiros Porto", status: "active", docCount: 1 }] },
-    terr: { count: 1, docs: [{ name: "Porto Transfer Service", status: "active", docCount: 1 }] },
-    mon: { count: 2, docs: [
-      { name: "Torre dos Clérigos", status: "active", docCount: 1 },
-      { name: "Palácio da Bolsa", status: "active", docCount: 1 },
-    ]},
-  },
-};
-
-function buildDestination(name: string): FSEDestination {
-  const s = seed[name] || {};
-  const categories: FSECategory[] = CATEGORY_DEFS.map(def => {
-    const entry = s[def.id];
-    return {
-      id: def.id,
-      label: def.label,
-      shortLabel: def.shortLabel,
-      documents: entry?.docs ?? [],
-    };
-  });
-  return { name, categories };
+export interface FSERegion {
+  name: string;
+  districts: string[];
 }
 
-export const FSE_DESTINATIONS: FSEDestination[] = [
-  "Açores", "Alentejo", "Algarve", "Centro", "Douro", "Lisboa", "Madeira", "Norte", "Porto"
-].map(buildDestination);
+/** Category ids are stable internal ids; labels match the Drive folder names. */
+export const CATEGORY_DEFS = [
+  { id: "mon", label: "Monumentos & Museus", shortLabel: "Monumentos" },
+  { id: "aloj", label: "Alojamento", shortLabel: "Alojamento" },
+  { id: "anim", label: "Animação Turística", shortLabel: "Anim. Turística" },
+  { id: "guias", label: "Guias Externos", shortLabel: "Guias" },
+  { id: "quintas", label: "Quintas & Caves", shortLabel: "Quintas & Caves" },
+  { id: "rest", label: "Restauração", shortLabel: "Restauração" },
+  { id: "mar", label: "Barcos", shortLabel: "Barcos" },
+  { id: "terr", label: "Transportadoras", shortLabel: "Transportadoras" },
+] as const;
 
-// Computed stats
-export function getFSEStats() {
+export const FSE_CATEGORIES = CATEGORY_DEFS.map(c => ({ value: c.id, label: c.label }));
+
+/** 7 official regions with their districts (baseline — grows from the Drive index). */
+export const FSE_REGIONS: FSERegion[] = [
+  { name: "Porto e Norte", districts: ["Porto", "Braga", "Viana do Castelo", "Vila Real", "Bragança"] },
+  { name: "Centro", districts: ["Aveiro", "Coimbra", "Viseu", "Guarda", "Castelo Branco", "Leiria"] },
+  { name: "Lisboa", districts: ["Lisboa", "Setúbal", "Santarém"] },
+  { name: "Alentejo", districts: ["Évora", "Beja", "Portalegre"] },
+  { name: "Algarve", districts: ["Faro"] },
+  { name: "Madeira", districts: ["Madeira"] },
+  { name: "Açores", districts: ["Açores"] },
+];
+
+export const FSE_REGION_NAMES = FSE_REGIONS.map(r => r.name);
+
+/** Backwards-compatible destination scaffolding (one entry per region). */
+export const FSE_DESTINATIONS: FSEDestination[] = FSE_REGIONS.map(r => ({
+  name: r.name,
+  categories: CATEGORY_DEFS.map(def => ({ ...def, documents: [] as FSEDocument[] })),
+}));
+
+/**
+ * Reads the live region → district map from the Drive index so the lists grow
+ * automatically as the Drive folder grows. Falls back to FSE_REGIONS.
+ */
+export async function fetchRegionsFromIndex(): Promise<FSERegion[]> {
+  const { data, error } = await supabase
+    .from("fse_drive_index")
+    .select("region,district")
+    .not("region", "is", null);
+
+  if (error || !data?.length) return FSE_REGIONS;
+
+  const map = new Map<string, Set<string>>();
+  FSE_REGIONS.forEach(r => map.set(r.name, new Set(r.districts)));
+  for (const row of data as { region: string | null; district: string | null }[]) {
+    if (!row.region) continue;
+    if (!map.has(row.region)) map.set(row.region, new Set());
+    if (row.district) map.get(row.region)!.add(row.district);
+  }
+
+  const order = new Map(FSE_REGION_NAMES.map((n, i) => [n, i]));
+  return Array.from(map.entries())
+    .sort((a, b) => (order.get(a[0]) ?? 99) - (order.get(b[0]) ?? 99) || a[0].localeCompare(b[0]))
+    .map(([name, districts]) => ({ name, districts: Array.from(districts).sort((x, y) => x.localeCompare(y)) }));
+}
+
+// Computed stats over whatever destination tree is supplied/derived
+export function getFSEStats(destinations: FSEDestination[] = FSE_DESTINATIONS) {
   let totalDocs = 0;
   let filledCats = 0;
   let totalCats = 0;
   let activeDestinations = 0;
   const multiPartners = new Set<string>();
 
-  for (const dest of FSE_DESTINATIONS) {
+  for (const dest of destinations) {
     let destHasDocs = false;
     for (const cat of dest.categories) {
       totalCats++;
-      const docCount = cat.documents.length;
-      totalDocs += docCount;
-      if (docCount > 0) {
+      totalDocs += cat.documents.reduce((sum, doc) => sum + (doc.docCount || 1), 0);
+      if (cat.documents.length > 0) {
         filledCats++;
         destHasDocs = true;
       }
       for (const doc of cat.documents) {
-        if (doc.status === "multi-destination") {
-          const base = doc.name.replace(/\s*\(saída.*\)/, "").replace(/\s*Transfers/, "");
-          multiPartners.add(base);
-        }
+        if (doc.status === "multi-destination") multiPartners.add(doc.name);
       }
     }
     if (destHasDocs) activeDestinations++;
@@ -159,7 +119,7 @@ export function getFSEStats() {
     filledCats,
     totalCats,
     activeDestinations,
-    totalDestinations: FSE_DESTINATIONS.length,
+    totalDestinations: destinations.length,
     multiPartnerCount: multiPartners.size,
   };
 }
