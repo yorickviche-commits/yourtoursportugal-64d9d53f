@@ -6,7 +6,10 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
-const ROOT_FSE_FOLDER = "1HAjGSOKdgPQU3F3QPK6945OyeZMCJORN"; // "2 - FSE's"
+// "Nova pasta comercial claudio yt 2026 2027"
+// Structure: REGIÃO > DISTRITO > CATEGORIA > FORNECEDOR > ficheiros
+const ROOT_FSE_FOLDER = "1qHOJ1-przDPoSHyYTJ3ZsvzbUBhpG8fK";
+const MAX_DEPTH = 6;
 
 interface DriveFile {
   id: string;
@@ -20,6 +23,8 @@ async function listFolder(folderId: string): Promise<DriveFile[]> {
   url.searchParams.set("q", `'${folderId}' in parents and trashed=false`);
   url.searchParams.set("fields", "files(id,name,mimeType,webViewLink)");
   url.searchParams.set("pageSize", "500");
+  url.searchParams.set("supportsAllDrives", "true");
+  url.searchParams.set("includeItemsFromAllDrives", "true");
   const r = await fetch(url, {
     headers: {
       Authorization: `Bearer ${Deno.env.get("LOVABLE_API_KEY")}`,
@@ -33,6 +38,22 @@ async function listFolder(folderId: string): Promise<DriveFile[]> {
 
 const FOLDER_MIME = "application/vnd.google-apps.folder";
 
+/** "1. PORTO E NORTE" → "Porto e Norte"; "1.1 Porto" → "Porto"; "5 - Restauração" → "Restauração" */
+function cleanName(raw: string): string {
+  const stripped = raw.replace(/^\s*\d+(\.\d+)*\s*[.\-–)]?\s*/, "").trim() || raw.trim();
+  const letters = stripped.replace(/[^A-Za-zÀ-ÿ]/g, "");
+  const isAllCaps = letters.length > 2 && letters === letters.toUpperCase();
+  if (!isAllCaps) return stripped;
+  const small = new Set(["e", "de", "da", "do", "das", "dos", "&", "a", "o"]);
+  return stripped
+    .toLowerCase()
+    .split(/\s+/)
+    .map((w, i) => (i > 0 && small.has(w) ? w : w.charAt(0).toUpperCase() + w.slice(1)))
+    .join(" ");
+}
+
+const stripExt = (name: string) => name.replace(/\.(xlsx|xls|pdf|docx|doc|pptx|csv|txt)$/i, "");
+
 interface Node {
   drive_id: string;
   parent_drive_id: string | null;
@@ -40,34 +61,45 @@ interface Node {
   mime_type: string;
   category: string | null;
   region: string | null;
+  district: string | null;
   supplier_name: string | null;
   path: string;
   web_view_link: string | null;
   depth: number;
 }
 
+/**
+ * depth 0 = Região, depth 1 = Distrito, depth 2 = Categoria,
+ * depth >= 3 = Fornecedor (pasta) e respetivos ficheiros.
+ */
 async function walk(
   folderId: string,
   parentId: string | null,
   depth: number,
   pathParts: string[],
-  category: string | null,
   region: string | null,
+  district: string | null,
+  category: string | null,
+  supplier: string | null,
   out: Node[],
 ) {
   let children: DriveFile[];
   try { children = await listFolder(folderId); } catch (e) { console.warn("skip", folderId, e); return; }
+
   for (const f of children) {
     const isFolder = f.mimeType === FOLDER_MIME;
     const newPath = [...pathParts, f.name];
-    // Category at depth 0 (children of root)
-    const nextCategory = depth === 0 && isFolder ? f.name : category;
-    // Region at depth 1 (children of category) — only if folder
-    const nextRegion = depth === 1 && isFolder ? f.name : region;
-    // Supplier name: leaf folder (depth >=2) OR file with parent region/category
-    let supplier: string | null = null;
-    if (isFolder && depth >= 2) supplier = f.name;
-    else if (!isFolder && depth >= 1) supplier = f.name.replace(/\.(xlsx|pdf|docx|pptx)$/i, "");
+    const clean = cleanName(f.name);
+
+    const nextRegion = depth === 0 && isFolder ? clean : region;
+    const nextDistrict = depth === 1 && isFolder ? clean : district;
+    const nextCategory = depth === 2 && isFolder ? clean : category;
+
+    let nextSupplier = supplier;
+    if (isFolder && depth >= 3) nextSupplier = supplier ?? clean;
+    const nodeSupplier = isFolder
+      ? nextSupplier
+      : (supplier ?? (depth >= 3 ? stripExt(f.name) : null));
 
     out.push({
       drive_id: f.id,
@@ -76,15 +108,15 @@ async function walk(
       mime_type: f.mimeType,
       category: nextCategory,
       region: nextRegion,
-      supplier_name: supplier,
+      district: nextDistrict,
+      supplier_name: nodeSupplier,
       path: newPath.join(" / "),
       web_view_link: f.webViewLink || null,
       depth,
     });
 
-    // Recurse into folders, max depth 4 to avoid runaway
-    if (isFolder && depth < 4) {
-      await walk(f.id, f.id, depth + 1, newPath, nextCategory, nextRegion, out);
+    if (isFolder && depth < MAX_DEPTH) {
+      await walk(f.id, f.id, depth + 1, newPath, nextRegion, nextDistrict, nextCategory, nextSupplier, out);
     }
   }
 }
@@ -96,7 +128,7 @@ serve(async (req) => {
 
   try {
     const out: Node[] = [];
-    await walk(ROOT_FSE_FOLDER, null, 0, [], null, null, out);
+    await walk(ROOT_FSE_FOLDER, null, 0, [], null, null, null, null, out);
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -107,7 +139,6 @@ serve(async (req) => {
       headers: { apikey: serviceKey, Authorization: `Bearer ${serviceKey}` },
     });
 
-    // Chunk inserts
     const CHUNK = 200;
     for (let i = 0; i < out.length; i += CHUNK) {
       const chunk = out.slice(i, i + CHUNK);
@@ -125,7 +156,13 @@ serve(async (req) => {
     }
 
     return new Response(
-      JSON.stringify({ ok: true, total: out.length, categories: [...new Set(out.filter(n => n.depth === 0).map(n => n.name))] }),
+      JSON.stringify({
+        ok: true,
+        total: out.length,
+        regions: [...new Set(out.filter(n => n.depth === 0).map(n => n.region).filter(Boolean))],
+        districts: [...new Set(out.map(n => n.district).filter(Boolean))].length,
+        categories: [...new Set(out.map(n => n.category).filter(Boolean))].length,
+      }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
   } catch (e) {
