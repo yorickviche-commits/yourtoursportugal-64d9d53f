@@ -80,6 +80,15 @@ export default function FSECreateModal({ open, onOpenChange, prefillDestination,
   });
   const [editingSvcIdx, setEditingSvcIdx] = useState<number | null>(null);
   const [dragOver, setDragOver] = useState(false);
+  const [regions, setRegions] = useState<FSERegion[]>(FSE_REGIONS);
+  const [activeRegion, setActiveRegion] = useState<string | null>(prefillDestination ?? null);
+
+  useEffect(() => {
+    fetchRegionsFromIndex().then(setRegions).catch(() => setRegions(FSE_REGIONS));
+  }, []);
+
+  const activeDistricts = regions.find(r => r.name === activeRegion)?.districts ?? [];
+
 
   const reset = useCallback(() => {
     setStep('input');
