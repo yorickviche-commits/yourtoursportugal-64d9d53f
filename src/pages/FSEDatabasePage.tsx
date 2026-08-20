@@ -24,7 +24,9 @@ type DriveNode = {
   mime_type: string;
   category: string | null;
   region: string | null;
+  district?: string | null;
   supplier_name: string | null;
+
   path: string | null;
   web_view_link: string | null;
   depth: number;
