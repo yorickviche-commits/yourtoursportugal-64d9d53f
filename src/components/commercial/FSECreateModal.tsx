@@ -18,20 +18,8 @@ import {
 } from 'lucide-react';
 
 // ─── Constants ───
-const FSE_CATEGORIES = [
-  { value: 'mon', label: '0 - Monumentos Nacionais' },
-  { value: 'aloj', label: '1 - Alojamento' },
-  { value: 'anim', label: '2 - Animação Turística' },
-  { value: 'guias', label: '3 - Guias Externos' },
-  { value: 'quintas', label: '4 - Quintas & Caves' },
-  { value: 'rest', label: '5 - Restauração' },
-  { value: 'mar', label: '6 - Transp. Marítimos' },
-  { value: 'terr', label: '7 - Transp. Terrestres' },
-];
+import { FSE_CATEGORIES, FSE_REGIONS, fetchRegionsFromIndex, type FSERegion } from '@/data/fseDatabase';
 
-const FSE_DESTINATIONS = [
-  'Açores', 'Alentejo', 'Algarve', 'Centro', 'Douro', 'Lisboa', 'Madeira', 'Norte', 'Porto',
-];
 
 const SUB_CATEGORIES: Record<string, string[]> = {
   aloj: ['5★', '4★', '3★', 'Villas', 'Apartments', 'Rural', 'Boutique'],
