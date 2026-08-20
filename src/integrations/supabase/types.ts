@@ -1156,6 +1156,7 @@ export type Database = {
           budget_level: string | null
           client_name: string
           client_type: string
+          close_date: string | null
           comfort_level: string | null
           created_at: string
           created_by: string | null
@@ -1166,6 +1167,10 @@ export type Database = {
           id: string
           lead_code: string
           magic_question: string | null
+          nethunt_record_id: string | null
+          nethunt_stage: string | null
+          nethunt_synced_at: string | null
+          nethunt_updated_at: string | null
           notes: string | null
           number_of_days: number | null
           pax: number | null
@@ -1180,6 +1185,8 @@ export type Database = {
           travel_dates: string | null
           travel_end_date: string | null
           travel_style: Json | null
+          trip_finish: string | null
+          trip_start: string | null
           updated_at: string
           yt_id: string | null
         }
@@ -1189,6 +1196,7 @@ export type Database = {
           budget_level?: string | null
           client_name?: string
           client_type?: string
+          close_date?: string | null
           comfort_level?: string | null
           created_at?: string
           created_by?: string | null
@@ -1199,6 +1207,10 @@ export type Database = {
           id?: string
           lead_code: string
           magic_question?: string | null
+          nethunt_record_id?: string | null
+          nethunt_stage?: string | null
+          nethunt_synced_at?: string | null
+          nethunt_updated_at?: string | null
           notes?: string | null
           number_of_days?: number | null
           pax?: number | null
@@ -1213,6 +1225,8 @@ export type Database = {
           travel_dates?: string | null
           travel_end_date?: string | null
           travel_style?: Json | null
+          trip_finish?: string | null
+          trip_start?: string | null
           updated_at?: string
           yt_id?: string | null
         }
@@ -1222,6 +1236,7 @@ export type Database = {
           budget_level?: string | null
           client_name?: string
           client_type?: string
+          close_date?: string | null
           comfort_level?: string | null
           created_at?: string
           created_by?: string | null
@@ -1232,6 +1247,10 @@ export type Database = {
           id?: string
           lead_code?: string
           magic_question?: string | null
+          nethunt_record_id?: string | null
+          nethunt_stage?: string | null
+          nethunt_synced_at?: string | null
+          nethunt_updated_at?: string | null
           notes?: string | null
           number_of_days?: number | null
           pax?: number | null
@@ -1246,6 +1265,8 @@ export type Database = {
           travel_dates?: string | null
           travel_end_date?: string | null
           travel_style?: Json | null
+          trip_finish?: string | null
+          trip_start?: string | null
           updated_at?: string
           yt_id?: string | null
         }
@@ -1492,6 +1513,119 @@ export type Database = {
           started_at?: string
         }
         Relationships: []
+      }
+      nethunt_sync_log: {
+        Row: {
+          action: string | null
+          created_at: string
+          detail: Json | null
+          direction: string
+          entity: string
+          entity_id: string | null
+          id: string
+          nethunt_record_id: string | null
+          status: string
+        }
+        Insert: {
+          action?: string | null
+          created_at?: string
+          detail?: Json | null
+          direction: string
+          entity: string
+          entity_id?: string | null
+          id?: string
+          nethunt_record_id?: string | null
+          status?: string
+        }
+        Update: {
+          action?: string | null
+          created_at?: string
+          detail?: Json | null
+          direction?: string
+          entity?: string
+          entity_id?: string | null
+          id?: string
+          nethunt_record_id?: string | null
+          status?: string
+        }
+        Relationships: []
+      }
+      nethunt_sync_state: {
+        Row: {
+          key: string
+          updated_at: string
+          value: Json
+        }
+        Insert: {
+          key: string
+          updated_at?: string
+          value?: Json
+        }
+        Update: {
+          key?: string
+          updated_at?: string
+          value?: Json
+        }
+        Relationships: []
+      }
+      nethunt_timeline: {
+        Row: {
+          body_html: string | null
+          creator_email: string | null
+          creator_name: string | null
+          event_id: string
+          event_time: string
+          event_type: string
+          id: string
+          lead_id: string | null
+          nethunt_record_id: string
+          payload: Json | null
+          pinned: boolean | null
+          snippet: string | null
+          subject: string | null
+          synced_at: string
+        }
+        Insert: {
+          body_html?: string | null
+          creator_email?: string | null
+          creator_name?: string | null
+          event_id: string
+          event_time: string
+          event_type: string
+          id?: string
+          lead_id?: string | null
+          nethunt_record_id: string
+          payload?: Json | null
+          pinned?: boolean | null
+          snippet?: string | null
+          subject?: string | null
+          synced_at?: string
+        }
+        Update: {
+          body_html?: string | null
+          creator_email?: string | null
+          creator_name?: string | null
+          event_id?: string
+          event_time?: string
+          event_type?: string
+          id?: string
+          lead_id?: string | null
+          nethunt_record_id?: string
+          payload?: Json | null
+          pinned?: boolean | null
+          snippet?: string | null
+          subject?: string | null
+          synced_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "nethunt_timeline_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       partner_files: {
         Row: {
@@ -2756,14 +2890,23 @@ export type Database = {
       }
       tasks: {
         Row: {
+          all_day: boolean
           assigned_to: string | null
+          assignee_emails: string[] | null
           category: string | null
+          completed: boolean
           created_at: string
           created_by: string | null
+          creator_email: string | null
           description: string | null
+          due_at: string | null
           due_date: string | null
           id: string
           lead_id: string | null
+          nethunt_record_id: string | null
+          nethunt_record_links: Json | null
+          nethunt_synced_at: string | null
+          nethunt_updated_at: string | null
           priority: string | null
           status: string
           team: string | null
@@ -2772,14 +2915,23 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          all_day?: boolean
           assigned_to?: string | null
+          assignee_emails?: string[] | null
           category?: string | null
+          completed?: boolean
           created_at?: string
           created_by?: string | null
+          creator_email?: string | null
           description?: string | null
+          due_at?: string | null
           due_date?: string | null
           id?: string
           lead_id?: string | null
+          nethunt_record_id?: string | null
+          nethunt_record_links?: Json | null
+          nethunt_synced_at?: string | null
+          nethunt_updated_at?: string | null
           priority?: string | null
           status?: string
           team?: string | null
@@ -2788,14 +2940,23 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          all_day?: boolean
           assigned_to?: string | null
+          assignee_emails?: string[] | null
           category?: string | null
+          completed?: boolean
           created_at?: string
           created_by?: string | null
+          creator_email?: string | null
           description?: string | null
+          due_at?: string | null
           due_date?: string | null
           id?: string
           lead_id?: string | null
+          nethunt_record_id?: string | null
+          nethunt_record_links?: Json | null
+          nethunt_synced_at?: string | null
+          nethunt_updated_at?: string | null
           priority?: string | null
           status?: string
           team?: string | null
