@@ -411,7 +411,7 @@ const FSEDatabasePage = () => {
   useEffect(() => {
     supabase
       .from("fse_drive_index")
-      .select("drive_id,parent_drive_id,name,mime_type,category,region,supplier_name,path,web_view_link,depth")
+      .select("drive_id,parent_drive_id,name,mime_type,category,region,district,supplier_name,path,web_view_link,depth")
       .order("path")
       .then(({ data, error }) => {
         if (!error && data) setDriveNodes(data as DriveNode[]);
@@ -421,20 +421,13 @@ const FSEDatabasePage = () => {
   const liveDestinations = useMemo<FSEDestination[]>(() => {
     if (!driveNodes.length) return FSE_DESTINATIONS;
     const categoryLabels = FSE_DESTINATIONS[0]?.categories ?? [];
-    const byId = new Map(driveNodes.map((n) => [n.drive_id, n]));
+    // Region > Category > Supplier (districts are rolled up into the region)
     const grouped = new Map<string, Map<string, Map<string, number>>>();
     for (const file of driveNodes.filter((n) => n.mime_type !== FOLDER_MIME)) {
-      const pathParts = (file.path || "").split(" / ");
-      const destination = inferRegion(pathParts.length >= 3 ? pathParts[1] : file.region);
+      const destination = file.region || inferRegion((file.path || "").split(" / ")[0]);
       const category = file.category || "Sem categoria";
-      const parent = file.parent_drive_id ? byId.get(file.parent_drive_id) : null;
-      const supplier = pathParts.length >= 4
-        ? pathParts[pathParts.length - 2]
-        : pathParts.length === 3
-        ? pathParts[1]
-        : parent?.mime_type === FOLDER_MIME && parent.depth >= 2
-        ? parent.name
-        : file.supplier_name || file.name.replace(/\.(xlsx|pdf|docx|pptx|xls|doc)$/i, "");
+      const supplier =
+        file.supplier_name || file.name.replace(/\.(xlsx|pdf|docx|pptx|xls|doc)$/i, "");
       grouped.set(destination, grouped.get(destination) ?? new Map());
       const cats = grouped.get(destination)!;
       cats.set(category, cats.get(category) ?? new Map());
@@ -456,6 +449,7 @@ const FSEDatabasePage = () => {
       }),
     }));
   }, [driveNodes]);
+
 
   const openModal = (dest?: string, cat?: string) => {
     setPrefillDest(dest);
