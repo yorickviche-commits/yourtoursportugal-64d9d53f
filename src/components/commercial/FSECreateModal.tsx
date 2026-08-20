@@ -403,27 +403,57 @@ function ReviewForm({
             )}
           </div>
 
-          {/* Destinations */}
+          {/* Destinations: Região → Distrito */}
           <div className="space-y-1.5">
             <Label className="text-[10px] text-muted-foreground flex items-center gap-1">
-              <MapPin className="h-3 w-3" /> Destinos (ponto de saída)
+              <MapPin className="h-3 w-3" /> Destinos — Região (e distrito opcional)
               {form.multi_destination && <Badge className="h-4 px-1 text-[9px] bg-amber-100 text-amber-700 border-amber-300">Multi-Destino</Badge>}
             </Label>
             <div className="flex flex-wrap gap-1.5">
-              {FSE_DESTINATIONS.map(d => (
-                <button key={d}
-                  onClick={() => toggleDestination(d)}
+              {regions.map(r => (
+                <button key={r.name}
+                  onClick={() => { setActiveRegion(r.name); toggleDestination(r.name); }}
                   className={`px-2.5 py-1 rounded-md text-xs font-medium border transition-colors ${
-                    form.destinations.includes(d)
+                    form.destinations.includes(r.name)
                       ? 'bg-primary text-primary-foreground border-primary'
                       : 'bg-muted/50 text-muted-foreground border-border hover:border-primary/50'
                   }`}
                 >
-                  {d}
+                  {r.name}
                 </button>
               ))}
             </div>
+            {activeDistricts.length > 0 && (
+              <div className="pl-2 border-l-2 border-muted space-y-1">
+                <p className="text-[10px] text-muted-foreground">Distritos de {activeRegion}</p>
+                <div className="flex flex-wrap gap-1.5">
+                  {activeDistricts.map(d => {
+                    const key = `${activeRegion} / ${d}`;
+                    return (
+                      <button key={key}
+                        onClick={() => toggleDestination(key)}
+                        className={`px-2 py-0.5 rounded text-[11px] border transition-colors ${
+                          form.destinations.includes(key)
+                            ? 'bg-primary/15 text-primary border-primary/40'
+                            : 'bg-muted/40 text-muted-foreground border-border hover:border-primary/40'
+                        }`}
+                      >
+                        {d}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+            {form.destinations.length > 0 && (
+              <div className="flex flex-wrap gap-1 pt-1">
+                {form.destinations.map(d => (
+                  <Badge key={d} variant="outline" className="h-4 px-1.5 text-[9px]">{d}</Badge>
+                ))}
+              </div>
+            )}
           </div>
+
 
           {/* Contact */}
           <div className="grid grid-cols-3 gap-2">
