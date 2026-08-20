@@ -369,7 +369,17 @@ function ReviewForm({
   showSubCats: string[] | false | undefined;
   onBack?: () => void; onSave: () => void;
 }) {
+  const [regions, setRegions] = useState<FSERegion[]>(FSE_REGIONS);
+  const [activeRegion, setActiveRegion] = useState<string | null>(
+    form.destinations[0]?.split(' / ')[0] ?? null,
+  );
+  useEffect(() => {
+    fetchRegionsFromIndex().then(setRegions).catch(() => setRegions(FSE_REGIONS));
+  }, []);
+  const activeDistricts = regions.find(r => r.name === activeRegion)?.districts ?? [];
+
   return (
+
     <div className="space-y-4">
       {/* Missing fields warning */}
       {form.missing_fields.length > 0 && (
