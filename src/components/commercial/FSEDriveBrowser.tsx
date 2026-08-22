@@ -156,6 +156,8 @@ export const FSEDriveBrowser = ({
   }, [nodes, regionFilter, districtFilter]);
 
   // Build grouped tree: Region -> District -> Category -> Supplier -> Files
+  // Folders are included so the tree mirrors the Drive structure even when a
+  // category/supplier folder has no files yet.
   const tree = useMemo<RegionMap>(() => {
     const tokens = normalizeText(search).split(" ").filter(Boolean);
     const matches = (n: DriveNode) => {
@@ -166,16 +168,35 @@ export const FSEDriveBrowser = ({
       return tokens.every((t) => haystack.includes(t));
     };
 
-    const files = nodes.filter(
-      (n) =>
-        n.mime_type !== FOLDER_MIME &&
-        (!categoryFilter || n.category === categoryFilter) &&
-        (!regionFilter || getRegion(n) === regionFilter) &&
-        (!districtFilter || n.district === districtFilter) &&
-        matches(n),
-    );
+    const passesFilters = (n: DriveNode) =>
+      (!regionFilter || getRegion(n) === regionFilter) &&
+      (!districtFilter || n.district === districtFilter) &&
+      (!categoryFilter || n.category === categoryFilter);
 
     const out: RegionMap = {};
+
+    // Skeleton from folders (only when not searching, to keep results tight)
+    if (!tokens.length) {
+      for (const n of nodes) {
+        if (n.mime_type !== FOLDER_MIME || !passesFilters(n)) continue;
+        if (!n.region) continue;
+        out[n.region] ??= {};
+        if (n.depth === 0) continue;
+        if (!n.district) continue;
+        out[n.region][n.district] ??= {};
+        if (n.depth === 1) continue;
+        if (!n.category) continue;
+        out[n.region][n.district][n.category] ??= {};
+        if (n.depth === 2) continue;
+        const sup = getSupplier(n);
+        out[n.region][n.district][n.category][sup] ??= [];
+      }
+    }
+
+    const files = nodes.filter(
+      (n) => n.mime_type !== FOLDER_MIME && passesFilters(n) && matches(n),
+    );
+
     for (const f of files) {
       const reg = getRegion(f);
       const dist = getDistrict(f);
@@ -189,6 +210,7 @@ export const FSEDriveBrowser = ({
     }
     return out;
   }, [nodes, search, categoryFilter, regionFilter, districtFilter]);
+
 
   const toggle = (key: string) => {
     setExpanded((s) => {
