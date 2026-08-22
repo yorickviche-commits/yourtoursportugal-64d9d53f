@@ -11,7 +11,7 @@ import {
   FolderTree,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { FSE_DESTINATIONS, getFSEStats, type FSEDestination, type FSECategory, type FSEDocument } from "@/data/fseDatabase";
+import { CATEGORY_DEFS, FSE_REGION_NAMES } from "@/data/fseDatabase";
 import FSECreateModal from "@/components/commercial/FSECreateModal";
 import FSEDriveBrowser from "@/components/commercial/FSEDriveBrowser";
 import { supabase } from "@/integrations/supabase/client";
@@ -19,35 +19,87 @@ import { toast } from "sonner";
 
 type DriveNode = {
   drive_id: string;
-  parent_drive_id: string | null;
   name: string;
   mime_type: string;
   category: string | null;
   region: string | null;
+  district: string | null;
   supplier_name: string | null;
   path: string | null;
-  web_view_link: string | null;
   depth: number;
 };
 
 const FOLDER_MIME = "application/vnd.google-apps.folder";
 
-const normalizeText = (value: string) =>
-  value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]+/gi, " ").trim().toLowerCase();
+const stripExt = (v: string) => v.replace(/\.(xlsx|pdf|docx|pptx|xls|doc)$/i, "");
 
-const inferRegion = (value: string | null | undefined) => {
-  const text = normalizeText(value || "");
-  if (text.includes("lisboa") || text.includes("ribatejo")) return "Lisboa & Ribatejo";
-  if (text.includes("porto") || text.includes("douro litoral")) return "Porto e Norte";
-  if (text.includes("douro") || text.includes("tras os montes")) return "Douro & Trás-os-Montes";
-  if (text.includes("alentejo")) return "Alentejo";
-  if (text.includes("algarve")) return "Algarve";
-  if (text.includes("centro") || text.includes("oeste") || text.includes("fatima")) return "Centro";
-  if (text.includes("minho") || text.includes("norte")) return "Porto e Norte";
-  if (text.includes("madeira")) return "Madeira";
-  if (text.includes("acores")) return "Açores";
-  return value || "Geral";
+/** Mirrors the Drive: REGIÃO > DISTRITO > CATEGORIA > FORNECEDOR */
+interface CatNode { name: string; suppliers: { name: string; docCount: number }[] }
+interface DistrictNode { name: string; categories: CatNode[] }
+interface RegionNode { name: string; districts: DistrictNode[] }
+
+const regionOrder = (name: string) => {
+  const i = FSE_REGION_NAMES.indexOf(name);
+  return i === -1 ? 99 : i;
 };
+
+const buildTree = (nodes: DriveNode[]): RegionNode[] => {
+  const regions = new Map<string, Map<string, Map<string, Map<string, number>>>>();
+  const ensure = (region: string, district?: string | null, category?: string | null, supplier?: string | null) => {
+    if (!regions.has(region)) regions.set(region, new Map());
+    const dists = regions.get(region)!;
+    if (!district) return;
+    if (!dists.has(district)) dists.set(district, new Map());
+    const cats = dists.get(district)!;
+    if (!category) return;
+    if (!cats.has(category)) cats.set(category, new Map());
+    const sups = cats.get(category)!;
+    if (!supplier) return;
+    sups.set(supplier, sups.get(supplier) ?? 0);
+  };
+
+  // Folder skeleton (keeps empty categories visible, like in the Drive)
+  for (const n of nodes) {
+    if (n.mime_type !== FOLDER_MIME || !n.region) continue;
+    if (n.depth === 0) ensure(n.region);
+    else if (n.depth === 1) ensure(n.region, n.district);
+    else if (n.depth === 2) ensure(n.region, n.district, n.category);
+    else ensure(n.region, n.district, n.category, n.supplier_name || stripExt(n.name));
+  }
+
+  // Files bump supplier counters
+  for (const f of nodes) {
+    if (f.mime_type === FOLDER_MIME || !f.region) continue;
+    const district = f.district || "— Sem distrito";
+    const category = f.category || "— Sem categoria";
+    const supplier = f.supplier_name || stripExt(f.name);
+    ensure(f.region, district, category, supplier);
+    regions.get(f.region)!.get(district)!.get(category)!
+      .set(supplier, (regions.get(f.region)!.get(district)!.get(category)!.get(supplier) ?? 0) + 1);
+  }
+
+  return Array.from(regions.entries())
+    .sort(([a], [b]) => regionOrder(a) - regionOrder(b) || a.localeCompare(b))
+    .map(([name, dists]) => ({
+      name,
+      districts: Array.from(dists.entries())
+        .sort(([a], [b]) => a.localeCompare(b))
+        .map(([dName, cats]) => ({
+          name: dName,
+          categories: Array.from(cats.entries())
+            .sort(([a], [b]) => a.localeCompare(b))
+            .map(([cName, sups]) => ({
+              name: cName,
+              suppliers: Array.from(sups.entries())
+                .sort(([a], [b]) => a.localeCompare(b))
+                .map(([sName, docCount]) => ({ name: sName, docCount })),
+            })),
+        })),
+    }));
+};
+
+const countFiles = (r: RegionNode) =>
+  r.districts.reduce((s, d) => s + d.categories.reduce((s2, c) => s2 + c.suppliers.reduce((s3, sp) => s3 + sp.docCount, 0), 0), 0);
 
 const SyncDriveButton = () => {
   const [loading, setLoading] = useState(false);
@@ -71,34 +123,33 @@ const SyncDriveButton = () => {
   );
 };
 
-
 // ─── Stats Header ───
-const StatsHeader = ({ destinations = FSE_DESTINATIONS }: { destinations?: FSEDestination[] }) => {
-  const stats = destinations === FSE_DESTINATIONS ? getFSEStats() : (() => {
-    let totalDocs = 0;
-    let filledCats = 0;
-    let totalCats = 0;
-    let activeDestinations = 0;
-    const multiPartnerCount = 0;
-    for (const dest of destinations) {
+const StatsHeader = ({ tree }: { tree: RegionNode[] }) => {
+  const stats = useMemo(() => {
+    let totalDocs = 0, filledCats = 0, totalCats = 0, activeRegions = 0, districts = 0;
+    const suppliers = new Set<string>();
+    for (const r of tree) {
       let hasDocs = false;
-      for (const cat of dest.categories) {
-        totalCats++;
-        totalDocs += cat.documents.reduce((sum, doc) => sum + doc.docCount, 0);
-        if (cat.documents.length) {
-          filledCats++;
-          hasDocs = true;
+      districts += r.districts.length;
+      for (const d of r.districts) {
+        for (const c of d.categories) {
+          totalCats++;
+          const docs = c.suppliers.reduce((s, sp) => s + sp.docCount, 0);
+          totalDocs += docs;
+          if (docs > 0) { filledCats++; hasDocs = true; }
+          c.suppliers.forEach(sp => suppliers.add(sp.name));
         }
       }
-      if (hasDocs) activeDestinations++;
+      if (hasDocs) activeRegions++;
     }
-    return { totalDocs, filledCats, totalCats, activeDestinations, totalDestinations: destinations.length, multiPartnerCount };
-  })();
+    return { totalDocs, filledCats, totalCats, activeRegions, totalRegions: tree.length, districts, suppliers: suppliers.size };
+  }, [tree]);
+
   const metrics = [
     { label: "Total Documentos", value: stats.totalDocs, icon: FileText },
-    { label: "Categorias Preenchidas", value: `${stats.filledCats}/${stats.totalCats}`, icon: FolderOpen },
-    { label: "Destinos Ativos", value: `${stats.activeDestinations}/${stats.totalDestinations}`, icon: Globe2 },
-    { label: "Parceiros Multi-Destino", value: stats.multiPartnerCount, icon: Users2 },
+    { label: "Categorias c/ docs", value: `${stats.filledCats}/${stats.totalCats}`, icon: FolderOpen },
+    { label: "Destinos / Distritos", value: `${stats.totalRegions} / ${stats.districts}`, icon: Globe2 },
+    { label: "Fornecedores", value: stats.suppliers, icon: Users2 },
   ];
   return (
     <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
@@ -119,153 +170,133 @@ const StatsHeader = ({ destinations = FSE_DESTINATIONS }: { destinations?: FSEDe
   );
 };
 
-// ─── Status Dot ───
-const StatusDot = ({ status }: { status: "active" | "empty" | "multi-destination" }) => {
-  const colors: Record<string, string> = {
-    active: "bg-emerald-500",
-    empty: "bg-red-400",
-    "multi-destination": "bg-amber-500",
-  };
-  return <span className={cn("inline-block h-2.5 w-2.5 rounded-full shrink-0", colors[status] || "bg-muted")} />;
-};
+const StatusDot = ({ active }: { active: boolean }) => (
+  <span className={cn("inline-block h-2.5 w-2.5 rounded-full shrink-0", active ? "bg-emerald-500" : "bg-red-400")} />
+);
 
-// ─── Document Chip ───
-const DocChip = ({ doc, onBrowse }: { doc: FSEDocument; onBrowse?: (search: string) => void }) => {
-  const base = doc.status === "active"
-    ? "bg-emerald-500/10 text-emerald-700 border-emerald-500/20 hover:bg-emerald-500/20"
-    : doc.status === "multi-destination"
-    ? "bg-amber-500/10 text-amber-700 border-amber-500/20 hover:bg-amber-500/20"
-    : "bg-red-400/10 text-red-500 border-red-400/20 hover:bg-red-400/20";
-
-  return (
-    <button
-      type="button"
-      onClick={(e) => { e.stopPropagation(); onBrowse?.(doc.name); }}
-      className={cn("inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium border transition-colors cursor-pointer", base)}
-      title="Ver ficheiros no Drive"
-    >
-      <StatusDot status={doc.status} />
-      {doc.name}
-      {doc.status === "multi-destination" && (
-        <Badge variant="outline" className="h-4 px-1 text-[9px] font-bold border-amber-500/30 text-amber-600">M</Badge>
-      )}
-      <FolderOpen className="h-3 w-3 opacity-60" />
-      {doc.googleDriveUrl && (
-        <a href={doc.googleDriveUrl} target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()} className="hover:text-primary">
-          <ExternalLink className="h-3 w-3" />
-        </a>
-      )}
-    </button>
-  );
-};
-
-// ─── Destination Card ───
-const DestinationCard = ({
-  dest,
+// ─── Destination (Região) Card: Região > Distrito > Categoria > Fornecedores ───
+const RegionCard = ({
+  region,
   onAdd,
-  onBrowseCategory,
-  onBrowseDoc,
+  onBrowse,
 }: {
-  dest: FSEDestination;
+  region: RegionNode;
   onAdd: (dest?: string, cat?: string) => void;
-  onBrowseCategory: (destName: string, catLabel: string) => void;
-  onBrowseDoc: (search: string) => void;
+  onBrowse: (search: string, title: string) => void;
 }) => {
-  const [expanded, setExpanded] = useState(false);
-  const [selectedCat, setSelectedCat] = useState<string | null>(null);
+  const [open, setOpen] = useState(false);
+  const [openDistrict, setOpenDistrict] = useState<string | null>(null);
+  const [openCat, setOpenCat] = useState<string | null>(null);
 
-  const filledCount = dest.categories.filter(c => c.documents.length > 0).length;
-  const totalCats = dest.categories.length;
-  const hasMulti = dest.categories.some(c => c.documents.some(d => d.status === "multi-destination"));
+  const files = countFiles(region);
 
   return (
     <div className="col-span-1">
       <Card
-        className={cn(
-          "cursor-pointer transition-all hover:shadow-md border-border/50",
-          expanded && "ring-1 ring-primary/30 shadow-md"
-        )}
-        onClick={() => { setExpanded(!expanded); setSelectedCat(null); }}
+        className={cn("cursor-pointer transition-all hover:shadow-md border-border/50", open && "ring-1 ring-primary/30 shadow-md")}
+        onClick={() => { setOpen(!open); setOpenDistrict(null); setOpenCat(null); }}
       >
         <CardContent className="p-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <MapPin className="h-4 w-4 text-muted-foreground" />
-              <span className="font-semibold text-sm">{dest.name}</span>
-              {hasMulti && <Badge variant="outline" className="h-4 px-1 text-[9px] font-bold border-amber-500/30 text-amber-600">M</Badge>}
+              <span className="font-semibold text-sm">{region.name}</span>
             </div>
             <div className="flex items-center gap-2">
-              <Button variant="ghost" size="icon" className="h-6 w-6" onClick={e => { e.stopPropagation(); onAdd(dest.name); }} title="Adicionar fornecedor">
+              <Button variant="ghost" size="icon" className="h-6 w-6" onClick={e => { e.stopPropagation(); onAdd(region.name); }} title="Adicionar fornecedor">
                 <Plus className="h-3.5 w-3.5" />
               </Button>
-              <span className={cn(
-                "text-xs font-medium px-2 py-0.5 rounded-full",
-                filledCount === 0 ? "bg-red-100 text-red-600" : filledCount === totalCats ? "bg-emerald-100 text-emerald-700" : "bg-amber-100 text-amber-700"
-              )}>
-                {filledCount}/{totalCats}
+              <span className="text-[11px] text-muted-foreground">{region.districts.length} distrito(s)</span>
+              <span className={cn("text-xs font-medium px-2 py-0.5 rounded-full", files === 0 ? "bg-red-100 text-red-600" : "bg-emerald-100 text-emerald-700")}>
+                {files}
               </span>
-              {expanded ? <ChevronDown className="h-4 w-4 text-muted-foreground" /> : <ChevronRight className="h-4 w-4 text-muted-foreground" />}
+              {open ? <ChevronDown className="h-4 w-4 text-muted-foreground" /> : <ChevronRight className="h-4 w-4 text-muted-foreground" />}
             </div>
           </div>
         </CardContent>
       </Card>
 
-      {expanded && (
+      {open && (
         <div className="mt-1 space-y-0.5" onClick={e => e.stopPropagation()}>
-          {dest.categories.map(cat => {
-            const docCount = cat.documents.length;
-            const catHasMulti = cat.documents.some(d => d.status === "multi-destination");
-            const isSelected = selectedCat === cat.id;
-
+          {region.districts.map(dist => {
+            const distOpen = openDistrict === dist.name;
+            const distFiles = dist.categories.reduce((s, c) => s + c.suppliers.reduce((s2, sp) => s2 + sp.docCount, 0), 0);
             return (
-              <div key={cat.id}>
-                <div className="flex items-center">
-                  <button
-                    onClick={() => setSelectedCat(isSelected ? null : cat.id)}
-                    className={cn(
-                      "flex-1 flex items-center gap-2 px-3 py-2 text-xs rounded-md transition-colors",
-                      isSelected ? "bg-primary/5 text-primary" : "hover:bg-muted/50 text-foreground"
-                    )}
-                  >
-                    <StatusDot status={docCount > 0 ? (catHasMulti ? "multi-destination" : "active") : "empty"} />
-                    <span className="flex-1 text-left truncate">{cat.label}</span>
-                    {catHasMulti && <Badge variant="outline" className="h-4 px-1 text-[9px] font-bold border-amber-500/30 text-amber-600">M</Badge>}
-                    <span className="text-muted-foreground font-mono text-[11px]">{docCount}</span>
-                  </button>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-6 w-6 shrink-0"
-                    title="Ver ficheiros no Drive"
-                    onClick={() => onBrowseCategory(dest.name, cat.label)}
-                  >
-                    <FolderOpen className="h-3 w-3" />
-                  </Button>
-                  <Button variant="ghost" size="icon" className="h-6 w-6 shrink-0" onClick={() => onAdd(dest.name, cat.id)} title="Adicionar">
-                    <Plus className="h-3 w-3" />
-                  </Button>
-                </div>
+              <div key={dist.name}>
+                <button
+                  onClick={() => { setOpenDistrict(distOpen ? null : dist.name); setOpenCat(null); }}
+                  className={cn(
+                    "w-full flex items-center gap-2 px-3 py-2 text-xs rounded-md transition-colors",
+                    distOpen ? "bg-primary/5 text-primary" : "hover:bg-muted/50",
+                  )}
+                >
+                  {distOpen ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
+                  <StatusDot active={distFiles > 0} />
+                  <span className="flex-1 text-left truncate font-medium">{dist.name}</span>
+                  <span className="text-muted-foreground font-mono text-[11px]">{distFiles}</span>
+                </button>
 
-                {isSelected && docCount > 0 && (
-                  <div className="ml-5 pl-3 border-l-2 border-primary/10 py-2 flex flex-wrap gap-1.5">
-                    {cat.documents.map((doc, i) => <DocChip key={i} doc={doc} onBrowse={onBrowseDoc} />)}
-                    {catHasMulti && (
-                      <p className="w-full text-[10px] text-amber-600 mt-1 italic flex items-center gap-1">
-                        <ExternalLink className="h-3 w-3" />
-                        Arquivado neste destino conforme ponto de saída
-                      </p>
+                {distOpen && (
+                  <div className="ml-4 pl-2 border-l-2 border-primary/10 space-y-0.5">
+                    {dist.categories.length === 0 && (
+                      <p className="text-[11px] text-muted-foreground italic px-3 py-1.5">Sem categorias no Drive.</p>
                     )}
-                  </div>
-                )}
-                {isSelected && docCount === 0 && (
-                  <div className="ml-5 pl-3 border-l-2 border-red-200 py-2 flex items-center gap-2">
-                    <span className="text-[11px] text-muted-foreground italic">Sem documentos registados.</span>
-                    <button
-                      onClick={() => onBrowseCategory(dest.name, cat.label)}
-                      className="text-[11px] text-primary hover:underline"
-                    >
-                      Procurar no Drive →
-                    </button>
+                    {dist.categories.map(cat => {
+                      const key = `${dist.name}:${cat.name}`;
+                      const catOpen = openCat === key;
+                      const catFiles = cat.suppliers.reduce((s, sp) => s + sp.docCount, 0);
+                      return (
+                        <div key={key}>
+                          <div className="flex items-center">
+                            <button
+                              onClick={() => setOpenCat(catOpen ? null : key)}
+                              className={cn(
+                                "flex-1 flex items-center gap-2 px-3 py-1.5 text-xs rounded-md transition-colors",
+                                catOpen ? "bg-primary/5 text-primary" : "hover:bg-muted/50",
+                              )}
+                            >
+                              <StatusDot active={catFiles > 0} />
+                              <span className="flex-1 text-left truncate">{cat.name}</span>
+                              <span className="text-muted-foreground font-mono text-[11px]">{catFiles}</span>
+                            </button>
+                            <Button
+                              variant="ghost" size="icon" className="h-6 w-6 shrink-0"
+                              title="Ver ficheiros no Drive"
+                              onClick={() => onBrowse(`${cat.name} ${dist.name}`, `${cat.name} • ${dist.name} • ${region.name}`)}
+                            >
+                              <FolderOpen className="h-3 w-3" />
+                            </Button>
+                          </div>
+
+                          {catOpen && (
+                            <div className="ml-5 pl-3 border-l-2 border-primary/10 py-1.5 flex flex-wrap gap-1.5">
+                              {cat.suppliers.length === 0 && (
+                                <span className="text-[11px] text-muted-foreground italic">Sem fornecedores registados.</span>
+                              )}
+                              {cat.suppliers.map(sp => (
+                                <button
+                                  key={sp.name}
+                                  onClick={() => onBrowse(sp.name, sp.name)}
+                                  className={cn(
+                                    "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium border transition-colors",
+                                    sp.docCount > 0
+                                      ? "bg-emerald-500/10 text-emerald-700 border-emerald-500/20 hover:bg-emerald-500/20"
+                                      : "bg-red-400/10 text-red-500 border-red-400/20 hover:bg-red-400/20",
+                                  )}
+                                >
+                                  <StatusDot active={sp.docCount > 0} />
+                                  {sp.name}
+                                  {sp.docCount > 0 && (
+                                    <Badge variant="outline" className="h-4 px-1 text-[9px]">{sp.docCount}</Badge>
+                                  )}
+                                  <FolderOpen className="h-3 w-3 opacity-60" />
+                                </button>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
                   </div>
                 )}
               </div>
@@ -279,62 +310,54 @@ const DestinationCard = ({
 
 // ─── Interactive Map Tab ───
 const InteractiveMapTab = ({
-  destinations,
-  onAdd,
-  onBrowseCategory,
-  onBrowseDoc,
+  tree, onAdd, onBrowse,
 }: {
-  destinations: FSEDestination[];
+  tree: RegionNode[];
   onAdd: (dest?: string, cat?: string) => void;
-  onBrowseCategory: (destName: string, catLabel: string) => void;
-  onBrowseDoc: (search: string) => void;
+  onBrowse: (search: string, title: string) => void;
 }) => (
   <div className="space-y-4">
     <div className="flex gap-3 p-3 rounded-lg bg-blue-50 border border-blue-200 text-blue-800 text-xs leading-relaxed">
       <Info className="h-4 w-4 shrink-0 mt-0.5" />
       <p>
-        <strong>Dica:</strong> clica num FSE ou no ícone <FolderOpen className="h-3 w-3 inline" /> para ver os ficheiros do Drive (PDFs, contratos, fichas técnicas) num popup, sem sair da página.
+        <strong>Estrutura do Drive:</strong> Destino → Distrito → Categoria → Fornecedor. Clica num fornecedor ou no ícone{" "}
+        <FolderOpen className="h-3 w-3 inline" /> para ver os ficheiros do Drive num popup.
       </p>
     </div>
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-      {destinations.map(dest => (
-        <DestinationCard
-          key={dest.name}
-          dest={dest}
-          onAdd={onAdd}
-          onBrowseCategory={onBrowseCategory}
-          onBrowseDoc={onBrowseDoc}
-        />
-      ))}
+      {tree.map(r => <RegionCard key={r.name} region={r} onAdd={onAdd} onBrowse={onBrowse} />)}
     </div>
   </div>
 );
 
-// ─── Summary Table Tab ───
-const CAT_ORDER = ["aloj", "anim", "guias", "quintas", "rest", "mar", "terr", "mon"] as const;
-const CAT_HEADERS = ["Alojamento", "Anim. Turística", "Guias Externos", "Quintas & Caves", "Restauração", "Transp. Marítimos", "Transp. Terrestres", "Monumentos"];
-
-const SummaryTableTab = ({ destinations, onAdd }: { destinations: FSEDestination[]; onAdd: () => void }) => {
-  const totals = CAT_ORDER.map(() => ({ count: 0, multi: false }));
-  let grandTotal = 0;
-  let grandFilledCats = 0;
-
-  const rows = destinations.map(dest => {
-    let rowTotal = 0;
-    let rowFilledCats = 0;
-    const cells = CAT_ORDER.map((catId, ci) => {
-      const cat = dest.categories.find(c => c.id === catId);
-      const count = cat?.documents.length ?? 0;
-      const hasMulti = cat?.documents.some(d => d.status === "multi-destination") ?? false;
-      rowTotal += count;
-      if (count > 0) rowFilledCats++;
-      totals[ci].count += count;
-      if (hasMulti) totals[ci].multi = true;
-      return { count, hasMulti };
+// ─── Summary Table Tab: linha = Destino / Distrito, coluna = Categoria ───
+const SummaryTableTab = ({ tree, onAdd }: { tree: RegionNode[]; onAdd: () => void }) => {
+  const catNames = useMemo(() => {
+    const set = new Set<string>();
+    tree.forEach(r => r.districts.forEach(d => d.categories.forEach(c => set.add(c.name))));
+    const order = CATEGORY_DEFS.map(c => c.label);
+    return Array.from(set).sort((a, b) => {
+      const ia = order.indexOf(a), ib = order.indexOf(b);
+      return (ia === -1 ? 99 : ia) - (ib === -1 ? 99 : ib) || a.localeCompare(b);
     });
-    grandTotal += rowTotal;
-    grandFilledCats += rowFilledCats;
-    return { name: dest.name, cells, rowTotal, rowFilledCats };
+  }, [tree]);
+
+  const totals = catNames.map(() => 0);
+  let grandTotal = 0;
+
+  const rows: { region: string; district: string; cells: number[]; total: number }[] = [];
+  tree.forEach(r => {
+    r.districts.forEach(d => {
+      const cells = catNames.map((cn, i) => {
+        const cat = d.categories.find(c => c.name === cn);
+        const count = cat?.suppliers.reduce((s, sp) => s + sp.docCount, 0) ?? 0;
+        totals[i] += count;
+        return count;
+      });
+      const total = cells.reduce((s, v) => s + v, 0);
+      grandTotal += total;
+      rows.push({ region: r.name, district: d.name, cells, total });
+    });
   });
 
   return (
@@ -343,49 +366,42 @@ const SummaryTableTab = ({ destinations, onAdd }: { destinations: FSEDestination
         <table className="w-full text-xs">
           <thead>
             <tr className="bg-muted/50 border-b border-border">
-              <th className="sticky left-0 bg-muted/50 z-10 text-left px-3 py-2.5 font-semibold text-foreground">Destino</th>
-              {CAT_HEADERS.map(h => <th key={h} className="px-2 py-2.5 text-center font-semibold text-foreground whitespace-nowrap">{h}</th>)}
-              <th className="px-2 py-2.5 text-center font-semibold text-foreground">Total</th>
-              <th className="px-2 py-2.5 text-center font-semibold text-foreground whitespace-nowrap">Cats c/ docs</th>
+              <th className="sticky left-0 bg-muted/50 z-10 text-left px-3 py-2.5 font-semibold">Destino</th>
+              <th className="text-left px-3 py-2.5 font-semibold whitespace-nowrap">Distrito</th>
+              {catNames.map(h => <th key={h} className="px-2 py-2.5 text-center font-semibold whitespace-nowrap">{h}</th>)}
+              <th className="px-2 py-2.5 text-center font-semibold">Total</th>
             </tr>
           </thead>
           <tbody>
-            {rows.map(row => (
-              <tr key={row.name} className="border-b border-border/50 hover:bg-muted/30 transition-colors">
-                <td className="sticky left-0 bg-card z-10 px-3 py-2 font-medium text-foreground">{row.name}</td>
-                {row.cells.map((cell, i) => (
-                  <td key={i} className="px-2 py-2 text-center">
-                    <div className="flex flex-col items-center gap-0.5">
-                      <StatusDot status={cell.count > 0 ? (cell.hasMulti ? "multi-destination" : "active") : "empty"} />
-                      <span className={cn("text-[11px] font-mono", cell.count === 0 ? "text-muted-foreground" : "font-medium")}>
-                        {cell.count === 0 ? "–" : cell.count}
-                      </span>
-                      {cell.hasMulti && <Badge variant="outline" className="h-3.5 px-1 text-[8px] font-bold border-amber-500/30 text-amber-600">M</Badge>}
-                    </div>
-                  </td>
-                ))}
-                <td className="px-2 py-2 text-center font-semibold">{row.rowTotal}</td>
-                <td className="px-2 py-2 text-center text-muted-foreground">{row.rowFilledCats}/8</td>
-              </tr>
-            ))}
+            {rows.map((row, ri) => {
+              const firstOfRegion = ri === 0 || rows[ri - 1].region !== row.region;
+              return (
+                <tr key={`${row.region}-${row.district}`} className={cn("border-b border-border/50 hover:bg-muted/30", firstOfRegion && "border-t-2 border-border")}>
+                  <td className="sticky left-0 bg-card z-10 px-3 py-2 font-medium">{firstOfRegion ? row.region : ""}</td>
+                  <td className="px-3 py-2 text-muted-foreground whitespace-nowrap">{row.district}</td>
+                  {row.cells.map((count, i) => (
+                    <td key={i} className="px-2 py-2 text-center">
+                      <div className="flex flex-col items-center gap-0.5">
+                        <StatusDot active={count > 0} />
+                        <span className={cn("text-[11px] font-mono", count === 0 ? "text-muted-foreground" : "font-medium")}>
+                          {count === 0 ? "–" : count}
+                        </span>
+                      </div>
+                    </td>
+                  ))}
+                  <td className="px-2 py-2 text-center font-semibold">{row.total}</td>
+                </tr>
+              );
+            })}
             <tr className="bg-muted/60 font-semibold border-t-2 border-border">
-              <td className="sticky left-0 bg-muted/60 z-10 px-3 py-2.5">TOTAL</td>
-              {totals.map((t, i) => (
-                <td key={i} className="px-2 py-2.5 text-center">
-                  <div className="flex flex-col items-center gap-0.5">
-                    <span className="font-mono text-[11px]">{t.count}</span>
-                    {t.multi && <Badge variant="outline" className="h-3.5 px-1 text-[8px] font-bold border-amber-500/30 text-amber-600">M</Badge>}
-                  </div>
-                </td>
-              ))}
+              <td className="sticky left-0 bg-muted/60 z-10 px-3 py-2.5" colSpan={2}>TOTAL</td>
+              {totals.map((t, i) => <td key={i} className="px-2 py-2.5 text-center font-mono text-[11px]">{t}</td>)}
               <td className="px-2 py-2.5 text-center font-bold">{grandTotal}</td>
-              <td className="px-2 py-2.5 text-center">{grandFilledCats}/72</td>
             </tr>
           </tbody>
         </table>
       </div>
 
-      {/* Add button in table view */}
       <div className="flex justify-center">
         <Button variant="outline" size="sm" className="gap-1.5 text-xs" onClick={onAdd}>
           <Plus className="h-3.5 w-3.5" />
@@ -403,7 +419,6 @@ const FSEDatabasePage = () => {
   const [prefillCat, setPrefillCat] = useState<string | undefined>();
   const [driveNodes, setDriveNodes] = useState<DriveNode[]>([]);
 
-  // Drive popup state
   const [driveOpen, setDriveOpen] = useState(false);
   const [driveSearch, setDriveSearch] = useState("");
   const [driveTitle, setDriveTitle] = useState("Ficheiros do Drive");
@@ -411,51 +426,14 @@ const FSEDatabasePage = () => {
   useEffect(() => {
     supabase
       .from("fse_drive_index")
-      .select("drive_id,parent_drive_id,name,mime_type,category,region,supplier_name,path,web_view_link,depth")
+      .select("drive_id,name,mime_type,category,region,district,supplier_name,path,depth")
       .order("path")
       .then(({ data, error }) => {
         if (!error && data) setDriveNodes(data as DriveNode[]);
       });
   }, []);
 
-  const liveDestinations = useMemo<FSEDestination[]>(() => {
-    if (!driveNodes.length) return FSE_DESTINATIONS;
-    const categoryLabels = FSE_DESTINATIONS[0]?.categories ?? [];
-    const byId = new Map(driveNodes.map((n) => [n.drive_id, n]));
-    const grouped = new Map<string, Map<string, Map<string, number>>>();
-    for (const file of driveNodes.filter((n) => n.mime_type !== FOLDER_MIME)) {
-      const pathParts = (file.path || "").split(" / ");
-      const destination = inferRegion(pathParts.length >= 3 ? pathParts[1] : file.region);
-      const category = file.category || "Sem categoria";
-      const parent = file.parent_drive_id ? byId.get(file.parent_drive_id) : null;
-      const supplier = pathParts.length >= 4
-        ? pathParts[pathParts.length - 2]
-        : pathParts.length === 3
-        ? pathParts[1]
-        : parent?.mime_type === FOLDER_MIME && parent.depth >= 2
-        ? parent.name
-        : file.supplier_name || file.name.replace(/\.(xlsx|pdf|docx|pptx|xls|doc)$/i, "");
-      grouped.set(destination, grouped.get(destination) ?? new Map());
-      const cats = grouped.get(destination)!;
-      cats.set(category, cats.get(category) ?? new Map());
-      const suppliers = cats.get(category)!;
-      suppliers.set(supplier, (suppliers.get(supplier) ?? 0) + 1);
-    }
-    return Array.from(grouped.entries()).sort(([a], [b]) => a.localeCompare(b)).map(([name, cats]) => ({
-      name,
-      categories: categoryLabels.map((def) => {
-        const suppliers = cats.get(def.label) ?? new Map();
-        return {
-          ...def,
-          documents: Array.from(suppliers.entries()).sort(([a], [b]) => a.localeCompare(b)).map(([supplier, count]) => ({
-            name: supplier,
-            status: "active" as const,
-            docCount: count,
-          })),
-        };
-      }),
-    }));
-  }, [driveNodes]);
+  const tree = useMemo(() => buildTree(driveNodes), [driveNodes]);
 
   const openModal = (dest?: string, cat?: string) => {
     setPrefillDest(dest);
@@ -469,30 +447,16 @@ const FSEDatabasePage = () => {
     setDriveOpen(true);
   };
 
-  const handleBrowseCategory = (destName: string, catLabel: string) => {
-    const cleanCat = catLabel.replace(/^\d+\s*-\s*/, "").trim();
-    openDriveSearch(`${cleanCat} ${destName}`, `${cleanCat} • ${destName}`);
-  };
-
-  const handleBrowseDoc = (supplierName: string) => {
-    openDriveSearch(supplierName, supplierName);
-  };
-
-  const handleSave = (data: any) => {
-    console.log('FSE saved:', data);
-  };
-
   return (
     <AppLayout>
       <div className="space-y-5">
-        {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
           <div>
             <div className="flex items-center gap-2">
               <Database className="h-5 w-5 text-primary" />
               <h1 className="text-xl font-bold">Base de Dados FSE</h1>
             </div>
-            <p className="text-sm text-muted-foreground mt-0.5">Parceiros & Protocolos de Fornecedores</p>
+            <p className="text-sm text-muted-foreground mt-0.5">Destino → Distrito → Categoria → Fornecedor (espelho do Drive)</p>
           </div>
           <div className="flex gap-2">
             <SyncDriveButton />
@@ -503,7 +467,7 @@ const FSEDatabasePage = () => {
           </div>
         </div>
 
-        <StatsHeader destinations={liveDestinations} />
+        <StatsHeader tree={tree} />
 
         <Tabs defaultValue="map" className="w-full">
           <TabsList>
@@ -521,23 +485,17 @@ const FSEDatabasePage = () => {
             </TabsTrigger>
           </TabsList>
           <TabsContent value="map">
-            <InteractiveMapTab
-              destinations={liveDestinations}
-              onAdd={openModal}
-              onBrowseCategory={handleBrowseCategory}
-              onBrowseDoc={handleBrowseDoc}
-            />
+            <InteractiveMapTab tree={tree} onAdd={openModal} onBrowse={openDriveSearch} />
           </TabsContent>
           <TabsContent value="drive">
             <FSEDriveBrowser />
           </TabsContent>
           <TabsContent value="table">
-            <SummaryTableTab destinations={liveDestinations} onAdd={() => openModal()} />
+            <SummaryTableTab tree={tree} onAdd={() => openModal()} />
           </TabsContent>
         </Tabs>
       </div>
 
-      {/* Drive Popup — opens when clicking on FSE chip or category icon */}
       <Dialog open={driveOpen} onOpenChange={setDriveOpen}>
         <DialogContent className="max-w-5xl h-[85vh] flex flex-col p-0">
           <DialogHeader className="px-4 pt-4 pb-2 border-b">
@@ -552,13 +510,12 @@ const FSEDatabasePage = () => {
         </DialogContent>
       </Dialog>
 
-      {/* Unified Create Modal */}
       <FSECreateModal
         open={modalOpen}
         onOpenChange={setModalOpen}
         prefillDestination={prefillDest}
         prefillCategory={prefillCat}
-        onSave={handleSave}
+        onSave={(data: any) => console.log("FSE saved:", data)}
       />
     </AppLayout>
   );
