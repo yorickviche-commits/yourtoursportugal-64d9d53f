@@ -267,8 +267,7 @@ export async function runPull(opts: { recordId?: string; folder?: "deals" | "tas
         tasks = 1;
       }
     }
-    const since = new Date(Date.now() - 7 * 864e5).toISOString();
-    await syncTimeline(sb, leadsByRid, since, logs);
+    await syncTimeline(sb, logs);
     await logSync(sb, logs);
     return { deals, tasks, mode: "single" };
   }
