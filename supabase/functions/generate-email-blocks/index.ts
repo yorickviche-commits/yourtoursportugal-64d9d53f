@@ -1,3 +1,4 @@
+import { knowledgeBlock } from "../_shared/ytb-knowledge.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
 import { requireInternalUser } from "../_shared/require-auth.ts";
@@ -154,7 +155,12 @@ VOICE (founder style):
 WRITE THE ENTIRE EMAIL IN ${language}. Subject included.
 SUBJECT RULE: the subject MUST follow EXACTLY this order and format: "YTID - Trip Name - Dates - Client Name" (e.g. "YT5014 - Douro Valley Private Tour - 12-16 Oct 2026 - John Smith"). No extra words, no prefixes, no punctuation other than the " - " separators.
 Never invent prices, dates, inclusions or supplier names that are not in the context.
-Do not write unsubscribe text, do not repeat the itinerary day-by-day in prose (the program block is rendered separately by the system).`;
+Do not write unsubscribe text, do not repeat the itinerary day-by-day in prose (the program block is rendered separately by the system).` + brain;
+
+    const brain = await knowledgeBlock(
+      [lead?.destination, lead?.notes, program?.title, 'email tone terms conditions inclusions'].filter(Boolean).join(' '),
+      'client_facing', 6,
+    );
 
     const contextJson = JSON.stringify(
       {
