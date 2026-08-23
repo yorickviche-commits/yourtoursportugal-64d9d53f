@@ -82,24 +82,38 @@ export default function LeadCrmTab({ leadId }: Props) {
   const gmail = useLeadGmail(lead?.email, lead?.yt_id);
   const [bodies, setBodies] = useState<Record<string, string>>({});
 
-  // NetHunt's API does not expose emails, so Gmail history is merged in as email events.
+  // Emails/calendário são persistidos em nethunt_timeline pelo sync; o Gmail em tempo real
+  // serve de complemento para o que ainda não foi sincronizado (deduplicado por event_id).
   const events = useMemo(() => {
-    const mails = (gmail.data || []).map(m => ({
-      id: `gmail:${m.id}`,
-      event_type: 'email',
-      event_time: m.date,
-      subject: m.subject || '(sem assunto)',
-      snippet: `${m.direction === 'IN' ? '↓' : '↑'} ${m.from} — ${m.snippet}`,
-      creator_email: m.direction === 'IN' ? m.from : m.to,
-      body_html: bodies[m.id] || null,
-      gmail_id: m.id,
-      gmail_url: m.url,
-    })) as any[];
-    const list = [...(timeline.data || []) as any[], ...mails]
+    const stored = ((timeline.data || []) as any[]).map(ev => {
+      const p = ev.payload || {};
+      return {
+        ...ev,
+        gmail_id: p.gmail_id || null,
+        gmail_url: p.gmail_id ? (p.url || `https://mail.google.com/mail/u/0/#all/${p.thread_id || p.gmail_id}`) : null,
+        body_html: ev.body_html || (p.gmail_id ? bodies[p.gmail_id] || null : null),
+      };
+    });
+    const known = new Set(stored.map(e => String(e.event_id)));
+    const mails = (gmail.data || [])
+      .filter(m => !known.has(`gmail:${m.id}`))
+      .map(m => ({
+        id: `gmail:${m.id}`,
+        event_type: 'email',
+        event_time: m.date,
+        subject: m.subject || '(sem assunto)',
+        snippet: `${m.direction === 'IN' ? '↓' : '↑'} ${m.from} — ${m.snippet}`,
+        creator_email: m.direction === 'IN' ? m.from : m.to,
+        body_html: bodies[m.id] || null,
+        gmail_id: m.id,
+        gmail_url: m.url,
+      })) as any[];
+    const list = [...stored, ...mails]
       .sort((a, b) => (b.event_time || '').localeCompare(a.event_time || ''));
     if (filter === 'all') return list;
     return list.filter(e => e.event_type === filter);
   }, [timeline.data, gmail.data, bodies, filter]);
+
 
   const openWithBody = async (ev: any) => {
     const expanded = openEvent === ev.id;
