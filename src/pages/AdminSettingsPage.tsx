@@ -9,6 +9,8 @@ import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { Settings, Save, Building2, DollarSign, Wrench } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import YTBrainSettings from '@/components/ytbrain/YTBrainSettings';
+import { Brain } from 'lucide-react';
 
 interface SettingRow {
   id: string;
@@ -138,6 +140,7 @@ const AdminSettingsPage = () => {
               <TabsTrigger value="general" className="gap-1.5"><Building2 className="h-3.5 w-3.5" />Geral</TabsTrigger>
               <TabsTrigger value="pricing" className="gap-1.5"><DollarSign className="h-3.5 w-3.5" />Preços</TabsTrigger>
               <TabsTrigger value="operations" className="gap-1.5"><Wrench className="h-3.5 w-3.5" />Operações</TabsTrigger>
+              <TabsTrigger value="ytbrain" className="gap-1.5"><Brain className="h-3.5 w-3.5" />YT Brain</TabsTrigger>
             </TabsList>
 
             <TabsContent value="general">
@@ -156,6 +159,9 @@ const AdminSettingsPage = () => {
               <Card><CardHeader><CardTitle className="text-base">Configurações Operacionais</CardTitle></CardHeader>
                 <CardContent>{renderSettings('operations')}</CardContent>
               </Card>
+            </TabsContent>
+            <TabsContent value="ytbrain">
+              <YTBrainSettings />
             </TabsContent>
           </Tabs>
         )}

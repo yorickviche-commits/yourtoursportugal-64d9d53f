@@ -1,3 +1,4 @@
+import { knowledgeBlock } from "../_shared/ytb-knowledge.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { encodeBase64 } from "https://deno.land/std@0.224.0/encoding/base64.ts";
 import { requireInternalUser } from "../_shared/require-auth.ts";
@@ -544,9 +545,12 @@ This overrides rules 3, 4, 5, 6, 7, 14, 15, 16, 17 in the base style guide whene
       ? `\n\nROUTE-MAP CONTEXT: A Google Maps route screenshot is attached showing the intended geographic flow. Respect this sequence of stops/regions when structuring the days.`
       : '';
 
+    const brainQuery = [userPrompt?.slice?.(0, 1500), extraInstructions].filter(Boolean).join(' ');
+    const brain = await knowledgeBlock(brainQuery || 'itinerary rules inclusions terms', 'client_facing', 8);
+
     const systemWithExtra = (extraInstructions
       ? `${SYSTEM_PROMPT}\n\nIMPORTANT ADDITIONAL INSTRUCTIONS: ${extraInstructions}`
-      : SYSTEM_PROMPT) + exactDirective + routeDirective + languageDirective;
+      : SYSTEM_PROMPT) + exactDirective + routeDirective + languageDirective + brain;
 
     const raw = await callAI(systemWithExtra, userPrompt, finalAttachments, {
       maxTokens: FINAL_MAX_TOKENS,
