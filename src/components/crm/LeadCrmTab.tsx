@@ -67,7 +67,7 @@ export default function LeadCrmTab({ leadId }: Props) {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('leads')
-        .select('id, client_name, yt_id, lead_code, status, nethunt_record_id, nethunt_stage, nethunt_synced_at, trip_start, trip_finish, close_date, source, client_type')
+        .select('id, client_name, email, yt_id, lead_code, status, nethunt_record_id, nethunt_stage, nethunt_synced_at, trip_start, trip_finish, close_date, source, client_type')
         .eq('id', leadId).maybeSingle();
       if (error) throw error;
       return data as any;
@@ -79,12 +79,40 @@ export default function LeadCrmTab({ leadId }: Props) {
   const pushLead = usePushLead();
   const addComment = useAddComment();
   const syncNow = useSyncNow();
+  const gmail = useLeadGmail(lead?.email, lead?.yt_id);
+  const [bodies, setBodies] = useState<Record<string, string>>({});
 
+  // NetHunt's API does not expose emails, so Gmail history is merged in as email events.
   const events = useMemo(() => {
-    const list = timeline.data || [];
+    const mails = (gmail.data || []).map(m => ({
+      id: `gmail:${m.id}`,
+      event_type: 'email',
+      event_time: m.date,
+      subject: m.subject || '(sem assunto)',
+      snippet: `${m.direction === 'IN' ? '↓' : '↑'} ${m.from} — ${m.snippet}`,
+      creator_email: m.direction === 'IN' ? m.from : m.to,
+      body_html: bodies[m.id] || null,
+      gmail_id: m.id,
+      gmail_url: m.url,
+    })) as any[];
+    const list = [...(timeline.data || []) as any[], ...mails]
+      .sort((a, b) => (b.event_time || '').localeCompare(a.event_time || ''));
     if (filter === 'all') return list;
     return list.filter(e => e.event_type === filter);
-  }, [timeline.data, filter]);
+  }, [timeline.data, gmail.data, bodies, filter]);
+
+  const openWithBody = async (ev: any) => {
+    const expanded = openEvent === ev.id;
+    setOpenEvent(expanded ? null : ev.id);
+    if (!expanded && ev.gmail_id && !bodies[ev.gmail_id]) {
+      try {
+        const html = await fetchGmailBody(ev.gmail_id);
+        setBodies(prev => ({ ...prev, [ev.gmail_id]: html || '<em>Sem corpo disponível.</em>' }));
+      } catch {
+        setBodies(prev => ({ ...prev, [ev.gmail_id]: '<em>Não foi possível carregar o email.</em>' }));
+      }
+    }
+  };
 
   const save = (changes: Record<string, unknown>) => {
     pushLead.mutate({ id: leadId, changes }, {
