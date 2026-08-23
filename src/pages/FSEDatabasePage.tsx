@@ -494,7 +494,7 @@ const FSEDatabasePage = () => {
             <p className="text-sm text-muted-foreground mt-0.5">Destino → Distrito → Categoria → Fornecedor (espelho do Drive)</p>
           </div>
           <div className="flex gap-2">
-            <SyncDriveButton />
+            <SyncDriveButton onDone={loadNodes} />
             <Button size="sm" className="gap-1.5" onClick={() => openModal()}>
               <Plus className="h-4 w-4" />
               Adicionar FSE
