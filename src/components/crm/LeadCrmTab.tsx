@@ -285,9 +285,8 @@ export default function LeadCrmTab({ leadId }: Props) {
             <p className="text-xs text-muted-foreground text-center py-8">Sem eventos para este filtro.</p>
           )}
         </div>
-
-        </div>
       </div>
+
     </div>
   );
 }
