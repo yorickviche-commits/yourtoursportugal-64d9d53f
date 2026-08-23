@@ -101,25 +101,58 @@ const buildTree = (nodes: DriveNode[]): RegionNode[] => {
 const countFiles = (r: RegionNode) =>
   r.districts.reduce((s, d) => s + d.categories.reduce((s2, c) => s2 + c.suppliers.reduce((s3, sp) => s3 + sp.docCount, 0), 0), 0);
 
-const SyncDriveButton = () => {
-  const [loading, setLoading] = useState(false);
-  const sync = async () => {
-    setLoading(true);
+const relativePT = (iso?: string | null) => {
+  if (!iso) return "nunca sincronizado";
+  const mins = Math.round((Date.now() - new Date(iso).getTime()) / 60000);
+  if (mins < 1) return "agora mesmo";
+  if (mins < 60) return `há ${mins} min`;
+  const h = Math.round(mins / 60);
+  if (h < 24) return `há ${h} h`;
+  return `há ${Math.round(h / 24)} dia(s)`;
+};
+
+const SyncDriveButton = ({ onDone }: { onDone: () => void }) => {
+  const [loading, setLoading] = useState<null | "incremental" | "full">(null);
+  const [lastSync, setLastSync] = useState<string | null>(null);
+
+  const loadState = () =>
+    supabase.from("fse_sync_state").select("last_sync_at").eq("id", 1).maybeSingle()
+      .then(({ data }) => setLastSync((data as any)?.last_sync_at ?? null));
+
+  useEffect(() => { loadState(); }, []);
+
+  const sync = async (mode: "incremental" | "full") => {
+    setLoading(mode);
     try {
-      const { data, error } = await supabase.functions.invoke("index-drive-fses", { body: {} });
+      const { data, error } = await supabase.functions.invoke("index-drive-fses", { body: { mode } });
       if (error) throw error;
-      toast.success(`Drive sincronizado: ${data?.total ?? 0} registos`);
+      toast.success(
+        data?.mode === "full"
+          ? `Resync completo: ${data?.upserted ?? 0} registos, ${data?.removed ?? 0} removidos`
+          : `Sincronizado: ${data?.upserted ?? 0} atualizados, ${data?.removed ?? 0} removidos`,
+      );
+      await loadState();
+      onDone();
     } catch (e: any) {
       toast.error(`Falha a sincronizar: ${e.message || e}`);
     } finally {
-      setLoading(false);
+      setLoading(null);
     }
   };
+
   return (
-    <Button size="sm" variant="outline" className="gap-1.5" onClick={sync} disabled={loading}>
-      <RefreshCw className={cn("h-4 w-4", loading && "animate-spin")} />
-      {loading ? "A sincronizar..." : "Sincronizar do Drive"}
-    </Button>
+    <div className="flex items-center gap-2">
+      <span className="text-[11px] text-muted-foreground hidden sm:inline">
+        Atualizado {relativePT(lastSync)}
+      </span>
+      <Button size="sm" variant="outline" className="gap-1.5" onClick={() => sync("incremental")} disabled={!!loading}>
+        <RefreshCw className={cn("h-4 w-4", loading === "incremental" && "animate-spin")} />
+        {loading === "incremental" ? "A sincronizar..." : "Sincronizar"}
+      </Button>
+      <Button size="sm" variant="ghost" className="text-xs" onClick={() => sync("full")} disabled={!!loading}>
+        {loading === "full" ? "A reconstruir..." : "Resync completo"}
+      </Button>
+    </div>
   );
 };
 
