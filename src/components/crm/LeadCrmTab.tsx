@@ -276,11 +276,23 @@ export default function LeadCrmTab({ leadId }: Props) {
                     ) : ev.gmail_id ? (
                       <p className="text-[11px] text-muted-foreground flex items-center gap-1"><Loader2 className="h-3 w-3 animate-spin" /> A carregar email...</p>
                     ) : null}
-                    {ev.gmail_url && (
-                      <a href={ev.gmail_url} target="_blank" rel="noreferrer" className="text-[10px] text-[hsl(var(--info))] inline-flex items-center gap-1">
-                        <ExternalLink className="h-3 w-3" /> Abrir no Gmail
-                      </a>
-                    )}
+                    <div className="flex items-center gap-3 flex-wrap">
+                      {ev.gmail_url && (
+                        <a href={ev.gmail_url} target="_blank" rel="noreferrer" className="text-[10px] text-[hsl(var(--info))] inline-flex items-center gap-1">
+                          <ExternalLink className="h-3 w-3" /> Abrir no Gmail
+                        </a>
+                      )}
+                      {ev.payload?.htmlLink && (
+                        <a href={ev.payload.htmlLink} target="_blank" rel="noreferrer" className="text-[10px] text-[hsl(var(--info))] inline-flex items-center gap-1">
+                          <CalendarDays className="h-3 w-3" /> Abrir no Google Calendar
+                        </a>
+                      )}
+                      {!ev.gmail_id && ev.nethunt_record_id && (
+                        <a href={netHuntRecordUrl(ev.nethunt_record_id)} target="_blank" rel="noreferrer" className="text-[10px] text-muted-foreground inline-flex items-center gap-1">
+                          <ExternalLink className="h-3 w-3" /> Ver no NetHunt
+                        </a>
+                      )}
+                    </div>
                   </div>
                 )}
               </div>
