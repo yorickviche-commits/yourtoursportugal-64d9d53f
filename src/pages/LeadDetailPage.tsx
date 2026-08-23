@@ -42,6 +42,7 @@ import CommunicationsTab from '@/components/communications/CommunicationsTab';
 import { getProposalShareUrl } from '@/lib/proposalShare';
 import { displayLeadCode } from '@/lib/leadCode';
 import { useUnsavedChangesGuard } from '@/hooks/useUnsavedChangesGuard';
+import LeadCrmTab from '@/components/crm/LeadCrmTab';
 import { triggerCalendarSync } from '@/hooks/useCalendarSync';
 import CalendarSyncBadge from '@/components/CalendarSyncBadge';
 import {
@@ -1008,6 +1009,10 @@ const LeadDetailPage = ({ mode = 'lead' }: { mode?: 'lead' | 'booking' } = {}) =
 
         {/* Propostas */}
         {activeTab === 'propostas' && lead && <LeadProposalsTab leadId={lead.id} clientName={formState.clientName} />}
+
+        {/* CRM — espelho bidirecional do record NetHunt */}
+        {activeTab === 'crm' && lead && <LeadCrmTab leadId={lead.id} />}
+
 
         {/* Operações — apenas para reservas confirmadas (status = won) */}
         {activeTab === 'operacoes' && lead && (
