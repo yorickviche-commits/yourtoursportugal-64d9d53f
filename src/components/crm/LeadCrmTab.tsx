@@ -24,7 +24,7 @@ import { useToast } from '@/hooks/use-toast';
 import {
   NETHUNT_STAGES, SOURCE_OPTIONS, netHuntRecordUrl,
   useLeadTimeline, useNHTasks, usePushLead, useAddComment,
-  useCreateNHTask, useUpdateNHTask, useSyncNow,
+  useCreateNHTask, useUpdateNHTask, useSyncNow, useLeadGmail, fetchGmailBody,
 } from '@/hooks/useNetHunt';
 
 const TYPE_FILTERS = [
