@@ -205,7 +205,12 @@ async function calendarEvents(sb: SupabaseClient, lead: TimelineLead) {
   const queries = new Set<string>();
   const ref = (lead.yt_id ?? "").match(/\d{3,}/)?.[0];
   if (ref) queries.add(`YT${ref}`);
-  if (lead.client_name) queries.add(lead.client_name);
+  // Only search by client name when it is specific enough (full name), otherwise generic
+  // names like "Lisa" or "Tour privado Porto" match unrelated calendar events.
+  const name = (lead.client_name ?? "").trim();
+  if (name.includes(" ") && name.length >= 9 && !/tour|privado|private|grupo|group/i.test(name)) {
+    queries.add(name);
+  }
   if (!queries.size) return [];
 
   const rows: Row[] = [];
