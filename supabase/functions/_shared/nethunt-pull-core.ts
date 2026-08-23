@@ -124,6 +124,19 @@ const TIMELINE: Ev[] = [
   { type: "field_change", endpoint: "record-change" },
 ];
 
+/** Debug helper: returns raw first items per timeline endpoint. */
+export async function sampleTimeline() {
+  const out: Record<string, unknown> = {};
+  for (const ev of TIMELINE) {
+    const items = await nhSoft<Record<string, unknown>[]>(
+      `/triggers/${ev.endpoint}/${DEALS_FOLDER}?since=${encodeURIComponent(EPOCH)}&limit=3`,
+      [],
+    );
+    out[ev.endpoint] = { count: Array.isArray(items) ? items.length : 0, first: Array.isArray(items) ? items[0] : items };
+  }
+  return out;
+}
+
 const pick = (o: Record<string, unknown>, keys: string[]) => {
   for (const k of keys) {
     const v = o[k];
