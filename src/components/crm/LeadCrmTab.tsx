@@ -124,7 +124,10 @@ export default function LeadCrmTab({ leadId }: Props) {
   if (isLoading) return <div className="space-y-3">{[1, 2, 3].map(i => <Skeleton key={i} className="h-20 w-full rounded-lg" />)}</div>;
   if (!lead) return <p className="text-xs text-muted-foreground">Lead não encontrada.</p>;
 
-  if (!lead.nethunt_record_id) {
+  const linked = !!lead.nethunt_record_id;
+  const hasHistory = (timeline.data?.length ?? 0) > 0 || (gmail.data?.length ?? 0) > 0;
+
+  if (!linked && !hasHistory) {
     return (
       <div className="bg-card border rounded-lg p-6 text-center space-y-3">
         <p className="text-sm font-medium">Esta lead ainda não está ligada a um record do NetHunt.</p>
@@ -155,9 +158,11 @@ export default function LeadCrmTab({ leadId }: Props) {
           <Button size="sm" variant="outline" className="text-xs" onClick={() => { syncNow.mutate(); refetch(); timeline.refetch(); }} disabled={syncNow.isPending}>
             {syncNow.isPending ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : <RefreshCw className="h-3 w-3 mr-1" />} Sincronizar
           </Button>
-          <a href={netHuntRecordUrl(lead.nethunt_record_id)} target="_blank" rel="noreferrer">
-            <Button size="sm" variant="outline" className="text-xs"><ExternalLink className="h-3 w-3 mr-1" /> Abrir no NetHunt</Button>
-          </a>
+          {linked && (
+            <a href={netHuntRecordUrl(lead.nethunt_record_id)} target="_blank" rel="noreferrer">
+              <Button size="sm" variant="outline" className="text-xs"><ExternalLink className="h-3 w-3 mr-1" /> Abrir no NetHunt</Button>
+            </a>
+          )}
         </div>
       </div>
 
@@ -271,11 +276,23 @@ export default function LeadCrmTab({ leadId }: Props) {
                     ) : ev.gmail_id ? (
                       <p className="text-[11px] text-muted-foreground flex items-center gap-1"><Loader2 className="h-3 w-3 animate-spin" /> A carregar email...</p>
                     ) : null}
-                    {ev.gmail_url && (
-                      <a href={ev.gmail_url} target="_blank" rel="noreferrer" className="text-[10px] text-[hsl(var(--info))] inline-flex items-center gap-1">
-                        <ExternalLink className="h-3 w-3" /> Abrir no Gmail
-                      </a>
-                    )}
+                    <div className="flex items-center gap-3 flex-wrap">
+                      {ev.gmail_url && (
+                        <a href={ev.gmail_url} target="_blank" rel="noreferrer" className="text-[10px] text-[hsl(var(--info))] inline-flex items-center gap-1">
+                          <ExternalLink className="h-3 w-3" /> Abrir no Gmail
+                        </a>
+                      )}
+                      {ev.payload?.htmlLink && (
+                        <a href={ev.payload.htmlLink} target="_blank" rel="noreferrer" className="text-[10px] text-[hsl(var(--info))] inline-flex items-center gap-1">
+                          <CalendarDays className="h-3 w-3" /> Abrir no Google Calendar
+                        </a>
+                      )}
+                      {!ev.gmail_id && ev.nethunt_record_id && (
+                        <a href={netHuntRecordUrl(ev.nethunt_record_id)} target="_blank" rel="noreferrer" className="text-[10px] text-muted-foreground inline-flex items-center gap-1">
+                          <ExternalLink className="h-3 w-3" /> Ver no NetHunt
+                        </a>
+                      )}
+                    </div>
                   </div>
                 )}
               </div>

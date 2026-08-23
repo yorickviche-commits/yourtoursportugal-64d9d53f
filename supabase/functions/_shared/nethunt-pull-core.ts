@@ -34,6 +34,12 @@ async function syncDeal(sb: SupabaseClient, r: NHRecord, logs: LogRow[]) {
     return null;
   }
   if (lead.updated_at && lead.updated_at > updatedAt) {
+    // Even when the local row is newer, make sure the NetHunt link is stored —
+    // otherwise the CRM tab/timeline can never resolve this record.
+    await sb.from("leads").update({
+      nethunt_record_id: rid,
+      nethunt_synced_at: new Date().toISOString(),
+    } as never).eq("id", lead.id);
     logs.push({ direction: "pull", entity: "lead", entity_id: lead.id, nethunt_record_id: rid, action: "update", status: "skipped_lww" });
     return lead.id;
   }
