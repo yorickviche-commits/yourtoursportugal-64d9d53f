@@ -39,6 +39,7 @@ import ProposalBuilderPage from "./pages/ProposalBuilderPage";
 import PartnersPage from "./pages/PartnersPage";
 import PartnerDetailPage from "./pages/PartnerDetailPage";
 import FSEDatabasePage from "./pages/FSEDatabasePage";
+import YTBrainPage from './pages/YTBrainPage';
 import AdminSuppliersPage from "./pages/AdminSuppliersPage";
 import AdminSupplierDetailPage from "./pages/AdminSupplierDetailPage";
 import AdminUsersPage from "./pages/AdminUsersPage";
@@ -101,6 +102,7 @@ const App = () => (
             <Route path="/proposals/new" element={<ProtectedRoute><ProposalBuilderPage /></ProtectedRoute>} />
             <Route path="/partners" element={<ProtectedRoute><PartnersPage /></ProtectedRoute>} />
             <Route path="/partners/:id" element={<ProtectedRoute><PartnerDetailPage /></ProtectedRoute>} />
+            <Route path="/yt-brain" element={<ProtectedRoute><YTBrainPage /></ProtectedRoute>} />
             <Route path="/comercial/matriz" element={<ProtectedRoute><FSEDatabasePage /></ProtectedRoute>} />
             <Route path="/comercial/suppliers" element={<ProtectedRoute><AdminSuppliersPage /></ProtectedRoute>} />
             <Route path="/comercial/suppliers/:id" element={<ProtectedRoute><AdminSupplierDetailPage /></ProtectedRoute>} />

@@ -20,7 +20,8 @@ export type PageKey =
   | 'admin_integrations'
   | 'admin_kpi'
   | 'admin_logs'
-  | 'agents';
+  | 'agents'
+  | 'yt_brain';
 
 
 export interface PageDef {
@@ -49,6 +50,7 @@ export const PAGES: PageDef[] = [
   { key: 'admin_integrations',  label: 'Integrações',          path: '/admin/integrations',   group: 'Administração' },
   { key: 'admin_kpi',           label: 'KPI',                  path: '/admin/kpi',            group: 'Administração' },
   { key: 'admin_logs',          label: 'Logs',                 path: '/admin/logs',           group: 'Administração' },
+  { key: 'yt_brain',            label: 'YT Brain',             path: '/yt-brain',             group: 'Comercial' },
   { key: 'agents',              label: 'Spark · Agents',       path: '/agents',               group: 'AI Agents' },
 ];
 
