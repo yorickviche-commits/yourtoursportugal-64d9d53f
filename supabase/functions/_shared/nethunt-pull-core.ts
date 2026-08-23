@@ -300,7 +300,7 @@ export async function runPull(opts: { recordId?: string; folder?: "deals" | "tas
   }
   tasks = uniqTasks.size;
 
-  await syncTimeline(sb, leadsByRid, dealsSince, logs);
+  await syncTimeline(sb, logs);
 
   if (maxDeal !== dealsSince) await setState(sb, "deals_since", maxDeal);
   if (maxTask !== tasksSince) await setState(sb, "tasks_since", maxTask);
