@@ -1,3 +1,4 @@
+import { knowledgeBlock } from "../_shared/ytb-knowledge.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient, SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
 import { requireInternalUser } from "../_shared/require-auth.ts";
@@ -326,8 +327,11 @@ serve(async (req) => {
       ? `\n\nContexto atual do utilizador na app: ${JSON.stringify(body.context)}`
       : "";
 
+    const lastUser = [...history].reverse().find((m: any) => m.role === "user")?.content ?? "";
+    const brain = await knowledgeBlock(String(lastUser).slice(0, 1500), "internal", 6);
+
     const messages: any[] = [
-      { role: "system", content: SYSTEM + contextNote },
+      { role: "system", content: SYSTEM + contextNote + brain },
       ...history.slice(-20).map((m: any) => ({
         role: m.role === "assistant" ? "assistant" : "user",
         content: String(m.content ?? "").slice(0, 8000),
