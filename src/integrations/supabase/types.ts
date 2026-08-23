@@ -761,6 +761,39 @@ export type Database = {
         }
         Relationships: []
       }
+      fse_supplier_flags: {
+        Row: {
+          category: string | null
+          district: string | null
+          has_protocol: boolean
+          manual_override: boolean | null
+          region: string | null
+          supplier_drive_id: string
+          supplier_name: string
+          updated_at: string | null
+        }
+        Insert: {
+          category?: string | null
+          district?: string | null
+          has_protocol?: boolean
+          manual_override?: boolean | null
+          region?: string | null
+          supplier_drive_id: string
+          supplier_name: string
+          updated_at?: string | null
+        }
+        Update: {
+          category?: string | null
+          district?: string | null
+          has_protocol?: boolean
+          manual_override?: boolean | null
+          region?: string | null
+          supplier_drive_id?: string
+          supplier_name?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       fse_sync_state: {
         Row: {
           change_token: string | null
