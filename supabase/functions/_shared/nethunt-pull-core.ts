@@ -21,11 +21,13 @@ async function syncDeal(sb: SupabaseClient, r: NHRecord, logs: LogRow[]) {
     .eq("nethunt_record_id", rid).maybeSingle();
   lead = (byRid.data as Lead | null) ?? null;
 
-  if (!lead && ytId) {
+  const ytDigits = ytKey(ytId);
+  if (!lead && ytDigits) {
     const byYt = await sb
-      .from("leads").select("id, updated_at, nethunt_stage")
-      .eq("yt_id", String(ytId)).maybeSingle();
-    lead = (byYt.data as Lead | null) ?? null;
+      .from("leads").select("id, updated_at, nethunt_stage, yt_id")
+      .ilike("yt_id", `%${ytDigits}`);
+    const rows = (byYt.data as (Lead & { yt_id: string })[] | null) ?? [];
+    lead = rows.find((l) => ytKey(l.yt_id) === ytDigits) ?? null;
   }
   if (!lead) {
     logs.push({ direction: "pull", entity: "lead", nethunt_record_id: rid, action: "unmatched", status: "skipped", detail: { yt_id: ytId ?? null } });
@@ -36,7 +38,7 @@ async function syncDeal(sb: SupabaseClient, r: NHRecord, logs: LogRow[]) {
     return lead.id;
   }
 
-  const stage = field(r, F.stage) ? String(field(r, F.stage)) : null;
+  const stage = canonicalStage(field(r, F.stage) as string | null);
   const status = stageToStatus(stage);
   const patch: Record<string, unknown> = {
     nethunt_record_id: rid,
