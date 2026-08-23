@@ -1,7 +1,7 @@
 // Public endpoint called by NetHunt. Validates a shared secret and pulls the affected record.
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { corsHeaders, json } from "../_shared/nethunt.ts";
-import { runPull } from "../nethunt-pull/index.ts";
+import { runPull } from "../_shared/nethunt-pull-core.ts";
 
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
