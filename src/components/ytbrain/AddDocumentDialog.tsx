@@ -11,7 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { UploadCloud, FileText, Link2, Loader2 } from 'lucide-react';
-import RichHtmlEditor from '@/components/communications/RichHtmlEditor';
+import { RichHtmlEditor } from "@/components/communications/RichHtmlEditor";
 import FolderTreeSelect from './FolderTreeSelect';
 import {
   BRAIN_BUCKET, CONF_HELP, CONF_LABELS, STATUS_LABELS, categoryColorClass,
