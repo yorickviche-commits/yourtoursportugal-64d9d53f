@@ -158,9 +158,11 @@ export default function LeadCrmTab({ leadId }: Props) {
           <Button size="sm" variant="outline" className="text-xs" onClick={() => { syncNow.mutate(); refetch(); timeline.refetch(); }} disabled={syncNow.isPending}>
             {syncNow.isPending ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : <RefreshCw className="h-3 w-3 mr-1" />} Sincronizar
           </Button>
-          <a href={netHuntRecordUrl(lead.nethunt_record_id)} target="_blank" rel="noreferrer">
-            <Button size="sm" variant="outline" className="text-xs"><ExternalLink className="h-3 w-3 mr-1" /> Abrir no NetHunt</Button>
-          </a>
+          {linked && (
+            <a href={netHuntRecordUrl(lead.nethunt_record_id)} target="_blank" rel="noreferrer">
+              <Button size="sm" variant="outline" className="text-xs"><ExternalLink className="h-3 w-3 mr-1" /> Abrir no NetHunt</Button>
+            </a>
+          )}
         </div>
       </div>
 
