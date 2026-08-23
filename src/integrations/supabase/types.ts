@@ -761,6 +761,30 @@ export type Database = {
         }
         Relationships: []
       }
+      fse_sync_state: {
+        Row: {
+          change_token: string | null
+          id: number
+          last_full_sync_at: string | null
+          last_sync_at: string | null
+          root_folder_id: string | null
+        }
+        Insert: {
+          change_token?: string | null
+          id?: number
+          last_full_sync_at?: string | null
+          last_sync_at?: string | null
+          root_folder_id?: string | null
+        }
+        Update: {
+          change_token?: string | null
+          id?: number
+          last_full_sync_at?: string | null
+          last_sync_at?: string | null
+          root_folder_id?: string | null
+        }
+        Relationships: []
+      }
       integration_settings: {
         Row: {
           api_key_ref: string | null
