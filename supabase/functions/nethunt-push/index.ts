@@ -37,18 +37,18 @@ serve(async (req) => {
       if ("nethunt_stage" in changes || "status" in changes) {
         const stage = (changes.nethunt_stage as string | undefined) ??
           statusToStage((changes.status as string) ?? lead.status, lead.nethunt_stage);
-        if (stage) actions.push({ field: F.stage, value: stage });
+        if (stage) actions.push({ field: wkey(F.stage), value: stage });
       }
-      if ("trip_start" in changes) actions.push({ field: F.tripStart, value: fromDate(changes.trip_start as string) });
-      if ("trip_finish" in changes) actions.push({ field: F.tripFinish, value: fromDate(changes.trip_finish as string) });
-      if ("close_date" in changes) actions.push({ field: F.closeDate, value: fromDate(changes.close_date as string) });
+      if ("trip_start" in changes) actions.push({ field: wkey(F.tripStart), value: fromDate(changes.trip_start as string) });
+      if ("trip_finish" in changes) actions.push({ field: wkey(F.tripFinish), value: fromDate(changes.trip_finish as string) });
+      if ("close_date" in changes) actions.push({ field: wkey(F.closeDate), value: fromDate(changes.close_date as string) });
       if ("client_type" in changes) {
         const v = fromClientType(changes.client_type as string);
-        actions.push({ field: F.clientType, value: v ? [v] : [] });
+        actions.push({ field: wkey(F.clientType), value: v ? [v] : [] });
       }
       if ("source" in changes) {
         const v = fromSource(changes.source as string);
-        actions.push({ field: F.source, value: v ? [v] : [] });
+        actions.push({ field: wkey(F.source), value: v ? [v] : [] });
       }
       if (!actions.length) return json({ ok: true, skipped: "no_fields" });
 
@@ -99,15 +99,15 @@ serve(async (req) => {
       }
       const dueAt = (changes.due_at as string) ?? null;
       const fields: Record<string, unknown> = {
-        [TF.name]: title,
-        [TF.description]: changes.description ?? "",
-        [TF.priority]: PRIORITY_OUT[String(changes.priority ?? "medium")] ?? "Medium",
-        [TF.completed]: false,
-        [TF.allDay]: Boolean(changes.all_day),
+        [wkey(TF.name)]: title,
+        [wkey(TF.description)]: changes.description ?? "",
+        [wkey(TF.priority)]: PRIORITY_OUT[String(changes.priority ?? "medium")] ?? "Medium",
+        [wkey(TF.completed)]: false,
+        [wkey(TF.allDay)]: Boolean(changes.all_day),
       };
-      if (dueAt) fields[TF.dueDate] = fromDate(dueAt);
-      if (Array.isArray(changes.assignee_emails) && changes.assignee_emails.length) fields[TF.assignee] = changes.assignee_emails;
-      if (links.length) fields[TF.recordLinks] = links;
+      if (dueAt) fields[wkey(TF.dueDate)] = fromDate(dueAt);
+      if (Array.isArray(changes.assignee_emails) && changes.assignee_emails.length) fields[wkey(TF.assignee)] = changes.assignee_emails;
+      if (links.length) fields[wkey(TF.recordLinks)] = links;
 
       const created = await createRecord(TASKS_FOLDER, fields);
       const rid = created ? recId(created) : null;
@@ -145,23 +145,23 @@ serve(async (req) => {
         const done = entity === "task_complete" ? changes.completed !== false : Boolean(changes.completed);
         patch.completed = done;
         patch.status = done ? "done" : "todo";
-        actions.push({ field: TF.completed, value: done });
+        actions.push({ field: wkey(TF.completed), value: done });
       }
-      if ("title" in changes) { patch.title = changes.title; actions.push({ field: TF.name, value: changes.title }); }
-      if ("description" in changes) { patch.description = changes.description; actions.push({ field: TF.description, value: changes.description }); }
+      if ("title" in changes) { patch.title = changes.title; actions.push({ field: wkey(TF.name), value: changes.title }); }
+      if ("description" in changes) { patch.description = changes.description; actions.push({ field: wkey(TF.description), value: changes.description }); }
       if ("priority" in changes) {
         patch.priority = changes.priority;
-        actions.push({ field: TF.priority, value: PRIORITY_OUT[String(changes.priority)] ?? "Medium" });
+        actions.push({ field: wkey(TF.priority), value: PRIORITY_OUT[String(changes.priority)] ?? "Medium" });
       }
       if ("due_at" in changes) {
         patch.due_at = changes.due_at;
         patch.due_date = changes.due_at ? String(changes.due_at).slice(0, 10) : null;
-        actions.push({ field: TF.dueDate, value: fromDate(changes.due_at as string) });
+        actions.push({ field: wkey(TF.dueDate), value: fromDate(changes.due_at as string) });
       }
-      if ("all_day" in changes) { patch.all_day = Boolean(changes.all_day); actions.push({ field: TF.allDay, value: Boolean(changes.all_day) }); }
+      if ("all_day" in changes) { patch.all_day = Boolean(changes.all_day); actions.push({ field: wkey(TF.allDay), value: Boolean(changes.all_day) }); }
       if ("assignee_emails" in changes) {
         patch.assignee_emails = changes.assignee_emails;
-        actions.push({ field: TF.assignee, value: changes.assignee_emails ?? [] });
+        actions.push({ field: wkey(TF.assignee), value: changes.assignee_emails ?? [] });
       }
 
       await sb.from("tasks").update(patch as never).eq("id", task.id);
