@@ -46,7 +46,6 @@ import AdminUsersPage from "./pages/AdminUsersPage";
 import AdminPermissionsPage from "./pages/AdminPermissionsPage";
 import AdminSettingsPage from "./pages/AdminSettingsPage";
 import AdminIntegrationsPage from "./pages/AdminIntegrationsPage";
-import AdminKPIPage from "./pages/AdminKPIPage";
 import AdminActivityLogsPage from "./pages/AdminActivityLogsPage";
 import AgentDashboardPage from "./pages/AgentDashboardPage";
 import ProfilePage from "./pages/ProfilePage";
@@ -113,7 +112,6 @@ const App = () => (
             <Route path="/admin/permissions" element={<ProtectedRoute><AdminPermissionsPage /></ProtectedRoute>} />
             <Route path="/admin/settings" element={<ProtectedRoute><AdminSettingsPage /></ProtectedRoute>} />
             <Route path="/admin/integrations" element={<ProtectedRoute><AdminIntegrationsPage /></ProtectedRoute>} />
-            <Route path="/admin/kpi" element={<ProtectedRoute><AdminKPIPage /></ProtectedRoute>} />
             <Route path="/admin/logs" element={<ProtectedRoute><AdminActivityLogsPage /></ProtectedRoute>} />
             <Route path="/profile" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
             <Route path="/profile/:userId" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />

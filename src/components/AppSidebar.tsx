@@ -1,7 +1,7 @@
 import { NavLink, useLocation } from 'react-router-dom';
 import {
   Map, Users, CreditCard, Sparkles, LayoutDashboard,
-  FileText, Handshake, Grid3x3, Truck, Settings, Shield, BarChart3, Plug, ScrollText,
+  FileText, Handshake, Grid3x3, Truck, Settings, Shield, Plug, ScrollText,
   Inbox, PackageSearch, Boxes, Brain,
   LogOut, ChevronDown, ChevronRight, Menu, X,
 } from 'lucide-react';
@@ -44,7 +44,6 @@ const adminItems: NavItem[] = [
   { to: '/admin/permissions', icon: Shield, label: 'Permissões', pageKey: 'admin_permissions' },
   { to: '/admin/settings', icon: Settings, label: 'Configurações', pageKey: 'admin_settings' },
   { to: '/admin/integrations', icon: Plug, label: 'Integrações', pageKey: 'admin_integrations' },
-  { to: '/admin/kpi', icon: BarChart3, label: 'KPI', pageKey: 'admin_kpi' },
   { to: '/admin/logs', icon: ScrollText, label: 'Logs', pageKey: 'admin_logs' },
 ];
 

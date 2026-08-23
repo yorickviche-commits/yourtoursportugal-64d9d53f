@@ -1,126 +1,138 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { AlertTriangle, Clock, CheckCircle, Users, Send, TrendingUp, Calendar as CalendarIcon, ArrowRight, Loader2, Plus, DollarSign, ListTodo } from 'lucide-react';
-import { format, formatDistanceToNow, startOfMonth, isBefore, startOfDay, addDays } from 'date-fns';
+import { Plus, Users, Wrench, DollarSign, Handshake, TrendingUp, Clock, CheckCircle, AlertTriangle, FileText, HelpCircle, BarChart3 } from 'lucide-react';
+import { format } from 'date-fns';
 import { pt } from 'date-fns/locale';
 import AppLayout from '@/components/AppLayout';
-import StatusBadge from '@/components/StatusBadge';
-import { urgencyConfig, statusConfig, approvalTypeConfig } from '@/lib/config';
 import { cn } from '@/lib/utils';
 import MonthlyCalendar, { CalendarEvent, EVENT_COLORS } from '@/components/dashboard/MonthlyCalendar';
 import TasksBoard from '@/components/dashboard/TasksBoard';
 import { useTripsQuery } from '@/hooks/useTripsQuery';
-import { useApprovalsQuery } from '@/hooks/useApprovalsQuery';
-import { useLeadsQuery } from '@/hooks/useLeadsQuery';
-import { useTasksQuery } from '@/hooks/useTasksQuery';
-import { useActivityLogQuery } from '@/hooks/useActivityLogQuery';
-import { supabase } from '@/integrations/supabase/client';
-import { useQueryClient } from '@tanstack/react-query';
-import { useToast } from '@/hooks/use-toast';
+import { Card, CardContent } from '@/components/ui/card';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { Button } from '@/components/ui/button';
-import { Skeleton } from '@/components/ui/skeleton';
 import { useAuth } from '@/hooks/useAuth';
-import TeamKPISection from '@/components/kpi/TeamKPISection';
+import AdminKPIFilters from '@/components/kpi/AdminKPIFilters';
+import KPICards from '@/components/kpi/KPICards';
+import { useUserKPIs } from '@/hooks/useUserKPIs';
+import {
+  KPIFilterState, KPIValue, useSalesKPIs, useOperationsKPIs, useFinanceKPIs, useB2BKPIs,
+} from '@/hooks/useAdminKPIs';
 
 type DashboardSubPage = 'overview' | 'calendar_reservas' | 'calendar_tasks';
 
-const KPICard = ({ icon: Icon, label, value, subtitle, variant = 'default', loading }: {
-  icon: React.ElementType; label: string; value: string | number; subtitle?: string;
-  variant?: 'default' | 'urgent' | 'warning' | 'success' | 'info'; loading?: boolean;
+const fmtEur = (n: number) => new Intl.NumberFormat('pt-PT', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(n);
+const fmtPct = (n: number) => `${n.toFixed(1)}%`;
+
+const KPICard = ({ icon: Icon, label, value, variant = 'default', unavailableNote }: {
+  icon: React.ElementType; label: string; value: KPIValue | string; variant?: 'default' | 'success' | 'warning' | 'urgent'; unavailableNote?: string;
 }) => {
-  const borderColors = { default: 'border-border', urgent: 'border-destructive/30', warning: 'border-[hsl(var(--urgent))]/30', success: 'border-[hsl(var(--success))]/30', info: 'border-[hsl(var(--info))]/30' };
-  const iconColors = { default: 'text-muted-foreground', urgent: 'text-destructive', warning: 'text-[hsl(var(--urgent))]', success: 'text-[hsl(var(--success))]', info: 'text-[hsl(var(--info))]' };
+  const variantStyles = {
+    default: 'border-border', success: 'border-success/30', warning: 'border-warning/30', urgent: 'border-destructive/30',
+  };
+  const isMissing = value === null;
+  const display = isMissing ? 'Sem dados' : value;
+  return (
+    <Card className={`${variantStyles[isMissing ? 'default' : variant]}`}>
+      <CardContent className="pt-4">
+        <div className="flex items-center justify-between">
+          <div>
+            <div className="flex items-center gap-1">
+              <p className="text-xs text-muted-foreground">{label}</p>
+              {isMissing && unavailableNote && (
+                <Tooltip>
+                  <TooltipTrigger asChild><HelpCircle className="h-3 w-3 text-muted-foreground/70 cursor-help" /></TooltipTrigger>
+                  <TooltipContent className="max-w-[220px] text-xs">{unavailableNote}</TooltipContent>
+                </Tooltip>
+              )}
+            </div>
+            <p className={`text-2xl font-bold mt-1 ${isMissing ? 'text-muted-foreground/60' : ''}`}>{display}</p>
+          </div>
+          <Icon className="h-5 w-5 text-muted-foreground" />
+        </div>
+      </CardContent>
+    </Card>
+  );
+};
+
+const DepartmentKPIDashboard = () => {
+  const [filters, setFilters] = useState<KPIFilterState>({ period: '30d' });
+  const sales = useSalesKPIs(filters);
+  const operations = useOperationsKPIs(filters);
+  const finance = useFinanceKPIs(filters);
+  const b2b = useB2BKPIs(filters);
+
+  const s = sales.data, o = operations.data, f = finance.data, b = b2b.data;
 
   return (
-    <div className={cn("rounded-lg border bg-card p-3 sm:p-4", borderColors[variant])}>
-      <div className="flex items-center justify-between">
-        <div className="min-w-0">
-          <p className="text-[10px] sm:text-xs text-muted-foreground uppercase font-medium truncate">{label}</p>
-          {loading ? <Skeleton className="h-7 w-16 mt-1" /> : <p className="text-xl sm:text-2xl font-bold mt-1">{value}</p>}
-          {subtitle && <p className="text-[10px] text-muted-foreground mt-0.5">{subtitle}</p>}
-        </div>
-        <Icon className={cn("h-4 w-4 sm:h-5 sm:w-5 shrink-0", iconColors[variant])} />
+    <Tabs defaultValue="sales" className="space-y-4">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <TabsList>
+          <TabsTrigger value="sales" className="gap-1.5"><Users className="h-3.5 w-3.5" />Sales</TabsTrigger>
+          <TabsTrigger value="operations" className="gap-1.5"><Wrench className="h-3.5 w-3.5" />Operations</TabsTrigger>
+          <TabsTrigger value="finance" className="gap-1.5"><DollarSign className="h-3.5 w-3.5" />Finance</TabsTrigger>
+          <TabsTrigger value="b2b" className="gap-1.5"><Handshake className="h-3.5 w-3.5" />B2B</TabsTrigger>
+        </TabsList>
+        <AdminKPIFilters value={filters} onChange={setFilters} />
       </div>
+
+      <TabsContent value="sales">
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <KPICard icon={Users} label="Leads Recebidos" value={s?.leadsRecebidos ?? (sales.isLoading ? 0 : null)} variant="default" />
+          <KPICard icon={TrendingUp} label="Leads Convertidos" value={s?.leadsConvertidos ?? (sales.isLoading ? 0 : null)} variant="success" />
+          <KPICard icon={Clock} label="Tempo Médio Resposta" value={null} unavailableNote="Ainda não existe um timestamp fiável de 'primeira resposta' no schema." variant="default" />
+          <KPICard icon={DollarSign} label="Revenue Gerado" value={s ? fmtEur(s.revenueGerado ?? 0) : (sales.isLoading ? '…' : null)} variant="success" />
+          <KPICard icon={TrendingUp} label="Taxa Conversão" value={s ? fmtPct(s.taxaConversao ?? 0) : (sales.isLoading ? '…' : null)} variant="default" />
+          <KPICard icon={CheckCircle} label="Aprovação Propostas" value={s?.aprovacaoPropostas != null ? fmtPct(s.aprovacaoPropostas) : null} unavailableNote="Sem propostas enviadas (sent_at) neste período." variant="default" />
+        </div>
+      </TabsContent>
+
+      <TabsContent value="operations">
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <KPICard icon={FileText} label="Trips Criados" value={o?.tripsCriados ?? (operations.isLoading ? 0 : null)} variant="default" />
+          <KPICard icon={AlertTriangle} label="Erros Sinalizados" value={o?.errosSinalizados ?? (operations.isLoading ? 0 : null)} variant="urgent" />
+          <KPICard icon={CheckCircle} label="Drafts WeTravel" value={o?.draftsWeTravel ?? (operations.isLoading ? 0 : null)} variant="default" />
+          <KPICard icon={DollarSign} label="Desvios Custo Operacional" value={null} unavailableNote="Não existe ainda uma coluna/tabela de desvio de custo operacional no schema." variant="warning" />
+        </div>
+      </TabsContent>
+
+      <TabsContent value="finance">
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <KPICard icon={DollarSign} label="Revenue Cobrado" value={f ? fmtEur(f.revenueCobrado ?? 0) : (finance.isLoading ? '…' : null)} variant="success" />
+          <KPICard icon={Clock} label="Pagamentos Pendentes" value={f?.pagamentosPendentes ?? (finance.isLoading ? 0 : null)} unavailableNote="Aproximado por links WeTravel publicados e ativos — ainda sem estado de pagamento confirmado por reserva." variant="warning" />
+          <KPICard icon={CheckCircle} label="Links WeTravel Gerados" value={f?.linksWeTravelGerados ?? (finance.isLoading ? 0 : null)} variant="default" />
+          <KPICard icon={AlertTriangle} label="Reembolsos" value={f ? fmtEur(f.reembolsos ?? 0) : (finance.isLoading ? '…' : null)} variant="urgent" />
+        </div>
+      </TabsContent>
+
+      <TabsContent value="b2b">
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <KPICard icon={Handshake} label="Parceiros Onboarded" value={b?.parceirosOnboarded ?? (b2b.isLoading ? 0 : null)} variant="default" />
+          <KPICard icon={CheckCircle} label="Deals Fechados" value={b?.dealsFechados ?? (b2b.isLoading ? 0 : null)} variant="success" />
+          <KPICard icon={DollarSign} label="Valor Médio Deal" value={b?.valorMedioDeal != null ? fmtEur(b.valorMedioDeal) : null} unavailableNote="Sem deals B2B fechados (client_type = 'B2B', status = 'won') neste período." variant="default" />
+        </div>
+      </TabsContent>
+    </Tabs>
+  );
+};
+
+const PersonalKPIView = () => {
+  const { user } = useAuth();
+  const { data } = useUserKPIs(user?.id, {});
+  if (!data) return null;
+  return (
+    <div className="space-y-2">
+      <h2 className="text-sm font-semibold">Os Meus KPIs</h2>
+      <KPICards k={data} />
     </div>
   );
 };
 
 const Dashboard = () => {
   const [subPage, setSubPage] = useState<DashboardSubPage>('overview');
-  const { data: trips = [], isLoading: tripsLoading } = useTripsQuery();
-  const { data: approvals = [], isLoading: approvalsLoading } = useApprovalsQuery();
-  const { data: leads = [], isLoading: leadsLoading } = useLeadsQuery();
-  const { data: allTasks = [], isLoading: tasksLoading } = useTasksQuery();
-  const { data: activityLogs = [] } = useActivityLogQuery();
-  const queryClient = useQueryClient();
-  const { toast } = useToast();
-
-  const loading = tripsLoading || approvalsLoading || leadsLoading || tasksLoading;
-
-  // Realtime subscriptions
-  useEffect(() => {
-    const channel = supabase
-      .channel('dashboard-realtime')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'leads' }, (payload) => {
-        queryClient.invalidateQueries({ queryKey: ['leads'] });
-        if (payload.eventType === 'INSERT') {
-          const newLead = payload.new as any;
-          toast({ title: '🆕 Novo lead', description: newLead.client_name || 'Lead criado' });
-        }
-      })
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'trips' }, () => {
-        queryClient.invalidateQueries({ queryKey: ['trips'] });
-      })
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'tasks' }, () => {
-        queryClient.invalidateQueries({ queryKey: ['tasks'] });
-      })
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'approvals' }, (payload) => {
-        queryClient.invalidateQueries({ queryKey: ['approvals'] });
-        if (payload.eventType === 'UPDATE') {
-          const updated = payload.new as any;
-          if (updated.status !== 'pending') {
-            toast({ title: '✅ Aprovação resolvida', description: updated.title });
-          }
-        }
-      })
-      .subscribe();
-
-    return () => { supabase.removeChannel(channel); };
-  }, [queryClient, toast]);
-
-  // KPI calculations
-  const monthStart = startOfMonth(new Date());
-  const leadsThisMonth = leads.filter(l => new Date(l.created_at) >= monthStart).length;
-  const wonLeads = leads.filter(l => l.status === 'won').length;
-  const conversionRate = leads.length > 0 ? Math.round((wonLeads / leads.length) * 100) : 0;
-  const pipeline = trips
-    .filter(t => t.status === 'confirmed' || t.status === 'active' || t.status === 'in_progress')
-    .reduce((sum, t) => sum + (t.total_value || 0), 0);
-  const pendingApprovals = approvals.filter(a => a.status === 'pending');
-  const overdueTasks = allTasks.filter(t => {
-    if (t.status === 'done' || !t.due_date) return false;
-    return isBefore(new Date(t.due_date), startOfDay(new Date()));
-  });
-
-  const urgentTrips = trips.filter(t => t.urgency === 'D-1' || t.urgency === 'D-3');
-  const blockedTrips = trips.filter(t => t.has_blocker);
-
-  // Upcoming trips next 30 days
-  const in30Days = addDays(new Date(), 30);
-  const upcomingTrips = trips
-    .filter(t => t.start_date && new Date(t.start_date) >= new Date() && new Date(t.start_date) <= in30Days)
-    .sort((a, b) => new Date(a.start_date!).getTime() - new Date(b.start_date!).getTime());
-
-  // Leads by status
-  const leadsByStatus = leads.reduce((acc, l) => { acc[l.status] = (acc[l.status] || 0) + 1; return acc; }, {} as Record<string, number>);
-  const leadStatusLabels: Record<string, string> = {
-    new: 'Novos', contacted: 'Contactados', qualified: 'Qualificados',
-    proposal_sent: 'Proposta Enviada', negotiation: 'Negociação', won: 'Ganhos', lost: 'Perdidos',
-  };
-  const leadStatusColors: Record<string, string> = {
-    new: 'bg-[hsl(var(--info))]', contacted: 'bg-[hsl(var(--warning))]', qualified: 'bg-purple-500',
-    proposal_sent: 'bg-[hsl(var(--urgent))]', negotiation: 'bg-purple-500', won: 'bg-[hsl(var(--success))]', lost: 'bg-destructive',
-  };
+  const { isAdmin } = useAuth();
+  const { data: trips = [] } = useTripsQuery();
 
   const calendarEvents: CalendarEvent[] = trips.map((t, idx) => ({
     id: t.id, title: `${t.client_name} - ${t.destination}`,
@@ -140,9 +152,12 @@ const Dashboard = () => {
     <AppLayout>
       <div className="space-y-4 sm:space-y-6">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-          <div>
-            <h1 className="text-lg sm:text-xl font-semibold">Daily Command Center</h1>
-            <p className="text-xs sm:text-sm text-muted-foreground mt-0.5">{format(new Date(), "EEEE, d 'de' MMMM yyyy", { locale: pt })}</p>
+          <div className="flex items-center gap-2">
+            <BarChart3 className="h-5 w-5 text-primary hidden sm:block" />
+            <div>
+              <h1 className="text-lg sm:text-xl font-semibold">Daily Command Center</h1>
+              <p className="text-xs sm:text-sm text-muted-foreground mt-0.5">{format(new Date(), "EEEE, d 'de' MMMM yyyy", { locale: pt })}</p>
+            </div>
           </div>
           <div className="flex items-center gap-2">
             <Link to="/leads"><Button size="sm" variant="outline" className="text-xs gap-1"><Plus className="h-3 w-3" /> Novo Lead</Button></Link>
@@ -155,148 +170,12 @@ const Dashboard = () => {
           ))}
         </div>
 
-        {subPage === 'overview' && (
-          <>
-            {/* 5 KPI Cards */}
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2 sm:gap-3">
-              <KPICard icon={Users} label="Leads este mês" value={leadsThisMonth} loading={loading} variant="info" />
-              <KPICard icon={TrendingUp} label="Taxa de conversão" value={`${conversionRate}%`} subtitle={`${wonLeads}/${leads.length}`} loading={loading} variant="success" />
-              <KPICard icon={DollarSign} label="Pipeline" value={`€${pipeline.toLocaleString('pt-PT')}`} loading={loading} variant="warning" />
-              <KPICard icon={CheckCircle} label="Aprovações pendentes" value={pendingApprovals.length} loading={loading} variant={pendingApprovals.length > 0 ? 'urgent' : 'default'} />
-              <KPICard icon={ListTodo} label="Tarefas atrasadas" value={overdueTasks.length} loading={loading} variant={overdueTasks.length > 0 ? 'urgent' : 'default'} />
-            </div>
-
-            {/* Urgent + Blocked */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
-              <div className="bg-card rounded-lg border p-4">
-                <div className="flex items-center justify-between mb-3">
-                  <h2 className="text-sm font-semibold">Viagens Urgentes</h2>
-                  <Link to="/trips" className="text-xs text-[hsl(var(--info))] hover:underline flex items-center gap-1">Ver todas <ArrowRight className="h-3 w-3" /></Link>
-                </div>
-                <div className="space-y-2">
-                  {urgentTrips.map(trip => (
-                    <Link key={trip.id} to={`/trips/${trip.id}`} className="flex items-center justify-between p-3 rounded-md border hover:bg-muted/50 transition-colors">
-                      <div className="flex items-center gap-3 min-w-0">
-                        <StatusBadge {...(urgencyConfig[trip.urgency as keyof typeof urgencyConfig] || urgencyConfig['future'])} />
-                        <div className="min-w-0"><p className="text-sm font-medium truncate">{trip.client_name}</p><p className="text-xs text-muted-foreground">{trip.destination} · {trip.pax} pax</p></div>
-                      </div>
-                      <p className="text-xs text-muted-foreground shrink-0 ml-2">{trip.start_date}</p>
-                    </Link>
-                  ))}
-                  {urgentTrips.length === 0 && <p className="text-sm text-muted-foreground text-center py-4">Sem viagens urgentes 🎉</p>}
-                </div>
-              </div>
-
-              <div className="bg-card rounded-lg border p-4">
-                <div className="flex items-center justify-between mb-3">
-                  <h2 className="text-sm font-semibold flex items-center gap-2"><AlertTriangle className="h-4 w-4 text-destructive" /> Items Bloqueados</h2>
-                </div>
-                <div className="space-y-2">
-                  {blockedTrips.map(trip => (
-                    <Link key={trip.id} to={`/trips/${trip.id}`} className="flex items-center justify-between p-3 rounded-md border border-destructive/20 bg-destructive/5 hover:bg-destructive/10 transition-colors">
-                      <div className="min-w-0"><p className="text-sm font-medium truncate">{trip.client_name}</p><p className="text-xs text-destructive mt-0.5">{trip.blocker_note}</p></div>
-                    </Link>
-                  ))}
-                  {blockedTrips.length === 0 && <p className="text-sm text-muted-foreground text-center py-4">Sem bloqueios ✓</p>}
-                </div>
-              </div>
-            </div>
-
-            {/* Approvals + Upcoming */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
-              <div className="bg-card rounded-lg border p-4">
-                <div className="flex items-center justify-between mb-3">
-                  <h2 className="text-sm font-semibold">Aprovações Pendentes</h2>
-                  <Link to="/approvals" className="text-xs text-[hsl(var(--info))] hover:underline flex items-center gap-1">Ver todas <ArrowRight className="h-3 w-3" /></Link>
-                </div>
-                <div className="space-y-2">
-                  {pendingApprovals.slice(0, 4).map(item => (
-                    <div key={item.id} className="flex items-center justify-between p-3 rounded-md border hover:bg-muted/50 transition-colors">
-                      <div className="flex items-center gap-3 min-w-0">
-                        <StatusBadge {...(approvalTypeConfig[item.type as keyof typeof approvalTypeConfig] || approvalTypeConfig['itinerary'])} />
-                        <div className="min-w-0"><p className="text-sm font-medium truncate">{item.title}</p><p className="text-xs text-muted-foreground">{item.client_name}</p></div>
-                      </div>
-                      <Link to="/approvals" className="text-xs font-medium text-[hsl(var(--info))] hover:underline shrink-0 ml-2">Rever</Link>
-                    </div>
-                  ))}
-                  {pendingApprovals.length === 0 && <p className="text-sm text-muted-foreground text-center py-4">Tudo em dia! ✓</p>}
-                </div>
-              </div>
-
-              <div className="bg-card rounded-lg border p-4">
-                <div className="flex items-center justify-between mb-3">
-                  <h2 className="text-sm font-semibold">Próximas Viagens (30 dias)</h2>
-                </div>
-                <div className="space-y-2">
-                  {upcomingTrips.slice(0, 5).map(trip => (
-                    <Link key={trip.id} to={`/trips/${trip.id}`} className="flex items-center justify-between p-3 rounded-md border hover:bg-muted/50 transition-colors">
-                      <div className="min-w-0"><p className="text-sm font-medium truncate">{trip.client_name}</p><p className="text-xs text-muted-foreground">{trip.destination}</p></div>
-                      <div className="text-right shrink-0 ml-2">
-                        <p className="text-xs font-medium">{trip.start_date}</p>
-                        <p className="text-[10px] text-muted-foreground">€{(trip.total_value || 0).toLocaleString()}</p>
-                      </div>
-                    </Link>
-                  ))}
-                  {upcomingTrips.length === 0 && <p className="text-sm text-muted-foreground text-center py-4">Sem viagens próximas</p>}
-                </div>
-              </div>
-            </div>
-
-            {/* Leads by status + Activity */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
-              <div className="bg-card rounded-lg border p-4">
-                <h2 className="text-sm font-semibold mb-3">Leads por Estado</h2>
-                <div className="space-y-2">
-                  {Object.entries(leadsByStatus).map(([status, count]) => (
-                    <div key={status} className="flex items-center gap-3">
-                      <span className={cn("h-2.5 w-2.5 rounded-full shrink-0", leadStatusColors[status] || 'bg-muted-foreground')} />
-                      <span className="text-xs flex-1">{leadStatusLabels[status] || status}</span>
-                      <span className="text-xs font-bold">{count}</span>
-                    </div>
-                  ))}
-                  {Object.keys(leadsByStatus).length === 0 && <p className="text-xs text-muted-foreground text-center py-4">Ainda sem leads</p>}
-                </div>
-              </div>
-
-              <div className="bg-card rounded-lg border p-4">
-                <h2 className="text-sm font-semibold mb-3">Atividade Recente</h2>
-                <div className="space-y-2 max-h-[250px] overflow-y-auto">
-                  {activityLogs.slice(0, 25).map(log => (
-                    <div key={log.id} className="flex items-start gap-2 py-1.5 border-b border-border last:border-0">
-                      <div className="h-1.5 w-1.5 rounded-full bg-[hsl(var(--info))] mt-1.5 shrink-0" />
-                      <div className="min-w-0">
-                        <p className="text-xs truncate">{log.action_type}</p>
-                        {log.entity_type && log.entity_id && (
-                          <Link to={`/${log.entity_type === 'lead' ? 'leads' : log.entity_type === 'trip' ? 'trips' : log.entity_type === 'approval' ? 'approvals' : 'tasks'}/${log.entity_id}`}
-                            className="text-[10px] text-[hsl(var(--info))] hover:underline">
-                            {log.entity_type} →
-                          </Link>
-                        )}
-                        <p className="text-[10px] text-muted-foreground">
-                          {formatDistanceToNow(new Date(log.created_at), { addSuffix: true, locale: pt })}
-                        </p>
-                      </div>
-                    </div>
-                  ))}
-                  {activityLogs.length === 0 && <p className="text-xs text-muted-foreground text-center py-4">Sem atividade recente</p>}
-                </div>
-              </div>
-            </div>
-          </>
-        )}
-
-        {subPage === 'overview' && <TeamKPIsGate />}
+        {subPage === 'overview' && (isAdmin ? <DepartmentKPIDashboard /> : <PersonalKPIView />)}
         {subPage === 'calendar_reservas' && <MonthlyCalendar events={calendarEvents} />}
         {subPage === 'calendar_tasks' && <TasksBoard />}
       </div>
     </AppLayout>
   );
-};
-
-const TeamKPIsGate = () => {
-  const { isAdmin } = useAuth();
-  if (!isAdmin) return null;
-  return <div className="mt-4"><TeamKPISection /></div>;
 };
 
 export default Dashboard;
