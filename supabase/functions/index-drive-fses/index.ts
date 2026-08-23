@@ -152,7 +152,7 @@ serve(async (req) => {
 
   try {
     const out: Node[] = [];
-    await walk(ROOT_FSE_FOLDER, null, 0, [], null, null, null, null, out);
+    await walkAll(ROOT_FSE_FOLDER, out);
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
