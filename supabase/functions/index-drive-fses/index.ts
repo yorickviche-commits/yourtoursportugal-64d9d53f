@@ -68,58 +68,82 @@ interface Node {
   depth: number;
 }
 
+interface Task {
+  folderId: string;
+  depth: number;
+  pathParts: string[];
+  region: string | null;
+  district: string | null;
+  category: string | null;
+  supplier: string | null;
+}
+
+const CONCURRENCY = 12;
+
 /**
+ * Breadth-first, parallel walk (sequential recursion timed out at 150s).
  * depth 0 = Região, depth 1 = Distrito, depth 2 = Categoria,
  * depth >= 3 = Fornecedor (pasta) e respetivos ficheiros.
  */
-async function walk(
-  folderId: string,
-  parentId: string | null,
-  depth: number,
-  pathParts: string[],
-  region: string | null,
-  district: string | null,
-  category: string | null,
-  supplier: string | null,
-  out: Node[],
-) {
-  let children: DriveFile[];
-  try { children = await listFolder(folderId); } catch (e) { console.warn("skip", folderId, e); return; }
+async function walkAll(rootId: string, out: Node[]) {
+  let level: Task[] = [{
+    folderId: rootId, depth: 0, pathParts: [],
+    region: null, district: null, category: null, supplier: null,
+  }];
 
-  for (const f of children) {
-    const isFolder = f.mimeType === FOLDER_MIME;
-    const newPath = [...pathParts, f.name];
-    const clean = cleanName(f.name);
+  while (level.length) {
+    const next: Task[] = [];
 
-    const nextRegion = depth === 0 && isFolder ? clean : region;
-    const nextDistrict = depth === 1 && isFolder ? clean : district;
-    const nextCategory = depth === 2 && isFolder ? clean : category;
+    for (let i = 0; i < level.length; i += CONCURRENCY) {
+      const batch = level.slice(i, i + CONCURRENCY);
+      await Promise.all(batch.map(async (t) => {
+        let children: DriveFile[];
+        try { children = await listFolder(t.folderId); } catch (e) { console.warn("skip", t.folderId, e); return; }
 
-    let nextSupplier = supplier;
-    if (isFolder && depth >= 3) nextSupplier = supplier ?? clean;
-    const nodeSupplier = isFolder
-      ? nextSupplier
-      : (supplier ?? (depth >= 3 ? stripExt(f.name) : null));
+        for (const f of children) {
+          const isFolder = f.mimeType === FOLDER_MIME;
+          const newPath = [...t.pathParts, f.name];
+          const clean = cleanName(f.name);
 
-    out.push({
-      drive_id: f.id,
-      parent_drive_id: parentId,
-      name: f.name,
-      mime_type: f.mimeType,
-      category: nextCategory,
-      region: nextRegion,
-      district: nextDistrict,
-      supplier_name: nodeSupplier,
-      path: newPath.join(" / "),
-      web_view_link: f.webViewLink || null,
-      depth,
-    });
+          const nextRegion = t.depth === 0 && isFolder ? clean : t.region;
+          const nextDistrict = t.depth === 1 && isFolder ? clean : t.district;
+          const nextCategory = t.depth === 2 && isFolder ? clean : t.category;
 
-    if (isFolder && depth < MAX_DEPTH) {
-      await walk(f.id, f.id, depth + 1, newPath, nextRegion, nextDistrict, nextCategory, nextSupplier, out);
+          let nextSupplier = t.supplier;
+          if (isFolder && t.depth >= 3) nextSupplier = t.supplier ?? clean;
+          const nodeSupplier = isFolder
+            ? nextSupplier
+            : (t.supplier ?? (t.depth >= 3 ? stripExt(f.name) : null));
+
+          out.push({
+            drive_id: f.id,
+            parent_drive_id: t.folderId === rootId ? null : t.folderId,
+            name: f.name,
+            mime_type: f.mimeType,
+            category: nextCategory,
+            region: nextRegion,
+            district: nextDistrict,
+            supplier_name: nodeSupplier,
+            path: newPath.join(" / "),
+            web_view_link: f.webViewLink || null,
+            depth: t.depth,
+          });
+
+          if (isFolder && t.depth < MAX_DEPTH) {
+            next.push({
+              folderId: f.id, depth: t.depth + 1, pathParts: newPath,
+              region: nextRegion, district: nextDistrict,
+              category: nextCategory, supplier: nextSupplier,
+            });
+          }
+        }
+      }));
     }
+
+    level = next;
   }
 }
+
 
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
