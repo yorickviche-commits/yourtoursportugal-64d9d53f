@@ -90,7 +90,8 @@ export const ytKey = (v: unknown): string | null => {
   return digits || null;
 };
 
-export function stageToStatus(stage?: string | null): string | null {
+export function stageToStatus(rawStageValue?: string | null): string | null {
+  const stage = canonicalStage(rawStageValue);
   if (!stage) return null;
   if (stage === "SALES - New Lead") return "new";
   if (stage === "SALES - - Budgeting & Fine-Tuning") return "qualified";
