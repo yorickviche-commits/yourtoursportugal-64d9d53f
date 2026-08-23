@@ -121,138 +121,19 @@ async function syncTask(sb: SupabaseClient, r: NHRecord, logs: LogRow[]) {
   }
 }
 
-type Ev = { type: string; endpoint: string };
-const TIMELINE: Ev[] = [
-  { type: "comment", endpoint: "new-comment" },
-  { type: "email", endpoint: "new-email" },
-  { type: "call", endpoint: "new-call-log" },
-  { type: "file", endpoint: "new-gdrivefile" },
-  { type: "field_change", endpoint: "record-change" },
-];
-
-/** Debug helper: probes each timeline trigger and reports how many events NetHunt exposes. */
+/** Debug helper: probes each NetHunt trigger and reports how many events it exposes. */
 export async function sampleTimeline() {
   const out: Record<string, unknown> = {};
-  for (const ev of TIMELINE) {
+  for (const ep of ["new-comment", "new-email", "new-call-log", "new-gdrivefile", "record-change"]) {
     const items = await nhSoft<Record<string, unknown>[]>(
-      `/triggers/${ev.endpoint}/${DEALS_FOLDER}?since=${encodeURIComponent(EPOCH)}&limit=3`,
+      `/triggers/${ep}/${DEALS_FOLDER}?since=${encodeURIComponent(EPOCH)}&limit=3`,
       [],
     );
-    out[ev.endpoint] = { count: Array.isArray(items) ? items.length : 0, first: items?.[0] ?? null };
+    out[ep] = { count: Array.isArray(items) ? items.length : 0, first: items?.[0] ?? null };
   }
   return out;
 }
 
-const pick = (o: Record<string, unknown>, keys: string[]) => {
-  for (const k of keys) {
-    const v = o[k];
-    if (typeof v === "string" && v.trim()) return v;
-  }
-  return null;
-};
-
-/** Map of every NetHunt deal record id → lead id (paginated, service role). */
-async function allLeadMap(sb: SupabaseClient) {
-  const map = new Map<string, string>();
-  for (let from = 0; ; from += 1000) {
-    const { data } = await sb
-      .from("leads").select("id, nethunt_record_id")
-      .not("nethunt_record_id", "is", null)
-      .range(from, from + 999);
-    const rows = (data as { id: string; nethunt_record_id: string }[] | null) ?? [];
-    for (const r of rows) map.set(r.nethunt_record_id, r.id);
-    if (rows.length < 1000) break;
-  }
-  return map;
-}
-
-const evTime = (it: Record<string, unknown>) =>
-  toIso(it.createdAt ?? it.time ?? it.date ?? it.updatedAt) ?? new Date().toISOString();
-
-function describeChange(it: Record<string, unknown>) {
-  const fa = it.fieldActions as Record<string, Record<string, unknown>> | undefined;
-  if (!fa) return { subject: "Alteração de registo", body: null as string | null };
-  const parts = Object.entries(fa).map(([f, v]) => {
-    const add = v?.add ?? v?.set ?? null;
-    const rem = v?.remove ?? null;
-    return `${f}: ${rem ? `${rem} → ` : ""}${add ?? "(vazio)"}`;
-  });
-  return { subject: parts[0] ?? "Alteração de registo", body: parts.join("<br/>") };
-}
-
-/** Pulls timeline events for ALL linked leads, with a per-type checkpoint. */
-async function syncTimeline(sb: SupabaseClient, logs: LogRow[]) {
-  const leadMap = await allLeadMap(sb);
-  if (!leadMap.size) return;
-
-  for (const ev of TIMELINE) {
-    const stateKey = `timeline_${ev.type}_since`;
-    let cursor = (await getState(sb, stateKey)) ?? EPOCH;
-    let maxTime = cursor;
-    const rows: Record<string, unknown>[] = [];
-
-    for (let page = 0; page < 40; page++) {
-      const items = await nhSoft<Record<string, unknown>[]>(
-        `/triggers/${ev.endpoint}/${DEALS_FOLDER}?since=${encodeURIComponent(cursor)}&limit=500`,
-        [],
-      );
-      if (!Array.isArray(items) || !items.length) break;
-
-      let pageMax = cursor;
-      for (const it of items) {
-        const t = evTime(it);
-        if (t > pageMax) pageMax = t;
-        const rid = String(it.recordId ?? it.record_id ?? (it.record as Record<string, unknown>)?.id ?? "");
-        const leadId = leadMap.get(rid);
-        if (!leadId) continue;
-
-        let type = ev.type;
-        let subject = pick(it, ["subject", "title", "summary", "name"]);
-        let body = pick(it, ["bodyHtml", "body_html", "html", "body", "text", "message", "transcript"]);
-        if (ev.type === "field_change") {
-          const d = describeChange(it);
-          subject = subject ?? d.subject;
-          body = body ?? d.body;
-        }
-        if (ev.type === "file" && it.url) body = `<a href="${it.url}" target="_blank" rel="noopener">${subject ?? "Ficheiro"}</a>`;
-        const raw = JSON.stringify(it).toLowerCase();
-        if (ev.type === "email" && /whatsapp|telegram|messenger|chat/.test(raw)) type = "chat";
-        if (ev.type === "field_change" && /calendar|event|meeting/.test(raw)) type = "calendar";
-
-        const user = (it.user ?? {}) as Record<string, unknown>;
-        rows.push({
-          lead_id: leadId,
-          nethunt_record_id: rid,
-          event_id: String(it.id ?? `${ev.type}:${rid}:${t}`),
-          event_type: type,
-          event_time: t,
-          pinned: Boolean(it.pinned),
-          creator_name: pick(it, ["creatorName", "authorName", "userName", "createdByName"]) ??
-            (typeof user.personalName === "string" ? user.personalName : null),
-          creator_email: pick(it, ["creatorEmail", "authorEmail", "userEmail", "from", "createdBy"]) ??
-            (typeof user.emailAddress === "string" ? user.emailAddress : null),
-          subject,
-          snippet: (body ?? subject ?? "").replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim().slice(0, 300) || null,
-          body_html: body,
-          payload: it,
-          synced_at: new Date().toISOString(),
-        });
-      }
-      if (pageMax > maxTime) maxTime = pageMax;
-      if (items.length < 500 || pageMax <= cursor) break;
-      cursor = pageMax;
-    }
-
-    for (let i = 0; i < rows.length; i += 200) {
-      const { error } = await sb
-        .from("nethunt_timeline")
-        .upsert(rows.slice(i, i + 200) as never, { onConflict: "event_id", ignoreDuplicates: false });
-      if (error) logs.push({ direction: "pull", entity: "timeline", action: "upsert", status: "error", detail: { type: ev.type, message: error.message } });
-    }
-    if (rows.length) logs.push({ direction: "pull", entity: "timeline", action: "upsert", status: "ok", detail: { type: ev.type, count: rows.length } });
-    if (maxTime !== EPOCH && maxTime > (await getState(sb, stateKey) ?? EPOCH)) await setState(sb, stateKey, maxTime);
-  }
-}
 
 export async function runPull(opts: { recordId?: string; folder?: "deals" | "tasks" } = {}) {
   const sb = serviceClient();
