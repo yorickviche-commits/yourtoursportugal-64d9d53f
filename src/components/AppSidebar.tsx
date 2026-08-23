@@ -1,7 +1,7 @@
 import { NavLink, useLocation } from 'react-router-dom';
 import {
   Map, Users, CreditCard, Sparkles, LayoutDashboard,
-  FileText, Handshake, Grid3x3, Truck, Settings, Shield, BarChart3, Plug, ScrollText,
+  FileText, Handshake, Grid3x3, Truck, Settings, Shield, Plug, ScrollText,
   Inbox, PackageSearch, Boxes, Brain,
   LogOut, ChevronDown, ChevronRight, Menu, X,
 } from 'lucide-react';
