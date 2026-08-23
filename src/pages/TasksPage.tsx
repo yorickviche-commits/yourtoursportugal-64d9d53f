@@ -2,7 +2,7 @@ import { useState, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import {
   CheckCircle2, Circle, AlertTriangle, Clock, Plus,
-  Briefcase, Users, Loader2,
+  Briefcase, Users, Loader2, ListChecks,
 } from 'lucide-react';
 import AppLayout from '@/components/AppLayout';
 import { cn } from '@/lib/utils';
@@ -22,8 +22,9 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
+import NetHuntTaskList from '@/components/crm/NetHuntTaskList';
 
-type SubPage = 'sales' | 'operations';
+type SubPage = 'sales' | 'operations' | 'crm';
 
 const KANBAN_COLUMNS = [
   { key: 'pending' as const, label: 'A Fazer' },
@@ -71,7 +72,7 @@ const TasksPage = () => {
     try {
       await createTask.mutateAsync({
         title: newTitle.trim(),
-        team: subPage,
+        team: subPage === 'crm' ? 'operations' : subPage,
         priority: newPriority,
         category: newCategory,
         status: 'pending',
@@ -152,8 +153,15 @@ const TasksPage = () => {
             className={cn("px-3 sm:px-4 py-2 text-xs font-medium border-b-2 transition-colors -mb-px flex items-center gap-1.5",
               subPage === 'sales' ? "border-[hsl(var(--warning))] text-[hsl(var(--warning))]" : "border-transparent text-muted-foreground hover:text-foreground"
             )}><Users className="h-3.5 w-3.5" /> Sales</button>
+          <button onClick={() => setSubPage('crm')}
+            className={cn("px-3 sm:px-4 py-2 text-xs font-medium border-b-2 transition-colors -mb-px flex items-center gap-1.5",
+              subPage === 'crm' ? "border-primary text-primary" : "border-transparent text-muted-foreground hover:text-foreground"
+            )}><ListChecks className="h-3.5 w-3.5" /> NetHunt</button>
         </div>
 
+        {subPage === 'crm' && <NetHuntTaskList />}
+
+        {subPage !== 'crm' && (<>
         {/* Stats */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3">
           <div className="bg-card border rounded-lg p-3 flex items-center gap-3">
@@ -250,6 +258,7 @@ const TasksPage = () => {
             {teamTasks.length === 0 && <p className="text-xs text-muted-foreground text-center py-6">Sem tasks para esta equipa</p>}
           </div>
         </div>
+        </>)}
       </div>
     </AppLayout>
   );

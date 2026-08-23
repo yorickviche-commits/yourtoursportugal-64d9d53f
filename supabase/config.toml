@@ -15,6 +15,14 @@ project_id = "jufqscczzmioauzkqztj"
     verify_jwt = false
   [functions.generate-itinerary]
     verify_jwt = false
+  [functions.nethunt-pull]
+    verify_jwt = false
+  [functions.nethunt-webhook]
+    verify_jwt = false
+  [functions.nethunt-push]
+    verify_jwt = true
+  [functions.nethunt-backfill]
+    verify_jwt = true
   [functions.nethunt-proxy]
     verify_jwt = false
   [functions.gmail-record-emails]

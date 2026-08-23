@@ -42,13 +42,14 @@ import CommunicationsTab from '@/components/communications/CommunicationsTab';
 import { getProposalShareUrl } from '@/lib/proposalShare';
 import { displayLeadCode } from '@/lib/leadCode';
 import { useUnsavedChangesGuard } from '@/hooks/useUnsavedChangesGuard';
+import LeadCrmTab from '@/components/crm/LeadCrmTab';
 import { triggerCalendarSync } from '@/hooks/useCalendarSync';
 import CalendarSyncBadge from '@/components/CalendarSyncBadge';
 import {
   AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter,
 } from '@/components/ui/alert-dialog';
 
-type DetailTab = 'dados_gerais' | 'travel_planner' | 'custos' | 'propostas' | 'operacoes' | 'comunicacoes';
+type DetailTab = 'dados_gerais' | 'travel_planner' | 'custos' | 'propostas' | 'operacoes' | 'comunicacoes' | 'crm';
 
 const BASE_DETAIL_TABS: { key: DetailTab; label: string }[] = [
   { key: 'dados_gerais', label: 'Dados Gerais' },
@@ -56,6 +57,7 @@ const BASE_DETAIL_TABS: { key: DetailTab; label: string }[] = [
   { key: 'custos', label: 'Custos' },
   { key: 'propostas', label: 'Propostas' },
   { key: 'comunicacoes', label: 'Comunicações' },
+  { key: 'crm', label: 'CRM' },
 ];
 
 const getDetailTabs = (status: string, mode: 'lead' | 'booking' = 'lead'): { key: DetailTab; label: string }[] => {
@@ -66,6 +68,7 @@ const getDetailTabs = (status: string, mode: 'lead' | 'booking' = 'lead'): { key
       { key: 'custos', label: 'Custos' },
       { key: 'operacoes', label: 'Operações' },
       { key: 'comunicacoes', label: 'Comunicações' },
+      { key: 'crm', label: 'CRM' },
     ];
   }
   if (status === 'won') {
@@ -1006,6 +1009,10 @@ const LeadDetailPage = ({ mode = 'lead' }: { mode?: 'lead' | 'booking' } = {}) =
 
         {/* Propostas */}
         {activeTab === 'propostas' && lead && <LeadProposalsTab leadId={lead.id} clientName={formState.clientName} />}
+
+        {/* CRM — espelho bidirecional do record NetHunt */}
+        {activeTab === 'crm' && lead && <LeadCrmTab leadId={lead.id} />}
+
 
         {/* Operações — apenas para reservas confirmadas (status = won) */}
         {activeTab === 'operacoes' && lead && (
