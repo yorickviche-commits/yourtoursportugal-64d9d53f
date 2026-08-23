@@ -124,18 +124,15 @@ const TIMELINE: Ev[] = [
   { type: "field_change", endpoint: "record-change" },
 ];
 
-/** Debug helper: probes the email/call triggers across every readable folder. */
+/** Debug helper: probes each timeline trigger and reports how many events NetHunt exposes. */
 export async function sampleTimeline() {
-  const folders = await nhSoft<Record<string, unknown>[]>(`/triggers/readable-folder`, []);
-  const out: Record<string, unknown> = { folders: folders.map((f) => ({ id: f.id, name: f.name })) };
-  for (const f of folders) {
-    for (const endpoint of ["new-email", "new-call-log"]) {
-      const items = await nhSoft<Record<string, unknown>[]>(
-        `/triggers/${endpoint}/${f.id}?since=${encodeURIComponent(EPOCH)}&limit=2`,
-        [],
-      );
-      out[`${f.name}/${endpoint}`] = { count: Array.isArray(items) ? items.length : 0, first: items?.[0] ?? null };
-    }
+  const out: Record<string, unknown> = {};
+  for (const ev of TIMELINE) {
+    const items = await nhSoft<Record<string, unknown>[]>(
+      `/triggers/${ev.endpoint}/${DEALS_FOLDER}?since=${encodeURIComponent(EPOCH)}&limit=3`,
+      [],
+    );
+    out[ev.endpoint] = { count: Array.isArray(items) ? items.length : 0, first: items?.[0] ?? null };
   }
   return out;
 }
