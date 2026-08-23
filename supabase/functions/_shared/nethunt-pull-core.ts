@@ -124,15 +124,18 @@ const TIMELINE: Ev[] = [
   { type: "field_change", endpoint: "record-change" },
 ];
 
-/** Debug helper: returns raw first items per timeline endpoint. */
+/** Debug helper: probes the email/call triggers across every readable folder. */
 export async function sampleTimeline() {
-  const out: Record<string, unknown> = {};
-  for (const ev of TIMELINE) {
-    const items = await nhSoft<Record<string, unknown>[]>(
-      `/triggers/${ev.endpoint}/${DEALS_FOLDER}?since=${encodeURIComponent(EPOCH)}&limit=3`,
-      [],
-    );
-    out[ev.endpoint] = { count: Array.isArray(items) ? items.length : 0, first: Array.isArray(items) ? items[0] : items };
+  const folders = await nhSoft<Record<string, unknown>[]>(`/triggers/readable-folder`, []);
+  const out: Record<string, unknown> = { folders: folders.map((f) => ({ id: f.id, name: f.name })) };
+  for (const f of folders) {
+    for (const endpoint of ["new-email", "new-call-log"]) {
+      const items = await nhSoft<Record<string, unknown>[]>(
+        `/triggers/${endpoint}/${f.id}?since=${encodeURIComponent(EPOCH)}&limit=2`,
+        [],
+      );
+      out[`${f.name}/${endpoint}`] = { count: Array.isArray(items) ? items.length : 0, first: items?.[0] ?? null };
+    }
   }
   return out;
 }
