@@ -31,7 +31,6 @@ const reservasItems: NavItem[] = [
 ];
 
 const comercialItems: NavItem[] = [
-  { to: '/yt-brain', icon: Brain, label: 'YT Brain', pageKey: 'yt_brain' },
   { to: '/comercial/matriz', icon: Grid3x3, label: 'Matriz FSE', pageKey: 'comercial_matriz' },
   { to: '/comercial/suppliers', icon: Truck, label: 'Fornecedores', pageKey: 'comercial_suppliers' },
   { to: '/catalog', icon: PackageSearch, label: 'Catálogo Magpie', pageKey: 'catalog' },
@@ -40,6 +39,7 @@ const comercialItems: NavItem[] = [
 ];
 
 const adminItems: NavItem[] = [
+  { to: '/yt-brain', icon: Brain, label: 'YT Brain', pageKey: 'yt_brain' },
   { to: '/admin/users', icon: Users, label: 'Utilizadores', pageKey: 'admin_users' },
   { to: '/admin/permissions', icon: Shield, label: 'Permissões', pageKey: 'admin_permissions' },
   { to: '/admin/settings', icon: Settings, label: 'Configurações', pageKey: 'admin_settings' },
