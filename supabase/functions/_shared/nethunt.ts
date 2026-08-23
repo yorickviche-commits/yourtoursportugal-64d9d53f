@@ -17,30 +17,41 @@ const BASE = "https://nethunt.com/api/v1/zapier";
 
 export const DEALS_FOLDER = "67bf55d488a689554e6a1c22";
 export const TASKS_FOLDER = "67bf55d488a689554e6a1c24";
+export const WORKSPACE_ID = "67bf55d388a689554e6a1c1b";
 
-// Deals folder field ids
+/** Builds the NetHunt deep link for a record (same scheme the API returns). */
+export function recordLink(recordId: string, folderId = DEALS_FOLDER) {
+  const payload = JSON.stringify({
+    workspaceId: WORKSPACE_ID,
+    folderId,
+    recordId,
+    recordPage: { recordId },
+  });
+  return `https://nethunt.com/web/#nethunt/${btoa(payload)}`;
+}
+
+// The NetHunt Zapier API addresses fields by NAME; ids are kept as read fallbacks.
 export const F = {
-  name: "name",
-  ytId: "79",
-  stage: "2",
-  tripStart: "82",
-  tripFinish: "83",
-  closeDate: "10",
-  clientType: "72",
-  source: "73",
+  name: ["Name", "name"],
+  ytId: ["YT ID/Referencia", "79"],
+  stage: ["Stage", "2"],
+  tripStart: ["Trip Start", "82"],
+  tripFinish: ["Trip Finish", "83"],
+  closeDate: ["Close date", "10"],
+  clientType: ["B2B / B2C", "72"],
+  source: ["Source (Site, OTA, Direct)", "73"],
 } as const;
 
-// Tasks folder field ids
 export const TF = {
-  name: "name",
-  completed: "13",
-  dueDate: "14",
-  priority: "3",
-  description: "18",
-  assignee: "11",
-  recordLinks: "10",
-  creator: "16",
-  allDay: "12",
+  name: ["Name", "name"],
+  completed: ["Completed", "13"],
+  dueDate: ["Due date", "14"],
+  priority: ["Priority", "3"],
+  description: ["Description", "18"],
+  assignee: ["Assignee", "11"],
+  recordLinks: ["Record links", "10"],
+  creator: ["Creator", "16"],
+  allDay: ["All day", "12"],
 } as const;
 
 export const STAGES = [
@@ -56,6 +67,28 @@ export const STAGES = [
   "OPERATIONS - Archive",
   "SALES - Archive",
 ];
+
+const norm = (s: string) => s.replace(/\s+/g, " ").trim().toLowerCase();
+
+/** NetHunt option strings sometimes carry extra spaces — snap them to our canonical list. */
+export function canonicalStage(raw?: string | null): string | null {
+  if (!raw) return null;
+  const n = norm(raw);
+  return STAGES.find((s) => norm(s) === n) ?? raw.replace(/\s+/g, " ").trim();
+}
+
+/** Raw option strings as they exist in NetHunt (used when writing back). */
+const RAW_STAGE: Record<string, string> = {
+  "SALES - - Budgeting & Fine-Tuning": "SALES -  -  Budgeting & Fine-Tuning",
+};
+export const rawStage = (canonical: string) => RAW_STAGE[canonical] ?? canonical;
+
+/** "YT5054" / 5054 / "yt-5054" → "5054" so leads.yt_id can be matched. */
+export const ytKey = (v: unknown): string | null => {
+  if (v == null) return null;
+  const digits = String(v).replace(/\D+/g, "");
+  return digits || null;
+};
 
 export function stageToStatus(stage?: string | null): string | null {
   if (!stage) return null;
