@@ -15,19 +15,45 @@ import StatusBadge from '@/components/StatusBadge';
 import { displayLeadCode } from '@/lib/leadCode';
 import LeadAgentsCell from '@/components/LeadAgentsCell';
 
-// Aligned 1:1 with LEAD_STATUSES in LeadDetailPage.tsx — same labels users can assign inside a lead.
-type LeadStatusFilter = 'all' | 'new' | 'contacted' | 'qualified' | 'proposal_sent' | 'negotiation' | 'won' | 'lost';
+// Tabs alinhadas 1:1 com os stages do YT Sales Pipeline (NetHunt).
+const NETHUNT_PIPELINE: string[] = [
+  'SALES - New Lead',
+  'SALES - - Budgeting & Fine-Tuning',
+  'SALES - Final Negotiation & Ready to Book',
+  'OPERATIONS - Deposit/Payment Received',
+  'OPERATIONS - Suppliers Bookings & Confirmations',
+  'OPERATIONS - Technical Briefing (Internal & Suppliers Final Validations)',
+  'OPERATIONS - Trip Ready / In Execution',
+  'OPERATIONS - Post-Trip Loop / Feedback',
+  'OPERATIONS - Deferred / Postponed Trip',
+  'OPERATIONS - Archive',
+  'SALES - Archive',
+];
+
+const stageLabel = (stage: string) =>
+  stage.replace('SALES - - ', 'SALES · ').replace('SALES - ', 'SALES · ').replace('OPERATIONS - ', 'OPS · ');
+
+// Fallback: leads ainda sem stage NetHunt são colocadas no stage equivalente ao seu status.
+const STATUS_TO_STAGE: Record<string, string> = {
+  new: 'SALES - New Lead',
+  contacted: 'SALES - New Lead',
+  qualified: 'SALES - - Budgeting & Fine-Tuning',
+  proposal_sent: 'SALES - - Budgeting & Fine-Tuning',
+  negotiation: 'SALES - Final Negotiation & Ready to Book',
+  won: 'OPERATIONS - Deposit/Payment Received',
+  lost: 'SALES - Archive',
+};
+
+const norm = (s: string) => s.replace(/\s+/g, ' ').trim().toLowerCase();
+const leadStage = (l: any) => norm((l.nethunt_stage as string) || STATUS_TO_STAGE[l.status] || 'SALES - New Lead');
+
+type LeadStatusFilter = 'all' | string;
 
 const STATUS_TABS: { value: LeadStatusFilter; label: string }[] = [
   { value: 'all', label: 'Todas' },
-  { value: 'new', label: 'Novo' },
-  { value: 'contacted', label: 'Contactado' },
-  { value: 'qualified', label: 'Qualificado' },
-  { value: 'proposal_sent', label: 'Proposta Enviada' },
-  { value: 'negotiation', label: 'Negociação' },
-  { value: 'won', label: 'Ganho' },
-  { value: 'lost', label: 'Perdido' },
+  ...NETHUNT_PIPELINE.map(s => ({ value: s, label: stageLabel(s) })),
 ];
+
 
 const statusBadgeConfig: Record<string, { label: string; className: string }> = {
   new: { label: 'Novo', className: 'bg-muted text-muted-foreground' },
@@ -57,7 +83,7 @@ const LeadsFilesPage = () => {
   const filteredLeads = useMemo(() => {
     const q = search.trim().toLowerCase();
     return leads.filter(l => {
-      if (statusFilter !== 'all' && l.status !== statusFilter) return false;
+      if (statusFilter !== 'all' && leadStage(l) !== norm(statusFilter)) return false;
       if (!q) return true;
       const haystack = [
         displayLeadCode(l),
