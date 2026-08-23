@@ -124,7 +124,10 @@ export default function LeadCrmTab({ leadId }: Props) {
   if (isLoading) return <div className="space-y-3">{[1, 2, 3].map(i => <Skeleton key={i} className="h-20 w-full rounded-lg" />)}</div>;
   if (!lead) return <p className="text-xs text-muted-foreground">Lead não encontrada.</p>;
 
-  if (!lead.nethunt_record_id) {
+  const linked = !!lead.nethunt_record_id;
+  const hasHistory = (timeline.data?.length ?? 0) > 0 || (gmail.data?.length ?? 0) > 0;
+
+  if (!linked && !hasHistory) {
     return (
       <div className="bg-card border rounded-lg p-6 text-center space-y-3">
         <p className="text-sm font-medium">Esta lead ainda não está ligada a um record do NetHunt.</p>
