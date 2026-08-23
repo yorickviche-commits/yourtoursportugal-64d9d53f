@@ -241,7 +241,7 @@ export default function LeadCrmTab({ leadId }: Props) {
           ))}
         </div>
         <div className="divide-y">
-          {timeline.isLoading && <div className="p-4"><Skeleton className="h-16 w-full" /></div>}
+          {(timeline.isLoading || gmail.isLoading) && <div className="p-4"><Skeleton className="h-16 w-full" /></div>}
           {events.map(ev => {
             const st = TYPE_STYLE[ev.event_type] || TYPE_STYLE.field_change;
             const Icon = st.icon;
@@ -249,7 +249,7 @@ export default function LeadCrmTab({ leadId }: Props) {
             return (
               <div key={ev.id} className="px-4 py-3 hover:bg-muted/30">
                 <button className="w-full text-left flex items-start gap-3"
-                  onClick={() => setOpenEvent(expanded ? null : ev.id)}>
+                  onClick={() => openWithBody(ev)}>
                   <Icon className={cn('h-4 w-4 mt-0.5 shrink-0', st.color)} />
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2 flex-wrap">
@@ -257,21 +257,35 @@ export default function LeadCrmTab({ leadId }: Props) {
                       <span className="text-[10px] text-muted-foreground">
                         {ev.event_time ? format(new Date(ev.event_time), 'dd/MM/yyyy HH:mm') : ''}
                       </span>
+                      {ev.gmail_id && <Badge variant="outline" className="text-[9px]">Gmail</Badge>}
                     </div>
                     {ev.snippet && <p className={cn('text-[11px] text-muted-foreground mt-0.5', !expanded && 'line-clamp-2')}>{ev.snippet}</p>}
                     {ev.creator_email && <p className="text-[10px] text-muted-foreground mt-0.5">{ev.creator_email}</p>}
                   </div>
                 </button>
-                {expanded && ev.body_html && (
-                  <div className="mt-2 pl-7 text-[11px] prose prose-sm max-w-none text-foreground [&_a]:text-[hsl(var(--info))]"
-                    dangerouslySetInnerHTML={{ __html: ev.body_html }} />
+                {expanded && (
+                  <div className="mt-2 pl-7 space-y-2">
+                    {ev.body_html ? (
+                      <div className="text-[11px] prose prose-sm max-w-none text-foreground [&_a]:text-[hsl(var(--info))] [&_img]:max-w-full"
+                        dangerouslySetInnerHTML={{ __html: ev.body_html }} />
+                    ) : ev.gmail_id ? (
+                      <p className="text-[11px] text-muted-foreground flex items-center gap-1"><Loader2 className="h-3 w-3 animate-spin" /> A carregar email...</p>
+                    ) : null}
+                    {ev.gmail_url && (
+                      <a href={ev.gmail_url} target="_blank" rel="noreferrer" className="text-[10px] text-[hsl(var(--info))] inline-flex items-center gap-1">
+                        <ExternalLink className="h-3 w-3" /> Abrir no Gmail
+                      </a>
+                    )}
+                  </div>
                 )}
               </div>
             );
           })}
-          {!timeline.isLoading && events.length === 0 && (
+          {!timeline.isLoading && !gmail.isLoading && events.length === 0 && (
             <p className="text-xs text-muted-foreground text-center py-8">Sem eventos para este filtro.</p>
           )}
+        </div>
+
         </div>
       </div>
     </div>
