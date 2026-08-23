@@ -44,6 +44,47 @@ Deno.serve(async (req) => {
     const emails: string[] = Array.isArray(body.emails) ? body.emails.filter(Boolean) : (body.email ? [body.email] : []);
     const extraQueries: string[] = Array.isArray(body.queries) ? body.queries.filter(Boolean) : [];
     const limit = Math.min(Number(body.limit) || 20, 50);
+    const messageId: string | null = typeof body.messageId === 'string' ? body.messageId : null;
+
+    const gwHeadersEarly = {
+      'Authorization': `Bearer ${LOVABLE_API_KEY}`,
+      'X-Connection-Api-Key': GOOGLE_MAIL_API_KEY,
+    };
+
+    // Single-message mode: return the full HTML body for in-app reading.
+    if (messageId) {
+      const r = await fetch(`${GATEWAY}/users/me/messages/${encodeURIComponent(messageId)}?format=full`, { headers: gwHeadersEarly });
+      const m = await r.json();
+      if (!r.ok) {
+        console.error('Gmail get error', r.status, m);
+        return new Response(JSON.stringify({ error: m?.error?.message || 'Gmail API error', status: r.status }), {
+          status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+      const decode = (d?: string) => {
+        if (!d) return '';
+        try {
+          const bin = atob(d.replace(/-/g, '+').replace(/_/g, '/'));
+          const bytes = Uint8Array.from(bin, (c) => c.charCodeAt(0));
+          return new TextDecoder('utf-8').decode(bytes);
+        } catch { return ''; }
+      };
+      let html = '';
+      let text = '';
+      const walk = (p: any) => {
+        if (!p) return;
+        if (p.mimeType === 'text/html' && p.body?.data && !html) html = decode(p.body.data);
+        if (p.mimeType === 'text/plain' && p.body?.data && !text) text = decode(p.body.data);
+        (p.parts || []).forEach(walk);
+      };
+      walk(m.payload);
+      if (!html && !text && m.payload?.body?.data) text = decode(m.payload.body.data);
+      return new Response(JSON.stringify({
+        id: m.id,
+        threadId: m.threadId,
+        body_html: html || (text ? `<pre style="white-space:pre-wrap;font-family:inherit">${text.replace(/[<>&]/g, (c) => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;' }[c] as string))}</pre>` : ''),
+      }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    }
 
     const parts: string[] = [];
     emails.forEach((e) => parts.push(`(from:${e} OR to:${e})`));

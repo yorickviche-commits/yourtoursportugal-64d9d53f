@@ -24,7 +24,7 @@ import { useToast } from '@/hooks/use-toast';
 import {
   NETHUNT_STAGES, SOURCE_OPTIONS, netHuntRecordUrl,
   useLeadTimeline, useNHTasks, usePushLead, useAddComment,
-  useCreateNHTask, useUpdateNHTask, useSyncNow,
+  useCreateNHTask, useUpdateNHTask, useSyncNow, useLeadGmail, fetchGmailBody,
 } from '@/hooks/useNetHunt';
 
 const TYPE_FILTERS = [
@@ -67,7 +67,7 @@ export default function LeadCrmTab({ leadId }: Props) {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('leads')
-        .select('id, client_name, yt_id, lead_code, status, nethunt_record_id, nethunt_stage, nethunt_synced_at, trip_start, trip_finish, close_date, source, client_type')
+        .select('id, client_name, email, yt_id, lead_code, status, nethunt_record_id, nethunt_stage, nethunt_synced_at, trip_start, trip_finish, close_date, source, client_type')
         .eq('id', leadId).maybeSingle();
       if (error) throw error;
       return data as any;
@@ -79,12 +79,40 @@ export default function LeadCrmTab({ leadId }: Props) {
   const pushLead = usePushLead();
   const addComment = useAddComment();
   const syncNow = useSyncNow();
+  const gmail = useLeadGmail(lead?.email, lead?.yt_id);
+  const [bodies, setBodies] = useState<Record<string, string>>({});
 
+  // NetHunt's API does not expose emails, so Gmail history is merged in as email events.
   const events = useMemo(() => {
-    const list = timeline.data || [];
+    const mails = (gmail.data || []).map(m => ({
+      id: `gmail:${m.id}`,
+      event_type: 'email',
+      event_time: m.date,
+      subject: m.subject || '(sem assunto)',
+      snippet: `${m.direction === 'IN' ? '↓' : '↑'} ${m.from} — ${m.snippet}`,
+      creator_email: m.direction === 'IN' ? m.from : m.to,
+      body_html: bodies[m.id] || null,
+      gmail_id: m.id,
+      gmail_url: m.url,
+    })) as any[];
+    const list = [...(timeline.data || []) as any[], ...mails]
+      .sort((a, b) => (b.event_time || '').localeCompare(a.event_time || ''));
     if (filter === 'all') return list;
     return list.filter(e => e.event_type === filter);
-  }, [timeline.data, filter]);
+  }, [timeline.data, gmail.data, bodies, filter]);
+
+  const openWithBody = async (ev: any) => {
+    const expanded = openEvent === ev.id;
+    setOpenEvent(expanded ? null : ev.id);
+    if (!expanded && ev.gmail_id && !bodies[ev.gmail_id]) {
+      try {
+        const html = await fetchGmailBody(ev.gmail_id);
+        setBodies(prev => ({ ...prev, [ev.gmail_id]: html || '<em>Sem corpo disponível.</em>' }));
+      } catch {
+        setBodies(prev => ({ ...prev, [ev.gmail_id]: '<em>Não foi possível carregar o email.</em>' }));
+      }
+    }
+  };
 
   const save = (changes: Record<string, unknown>) => {
     pushLead.mutate({ id: leadId, changes }, {
@@ -213,7 +241,7 @@ export default function LeadCrmTab({ leadId }: Props) {
           ))}
         </div>
         <div className="divide-y">
-          {timeline.isLoading && <div className="p-4"><Skeleton className="h-16 w-full" /></div>}
+          {(timeline.isLoading || gmail.isLoading) && <div className="p-4"><Skeleton className="h-16 w-full" /></div>}
           {events.map(ev => {
             const st = TYPE_STYLE[ev.event_type] || TYPE_STYLE.field_change;
             const Icon = st.icon;
@@ -221,7 +249,7 @@ export default function LeadCrmTab({ leadId }: Props) {
             return (
               <div key={ev.id} className="px-4 py-3 hover:bg-muted/30">
                 <button className="w-full text-left flex items-start gap-3"
-                  onClick={() => setOpenEvent(expanded ? null : ev.id)}>
+                  onClick={() => openWithBody(ev)}>
                   <Icon className={cn('h-4 w-4 mt-0.5 shrink-0', st.color)} />
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2 flex-wrap">
@@ -229,23 +257,36 @@ export default function LeadCrmTab({ leadId }: Props) {
                       <span className="text-[10px] text-muted-foreground">
                         {ev.event_time ? format(new Date(ev.event_time), 'dd/MM/yyyy HH:mm') : ''}
                       </span>
+                      {ev.gmail_id && <Badge variant="outline" className="text-[9px]">Gmail</Badge>}
                     </div>
                     {ev.snippet && <p className={cn('text-[11px] text-muted-foreground mt-0.5', !expanded && 'line-clamp-2')}>{ev.snippet}</p>}
                     {ev.creator_email && <p className="text-[10px] text-muted-foreground mt-0.5">{ev.creator_email}</p>}
                   </div>
                 </button>
-                {expanded && ev.body_html && (
-                  <div className="mt-2 pl-7 text-[11px] prose prose-sm max-w-none text-foreground [&_a]:text-[hsl(var(--info))]"
-                    dangerouslySetInnerHTML={{ __html: ev.body_html }} />
+                {expanded && (
+                  <div className="mt-2 pl-7 space-y-2">
+                    {ev.body_html ? (
+                      <div className="text-[11px] prose prose-sm max-w-none text-foreground [&_a]:text-[hsl(var(--info))] [&_img]:max-w-full"
+                        dangerouslySetInnerHTML={{ __html: ev.body_html }} />
+                    ) : ev.gmail_id ? (
+                      <p className="text-[11px] text-muted-foreground flex items-center gap-1"><Loader2 className="h-3 w-3 animate-spin" /> A carregar email...</p>
+                    ) : null}
+                    {ev.gmail_url && (
+                      <a href={ev.gmail_url} target="_blank" rel="noreferrer" className="text-[10px] text-[hsl(var(--info))] inline-flex items-center gap-1">
+                        <ExternalLink className="h-3 w-3" /> Abrir no Gmail
+                      </a>
+                    )}
+                  </div>
                 )}
               </div>
             );
           })}
-          {!timeline.isLoading && events.length === 0 && (
+          {!timeline.isLoading && !gmail.isLoading && events.length === 0 && (
             <p className="text-xs text-muted-foreground text-center py-8">Sem eventos para este filtro.</p>
           )}
         </div>
       </div>
+
     </div>
   );
 }

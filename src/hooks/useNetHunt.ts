@@ -164,6 +164,41 @@ export const useUpdateNHTask = () => {
   });
 };
 
+/** Gmail history for a lead (NetHunt's API does not expose emails). */
+export interface GmailItem {
+  id: string;
+  threadId: string;
+  subject: string;
+  from: string;
+  to: string;
+  snippet: string;
+  date: string;
+  direction: 'IN' | 'OUT';
+  url: string;
+}
+
+export const useLeadGmail = (email?: string | null, ytId?: string | null) =>
+  useQuery({
+    queryKey: ['lead-gmail', email ?? '', ytId ?? ''],
+    enabled: !!(email || ytId),
+    staleTime: 60_000,
+    queryFn: async () => {
+      const { data, error } = await supabase.functions.invoke('gmail-record-emails', {
+        body: { emails: email ? [email] : [], queries: ytId ? [ytId] : [], limit: 30 },
+      });
+      if (error) throw error;
+      return ((data as any)?.emails || []) as GmailItem[];
+    },
+  });
+
+export async function fetchGmailBody(messageId: string) {
+  const { data, error } = await supabase.functions.invoke('gmail-record-emails', {
+    body: { messageId },
+  });
+  if (error) throw error;
+  return ((data as any)?.body_html || '') as string;
+}
+
 /** Triggers an immediate NetHunt → Lovable pull. */
 export const useSyncNow = () => {
   const qc = useQueryClient();
@@ -176,6 +211,7 @@ export const useSyncNow = () => {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['nethunt-timeline'] });
       qc.invalidateQueries({ queryKey: ['nethunt-tasks'] });
+      qc.invalidateQueries({ queryKey: ['lead-gmail'] });
       qc.invalidateQueries({ queryKey: ['leads'] });
     },
   });
