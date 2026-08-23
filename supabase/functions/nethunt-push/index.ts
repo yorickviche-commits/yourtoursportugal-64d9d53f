@@ -5,7 +5,7 @@ import {
   DEALS_FOLDER, TASKS_FOLDER, F, TF,
   corsHeaders, json, serviceClient, logSync,
   updateRecord, createRecord, createComment, fetchRecord,
-  fromClientType, fromSource, fromDate, statusToStage,
+  fromClientType, fromSource, fromDate, fromDateTime, statusToStage, wkey, rawStage,
   recId, recUpdatedAt,
   type FieldAction,
 } from "../_shared/nethunt.ts";
@@ -37,7 +37,7 @@ serve(async (req) => {
       if ("nethunt_stage" in changes || "status" in changes) {
         const stage = (changes.nethunt_stage as string | undefined) ??
           statusToStage((changes.status as string) ?? lead.status, lead.nethunt_stage);
-        if (stage) actions.push({ field: wkey(F.stage), value: stage });
+        if (stage) actions.push({ field: wkey(F.stage), value: rawStage(stage) });
       }
       if ("trip_start" in changes) actions.push({ field: wkey(F.tripStart), value: fromDate(changes.trip_start as string) });
       if ("trip_finish" in changes) actions.push({ field: wkey(F.tripFinish), value: fromDate(changes.trip_finish as string) });
@@ -105,7 +105,7 @@ serve(async (req) => {
         [wkey(TF.completed)]: false,
         [wkey(TF.allDay)]: Boolean(changes.all_day),
       };
-      if (dueAt) fields[wkey(TF.dueDate)] = fromDate(dueAt);
+      if (dueAt) fields[wkey(TF.dueDate)] = fromDateTime(dueAt);
       if (Array.isArray(changes.assignee_emails) && changes.assignee_emails.length) fields[wkey(TF.assignee)] = changes.assignee_emails;
       if (links.length) fields[wkey(TF.recordLinks)] = links;
 
@@ -156,7 +156,7 @@ serve(async (req) => {
       if ("due_at" in changes) {
         patch.due_at = changes.due_at;
         patch.due_date = changes.due_at ? String(changes.due_at).slice(0, 10) : null;
-        actions.push({ field: wkey(TF.dueDate), value: fromDate(changes.due_at as string) });
+        actions.push({ field: wkey(TF.dueDate), value: fromDateTime(changes.due_at as string) });
       }
       if ("all_day" in changes) { patch.all_day = Boolean(changes.all_day); actions.push({ field: wkey(TF.allDay), value: Boolean(changes.all_day) }); }
       if ("assignee_emails" in changes) {
