@@ -335,7 +335,7 @@ const SummaryTableTab = ({ tree, onAdd }: { tree: RegionNode[]; onAdd: () => voi
   const catNames = useMemo(() => {
     const set = new Set<string>();
     tree.forEach(r => r.districts.forEach(d => d.categories.forEach(c => set.add(c.name))));
-    const order = CATEGORY_DEFS.map(c => c.label);
+    const order: string[] = CATEGORY_DEFS.map(c => c.label);
     return Array.from(set).sort((a, b) => {
       const ia = order.indexOf(a), ib = order.indexOf(b);
       return (ia === -1 ? 99 : ia) - (ib === -1 ? 99 : ib) || a.localeCompare(b);
