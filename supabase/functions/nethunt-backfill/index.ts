@@ -23,7 +23,7 @@ serve(async (req) => {
     const deals = await pageRecords("new-record", DEALS_FOLDER, EPOCH, 60);
     const { data: leadRows } = await sb.from("leads").select("id, yt_id, nethunt_record_id");
     const leads = (leadRows as { id: string; yt_id: string | null; nethunt_record_id: string | null }[] | null) ?? [];
-    const byYt = new Map(leads.filter((l) => l.yt_id).map((l) => [String(l.yt_id).trim().toUpperCase(), l]));
+    const byYt = new Map(leads.filter((l) => ytKey(l.yt_id)).map((l) => [ytKey(l.yt_id)!, l]));
 
     const ridByLead = new Map<string, string>();
     let matched = 0, unmatched = 0, maxDeal = EPOCH;
@@ -33,13 +33,13 @@ serve(async (req) => {
       const updatedAt = recUpdatedAt(r);
       if (updatedAt > maxDeal) maxDeal = updatedAt;
       const ytRaw = field(r, F.ytId);
-      const lead = ytRaw ? byYt.get(String(ytRaw).trim().toUpperCase()) : undefined;
+      const lead = ytKey(ytRaw) ? byYt.get(ytKey(ytRaw)!) : undefined;
       if (!lead) {
         unmatched++;
         logs.push({ direction: "pull", entity: "lead", nethunt_record_id: rid, action: "unmatched", status: "skipped", detail: { yt_id: ytRaw ?? null, name: field(r, F.name) ?? null } });
         continue;
       }
-      const stage = field(r, F.stage) ? String(field(r, F.stage)) : null;
+      const stage = canonicalStage(field(r, F.stage) as string | null);
       const patch: Record<string, unknown> = {
         nethunt_record_id: rid,
         nethunt_stage: stage,
