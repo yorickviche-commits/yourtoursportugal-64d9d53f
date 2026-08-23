@@ -13,6 +13,7 @@ import { cn, formatDayLabelPT } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import SupplierSearchDropdown from './SupplierSearchDropdown';
+import CostingSmartImportDialog, { type ImportedCostRow } from './CostingSmartImportDialog';
 import type { PlannerDay, PeriodKey } from './TravelPlannerEditor';
 
 // ─── Types ───────────────────────────────────────────
@@ -262,6 +263,7 @@ const LeadCostingEditor = ({ costingDays, onChange, onSave, saving, plannerDays,
   const [autoFilling, setAutoFilling] = useState(false);
   const [payLinkOpen, setPayLinkOpen] = useState(false);
   const [importingTP, setImportingTP] = useState(false);
+  const [smartImportOpen, setSmartImportOpen] = useState(false);
 
   const toggleDay = (day: number) => {
     setExpandedDays(prev => prev.includes(day) ? prev.filter(d => d !== day) : [...prev, day]);
@@ -284,6 +286,44 @@ const LeadCostingEditor = ({ costingDays, onChange, onSave, saving, plannerDays,
     if (/(transfer|transport|pickup|drop|drive|vehicle|veículo|veiculo|driver|motorista)/.test(t)) return 'transport';
     if (/(guide|guia)/.test(t)) return 'guide';
     return 'experience';
+  };
+
+  // Merge AI-imported cost rows (PDF / Excel / pasted text) into the existing days
+  const applySmartImport = (rows: ImportedCostRow[]) => {
+    if (rows.length === 0) return;
+    const byDay = new Map<number, LeadCostingDay>();
+    costingDays.forEach(d => byDay.set(d.day, { ...d, items: [...d.items] }));
+
+    rows.forEach(r => {
+      const dayNum = Number.isFinite(r.day) ? r.day : 1;
+      let target = byDay.get(dayNum);
+      if (!target) {
+        target = { day: dayNum, title: `Dia ${dayNum}`, items: [] };
+        byDay.set(dayNum, target);
+      }
+      target.items.push(calcItem({
+        id: genId(),
+        description: r.description,
+        supplier: r.supplier || '',
+        pricingType: r.pricingType,
+        numAdults: r.numAdults,
+        priceAdults: r.priceAdults,
+        numChildren: r.numChildren,
+        priceChildren: r.priceChildren,
+        netTotal: 0,
+        marginPercent: r.marginPercent,
+        pvpTotal: 0,
+        profit: 0,
+        status: 'neutro',
+        notes: [],
+        costLayer: (r.costLayer as CostLayer) || 'experience',
+      }));
+    });
+
+    const newDays = Array.from(byDay.values()).sort((a, b) => a.day - b.day);
+    onChange(newDays);
+    setExpandedDays(newDays.map(d => d.day));
+    toast.success(`${rows.length} rubrica(s) importada(s).`);
   };
 
   const importFromTravelPlanner = async () => {
@@ -537,6 +577,13 @@ const LeadCostingEditor = ({ costingDays, onChange, onSave, saving, plannerDays,
               Importar Travel Planner
             </Button>
           )}
+          <Button
+            variant="outline" size="sm"
+            className="text-xs gap-1 border-emerald-300 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-500/10"
+            onClick={() => setSmartImportOpen(true)}
+          >
+            <Sparkles className="h-3 w-3" /> Import Automático
+          </Button>
           <Button size="sm" className="text-xs gap-1" onClick={() => onSave(costingDays)} disabled={saving}>
             {saving ? <Loader2 className="h-3 w-3 animate-spin" /> : <Save className="h-3 w-3" />}
             Guardar Custos
