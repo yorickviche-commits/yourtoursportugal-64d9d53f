@@ -456,7 +456,7 @@ const FSEDatabasePage = () => {
   const [driveSearch, setDriveSearch] = useState("");
   const [driveTitle, setDriveTitle] = useState("Ficheiros do Drive");
 
-  useEffect(() => {
+  const loadNodes = () => {
     supabase
       .from("fse_drive_index")
       .select("drive_id,name,mime_type,category,region,district,supplier_name,path,depth")
@@ -464,7 +464,9 @@ const FSEDatabasePage = () => {
       .then(({ data, error }) => {
         if (!error && data) setDriveNodes(data as DriveNode[]);
       });
-  }, []);
+  };
+
+  useEffect(() => { loadNodes(); }, []);
 
   const tree = useMemo(() => buildTree(driveNodes), [driveNodes]);
 
