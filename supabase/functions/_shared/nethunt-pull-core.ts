@@ -7,6 +7,7 @@ import {
   stageToStatus, toClientType, toSource, toDate, toIso, ytKey, canonicalStage,
   type LogRow, type NHRecord,
 } from "./nethunt.ts";
+import { syncTimeline } from "./nethunt-timeline.ts";
 
 type Lead = { id: string; updated_at: string; nethunt_stage: string | null };
 
@@ -135,7 +136,18 @@ export async function sampleTimeline() {
 }
 
 
-export async function runPull(opts: { recordId?: string; folder?: "deals" | "tasks" } = {}) {
+export type PullOpts = {
+  recordId?: string;
+  folder?: "deals" | "tasks";
+  /** Timeline: rebuild history from EPOCH instead of using per-lead checkpoints. */
+  fullTimeline?: boolean;
+  /** Timeline: how many leads to sweep in this invocation (and where to start). */
+  timelineLimit?: number;
+  timelineOffset?: number;
+  leadIds?: string[];
+};
+
+export async function runPull(opts: PullOpts = {}) {
   const sb = serviceClient();
   const logs: LogRow[] = [];
   const leadsByRid = new Map<string, string>();
@@ -154,9 +166,12 @@ export async function runPull(opts: { recordId?: string; folder?: "deals" | "tas
         tasks = 1;
       }
     }
-    await syncTimeline(sb, logs);
+    const timeline = await syncTimeline(sb, logs, {
+      full: opts.fullTimeline,
+      leadIds: opts.leadIds ?? (leadsByRid.size ? [...leadsByRid.values()] : undefined),
+    });
     await logSync(sb, logs);
-    return { deals, tasks, mode: "single" };
+    return { deals, tasks, timeline, mode: "single" };
   }
 
   const dealsSince = (await getState(sb, "deals_since")) ?? EPOCH;
@@ -187,12 +202,17 @@ export async function runPull(opts: { recordId?: string; folder?: "deals" | "tas
   }
   tasks = uniqTasks.size;
 
-  await syncTimeline(sb, logs);
+  const timeline = await syncTimeline(sb, logs, {
+    full: opts.fullTimeline,
+    limit: opts.timelineLimit,
+    offset: opts.timelineOffset,
+    leadIds: opts.leadIds,
+  });
 
   if (maxDeal !== dealsSince) await setState(sb, "deals_since", maxDeal);
   if (maxTask !== tasksSince) await setState(sb, "tasks_since", maxTask);
   await logSync(sb, logs);
 
-  return { deals, tasks, deals_since: maxDeal, tasks_since: maxTask };
+  return { deals, tasks, timeline, deals_since: maxDeal, tasks_since: maxTask };
 }
 
