@@ -296,11 +296,13 @@ export default function LeadCrmTab({ leadId }: Props) {
                           <ExternalLink className="h-3 w-3" /> Abrir no Gmail
                         </a>
                       )}
-                      {ev.payload?.htmlLink && (
-                        <a href={ev.payload.htmlLink} target="_blank" rel="noreferrer" className="text-[10px] text-[hsl(var(--info))] inline-flex items-center gap-1">
+                      {(ev.payload?.htmlLink || ev.payload?.google_event_id) && (
+                        <a href={ev.payload.htmlLink || ev.payload.url || `https://calendar.google.com/calendar/u/0/r/eventedit/${ev.payload.google_event_id}`}
+                          target="_blank" rel="noreferrer" className="text-[10px] text-[hsl(var(--info))] inline-flex items-center gap-1">
                           <CalendarDays className="h-3 w-3" /> Abrir no Google Calendar
                         </a>
                       )}
+
                       {!ev.gmail_id && ev.nethunt_record_id && (
                         <a href={netHuntRecordUrl(ev.nethunt_record_id)} target="_blank" rel="noreferrer" className="text-[10px] text-muted-foreground inline-flex items-center gap-1">
                           <ExternalLink className="h-3 w-3" /> Ver no NetHunt
