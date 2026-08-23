@@ -144,24 +144,32 @@ export const toSource = (v: unknown) => {
 };
 export const fromSource = (v?: string | null) => (v ? SOURCE_OUT[v] ?? null : null);
 
-/** NetHunt date fields are epoch ms → ISO date (yyyy-mm-dd). */
+/** NetHunt date fields arrive as ISO strings or epoch ms → yyyy-mm-dd. */
 export function toDate(v: unknown): string | null {
   if (v == null || v === "") return null;
   const n = typeof v === "number" ? v : Number(v);
-  const d = Number.isFinite(n) ? new Date(n) : new Date(String(v));
+  const d = Number.isFinite(n) && typeof v !== "string" ? new Date(n) : new Date(String(v));
   return isNaN(d.getTime()) ? null : d.toISOString().slice(0, 10);
 }
 export function toIso(v: unknown): string | null {
   if (v == null || v === "") return null;
   const n = typeof v === "number" ? v : Number(v);
-  const d = Number.isFinite(n) ? new Date(n) : new Date(String(v));
+  const d = Number.isFinite(n) && typeof v !== "string" ? new Date(n) : new Date(String(v));
   return isNaN(d.getTime()) ? null : d.toISOString();
 }
-export const fromDate = (v?: string | null): number | null => {
+/** Writes use the same shape NetHunt returns: yyyy-mm-dd for dates. */
+export const fromDate = (v?: string | null): string | null => {
   if (!v) return null;
   const d = new Date(v);
-  return isNaN(d.getTime()) ? null : d.getTime();
+  return isNaN(d.getTime()) ? null : d.toISOString().slice(0, 10);
 };
+/** Writes for dateTime fields (task due date). */
+export const fromDateTime = (v?: string | null): string | null => {
+  if (!v) return null;
+  const d = new Date(v);
+  return isNaN(d.getTime()) ? null : d.toISOString();
+};
+
 
 export type NHRecord = {
   id: string;
