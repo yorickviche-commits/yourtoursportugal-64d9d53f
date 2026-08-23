@@ -942,6 +942,15 @@ const LeadCostingEditor = ({ costingDays, onChange, onSave, saving, plannerDays,
         />
       )}
 
+      <CostingSmartImportDialog
+        open={smartImportOpen}
+        onOpenChange={setSmartImportOpen}
+        pax={pax}
+        paxChildren={paxChildren}
+        onConfirm={applySmartImport}
+      />
+
+
     </div>
 
   );
