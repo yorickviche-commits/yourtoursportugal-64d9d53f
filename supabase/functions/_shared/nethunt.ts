@@ -184,7 +184,17 @@ export type NHRecord = {
 export const recId = (r: NHRecord) => String(r.recordId ?? r.id);
 export const recUpdatedAt = (r: NHRecord) =>
   toIso(r.updatedAt) ?? toIso(r.createdAt) ?? new Date().toISOString();
-export const field = (r: NHRecord, id: string) => (r.fields ?? {})[id];
+/** Reads a field by any of its known keys (name first, id as fallback). */
+export const field = (r: NHRecord, keys: readonly string[] | string) => {
+  const f = r.fields ?? {};
+  for (const k of typeof keys === "string" ? [keys] : keys) {
+    if (f[k] !== undefined) return f[k];
+  }
+  return undefined;
+};
+/** Field key used when writing (the NetHunt API addresses fields by name). */
+export const wkey = (keys: readonly string[] | string) =>
+  typeof keys === "string" ? keys : keys[0];
 
 // ── HTTP client ──────────────────────────────────────────────────────────────
 function authHeader() {
