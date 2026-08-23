@@ -3328,6 +3328,331 @@ export type Database = {
         }
         Relationships: []
       }
+      ytb_activity_log: {
+        Row: {
+          action: string
+          created_at: string
+          details: Json
+          entity_id: string | null
+          entity_type: string | null
+          id: string
+          user_id: string | null
+        }
+        Insert: {
+          action: string
+          created_at?: string
+          details?: Json
+          entity_id?: string | null
+          entity_type?: string | null
+          id?: string
+          user_id?: string | null
+        }
+        Update: {
+          action?: string
+          created_at?: string
+          details?: Json
+          entity_id?: string | null
+          entity_type?: string | null
+          id?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
+      ytb_categories: {
+        Row: {
+          color: string
+          created_at: string
+          created_by: string | null
+          description: string | null
+          id: string
+          name: string
+        }
+        Insert: {
+          color?: string
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          name: string
+        }
+        Update: {
+          color?: string
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          name?: string
+        }
+        Relationships: []
+      }
+      ytb_classification_values: {
+        Row: {
+          classification_id: string
+          id: string
+          sort_order: number
+          value: string
+        }
+        Insert: {
+          classification_id: string
+          id?: string
+          sort_order?: number
+          value: string
+        }
+        Update: {
+          classification_id?: string
+          id?: string
+          sort_order?: number
+          value?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ytb_classification_values_classification_id_fkey"
+            columns: ["classification_id"]
+            isOneToOne: false
+            referencedRelation: "ytb_classifications"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ytb_classifications: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+        }
+        Relationships: []
+      }
+      ytb_document_categories: {
+        Row: {
+          category_id: string
+          document_id: string
+        }
+        Insert: {
+          category_id: string
+          document_id: string
+        }
+        Update: {
+          category_id?: string
+          document_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ytb_document_categories_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "ytb_categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ytb_document_categories_document_id_fkey"
+            columns: ["document_id"]
+            isOneToOne: false
+            referencedRelation: "ytb_documents"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ytb_document_versions: {
+        Row: {
+          content: string | null
+          created_at: string
+          document_id: string
+          edited_by: string | null
+          file_path: string | null
+          id: string
+          title: string | null
+          url: string | null
+          version_number: number
+        }
+        Insert: {
+          content?: string | null
+          created_at?: string
+          document_id: string
+          edited_by?: string | null
+          file_path?: string | null
+          id?: string
+          title?: string | null
+          url?: string | null
+          version_number?: number
+        }
+        Update: {
+          content?: string | null
+          created_at?: string
+          document_id?: string
+          edited_by?: string | null
+          file_path?: string | null
+          id?: string
+          title?: string | null
+          url?: string | null
+          version_number?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ytb_document_versions_document_id_fkey"
+            columns: ["document_id"]
+            isOneToOne: false
+            referencedRelation: "ytb_documents"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ytb_documents: {
+        Row: {
+          confidentiality: string
+          content: string | null
+          created_at: string
+          created_by: string | null
+          description: string | null
+          file_name: string | null
+          file_path: string | null
+          file_size: number | null
+          folder_id: string | null
+          id: string
+          is_deleted: boolean
+          status: string
+          tags: string[]
+          title: string
+          type: string
+          updated_at: string
+          updated_by: string | null
+          url: string | null
+        }
+        Insert: {
+          confidentiality?: string
+          content?: string | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          file_name?: string | null
+          file_path?: string | null
+          file_size?: number | null
+          folder_id?: string | null
+          id?: string
+          is_deleted?: boolean
+          status?: string
+          tags?: string[]
+          title: string
+          type?: string
+          updated_at?: string
+          updated_by?: string | null
+          url?: string | null
+        }
+        Update: {
+          confidentiality?: string
+          content?: string | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          file_name?: string | null
+          file_path?: string | null
+          file_size?: number | null
+          folder_id?: string | null
+          id?: string
+          is_deleted?: boolean
+          status?: string
+          tags?: string[]
+          title?: string
+          type?: string
+          updated_at?: string
+          updated_by?: string | null
+          url?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ytb_documents_folder_id_fkey"
+            columns: ["folder_id"]
+            isOneToOne: false
+            referencedRelation: "ytb_folders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ytb_embeddings: {
+        Row: {
+          chunk_index: number
+          chunk_text: string
+          created_at: string
+          document_id: string
+          embedding: string | null
+          id: string
+          metadata: Json
+        }
+        Insert: {
+          chunk_index?: number
+          chunk_text: string
+          created_at?: string
+          document_id: string
+          embedding?: string | null
+          id?: string
+          metadata?: Json
+        }
+        Update: {
+          chunk_index?: number
+          chunk_text?: string
+          created_at?: string
+          document_id?: string
+          embedding?: string | null
+          id?: string
+          metadata?: Json
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ytb_embeddings_document_id_fkey"
+            columns: ["document_id"]
+            isOneToOne: false
+            referencedRelation: "ytb_documents"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ytb_folders: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          id: string
+          is_deleted: boolean
+          name: string
+          parent_folder_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          is_deleted?: boolean
+          name: string
+          parent_folder_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          is_deleted?: boolean
+          name?: string
+          parent_folder_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ytb_folders_parent_folder_id_fkey"
+            columns: ["parent_folder_id"]
+            isOneToOne: false
+            referencedRelation: "ytb_folders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
@@ -3370,6 +3695,21 @@ export type Database = {
       }
       show_limit: { Args: never; Returns: number }
       show_trgm: { Args: { "": string }; Returns: string[] }
+      ytb_can_edit: { Args: { _user_id: string }; Returns: boolean }
+      ytb_match_chunks: {
+        Args: {
+          allow_confidential?: boolean
+          match_count?: number
+          query_embedding: string
+        }
+        Returns: {
+          chunk_text: string
+          document_id: string
+          metadata: Json
+          similarity: number
+          title: string
+        }[]
+      }
     }
     Enums: {
       app_role:
