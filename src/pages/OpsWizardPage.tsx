@@ -11,18 +11,19 @@ import { openDeepLink } from '@/lib/links';
 
 /* ── tokens ───────────────────────────────────────────────────────────── */
 const C = {
-  bg: '#04070f',
-  panel: 'rgba(255,255,255,0.015)',
-  border: 'rgba(91,155,255,0.12)',
-  text: '#dfe8f8',
-  muted: 'rgba(223,232,248,0.5)',
+  bg: '#f4f7fd',
+  panel: '#ffffff',
+  border: 'rgba(28,79,216,0.14)',
+  text: '#0a2540',
+  muted: 'rgba(10,37,64,0.55)',
   accent: '#1c4fd8',
-  accentLight: '#5b9bff',
-  critical: '#ff4d5e',
-  high: '#ffab2e',
-  medium: '#5b9bff',
-  success: '#2ee6a8',
-  purple: '#b79dff',
+  accentLight: '#2f6fe4',
+  critical: '#d92d43',
+  high: '#c47a00',
+  medium: '#2f6fe4',
+  success: '#0f9d6b',
+  purple: '#6d4fd8',
+  soft: '#eef3fc',
 };
 
 const MONO = "'IBM Plex Mono', ui-monospace, monospace";
@@ -84,6 +85,7 @@ const panelStyle: React.CSSProperties = {
   background: C.panel,
   border: `1px solid ${C.border}`,
   borderRadius: 12,
+  boxShadow: '0 1px 2px rgba(10,37,64,0.04), 0 8px 24px -18px rgba(10,37,64,0.18)',
 };
 
 const Label = ({ children, style }: { children: React.ReactNode; style?: React.CSSProperties }) => (
@@ -192,7 +194,7 @@ export default function OpsWizardPage() {
           <span style={{ fontFamily: MONO, fontSize: 12, color: C.muted }}>{clock}</span>
           <span
             className="flex items-center gap-1.5 rounded-full px-2.5 py-1"
-            style={{ fontFamily: MONO, fontSize: 10.5, color: C.success, background: 'rgba(46,230,168,0.08)', border: '1px solid rgba(46,230,168,0.25)' }}
+            style={{ fontFamily: MONO, fontSize: 10.5, color: C.success, background: 'rgba(15,157,107,0.08)', border: '1px solid rgba(15,157,107,0.3)' }}
           >
             <RefreshCw size={11} /> SYNCED
           </span>
@@ -282,15 +284,15 @@ export default function OpsWizardPage() {
                     onClick={() => { setSelectedStage(stage); setExpandedBooking(null); }}
                     className="w-full rounded-[9px] px-3 py-2 text-left transition-colors"
                     style={{
-                      background: active ? 'rgba(28,79,216,0.16)' : 'transparent',
-                      border: `1px solid ${active ? 'rgba(91,155,255,0.35)' : C.border}`,
+                      background: active ? 'rgba(28,79,216,0.07)' : '#ffffff',
+                      border: `1px solid ${active ? 'rgba(28,79,216,0.4)' : C.border}`,
                     }}
                   >
                     <div className="flex items-center gap-2">
                       <span style={{ fontSize: 12.5, fontWeight: active ? 600 : 500 }}>{STAGE_LABEL[stage]}</span>
                       <span
                         className="rounded-full px-1.5"
-                        style={{ fontFamily: MONO, fontSize: 10, color: C.accentLight, background: 'rgba(91,155,255,0.1)' }}
+                        style={{ fontFamily: MONO, fontSize: 10, color: C.accentLight, background: 'rgba(28,79,216,0.08)' }}
                       >
                         {items.length}
                       </span>
@@ -301,7 +303,7 @@ export default function OpsWizardPage() {
                         </span>
                       )}
                     </div>
-                    <div className="mt-1.5 h-[3px] w-full rounded-full" style={{ background: 'rgba(255,255,255,0.05)' }}>
+                    <div className="mt-1.5 h-[3px] w-full rounded-full" style={{ background: 'rgba(10,37,64,0.08)' }}>
                       <div
                         className="h-full rounded-full"
                         style={{ width: `${(items.length / maxStageCount) * 100}%`, background: active ? C.accentLight : C.accent }}
@@ -336,7 +338,7 @@ export default function OpsWizardPage() {
                         <span className="shrink-0" style={{ fontFamily: MONO, fontSize: 10.5, color: C.muted }}>{b.pax} pax</span>
                         <span
                           className="shrink-0 rounded px-1.5"
-                          style={{ fontFamily: MONO, fontSize: 10, color: C.accentLight, background: 'rgba(91,155,255,0.1)' }}
+                          style={{ fontFamily: MONO, fontSize: 10, color: C.accentLight, background: 'rgba(28,79,216,0.08)' }}
                         >
                           {b.language}
                         </span>
@@ -354,8 +356,8 @@ export default function OpsWizardPage() {
                                 style={{
                                   fontFamily: MONO, fontSize: 10,
                                   color: m.blocking ? C.critical : C.high,
-                                  background: m.blocking ? 'rgba(255,77,94,0.1)' : 'rgba(255,171,46,0.1)',
-                                  border: `1px solid ${m.blocking ? 'rgba(255,77,94,0.3)' : 'rgba(255,171,46,0.3)'}`,
+                                  background: m.blocking ? 'rgba(217,45,67,0.09)' : 'rgba(196,122,0,0.1)',
+                                  border: `1px solid ${m.blocking ? 'rgba(217,45,67,0.3)' : 'rgba(196,122,0,0.3)'}`,
                                 }}
                               >
                                 {m.field}
@@ -400,7 +402,7 @@ export default function OpsWizardPage() {
               <div className="flex items-center gap-2.5">
                 <div
                   className="flex h-9 w-9 items-center justify-center rounded-[9px]"
-                  style={{ background: 'rgba(28,79,216,0.25)', fontFamily: MONO, fontSize: 12, color: C.accentLight }}
+                  style={{ background: 'rgba(28,79,216,0.1)', fontFamily: MONO, fontSize: 12, color: C.accentLight }}
                 >
                   {initials(selected.action.recipient)}
                 </div>
@@ -427,7 +429,7 @@ export default function OpsWizardPage() {
                 className="w-full resize-none rounded-[9px] p-2.5 outline-none"
                 style={{
                   height: 180, fontFamily: MONO, fontSize: 11, lineHeight: 1.5,
-                  background: 'rgba(0,0,0,0.35)', border: `1px solid ${C.border}`, color: C.text,
+                  background: '#fbfcfe', border: `1px solid ${C.border}`, color: C.text,
                 }}
               />
 
@@ -458,7 +460,7 @@ export default function OpsWizardPage() {
                 </button>
                 <button
                   className="flex-1 rounded-[8px] py-2"
-                  style={{ fontFamily: MONO, fontSize: 10.5, color: C.critical, border: '1px solid rgba(255,77,94,0.35)' }}
+                  style={{ fontFamily: MONO, fontSize: 10.5, color: C.critical, border: '1px solid rgba(217,45,67,0.35)' }}
                   onClick={() => toast('Draft rejected')}
                 >
                   REJECT
@@ -471,7 +473,7 @@ export default function OpsWizardPage() {
                   value={stageAfterSend}
                   onChange={(e) => setStageAfterSend(e.target.value as OpsStage)}
                   className="mt-1.5 w-full rounded-[8px] px-2 py-2 outline-none"
-                  style={{ fontSize: 12, background: 'rgba(0,0,0,0.35)', border: `1px solid ${C.border}`, color: C.text }}
+                  style={{ fontSize: 12, background: '#fbfcfe', border: `1px solid ${C.border}`, color: C.text }}
                 >
                   {STAGE_ORDER.map((s) => (
                     <option key={s} value={s} style={{ background: C.bg }}>{STAGE_LABEL[s]}</option>
@@ -531,16 +533,16 @@ export default function OpsWizardPage() {
         </button>
 
         {askOpen && (
-          <div className="absolute bottom-[76px] right-5 w-[320px] p-3" style={{ ...panelStyle, background: '#070c17' }}>
+          <div className="absolute bottom-[76px] right-5 w-[320px] p-3" style={{ ...panelStyle, background: '#ffffff', boxShadow: '0 12px 30px -12px rgba(10,37,64,0.25)' }}>
             <Label style={{ color: C.text }}>Ask ops</Label>
             <input
               value={askInput}
               onChange={(e) => setAskInput(e.target.value)}
               placeholder="What needs attention today?"
               className="mt-2 w-full rounded-[8px] px-2.5 py-2 outline-none"
-              style={{ fontSize: 12, background: 'rgba(0,0,0,0.35)', border: `1px solid ${C.border}`, color: C.text }}
+              style={{ fontSize: 12, background: '#fbfcfe', border: `1px solid ${C.border}`, color: C.text }}
             />
-            <div className="mt-2.5 rounded-[8px] p-2.5" style={{ background: 'rgba(28,79,216,0.12)', fontSize: 11.5, lineHeight: 1.5 }}>
+            <div className="mt-2.5 rounded-[8px] p-2.5" style={{ background: 'rgba(28,79,216,0.06)', fontSize: 11.5, lineHeight: 1.5 }}>
               <CalendarClock size={12} style={{ color: C.accentLight, display: 'inline', marginRight: 6 }} />
               Focus on YT5041 first — supplier confirmation is blocking the technical briefing, and the departure is inside 7 days.
             </div>
@@ -560,7 +562,7 @@ function KpiCard({ color, value, label, sub, active, onClick }: {
       onClick={onClick}
       className="flex h-[66px] items-center gap-3 rounded-[11px] px-3.5 text-left transition-colors"
       style={{
-        background: active ? `${color}22` : `${color}0f`,
+        background: active ? `${color}1f` : `${color}0d`,
         border: `1px solid ${active ? color : `${color}44`}`,
       }}
     >
@@ -582,8 +584,8 @@ function QueueCard({ index, action, score, selected, onSelect }: {
       onClick={onSelect}
       className="cursor-pointer rounded-[9px] p-2.5"
       style={{
-        background: selected ? 'rgba(28,79,216,0.14)' : 'rgba(255,255,255,0.015)',
-        border: `1px solid ${selected ? 'rgba(91,155,255,0.4)' : C.border}`,
+        background: selected ? 'rgba(28,79,216,0.06)' : '#ffffff',
+        border: `1px solid ${selected ? 'rgba(28,79,216,0.45)' : C.border}`,
       }}
     >
       <div className="flex items-center gap-2">
@@ -594,7 +596,7 @@ function QueueCard({ index, action, score, selected, onSelect }: {
         >
           {action.severity.toUpperCase()}
         </span>
-        <span className="ml-auto flex items-center gap-1 rounded px-1.5" style={{ fontFamily: MONO, fontSize: 9.5, color: C.high, background: 'rgba(255,171,46,0.1)' }}>
+        <span className="ml-auto flex items-center gap-1 rounded px-1.5" style={{ fontFamily: MONO, fontSize: 9.5, color: C.high, background: 'rgba(196,122,0,0.1)' }}>
           <AlertTriangle size={9} /> {action.deadlineLabel}
         </span>
       </div>
