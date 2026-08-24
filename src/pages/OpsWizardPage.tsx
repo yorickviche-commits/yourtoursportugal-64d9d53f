@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import {
   AlertTriangle, CheckCircle2, Clock, Euro, Plane, Sparkles, RefreshCw,
   ChevronDown, ChevronRight, ExternalLink, CalendarClock, MessageSquare,
+  CalendarDays, LayoutList, ChevronLeft,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { mockBookings, mockActions, mockActivity } from '@/data/mockOps';
@@ -106,6 +107,8 @@ export default function OpsWizardPage() {
   const [stageAfterSend, setStageAfterSend] = useState<OpsStage>('deposit_received');
   const [askOpen, setAskOpen] = useState(false);
   const [askInput, setAskInput] = useState('');
+  const [view, setView] = useState<'pipeline' | 'calendar'>('pipeline');
+  const [monthOffset, setMonthOffset] = useState(0);
 
   const bookingById = useMemo(() => {
     const m = new Map<string, OpsBooking>();
@@ -669,4 +672,128 @@ function QueueCard({ index, action, score, selected, onSelect }: {
 
 function initials(name: string) {
   return name.split(/[\s·]+/).filter(Boolean).slice(0, 2).map((p) => p[0]?.toUpperCase()).join('');
+}
+
+/* ── Reservas calendar (departures by day) ────────────────────────────── */
+const WEEKDAYS = ['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN'];
+
+function ReservasCalendar({ monthOffset, onShiftMonth, onPick }: {
+  monthOffset: number;
+  onShiftMonth: (delta: number) => void;
+  onPick: (b: OpsBooking) => void;
+}) {
+  const today = new Date();
+  const base = new Date(today.getFullYear(), today.getMonth() + monthOffset, 1);
+  const year = base.getFullYear();
+  const month = base.getMonth();
+  const firstWeekday = (new Date(year, month, 1).getDay() + 6) % 7; // Monday-first
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  const cells: (number | null)[] = [
+    ...Array.from({ length: firstWeekday }, () => null),
+    ...Array.from({ length: daysInMonth }, (_, i) => i + 1),
+  ];
+  while (cells.length % 7 !== 0) cells.push(null);
+
+  const byDay = new Map<number, OpsBooking[]>();
+  mockBookings.forEach((b) => {
+    const d = new Date(b.departureDate);
+    if (d.getFullYear() === year && d.getMonth() === month) {
+      const list = byDay.get(d.getDate()) ?? [];
+      list.push(b);
+      byDay.set(d.getDate(), list);
+    }
+  });
+
+  const monthLabel = base.toLocaleDateString('en-GB', { month: 'long', year: 'numeric' });
+  const monthCount = [...byDay.values()].reduce((n, l) => n + l.length, 0);
+  const monthPax = [...byDay.values()].flat().reduce((n, b) => n + b.pax, 0);
+
+  return (
+    <div className="flex min-h-0 flex-1 flex-col p-3">
+      <div className="mb-2 flex items-center gap-2">
+        <button
+          onClick={() => onShiftMonth(-1)}
+          className="rounded-[7px] p-1"
+          style={{ border: `1px solid ${C.border}`, color: C.text }}
+        >
+          <ChevronLeft size={13} />
+        </button>
+        <button
+          onClick={() => onShiftMonth(1)}
+          className="rounded-[7px] p-1"
+          style={{ border: `1px solid ${C.border}`, color: C.text }}
+        >
+          <ChevronRight size={13} />
+        </button>
+        <div style={{ fontFamily: MONO, fontSize: 12, fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase' }}>
+          {monthLabel}
+        </div>
+        <div className="ml-auto" style={{ fontFamily: MONO, fontSize: 10.5, color: C.muted }}>
+          {monthCount} DEPARTURES · {monthPax} PAX
+        </div>
+      </div>
+
+      <div className="grid grid-cols-7 gap-1 pb-1">
+        {WEEKDAYS.map((d) => (
+          <div key={d} style={{ fontFamily: MONO, fontSize: 9.5, color: C.muted, textAlign: 'center' }}>{d}</div>
+        ))}
+      </div>
+
+      <div className="grid min-h-0 flex-1 grid-cols-7 gap-1 overflow-y-auto">
+        {cells.map((day, i) => {
+          const items = day ? byDay.get(day) ?? [] : [];
+          const isToday = day === today.getDate() && month === today.getMonth() && year === today.getFullYear();
+          return (
+            <div
+              key={i}
+              className="min-h-[68px] rounded-[9px] p-1.5"
+              style={{
+                background: day ? (isToday ? 'rgba(28,79,216,0.07)' : '#fff') : C.soft,
+                border: `1px solid ${isToday ? 'rgba(28,79,216,0.4)' : C.border}`,
+              }}
+            >
+              {day && (
+                <>
+                  <div style={{ fontFamily: MONO, fontSize: 9.5, color: isToday ? C.accent : C.muted }}>
+                    {String(day).padStart(2, '0')}
+                  </div>
+                  <div className="mt-1 space-y-1">
+                    {items.map((b) => {
+                      const blocked = b.missing.some((m) => m.blocking);
+                      const color = blocked ? C.critical : C.success;
+                      return (
+                        <button
+                          key={b.id}
+                          onClick={() => onPick(b)}
+                          className="block w-full truncate rounded-[6px] px-1 py-0.5 text-left"
+                          style={{
+                            fontFamily: MONO, fontSize: 9,
+                            color,
+                            background: `${color}14`,
+                            border: `1px solid ${color}44`,
+                          }}
+                          title={`${b.id} · ${b.clientName} · ${b.product} · ${b.pax} pax`}
+                        >
+                          {b.id} · {b.pax}p
+                        </button>
+                      );
+                    })}
+                  </div>
+                </>
+              )}
+            </div>
+          );
+        })}
+      </div>
+
+      <div className="mt-2 flex items-center gap-3" style={{ fontFamily: MONO, fontSize: 9.5, color: C.muted }}>
+        <span className="flex items-center gap-1">
+          <span className="h-2 w-2 rounded-full" style={{ background: C.success }} /> READY
+        </span>
+        <span className="flex items-center gap-1">
+          <span className="h-2 w-2 rounded-full" style={{ background: C.critical }} /> BLOCKED
+        </span>
+      </div>
+    </div>
+  );
 }
