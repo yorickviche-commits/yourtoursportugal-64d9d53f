@@ -347,6 +347,8 @@ export default function OpsWizardPage() {
             )}
           </div>
         </section>
+        )}
+
 
         {/* COL 2 — PIPELINE / CALENDAR */}
         <section className="flex min-w-0 flex-1 flex-col overflow-hidden" style={panelStyle}>
