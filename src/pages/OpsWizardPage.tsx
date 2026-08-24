@@ -384,42 +384,66 @@ export default function OpsWizardPage() {
       </div>
 
 
-      {/* MAIN */}
-      <main className="flex min-h-0 flex-1 gap-3 px-5 pb-3">
-        {/* COL 1 — PRIORITY QUEUE */}
+      {/* BOARD CONTROL BAR */}
+      <div className="flex shrink-0 items-center gap-2 px-5 pb-2">
+        <Label style={{ color: C.text }}>Today’s board</Label>
+        <span style={{ fontFamily: MONO, fontSize: 10.5, fontWeight: 700, color: C.muted }}>
+          {openCount}/4 PANELS OPEN
+        </span>
+        <div className="ml-auto flex gap-1.5">
+          <button
+            onClick={() => setAllCards(true)}
+            className="flex items-center gap-1 rounded-[7px] px-2.5 py-1"
+            style={{ fontFamily: MONO, fontSize: 10, fontWeight: 800, color: '#fff', background: C.accent }}
+          >
+            <ChevronDown size={11} /> EXPAND ALL
+          </button>
+          <button
+            onClick={() => setAllCards(false)}
+            className="flex items-center gap-1 rounded-[7px] px-2.5 py-1"
+            style={{ fontFamily: MONO, fontSize: 10, fontWeight: 800, color: C.text, background: '#fff', border: `1.5px solid ${C.border}` }}
+          >
+            <ChevronRight size={11} /> COLLAPSE ALL
+          </button>
+        </div>
+      </div>
+
+      {/* MAIN — horizontal board */}
+      <main className="flex min-h-0 flex-1 gap-3 overflow-x-auto px-5 pb-3">
+        {/* CARD 1 — PRIORITY QUEUE */}
         {view === 'pipeline' && (
-        <section className="flex w-[380px] shrink-0 flex-col overflow-hidden" style={panelStyle}>
-
-          <div className="px-4 pt-3.5 pb-2.5" style={{ borderBottom: `1px solid ${C.border}` }}>
-            <Label style={{ color: C.text, fontWeight: 700, fontSize: 11.5 }}>PRIORITY QUEUE</Label>
-            <div style={{ fontSize: 11, color: C.muted, marginTop: 3 }}>Auto-ranked by deadline, severity and impact</div>
-            <div className="mt-2.5 flex gap-1.5">
-              {(['ALL', 'CRITICAL', 'HIGH', 'MEDIUM'] as SevFilter[]).map((f) => (
-                <button
-                  key={f}
-                  onClick={() => setSevFilter(f)}
-                  className="rounded-[7px] px-2.5 py-1 transition-colors"
-                  style={{
-                    fontFamily: MONO, fontSize: 10,
-                    color: sevFilter === f ? '#fff' : C.muted,
-                    background: sevFilter === f ? C.accent : 'transparent',
-                    border: `1px solid ${sevFilter === f ? C.accent : C.border}`,
-                  }}
-                >
-                  {f}
-                </button>
-              ))}
-            </div>
-          </div>
-
+        <BoardCard
+          id="queue"
+          title="PRIORITY QUEUE"
+          subtitle="Auto-ranked by deadline, severity and impact"
+          count={queue.length}
+          open={openCards.queue}
+          onToggle={() => toggleCard('queue')}
+          grow={1}
+          headerRight={(['ALL', 'CRITICAL', 'HIGH', 'MEDIUM'] as SevFilter[]).map((f) => (
+            <button
+              key={f}
+              onClick={() => setSevFilter(f)}
+              className="rounded-[7px] px-2 py-1 transition-colors"
+              style={{
+                fontFamily: MONO, fontSize: 9.5, fontWeight: 800,
+                color: sevFilter === f ? '#fff' : C.text,
+                background: sevFilter === f ? C.accent : '#fff',
+                border: `1.5px solid ${sevFilter === f ? C.accent : C.border}`,
+              }}
+            >
+              {f}
+            </button>
+          ))}
+        >
           <div className="min-h-0 flex-1 space-y-2.5 overflow-y-auto p-3">
             {queue.length === 0 ? (
               <div
                 className="flex h-full min-h-[180px] flex-col items-center justify-center gap-2 rounded-[11px] p-6 text-center"
-                style={{ border: `1px dashed ${C.border}` }}
+                style={{ border: `1.5px dashed ${C.border}` }}
               >
                 <CheckCircle2 size={26} style={{ color: C.success }} />
-                <div style={{ fontFamily: MONO, fontSize: 11, color: C.muted, letterSpacing: '0.08em' }}>
+                <div style={{ fontFamily: MONO, fontSize: 11, fontWeight: 700, color: C.muted, letterSpacing: '0.08em' }}>
                   ALL CLEAR — no pending actions in this filter
                 </div>
               </div>
@@ -436,8 +460,9 @@ export default function OpsWizardPage() {
               ))
             )}
           </div>
-        </section>
+        </BoardCard>
         )}
+
 
 
         {/* COL 2 — PIPELINE / CALENDAR */}
