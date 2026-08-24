@@ -416,6 +416,7 @@ export default function OpsWizardPage() {
               </div>
             </div>
           </div>
+          )}
         </section>
 
         {/* COL 3 — REVIEW & APPROVE */}
