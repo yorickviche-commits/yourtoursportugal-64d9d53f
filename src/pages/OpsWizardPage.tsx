@@ -235,6 +235,67 @@ export default function OpsWizardPage() {
           active={kpiFilter === 'departures'} onClick={() => setKpiFilter(kpiFilter === 'departures' ? null : 'departures')} />
       </div>
 
+      {/* MISSING INFO */}
+      <div className="shrink-0 px-5 pb-3">
+        <div style={panelStyle} className="overflow-hidden">
+          <button
+            onClick={() => setMissingOpen((v) => !v)}
+            className="flex w-full items-center gap-2 px-4 py-2.5 text-left"
+          >
+            {missingOpen ? <ChevronDown size={14} style={{ color: C.muted }} /> : <ChevronRight size={14} style={{ color: C.muted }} />}
+            <AlertTriangle size={13} style={{ color: C.critical }} />
+            <Label style={{ color: C.text, fontWeight: 700, fontSize: 11.5 }}>MISSING INFO</Label>
+            <span
+              className="rounded-full px-1.5"
+              style={{ fontFamily: MONO, fontSize: 10, color: C.critical, background: 'rgba(217,45,67,0.09)' }}
+            >
+              {blockedBookings.length}
+            </span>
+            <span className="ml-auto" style={{ fontSize: 11, color: C.muted }}>
+              Suppliers · guide &amp; transport · client payments · final briefings
+            </span>
+          </button>
+
+          {missingOpen && (
+            <div className="max-h-[210px] overflow-y-auto" style={{ borderTop: `1px solid ${C.border}` }}>
+              {blockedBookings.length === 0 ? (
+                <div className="px-4 py-3" style={{ fontSize: 11.5, color: C.success, fontFamily: MONO }}>
+                  NOTHING BLOCKING — every booking has its four pillars covered
+                </div>
+              ) : (
+                blockedBookings.map((b) => (
+                  <button
+                    key={b.id}
+                    onClick={() => { setView('pipeline'); setSelectedStage(b.stage); setExpandedBooking(b.id); }}
+                    className="flex w-full items-center gap-2.5 px-4 py-2 text-left"
+                    style={{ borderTop: `1px solid ${C.soft}` }}
+                  >
+                    <span className="shrink-0" style={{ fontFamily: MONO, fontSize: 11, color: C.accentLight }}>{b.id}</span>
+                    <span className="shrink-0" style={{ fontSize: 12, fontWeight: 600 }}>{b.clientName}</span>
+                    <span className="shrink-0" style={{ fontSize: 11, color: C.muted }}>{STAGE_LABEL[b.stage]}</span>
+                    <span className="ml-auto flex shrink-0 flex-wrap justify-end gap-1.5">
+                      {b.missing.filter((m) => m.blocking).map((m) => (
+                        <span
+                          key={m.field}
+                          className="rounded-[7px] px-2 py-0.5"
+                          style={{
+                            fontFamily: MONO, fontSize: 10, color: C.critical,
+                            background: 'rgba(217,45,67,0.09)', border: '1px solid rgba(217,45,67,0.3)',
+                          }}
+                        >
+                          {m.field}
+                        </span>
+                      ))}
+                    </span>
+                  </button>
+                ))
+              )}
+            </div>
+          )}
+        </div>
+      </div>
+
+
       {/* MAIN */}
       <main className="flex min-h-0 flex-1 gap-3 px-5 pb-3">
         {/* COL 1 — PRIORITY QUEUE */}
