@@ -388,9 +388,28 @@ export default function OpsWizardPage() {
             />
           ) : (
           <div className="min-h-0 flex-1 overflow-y-auto p-3">
+            <div className="mb-2.5 flex items-center gap-1.5">
+              <Label style={{ marginRight: 4 }}>Filter</Label>
+              {([['ALL', 'ALL'], ['SOON', '≤7 DAYS'], ['BLOCKED', 'BLOCKED']] as const).map(([v, lbl]) => (
+                <button
+                  key={v}
+                  onClick={() => setStageFilter(v)}
+                  className="rounded-[7px] px-2.5 py-1"
+                  style={{
+                    fontFamily: MONO, fontSize: 10,
+                    color: stageFilter === v ? '#fff' : C.muted,
+                    background: stageFilter === v ? C.accent : '#fff',
+                    border: `1px solid ${stageFilter === v ? C.accent : C.border}`,
+                  }}
+                >
+                  {lbl}
+                </button>
+              ))}
+            </div>
             <div className="space-y-1.5">
               {STAGE_ORDER.map((stage) => {
-                const items = mockBookings.filter((b) => b.stage === stage);
+                const items = filteredBookings.filter((b) => b.stage === stage);
+
                 const blocked = items.filter((b) => b.missing.some((m) => m.blocking)).length;
                 const active = selectedStage === stage;
                 return (
