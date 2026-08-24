@@ -503,7 +503,9 @@ export default function OpsWizardPage() {
         </section>
 
         {/* COL 3 — REVIEW & APPROVE */}
+        {view === 'pipeline' && (
         <section className="flex w-[400px] shrink-0 flex-col overflow-hidden" style={panelStyle}>
+
           <div className="px-4 pt-3.5 pb-2.5" style={{ borderBottom: `1px solid ${C.border}` }}>
             <Label style={{ color: C.text, fontWeight: 700, fontSize: 11.5 }}>REVIEW &amp; APPROVE</Label>
             <div style={{ fontSize: 11, color: C.muted, marginTop: 3 }}>Review the draft, then send</div>
