@@ -14,19 +14,19 @@ import { PILLARS, pillarStatus, readinessPercent, type PillarStatus } from '@/li
 
 /* ── tokens ───────────────────────────────────────────────────────────── */
 const C = {
-  bg: '#f4f7fd',
+  bg: '#eef3fb',
   panel: '#ffffff',
-  border: 'rgba(28,79,216,0.14)',
-  text: '#0a2540',
-  muted: 'rgba(10,37,64,0.55)',
-  accent: '#1c4fd8',
-  accentLight: '#2f6fe4',
-  critical: '#d92d43',
-  high: '#c47a00',
-  medium: '#2f6fe4',
-  success: '#0f9d6b',
-  purple: '#6d4fd8',
-  soft: '#eef3fc',
+  border: 'rgba(28,79,216,0.28)',
+  text: '#04182c',
+  muted: 'rgba(4,24,44,0.78)',
+  accent: '#0f3fb8',
+  accentLight: '#1c4fd8',
+  critical: '#b3122c',
+  high: '#8a5600',
+  medium: '#0f3fb8',
+  success: '#0a6b4c',
+  purple: '#4b32b0',
+  soft: '#e3ecfb',
 };
 
 const MONO = "'IBM Plex Mono', ui-monospace, monospace";
