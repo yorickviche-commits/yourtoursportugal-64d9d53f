@@ -195,6 +195,14 @@ export default function OpsWizardPage() {
   const [monthOffset, setMonthOffset] = useState(0);
   const [missingOpen, setMissingOpen] = useState(false);
   const [stageFilter, setStageFilter] = useState<StageFilter>('ALL');
+  const [openCards, setOpenCards] = useState<Record<CardKey, boolean>>({
+    queue: true, pipeline: true, review: true, activity: false,
+  });
+  const [peek, setPeek] = useState<OpsBooking | null>(null);
+
+  const toggleCard = (k: CardKey) => setOpenCards((p) => ({ ...p, [k]: !p[k] }));
+  const setAllCards = (v: boolean) => setOpenCards({ queue: v, pipeline: v, review: v, activity: v });
+  const openCount = Object.values(openCards).filter(Boolean).length;
 
 
 
