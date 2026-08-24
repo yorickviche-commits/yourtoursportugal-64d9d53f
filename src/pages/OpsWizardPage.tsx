@@ -265,13 +265,45 @@ export default function OpsWizardPage() {
           </div>
         </section>
 
-        {/* COL 2 — PIPELINE */}
+        {/* COL 2 — PIPELINE / CALENDAR */}
         <section className="flex min-w-0 flex-1 flex-col overflow-hidden" style={panelStyle}>
-          <div className="px-4 pt-3.5 pb-2.5" style={{ borderBottom: `1px solid ${C.border}` }}>
-            <Label style={{ color: C.text, fontWeight: 700, fontSize: 11.5 }}>OPERATIONS PIPELINE</Label>
-            <div style={{ fontSize: 11, color: C.muted, marginTop: 3 }}>8 stages · click a stage to filter</div>
+          <div className="flex items-start justify-between gap-3 px-4 pt-3.5 pb-2.5" style={{ borderBottom: `1px solid ${C.border}` }}>
+            <div>
+              <Label style={{ color: C.text, fontWeight: 700, fontSize: 11.5 }}>
+                {view === 'pipeline' ? 'OPERATIONS PIPELINE' : 'RESERVAS CALENDAR'}
+              </Label>
+              <div style={{ fontSize: 11, color: C.muted, marginTop: 3 }}>
+                {view === 'pipeline'
+                  ? '8 stages · click a stage to filter'
+                  : 'Departures by day · click a booking to inspect'}
+              </div>
+            </div>
+            <div className="flex shrink-0 gap-1.5">
+              {([['pipeline', 'PIPELINE'], ['calendar', 'CALENDAR']] as const).map(([v, lbl]) => (
+                <button
+                  key={v}
+                  onClick={() => setView(v)}
+                  className="flex items-center gap-1 rounded-[7px] px-2.5 py-1"
+                  style={{
+                    fontFamily: MONO, fontSize: 10,
+                    color: view === v ? '#fff' : C.muted,
+                    background: view === v ? C.accent : '#fff',
+                    border: `1px solid ${view === v ? C.accent : C.border}`,
+                  }}
+                >
+                  {v === 'calendar' ? <CalendarDays size={10} /> : <LayoutList size={10} />} {lbl}
+                </button>
+              ))}
+            </div>
           </div>
 
+          {view === 'calendar' ? (
+            <ReservasCalendar
+              monthOffset={monthOffset}
+              onShiftMonth={(d) => setMonthOffset((m) => m + d)}
+              onPick={(b) => { setView('pipeline'); setSelectedStage(b.stage); setExpandedBooking(b.id); }}
+            />
+          ) : (
           <div className="min-h-0 flex-1 overflow-y-auto p-3">
             <div className="space-y-1.5">
               {STAGE_ORDER.map((stage) => {
