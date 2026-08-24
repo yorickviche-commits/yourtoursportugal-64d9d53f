@@ -77,6 +77,8 @@ const ACTIVITY_ICON: Record<string, any> = {
 
 type KpiFilter = null | 'critical' | 'approvals' | 'blocked' | 'departures';
 type SevFilter = 'ALL' | 'CRITICAL' | 'HIGH' | 'MEDIUM';
+type StageFilter = 'ALL' | 'SOON' | 'BLOCKED';
+
 
 const DAY = 86400000;
 const isSoon = (iso: string, days: number) => {
