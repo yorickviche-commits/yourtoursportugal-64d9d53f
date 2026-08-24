@@ -2,7 +2,7 @@ import { NavLink, useLocation } from 'react-router-dom';
 import {
   Map, Users, CreditCard, Sparkles, LayoutDashboard,
   FileText, Handshake, Grid3x3, Truck, Settings, Shield, Plug, ScrollText,
-  Inbox, PackageSearch, Boxes, Brain,
+  Inbox, PackageSearch, Boxes, Brain, Radar,
   LogOut, ChevronDown, ChevronRight, Menu, X,
 } from 'lucide-react';
 import { useState } from 'react';
@@ -24,7 +24,7 @@ const overviewItems: NavItem[] = [
 
 const reservasItems: NavItem[] = [
   { to: '/leads', icon: Users, label: 'Leads & Files', pageKey: 'leads' },
-  { to: '/trips', icon: Map, label: 'Bookings & Reservas', pageKey: 'trips' },
+  { to: '/ops', icon: Radar, label: 'Ops Wizard', pageKey: 'ops' },
   { to: '/proposals', icon: FileText, label: 'Propostas', pageKey: 'proposals' },
   { to: '/payments', icon: CreditCard, label: 'Pagamentos', pageKey: 'payments' },
   { to: '/crm', icon: Inbox, label: 'CRM / Comunicação', pageKey: 'crm' },
