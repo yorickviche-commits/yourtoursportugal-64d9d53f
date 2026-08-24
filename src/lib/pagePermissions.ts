@@ -5,6 +5,7 @@ export type PageKey =
   | 'dashboard'
   | 'leads'
   | 'trips'
+  | 'ops'
   | 'proposals'
   | 'payments'
   | 'crm'
@@ -34,6 +35,7 @@ export const PAGES: PageDef[] = [
   { key: 'dashboard',           label: 'Dashboard',            path: '/dashboard',            group: 'Visão Geral' },
   { key: 'leads',               label: 'Leads & Files',        path: '/leads',                group: 'Dep. Reservas' },
   { key: 'trips',               label: 'Bookings & Reservas',  path: '/trips',                group: 'Dep. Reservas' },
+  { key: 'ops',                 label: 'Ops Wizard',           path: '/ops',                  group: 'Dep. Reservas' },
   { key: 'proposals',           label: 'Propostas',            path: '/proposals',            group: 'Dep. Reservas' },
   { key: 'payments',            label: 'Pagamentos',           path: '/payments',             group: 'Dep. Reservas' },
   { key: 'crm',                 label: 'CRM / Comunicação',    path: '/crm',                  group: 'Dep. Reservas' },
