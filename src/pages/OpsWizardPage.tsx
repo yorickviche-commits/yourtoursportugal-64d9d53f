@@ -111,6 +111,10 @@ export default function OpsWizardPage() {
   const [askInput, setAskInput] = useState('');
   const [view, setView] = useState<'pipeline' | 'calendar'>('pipeline');
   const [monthOffset, setMonthOffset] = useState(0);
+  const [missingOpen, setMissingOpen] = useState(false);
+  const [stageFilter, setStageFilter] = useState<StageFilter>('ALL');
+
+
 
   const bookingById = useMemo(() => {
     const m = new Map<string, OpsBooking>();
