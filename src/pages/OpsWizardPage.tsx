@@ -299,7 +299,9 @@ export default function OpsWizardPage() {
       {/* MAIN */}
       <main className="flex min-h-0 flex-1 gap-3 px-5 pb-3">
         {/* COL 1 — PRIORITY QUEUE */}
+        {view === 'pipeline' && (
         <section className="flex w-[380px] shrink-0 flex-col overflow-hidden" style={panelStyle}>
+
           <div className="px-4 pt-3.5 pb-2.5" style={{ borderBottom: `1px solid ${C.border}` }}>
             <Label style={{ color: C.text, fontWeight: 700, fontSize: 11.5 }}>PRIORITY QUEUE</Label>
             <div style={{ fontSize: 11, color: C.muted, marginTop: 3 }}>Auto-ranked by deadline, severity and impact</div>
