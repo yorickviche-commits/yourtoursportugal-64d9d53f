@@ -178,8 +178,19 @@ export default function OpsWizardPage() {
     }
   };
 
-  const stageBookings = mockBookings.filter((b) => b.stage === selectedStage);
-  const maxStageCount = Math.max(1, ...STAGE_ORDER.map((s) => mockBookings.filter((b) => b.stage === s).length));
+  const matchStageFilter = (b: OpsBooking) => {
+    if (stageFilter === 'SOON') return isSoon(b.departureDate, 7);
+    if (stageFilter === 'BLOCKED') return b.missing.some((m) => m.blocking);
+    return true;
+  };
+
+  const filteredBookings = mockBookings.filter(matchStageFilter);
+  const stageBookings = filteredBookings.filter((b) => b.stage === selectedStage);
+  const maxStageCount = Math.max(1, ...STAGE_ORDER.map((s) => filteredBookings.filter((b) => b.stage === s).length));
+  const blockedBookings = mockBookings
+    .filter((b) => b.missing.some((m) => m.blocking))
+    .sort((a, b) => a.departureDate.localeCompare(b.departureDate));
+
 
   const now = new Date();
   const clock = now.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
