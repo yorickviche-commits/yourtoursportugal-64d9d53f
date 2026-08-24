@@ -88,16 +88,96 @@ const isSoon = (iso: string, days: number) => {
 
 const panelStyle: React.CSSProperties = {
   background: C.panel,
-  border: `1px solid ${C.border}`,
+  border: `1.5px solid ${C.border}`,
   borderRadius: 12,
-  boxShadow: '0 1px 2px rgba(10,37,64,0.04), 0 8px 24px -18px rgba(10,37,64,0.18)',
+  boxShadow: '0 1px 2px rgba(10,37,64,0.06), 0 10px 26px -18px rgba(10,37,64,0.28)',
 };
 
 const Label = ({ children, style }: { children: React.ReactNode; style?: React.CSSProperties }) => (
-  <div style={{ fontFamily: MONO, fontSize: 10.5, letterSpacing: '0.13em', color: C.muted, textTransform: 'uppercase', ...style }}>
+  <div style={{ fontFamily: MONO, fontSize: 10.5, fontWeight: 700, letterSpacing: '0.13em', color: C.muted, textTransform: 'uppercase', ...style }}>
     {children}
   </div>
 );
+
+/* ── horizontal collapsible board card ────────────────────────────────── */
+type CardKey = 'queue' | 'pipeline' | 'review' | 'activity';
+
+function BoardCard({
+  id, title, subtitle, count, open, onToggle, headerRight, children, grow,
+}: {
+  id: CardKey;
+  title: string;
+  subtitle?: string;
+  count?: number;
+  open: boolean;
+  onToggle: () => void;
+  headerRight?: React.ReactNode;
+  children: React.ReactNode;
+  grow?: number;
+}) {
+  if (!open) {
+    return (
+      <button
+        onClick={onToggle}
+        className="flex w-[46px] shrink-0 flex-col items-center gap-3 overflow-hidden py-3"
+        style={{ ...panelStyle, background: C.soft }}
+        title={`Expand ${title}`}
+      >
+        <ChevronRight size={15} style={{ color: C.accent }} />
+        {typeof count === 'number' && (
+          <span
+            className="rounded-full px-1.5"
+            style={{ fontFamily: MONO, fontSize: 10, fontWeight: 800, color: '#fff', background: C.accent }}
+          >
+            {count}
+          </span>
+        )}
+        <span
+          style={{
+            fontFamily: MONO, fontSize: 11, fontWeight: 800, letterSpacing: '0.16em',
+            color: C.text, writingMode: 'vertical-rl', transform: 'rotate(180deg)', whiteSpace: 'nowrap',
+          }}
+        >
+          {title}
+        </span>
+      </button>
+    );
+  }
+  return (
+    <section
+      className="flex min-w-[320px] flex-col overflow-hidden"
+      style={{ ...panelStyle, flex: `${grow ?? 1} 1 0%` }}
+      data-card={id}
+    >
+      <div
+        className="flex shrink-0 items-start justify-between gap-3 px-4 pt-3 pb-2.5"
+        style={{ borderBottom: `1.5px solid ${C.border}`, background: 'rgba(28,79,216,0.06)' }}
+      >
+        <button onClick={onToggle} className="flex min-w-0 items-start gap-2 text-left">
+          <ChevronDown size={15} style={{ color: C.accent, marginTop: 1 }} />
+          <div className="min-w-0">
+            <div className="flex items-center gap-2">
+              <span style={{ fontFamily: MONO, fontSize: 12, fontWeight: 800, letterSpacing: '0.14em', color: C.text }}>
+                {title}
+              </span>
+              {typeof count === 'number' && (
+                <span
+                  className="rounded-full px-1.5"
+                  style={{ fontFamily: MONO, fontSize: 10, fontWeight: 800, color: '#fff', background: C.accent }}
+                >
+                  {count}
+                </span>
+              )}
+            </div>
+            {subtitle && <div style={{ fontSize: 11.5, fontWeight: 600, color: C.muted, marginTop: 2 }}>{subtitle}</div>}
+          </div>
+        </button>
+        {headerRight && <div className="flex shrink-0 items-center gap-1.5">{headerRight}</div>}
+      </div>
+      <div className="flex min-h-0 flex-1 flex-col overflow-hidden">{children}</div>
+    </section>
+  );
+}
 
 /* ── page ─────────────────────────────────────────────────────────────── */
 export default function OpsWizardPage() {
