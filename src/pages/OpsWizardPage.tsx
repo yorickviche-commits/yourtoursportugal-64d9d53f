@@ -9,6 +9,8 @@ import { mockBookings, mockActions, mockActivity } from '@/data/mockOps';
 import type { ActionState, OpsAction, OpsBooking, OpsStage, Severity } from '@/types/ops';
 import { priorityScore } from '@/lib/priority';
 import { openDeepLink } from '@/lib/links';
+import { PILLARS, pillarStatus, readinessPercent, type PillarStatus } from '@/lib/readiness';
+
 
 /* ── tokens ───────────────────────────────────────────────────────────── */
 const C = {
@@ -75,6 +77,8 @@ const ACTIVITY_ICON: Record<string, any> = {
 
 type KpiFilter = null | 'critical' | 'approvals' | 'blocked' | 'departures';
 type SevFilter = 'ALL' | 'CRITICAL' | 'HIGH' | 'MEDIUM';
+type StageFilter = 'ALL' | 'SOON' | 'BLOCKED';
+
 
 const DAY = 86400000;
 const isSoon = (iso: string, days: number) => {
@@ -109,6 +113,10 @@ export default function OpsWizardPage() {
   const [askInput, setAskInput] = useState('');
   const [view, setView] = useState<'pipeline' | 'calendar'>('pipeline');
   const [monthOffset, setMonthOffset] = useState(0);
+  const [missingOpen, setMissingOpen] = useState(false);
+  const [stageFilter, setStageFilter] = useState<StageFilter>('ALL');
+
+
 
   const bookingById = useMemo(() => {
     const m = new Map<string, OpsBooking>();
@@ -170,8 +178,19 @@ export default function OpsWizardPage() {
     }
   };
 
-  const stageBookings = mockBookings.filter((b) => b.stage === selectedStage);
-  const maxStageCount = Math.max(1, ...STAGE_ORDER.map((s) => mockBookings.filter((b) => b.stage === s).length));
+  const matchStageFilter = (b: OpsBooking) => {
+    if (stageFilter === 'SOON') return isSoon(b.departureDate, 7);
+    if (stageFilter === 'BLOCKED') return b.missing.some((m) => m.blocking);
+    return true;
+  };
+
+  const filteredBookings = mockBookings.filter(matchStageFilter);
+  const stageBookings = filteredBookings.filter((b) => b.stage === selectedStage);
+  const maxStageCount = Math.max(1, ...STAGE_ORDER.map((s) => filteredBookings.filter((b) => b.stage === s).length));
+  const blockedBookings = mockBookings
+    .filter((b) => b.missing.some((m) => m.blocking))
+    .sort((a, b) => a.departureDate.localeCompare(b.departureDate));
+
 
   const now = new Date();
   const clock = now.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
@@ -216,10 +235,73 @@ export default function OpsWizardPage() {
           active={kpiFilter === 'departures'} onClick={() => setKpiFilter(kpiFilter === 'departures' ? null : 'departures')} />
       </div>
 
+      {/* MISSING INFO */}
+      <div className="shrink-0 px-5 pb-3">
+        <div style={panelStyle} className="overflow-hidden">
+          <button
+            onClick={() => setMissingOpen((v) => !v)}
+            className="flex w-full items-center gap-2 px-4 py-2.5 text-left"
+          >
+            {missingOpen ? <ChevronDown size={14} style={{ color: C.muted }} /> : <ChevronRight size={14} style={{ color: C.muted }} />}
+            <AlertTriangle size={13} style={{ color: C.critical }} />
+            <Label style={{ color: C.text, fontWeight: 700, fontSize: 11.5 }}>MISSING INFO</Label>
+            <span
+              className="rounded-full px-1.5"
+              style={{ fontFamily: MONO, fontSize: 10, color: C.critical, background: 'rgba(217,45,67,0.09)' }}
+            >
+              {blockedBookings.length}
+            </span>
+            <span className="ml-auto" style={{ fontSize: 11, color: C.muted }}>
+              Suppliers · guide &amp; transport · client payments · final briefings
+            </span>
+          </button>
+
+          {missingOpen && (
+            <div className="max-h-[210px] overflow-y-auto" style={{ borderTop: `1px solid ${C.border}` }}>
+              {blockedBookings.length === 0 ? (
+                <div className="px-4 py-3" style={{ fontSize: 11.5, color: C.success, fontFamily: MONO }}>
+                  NOTHING BLOCKING — every booking has its four pillars covered
+                </div>
+              ) : (
+                blockedBookings.map((b) => (
+                  <button
+                    key={b.id}
+                    onClick={() => { setView('pipeline'); setSelectedStage(b.stage); setExpandedBooking(b.id); }}
+                    className="flex w-full items-center gap-2.5 px-4 py-2 text-left"
+                    style={{ borderTop: `1px solid ${C.soft}` }}
+                  >
+                    <span className="shrink-0" style={{ fontFamily: MONO, fontSize: 11, color: C.accentLight }}>{b.id}</span>
+                    <span className="shrink-0" style={{ fontSize: 12, fontWeight: 600 }}>{b.clientName}</span>
+                    <span className="shrink-0" style={{ fontSize: 11, color: C.muted }}>{STAGE_LABEL[b.stage]}</span>
+                    <span className="ml-auto flex shrink-0 flex-wrap justify-end gap-1.5">
+                      {b.missing.filter((m) => m.blocking).map((m) => (
+                        <span
+                          key={m.field}
+                          className="rounded-[7px] px-2 py-0.5"
+                          style={{
+                            fontFamily: MONO, fontSize: 10, color: C.critical,
+                            background: 'rgba(217,45,67,0.09)', border: '1px solid rgba(217,45,67,0.3)',
+                          }}
+                        >
+                          {m.field}
+                        </span>
+                      ))}
+                    </span>
+                  </button>
+                ))
+              )}
+            </div>
+          )}
+        </div>
+      </div>
+
+
       {/* MAIN */}
       <main className="flex min-h-0 flex-1 gap-3 px-5 pb-3">
         {/* COL 1 — PRIORITY QUEUE */}
+        {view === 'pipeline' && (
         <section className="flex w-[380px] shrink-0 flex-col overflow-hidden" style={panelStyle}>
+
           <div className="px-4 pt-3.5 pb-2.5" style={{ borderBottom: `1px solid ${C.border}` }}>
             <Label style={{ color: C.text, fontWeight: 700, fontSize: 11.5 }}>PRIORITY QUEUE</Label>
             <div style={{ fontSize: 11, color: C.muted, marginTop: 3 }}>Auto-ranked by deadline, severity and impact</div>
@@ -267,6 +349,8 @@ export default function OpsWizardPage() {
             )}
           </div>
         </section>
+        )}
+
 
         {/* COL 2 — PIPELINE / CALENDAR */}
         <section className="flex min-w-0 flex-1 flex-col overflow-hidden" style={panelStyle}>
@@ -308,9 +392,28 @@ export default function OpsWizardPage() {
             />
           ) : (
           <div className="min-h-0 flex-1 overflow-y-auto p-3">
+            <div className="mb-2.5 flex items-center gap-1.5">
+              <Label style={{ marginRight: 4 }}>Filter</Label>
+              {([['ALL', 'ALL'], ['SOON', '≤7 DAYS'], ['BLOCKED', 'BLOCKED']] as const).map(([v, lbl]) => (
+                <button
+                  key={v}
+                  onClick={() => setStageFilter(v)}
+                  className="rounded-[7px] px-2.5 py-1"
+                  style={{
+                    fontFamily: MONO, fontSize: 10,
+                    color: stageFilter === v ? '#fff' : C.muted,
+                    background: stageFilter === v ? C.accent : '#fff',
+                    border: `1px solid ${stageFilter === v ? C.accent : C.border}`,
+                  }}
+                >
+                  {lbl}
+                </button>
+              ))}
+            </div>
             <div className="space-y-1.5">
               {STAGE_ORDER.map((stage) => {
-                const items = mockBookings.filter((b) => b.stage === stage);
+                const items = filteredBookings.filter((b) => b.stage === stage);
+
                 const blocked = items.filter((b) => b.missing.some((m) => m.blocking)).length;
                 const active = selectedStage === stage;
                 return (
@@ -380,8 +483,35 @@ export default function OpsWizardPage() {
                       </button>
                       {open && (
                         <div className="space-y-2 px-3 pb-2.5" style={{ borderTop: `1px solid ${C.border}` }}>
-                          <div className="flex flex-wrap gap-1.5 pt-2.5">
+                          <div className="flex flex-wrap items-center gap-1.5 pt-2.5">
+                            <Label style={{ marginRight: 2 }}>Readiness {readinessPercent(b)}%</Label>
+                            {(() => {
+                              const st = pillarStatus(b);
+                              const tone: Record<PillarStatus, { c: string; bg: string }> = {
+                                ok: { c: C.success, bg: 'rgba(15,157,107,0.09)' },
+                                warn: { c: C.high, bg: 'rgba(196,122,0,0.1)' },
+                                blocked: { c: C.critical, bg: 'rgba(217,45,67,0.09)' },
+                              };
+                              return PILLARS.map((p) => (
+                                <span
+                                  key={p.key}
+                                  title={p.label}
+                                  className="flex items-center gap-1 rounded-[7px] px-2 py-0.5"
+                                  style={{
+                                    fontFamily: MONO, fontSize: 10,
+                                    color: tone[st[p.key]].c, background: tone[st[p.key]].bg,
+                                    border: `1px solid ${tone[st[p.key]].c}55`,
+                                  }}
+                                >
+                                  <span className="h-1.5 w-1.5 rounded-full" style={{ background: tone[st[p.key]].c }} />
+                                  {p.short}
+                                </span>
+                              ));
+                            })()}
+                          </div>
+                          <div className="flex flex-wrap gap-1.5">
                             {b.missing.length === 0 && (
+
                               <span style={{ fontFamily: MONO, fontSize: 10.5, color: C.success }}>NOTHING MISSING</span>
                             )}
                             {b.missing.map((m) => (
@@ -423,7 +553,9 @@ export default function OpsWizardPage() {
         </section>
 
         {/* COL 3 — REVIEW & APPROVE */}
+        {view === 'pipeline' && (
         <section className="flex w-[400px] shrink-0 flex-col overflow-hidden" style={panelStyle}>
+
           <div className="px-4 pt-3.5 pb-2.5" style={{ borderBottom: `1px solid ${C.border}` }}>
             <Label style={{ color: C.text, fontWeight: 700, fontSize: 11.5 }}>REVIEW &amp; APPROVE</Label>
             <div style={{ fontSize: 11, color: C.muted, marginTop: 3 }}>Review the draft, then send</div>
@@ -535,7 +667,9 @@ export default function OpsWizardPage() {
             </div>
           )}
         </section>
+        )}
       </main>
+
 
       {/* BOTTOM BAR */}
       <footer className="relative flex h-[72px] shrink-0 items-center gap-4 px-5" style={{ borderTop: `1px solid ${C.border}` }}>
