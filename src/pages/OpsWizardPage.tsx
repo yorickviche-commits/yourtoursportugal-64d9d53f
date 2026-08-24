@@ -14,19 +14,19 @@ import { PILLARS, pillarStatus, readinessPercent, type PillarStatus } from '@/li
 
 /* ── tokens ───────────────────────────────────────────────────────────── */
 const C = {
-  bg: '#f4f7fd',
+  bg: '#eef3fb',
   panel: '#ffffff',
-  border: 'rgba(28,79,216,0.14)',
-  text: '#0a2540',
-  muted: 'rgba(10,37,64,0.55)',
-  accent: '#1c4fd8',
-  accentLight: '#2f6fe4',
-  critical: '#d92d43',
-  high: '#c47a00',
-  medium: '#2f6fe4',
-  success: '#0f9d6b',
-  purple: '#6d4fd8',
-  soft: '#eef3fc',
+  border: 'rgba(28,79,216,0.28)',
+  text: '#04182c',
+  muted: 'rgba(4,24,44,0.78)',
+  accent: '#0f3fb8',
+  accentLight: '#1c4fd8',
+  critical: '#b3122c',
+  high: '#8a5600',
+  medium: '#0f3fb8',
+  success: '#0a6b4c',
+  purple: '#4b32b0',
+  soft: '#e3ecfb',
 };
 
 const MONO = "'IBM Plex Mono', ui-monospace, monospace";
@@ -88,16 +88,96 @@ const isSoon = (iso: string, days: number) => {
 
 const panelStyle: React.CSSProperties = {
   background: C.panel,
-  border: `1px solid ${C.border}`,
+  border: `1.5px solid ${C.border}`,
   borderRadius: 12,
-  boxShadow: '0 1px 2px rgba(10,37,64,0.04), 0 8px 24px -18px rgba(10,37,64,0.18)',
+  boxShadow: '0 1px 2px rgba(10,37,64,0.06), 0 10px 26px -18px rgba(10,37,64,0.28)',
 };
 
 const Label = ({ children, style }: { children: React.ReactNode; style?: React.CSSProperties }) => (
-  <div style={{ fontFamily: MONO, fontSize: 10.5, letterSpacing: '0.13em', color: C.muted, textTransform: 'uppercase', ...style }}>
+  <div style={{ fontFamily: MONO, fontSize: 10.5, fontWeight: 700, letterSpacing: '0.13em', color: C.muted, textTransform: 'uppercase', ...style }}>
     {children}
   </div>
 );
+
+/* ── horizontal collapsible board card ────────────────────────────────── */
+type CardKey = 'queue' | 'pipeline' | 'review' | 'activity';
+
+function BoardCard({
+  id, title, subtitle, count, open, onToggle, headerRight, children, grow,
+}: {
+  id: CardKey;
+  title: string;
+  subtitle?: string;
+  count?: number;
+  open: boolean;
+  onToggle: () => void;
+  headerRight?: React.ReactNode;
+  children: React.ReactNode;
+  grow?: number;
+}) {
+  if (!open) {
+    return (
+      <button
+        onClick={onToggle}
+        className="flex w-[46px] shrink-0 flex-col items-center gap-3 overflow-hidden py-3"
+        style={{ ...panelStyle, background: C.soft }}
+        title={`Expand ${title}`}
+      >
+        <ChevronRight size={15} style={{ color: C.accent }} />
+        {typeof count === 'number' && (
+          <span
+            className="rounded-full px-1.5"
+            style={{ fontFamily: MONO, fontSize: 10, fontWeight: 800, color: '#fff', background: C.accent }}
+          >
+            {count}
+          </span>
+        )}
+        <span
+          style={{
+            fontFamily: MONO, fontSize: 11, fontWeight: 800, letterSpacing: '0.16em',
+            color: C.text, writingMode: 'vertical-rl', transform: 'rotate(180deg)', whiteSpace: 'nowrap',
+          }}
+        >
+          {title}
+        </span>
+      </button>
+    );
+  }
+  return (
+    <section
+      className="flex min-w-[320px] flex-col overflow-hidden"
+      style={{ ...panelStyle, flex: `${grow ?? 1} 1 0%` }}
+      data-card={id}
+    >
+      <div
+        className="flex shrink-0 items-start justify-between gap-3 px-4 pt-3 pb-2.5"
+        style={{ borderBottom: `1.5px solid ${C.border}`, background: 'rgba(28,79,216,0.06)' }}
+      >
+        <button onClick={onToggle} className="flex min-w-0 items-start gap-2 text-left">
+          <ChevronDown size={15} style={{ color: C.accent, marginTop: 1 }} />
+          <div className="min-w-0">
+            <div className="flex items-center gap-2">
+              <span style={{ fontFamily: MONO, fontSize: 12, fontWeight: 800, letterSpacing: '0.14em', color: C.text }}>
+                {title}
+              </span>
+              {typeof count === 'number' && (
+                <span
+                  className="rounded-full px-1.5"
+                  style={{ fontFamily: MONO, fontSize: 10, fontWeight: 800, color: '#fff', background: C.accent }}
+                >
+                  {count}
+                </span>
+              )}
+            </div>
+            {subtitle && <div style={{ fontSize: 11.5, fontWeight: 600, color: C.muted, marginTop: 2 }}>{subtitle}</div>}
+          </div>
+        </button>
+        {headerRight && <div className="flex shrink-0 items-center gap-1.5">{headerRight}</div>}
+      </div>
+      <div className="flex min-h-0 flex-1 flex-col overflow-hidden">{children}</div>
+    </section>
+  );
+}
 
 /* ── page ─────────────────────────────────────────────────────────────── */
 export default function OpsWizardPage() {
@@ -115,6 +195,14 @@ export default function OpsWizardPage() {
   const [monthOffset, setMonthOffset] = useState(0);
   const [missingOpen, setMissingOpen] = useState(false);
   const [stageFilter, setStageFilter] = useState<StageFilter>('ALL');
+  const [openCards, setOpenCards] = useState<Record<CardKey, boolean>>({
+    queue: true, pipeline: true, review: true, activity: false,
+  });
+  const [peek, setPeek] = useState<OpsBooking | null>(null);
+
+  const toggleCard = (k: CardKey) => setOpenCards((p) => ({ ...p, [k]: !p[k] }));
+  const setAllCards = (v: boolean) => setOpenCards({ queue: v, pipeline: v, review: v, activity: v });
+  const openCount = Object.values(openCards).filter(Boolean).length;
 
 
 
@@ -296,42 +384,66 @@ export default function OpsWizardPage() {
       </div>
 
 
-      {/* MAIN */}
-      <main className="flex min-h-0 flex-1 gap-3 px-5 pb-3">
-        {/* COL 1 — PRIORITY QUEUE */}
+      {/* BOARD CONTROL BAR */}
+      <div className="flex shrink-0 items-center gap-2 px-5 pb-2">
+        <Label style={{ color: C.text }}>Today’s board</Label>
+        <span style={{ fontFamily: MONO, fontSize: 10.5, fontWeight: 700, color: C.muted }}>
+          {openCount}/4 PANELS OPEN
+        </span>
+        <div className="ml-auto flex gap-1.5">
+          <button
+            onClick={() => setAllCards(true)}
+            className="flex items-center gap-1 rounded-[7px] px-2.5 py-1"
+            style={{ fontFamily: MONO, fontSize: 10, fontWeight: 800, color: '#fff', background: C.accent }}
+          >
+            <ChevronDown size={11} /> EXPAND ALL
+          </button>
+          <button
+            onClick={() => setAllCards(false)}
+            className="flex items-center gap-1 rounded-[7px] px-2.5 py-1"
+            style={{ fontFamily: MONO, fontSize: 10, fontWeight: 800, color: C.text, background: '#fff', border: `1.5px solid ${C.border}` }}
+          >
+            <ChevronRight size={11} /> COLLAPSE ALL
+          </button>
+        </div>
+      </div>
+
+      {/* MAIN — horizontal board */}
+      <main className="flex min-h-0 flex-1 gap-3 overflow-x-auto px-5 pb-3">
+        {/* CARD 1 — PRIORITY QUEUE */}
         {view === 'pipeline' && (
-        <section className="flex w-[380px] shrink-0 flex-col overflow-hidden" style={panelStyle}>
-
-          <div className="px-4 pt-3.5 pb-2.5" style={{ borderBottom: `1px solid ${C.border}` }}>
-            <Label style={{ color: C.text, fontWeight: 700, fontSize: 11.5 }}>PRIORITY QUEUE</Label>
-            <div style={{ fontSize: 11, color: C.muted, marginTop: 3 }}>Auto-ranked by deadline, severity and impact</div>
-            <div className="mt-2.5 flex gap-1.5">
-              {(['ALL', 'CRITICAL', 'HIGH', 'MEDIUM'] as SevFilter[]).map((f) => (
-                <button
-                  key={f}
-                  onClick={() => setSevFilter(f)}
-                  className="rounded-[7px] px-2.5 py-1 transition-colors"
-                  style={{
-                    fontFamily: MONO, fontSize: 10,
-                    color: sevFilter === f ? '#fff' : C.muted,
-                    background: sevFilter === f ? C.accent : 'transparent',
-                    border: `1px solid ${sevFilter === f ? C.accent : C.border}`,
-                  }}
-                >
-                  {f}
-                </button>
-              ))}
-            </div>
-          </div>
-
+        <BoardCard
+          id="queue"
+          title="PRIORITY QUEUE"
+          subtitle="Auto-ranked by deadline, severity and impact"
+          count={queue.length}
+          open={openCards.queue}
+          onToggle={() => toggleCard('queue')}
+          grow={1}
+          headerRight={(['ALL', 'CRITICAL', 'HIGH', 'MEDIUM'] as SevFilter[]).map((f) => (
+            <button
+              key={f}
+              onClick={() => setSevFilter(f)}
+              className="rounded-[7px] px-2 py-1 transition-colors"
+              style={{
+                fontFamily: MONO, fontSize: 9.5, fontWeight: 800,
+                color: sevFilter === f ? '#fff' : C.text,
+                background: sevFilter === f ? C.accent : '#fff',
+                border: `1.5px solid ${sevFilter === f ? C.accent : C.border}`,
+              }}
+            >
+              {f}
+            </button>
+          ))}
+        >
           <div className="min-h-0 flex-1 space-y-2.5 overflow-y-auto p-3">
             {queue.length === 0 ? (
               <div
                 className="flex h-full min-h-[180px] flex-col items-center justify-center gap-2 rounded-[11px] p-6 text-center"
-                style={{ border: `1px dashed ${C.border}` }}
+                style={{ border: `1.5px dashed ${C.border}` }}
               >
                 <CheckCircle2 size={26} style={{ color: C.success }} />
-                <div style={{ fontFamily: MONO, fontSize: 11, color: C.muted, letterSpacing: '0.08em' }}>
+                <div style={{ fontFamily: MONO, fontSize: 11, fontWeight: 700, color: C.muted, letterSpacing: '0.08em' }}>
                   ALL CLEAR — no pending actions in this filter
                 </div>
               </div>
@@ -348,47 +460,43 @@ export default function OpsWizardPage() {
               ))
             )}
           </div>
-        </section>
+        </BoardCard>
         )}
 
 
-        {/* COL 2 — PIPELINE / CALENDAR */}
-        <section className="flex min-w-0 flex-1 flex-col overflow-hidden" style={panelStyle}>
-          <div className="flex items-start justify-between gap-3 px-4 pt-3.5 pb-2.5" style={{ borderBottom: `1px solid ${C.border}` }}>
-            <div>
-              <Label style={{ color: C.text, fontWeight: 700, fontSize: 11.5 }}>
-                {view === 'pipeline' ? 'OPERATIONS PIPELINE' : 'RESERVAS CALENDAR'}
-              </Label>
-              <div style={{ fontSize: 11, color: C.muted, marginTop: 3 }}>
-                {view === 'pipeline'
-                  ? '8 stages · click a stage to filter'
-                  : 'Departures by day · click a booking to inspect'}
-              </div>
-            </div>
-            <div className="flex shrink-0 gap-1.5">
-              {([['pipeline', 'PIPELINE'], ['calendar', 'CALENDAR']] as const).map(([v, lbl]) => (
-                <button
-                  key={v}
-                  onClick={() => setView(v)}
-                  className="flex items-center gap-1 rounded-[7px] px-2.5 py-1"
-                  style={{
-                    fontFamily: MONO, fontSize: 10,
-                    color: view === v ? '#fff' : C.muted,
-                    background: view === v ? C.accent : '#fff',
-                    border: `1px solid ${view === v ? C.accent : C.border}`,
-                  }}
-                >
-                  {v === 'calendar' ? <CalendarDays size={10} /> : <LayoutList size={10} />} {lbl}
-                </button>
-              ))}
-            </div>
-          </div>
 
+        {/* CARD 2 — PIPELINE / CALENDAR */}
+        <BoardCard
+          id="pipeline"
+          title={view === 'pipeline' ? 'OPERATIONS PIPELINE' : 'RESERVAS CALENDAR'}
+          subtitle={view === 'pipeline'
+            ? '8 stages · click a stage to filter'
+            : 'Departures by day · click an event for the lead card'}
+          count={view === 'pipeline' ? filteredBookings.length : undefined}
+          open={openCards.pipeline}
+          onToggle={() => toggleCard('pipeline')}
+          grow={view === 'calendar' ? 3 : 1.5}
+          headerRight={([['pipeline', 'PIPELINE'], ['calendar', 'CALENDAR']] as const).map(([v, lbl]) => (
+            <button
+              key={v}
+              onClick={() => setView(v)}
+              className="flex items-center gap-1 rounded-[7px] px-2.5 py-1"
+              style={{
+                fontFamily: MONO, fontSize: 9.5, fontWeight: 800,
+                color: view === v ? '#fff' : C.text,
+                background: view === v ? C.accent : '#fff',
+                border: `1.5px solid ${view === v ? C.accent : C.border}`,
+              }}
+            >
+              {v === 'calendar' ? <CalendarDays size={10} /> : <LayoutList size={10} />} {lbl}
+            </button>
+          ))}
+        >
           {view === 'calendar' ? (
             <ReservasCalendar
               monthOffset={monthOffset}
               onShiftMonth={(d) => setMonthOffset((m) => m + d)}
-              onPick={(b) => { setView('pipeline'); setSelectedStage(b.stage); setExpandedBooking(b.id); }}
+              onPick={(b) => setPeek(b)}
             />
           ) : (
           <div className="min-h-0 flex-1 overflow-y-auto p-3">
