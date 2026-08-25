@@ -9,7 +9,7 @@ import { mockBookings, mockActions, mockActivity } from '@/data/mockOps';
 import type { ActionState, OpsAction, OpsBooking, OpsStage, Severity } from '@/types/ops';
 import { priorityScore } from '@/lib/priority';
 import { openDeepLink } from '@/lib/links';
-import { PILLARS, pillarStatus, readinessPercent, type PillarStatus } from '@/lib/readiness';
+import { PILLARS, PILLAR_TONE, pillarStatus, readinessPercent } from '@/lib/readiness';
 
 
 /* ── tokens ───────────────────────────────────────────────────────────── */
@@ -358,7 +358,7 @@ export default function OpsWizardPage() {
                     className="flex w-full items-center gap-2.5 px-4 py-2 text-left"
                     style={{ borderTop: `1px solid ${C.soft}` }}
                   >
-                    <span className="shrink-0" style={{ fontFamily: MONO, fontSize: 11, color: C.accentLight }}>{b.id}</span>
+                    <span className="shrink-0" style={{ fontFamily: MONO, fontSize: 11, fontWeight: 800, color: C.accentLight }}>{b.id}</span>
                     <span className="shrink-0" style={{ fontSize: 12, fontWeight: 600 }}>{b.clientName}</span>
                     <span className="shrink-0" style={{ fontSize: 11, color: C.muted }}>{STAGE_LABEL[b.stage]}</span>
                     <span className="ml-auto flex shrink-0 flex-wrap justify-end gap-1.5">
@@ -564,7 +564,7 @@ export default function OpsWizardPage() {
               <Label>BOOKINGS IN {STAGE_LABEL[selectedStage]}</Label>
               <div className="mt-2 space-y-1.5">
                 {stageBookings.length === 0 && (
-                  <div style={{ fontSize: 11.5, color: C.muted }}>No bookings in this stage.</div>
+                  <div style={{ fontSize: 11.5, fontWeight: 600, color: C.muted }}>No bookings in this stage.</div>
                 )}
                 {stageBookings.map((b) => {
                   const open = expandedBooking === b.id;
@@ -575,13 +575,13 @@ export default function OpsWizardPage() {
                         className="flex w-full items-center gap-2.5 px-3 py-2 text-left"
                       >
                         {open ? <ChevronDown size={13} style={{ color: C.muted }} /> : <ChevronRight size={13} style={{ color: C.muted }} />}
-                        <span style={{ fontFamily: MONO, fontSize: 11, color: C.accentLight }}>{b.id}</span>
-                        <span style={{ fontSize: 12.5, fontWeight: 600 }}>{b.clientName}</span>
-                        <span className="truncate" style={{ fontSize: 11.5, color: C.muted }}>{b.product}</span>
-                        <span className="ml-auto shrink-0" style={{ fontFamily: MONO, fontSize: 10.5, color: C.muted }}>
+                        <span style={{ fontFamily: MONO, fontSize: 11, fontWeight: 800, color: C.accentLight }}>{b.id}</span>
+                        <span style={{ fontSize: 12.5, fontWeight: 700 }}>{b.clientName}</span>
+                        <span className="truncate" style={{ fontSize: 11.5, fontWeight: 600, color: C.muted }}>{b.product}</span>
+                        <span className="ml-auto shrink-0" style={{ fontFamily: MONO, fontSize: 10.5, fontWeight: 700, color: C.muted }}>
                           {b.departureDate}
                         </span>
-                        <span className="shrink-0" style={{ fontFamily: MONO, fontSize: 10.5, color: C.muted }}>{b.pax} pax</span>
+                        <span className="shrink-0" style={{ fontFamily: MONO, fontSize: 10.5, fontWeight: 700, color: C.muted }}>{b.pax} pax</span>
                         <span
                           className="shrink-0 rounded px-1.5"
                           style={{ fontFamily: MONO, fontSize: 10, color: C.accentLight, background: 'rgba(28,79,216,0.08)' }}
@@ -592,30 +592,8 @@ export default function OpsWizardPage() {
                       {open && (
                         <div className="space-y-2 px-3 pb-2.5" style={{ borderTop: `1px solid ${C.border}` }}>
                           <div className="flex flex-wrap items-center gap-1.5 pt-2.5">
-                            <Label style={{ marginRight: 2 }}>Readiness {readinessPercent(b)}%</Label>
-                            {(() => {
-                              const st = pillarStatus(b);
-                              const tone: Record<PillarStatus, { c: string; bg: string }> = {
-                                ok: { c: C.success, bg: 'rgba(15,157,107,0.09)' },
-                                warn: { c: C.high, bg: 'rgba(196,122,0,0.1)' },
-                                blocked: { c: C.critical, bg: 'rgba(217,45,67,0.09)' },
-                              };
-                              return PILLARS.map((p) => (
-                                <span
-                                  key={p.key}
-                                  title={p.label}
-                                  className="flex items-center gap-1 rounded-[7px] px-2 py-0.5"
-                                  style={{
-                                    fontFamily: MONO, fontSize: 10,
-                                    color: tone[st[p.key]].c, background: tone[st[p.key]].bg,
-                                    border: `1px solid ${tone[st[p.key]].c}55`,
-                                  }}
-                                >
-                                  <span className="h-1.5 w-1.5 rounded-full" style={{ background: tone[st[p.key]].c }} />
-                                  {p.short}
-                                </span>
-                              ));
-                            })()}
+                            <Label style={{ marginRight: 2, color: C.text }}>Readiness {readinessPercent(b)}%</Label>
+                            <PillarChips booking={b} />
                           </div>
                           <div className="flex flex-wrap gap-1.5">
                             {b.missing.length === 0 && (
@@ -658,16 +636,19 @@ export default function OpsWizardPage() {
             </div>
           </div>
           )}
-        </section>
+        </BoardCard>
 
-        {/* COL 3 — REVIEW & APPROVE */}
+        {/* CARD 3 — REVIEW & APPROVE */}
         {view === 'pipeline' && (
-        <section className="flex w-[400px] shrink-0 flex-col overflow-hidden" style={panelStyle}>
+        <BoardCard
+          id="review"
+          title="REVIEW & APPROVE"
+          subtitle="Review the draft, then send"
+          open={openCards.review}
+          onToggle={() => toggleCard('review')}
+          grow={1}
+        >
 
-          <div className="px-4 pt-3.5 pb-2.5" style={{ borderBottom: `1px solid ${C.border}` }}>
-            <Label style={{ color: C.text, fontWeight: 700, fontSize: 11.5 }}>REVIEW &amp; APPROVE</Label>
-            <div style={{ fontSize: 11, color: C.muted, marginTop: 3 }}>Review the draft, then send</div>
-          </div>
 
           {!selected ? (
             <div className="flex flex-1 items-center justify-center px-6 text-center" style={{ fontSize: 12, color: C.muted }}>
@@ -774,9 +755,139 @@ export default function OpsWizardPage() {
               </div>
             </div>
           )}
-        </section>
+        </BoardCard>
+        )}
+
+        {/* CARD 4 — LIVE ACTIVITY */}
+        {view === 'pipeline' && (
+        <BoardCard
+          id="activity"
+          title="LIVE ACTIVITY"
+          subtitle="Latest operational events"
+          count={mockActivity.length}
+          open={openCards.activity}
+          onToggle={() => toggleCard('activity')}
+          grow={0.8}
+        >
+          <div className="min-h-0 flex-1 space-y-2 overflow-y-auto p-3">
+            {mockActivity.map((ev, i) => {
+              const Icon = ACTIVITY_ICON[ev.icon] ?? Clock;
+              return (
+                <div key={i} className="flex items-start gap-2 rounded-[9px] px-2.5 py-2" style={{ border: `1.5px solid ${C.border}` }}>
+                  <Icon size={14} style={{ color: ev.color, flexShrink: 0, marginTop: 2 }} />
+                  <div className="min-w-0">
+                    <div style={{ fontSize: 12, fontWeight: 700, lineHeight: 1.35 }}>
+                      <span style={{ fontFamily: MONO, fontWeight: 800, color: C.accent, marginRight: 6 }}>{ev.time}</span>
+                      {ev.label}
+                    </div>
+                    <div style={{ fontSize: 11, fontWeight: 600, color: C.muted }}>{ev.sub}</div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </BoardCard>
         )}
       </main>
+
+      {/* CALENDAR EVENT POP-UP */}
+      {peek && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-6"
+          style={{ background: 'rgba(4,24,44,0.45)' }}
+          onClick={() => setPeek(null)}
+        >
+          <div
+            className="w-full max-w-[520px] p-4"
+            style={{ ...panelStyle, boxShadow: '0 24px 60px -20px rgba(4,24,44,0.5)' }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-start gap-2.5">
+              <span style={{ fontFamily: MONO, fontSize: 13, fontWeight: 800, color: C.accent }}>{peek.id}</span>
+              <div className="min-w-0 flex-1">
+                <div style={{ fontSize: 15, fontWeight: 800 }}>{peek.clientName}</div>
+                <div style={{ fontSize: 12, fontWeight: 600, color: C.muted }}>{peek.product}</div>
+              </div>
+              <button
+                onClick={() => setPeek(null)}
+                style={{ fontFamily: MONO, fontSize: 11, fontWeight: 800, color: C.muted }}
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="mt-3 grid grid-cols-4 gap-2">
+              {[
+                ['DEPARTURE', peek.departureDate],
+                ['PAX', String(peek.pax)],
+                ['LANG', peek.language],
+                ['READY', `${readinessPercent(peek)}%`],
+              ].map(([k, v]) => (
+                <div key={k} className="rounded-[9px] px-2 py-1.5" style={{ border: `1.5px solid ${C.border}` }}>
+                  <Label style={{ fontSize: 9.5 }}>{k}</Label>
+                  <div style={{ fontFamily: MONO, fontSize: 12.5, fontWeight: 800, marginTop: 2 }}>{v}</div>
+                </div>
+              ))}
+            </div>
+
+            <div className="mt-3">
+              <Label>Stage</Label>
+              <div style={{ fontSize: 12.5, fontWeight: 700, marginTop: 2 }}>{STAGE_LABEL[peek.stage]}</div>
+            </div>
+
+            <div className="mt-3 flex flex-wrap gap-1.5">
+              <PillarChips booking={peek} />
+            </div>
+
+            {peek.missing.length > 0 && (
+              <div className="mt-3 flex flex-wrap gap-1.5">
+                {peek.missing.map((m) => (
+                  <span
+                    key={m.field}
+                    className="rounded-[7px] px-2 py-0.5"
+                    style={{
+                      fontFamily: MONO, fontSize: 10, fontWeight: 800,
+                      color: m.blocking ? '#a81026' : '#8a5600',
+                      background: m.blocking ? 'rgba(217,45,67,0.16)' : 'rgba(196,122,0,0.18)',
+                      border: `1px solid ${m.blocking ? 'rgba(217,45,67,0.55)' : 'rgba(196,122,0,0.55)'}`,
+                    }}
+                  >
+                    {m.field}
+                  </span>
+                ))}
+              </div>
+            )}
+
+            <div className="mt-4 flex flex-wrap gap-2">
+              <button
+                onClick={() => window.open(`/leads/${peek.id}`, '_blank', 'noopener')}
+                className="flex items-center gap-1.5 rounded-[8px] px-3 py-2"
+                style={{ fontFamily: MONO, fontSize: 10.5, fontWeight: 800, color: '#fff', background: C.accent }}
+              >
+                <ExternalLink size={11} /> ABRIR DADOS GERAIS
+              </button>
+              <button
+                onClick={() => { setView('pipeline'); setSelectedStage(peek.stage); setExpandedBooking(peek.id); setPeek(null); }}
+                className="flex items-center gap-1.5 rounded-[8px] px-3 py-2"
+                style={{ fontFamily: MONO, fontSize: 10.5, fontWeight: 800, color: C.text, border: `1.5px solid ${C.border}` }}
+              >
+                <LayoutList size={11} /> VER NO PIPELINE
+              </button>
+              {peek.links.map((l) => (
+                <button
+                  key={l.type + l.label}
+                  onClick={() => openDeepLink(l.url)}
+                  className="flex items-center gap-1 rounded-[8px] px-2.5 py-2"
+                  style={{ fontFamily: MONO, fontSize: 10, fontWeight: 700, color: C.text, border: `1.5px solid ${C.border}` }}
+                >
+                  <ExternalLink size={10} /> {l.label}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
 
 
       {/* BOTTOM BAR */}
@@ -832,6 +943,31 @@ export default function OpsWizardPage() {
 }
 
 /* ── sub-components ───────────────────────────────────────────────────── */
+function PillarChips({ booking }: { booking: OpsBooking }) {
+  const st = pillarStatus(booking);
+  return (
+    <>
+      {PILLARS.map((p) => {
+        const t = PILLAR_TONE[st[p.key]];
+        return (
+          <span
+            key={p.key}
+            title={`${p.label} — ${t.word}`}
+            className="flex items-center gap-1 rounded-[7px] px-2 py-0.5"
+            style={{
+              fontFamily: MONO, fontSize: 10, fontWeight: 800,
+              color: t.fg, background: t.bg, border: `1px solid ${t.border}`,
+            }}
+          >
+            <span className="h-2 w-2 rounded-full" style={{ background: t.fg }} />
+            {p.short}
+          </span>
+        );
+      })}
+    </>
+  );
+}
+
 function KpiCard({ color, value, label, sub, active, onClick }: {
   color: string; value: number; label: string; sub: string; active: boolean; onClick: () => void;
 }) {
@@ -844,10 +980,10 @@ function KpiCard({ color, value, label, sub, active, onClick }: {
         border: `1px solid ${active ? color : `${color}44`}`,
       }}
     >
-      <div style={{ fontFamily: MONO, fontSize: 24, fontWeight: 700, color }}>{value}</div>
+      <div style={{ fontFamily: MONO, fontSize: 30, fontWeight: 800, color }}>{value}</div>
       <div className="min-w-0">
-        <div style={{ fontFamily: MONO, fontSize: 10.5, letterSpacing: '0.1em', textTransform: 'uppercase', color }}>{label}</div>
-        <div className="truncate" style={{ fontSize: 11, color: C.muted }}>{sub}</div>
+        <div style={{ fontFamily: MONO, fontSize: 10.5, fontWeight: 800, letterSpacing: '0.1em', textTransform: 'uppercase', color }}>{label}</div>
+        <div className="truncate" style={{ fontSize: 11, fontWeight: 600, color: C.muted }}>{sub}</div>
       </div>
     </button>
   );
@@ -867,7 +1003,7 @@ function QueueCard({ index, action, score, selected, onSelect }: {
       }}
     >
       <div className="flex items-center gap-2">
-        <span style={{ fontFamily: MONO, fontSize: 10.5, color: C.muted }}>{String(index).padStart(2, '0')}</span>
+        <span style={{ fontFamily: MONO, fontSize: 10.5, fontWeight: 700, color: C.muted }}>{String(index).padStart(2, '0')}</span>
         <span
           className="rounded px-1.5"
           style={{ fontFamily: MONO, fontSize: 9.5, color: sev, background: `${sev}1a`, border: `1px solid ${sev}55` }}
@@ -970,7 +1106,7 @@ function ReservasCalendar({ monthOffset, onShiftMonth, onPick }: {
         <div style={{ fontFamily: MONO, fontSize: 12, fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase' }}>
           {monthLabel}
         </div>
-        <div className="ml-auto" style={{ fontFamily: MONO, fontSize: 10.5, color: C.muted }}>
+        <div className="ml-auto" style={{ fontFamily: MONO, fontSize: 10.5, fontWeight: 700, color: C.muted }}>
           {monthCount} DEPARTURES · {monthPax} PAX
         </div>
       </div>
