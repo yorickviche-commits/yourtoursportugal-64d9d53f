@@ -9,7 +9,7 @@ import { mockBookings, mockActions, mockActivity } from '@/data/mockOps';
 import type { ActionState, OpsAction, OpsBooking, OpsStage, Severity } from '@/types/ops';
 import { priorityScore } from '@/lib/priority';
 import { openDeepLink } from '@/lib/links';
-import { PILLARS, pillarStatus, readinessPercent, type PillarStatus } from '@/lib/readiness';
+import { PILLARS, PILLAR_TONE, pillarStatus, readinessPercent } from '@/lib/readiness';
 
 
 /* ── tokens ───────────────────────────────────────────────────────────── */
