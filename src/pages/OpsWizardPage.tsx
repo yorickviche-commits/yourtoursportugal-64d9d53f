@@ -965,6 +965,31 @@ export default function OpsWizardPage() {
 }
 
 /* ── sub-components ───────────────────────────────────────────────────── */
+function PillarChips({ booking }: { booking: OpsBooking }) {
+  const st = pillarStatus(booking);
+  return (
+    <>
+      {PILLARS.map((p) => {
+        const t = PILLAR_TONE[st[p.key]];
+        return (
+          <span
+            key={p.key}
+            title={`${p.label} — ${t.word}`}
+            className="flex items-center gap-1 rounded-[7px] px-2 py-0.5"
+            style={{
+              fontFamily: MONO, fontSize: 10, fontWeight: 800,
+              color: t.fg, background: t.bg, border: `1px solid ${t.border}`,
+            }}
+          >
+            <span className="h-2 w-2 rounded-full" style={{ background: t.fg }} />
+            {p.short}
+          </span>
+        );
+      })}
+    </>
+  );
+}
+
 function KpiCard({ color, value, label, sub, active, onClick }: {
   color: string; value: number; label: string; sub: string; active: boolean; onClick: () => void;
 }) {
