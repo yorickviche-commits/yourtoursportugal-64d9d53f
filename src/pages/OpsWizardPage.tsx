@@ -358,7 +358,7 @@ export default function OpsWizardPage() {
                     className="flex w-full items-center gap-2.5 px-4 py-2 text-left"
                     style={{ borderTop: `1px solid ${C.soft}` }}
                   >
-                    <span className="shrink-0" style={{ fontFamily: MONO, fontSize: 11, color: C.accentLight }}>{b.id}</span>
+                    <span className="shrink-0" style={{ fontFamily: MONO, fontSize: 11, fontWeight: 800, color: C.accentLight }}>{b.id}</span>
                     <span className="shrink-0" style={{ fontSize: 12, fontWeight: 600 }}>{b.clientName}</span>
                     <span className="shrink-0" style={{ fontSize: 11, color: C.muted }}>{STAGE_LABEL[b.stage]}</span>
                     <span className="ml-auto flex shrink-0 flex-wrap justify-end gap-1.5">
@@ -564,7 +564,7 @@ export default function OpsWizardPage() {
               <Label>BOOKINGS IN {STAGE_LABEL[selectedStage]}</Label>
               <div className="mt-2 space-y-1.5">
                 {stageBookings.length === 0 && (
-                  <div style={{ fontSize: 11.5, color: C.muted }}>No bookings in this stage.</div>
+                  <div style={{ fontSize: 11.5, fontWeight: 600, color: C.muted }}>No bookings in this stage.</div>
                 )}
                 {stageBookings.map((b) => {
                   const open = expandedBooking === b.id;
@@ -575,13 +575,13 @@ export default function OpsWizardPage() {
                         className="flex w-full items-center gap-2.5 px-3 py-2 text-left"
                       >
                         {open ? <ChevronDown size={13} style={{ color: C.muted }} /> : <ChevronRight size={13} style={{ color: C.muted }} />}
-                        <span style={{ fontFamily: MONO, fontSize: 11, color: C.accentLight }}>{b.id}</span>
-                        <span style={{ fontSize: 12.5, fontWeight: 600 }}>{b.clientName}</span>
-                        <span className="truncate" style={{ fontSize: 11.5, color: C.muted }}>{b.product}</span>
-                        <span className="ml-auto shrink-0" style={{ fontFamily: MONO, fontSize: 10.5, color: C.muted }}>
+                        <span style={{ fontFamily: MONO, fontSize: 11, fontWeight: 800, color: C.accentLight }}>{b.id}</span>
+                        <span style={{ fontSize: 12.5, fontWeight: 700 }}>{b.clientName}</span>
+                        <span className="truncate" style={{ fontSize: 11.5, fontWeight: 600, color: C.muted }}>{b.product}</span>
+                        <span className="ml-auto shrink-0" style={{ fontFamily: MONO, fontSize: 10.5, fontWeight: 700, color: C.muted }}>
                           {b.departureDate}
                         </span>
-                        <span className="shrink-0" style={{ fontFamily: MONO, fontSize: 10.5, color: C.muted }}>{b.pax} pax</span>
+                        <span className="shrink-0" style={{ fontFamily: MONO, fontSize: 10.5, fontWeight: 700, color: C.muted }}>{b.pax} pax</span>
                         <span
                           className="shrink-0 rounded px-1.5"
                           style={{ fontFamily: MONO, fontSize: 10, color: C.accentLight, background: 'rgba(28,79,216,0.08)' }}
@@ -980,10 +980,10 @@ function KpiCard({ color, value, label, sub, active, onClick }: {
         border: `1px solid ${active ? color : `${color}44`}`,
       }}
     >
-      <div style={{ fontFamily: MONO, fontSize: 24, fontWeight: 700, color }}>{value}</div>
+      <div style={{ fontFamily: MONO, fontSize: 30, fontWeight: 800, color }}>{value}</div>
       <div className="min-w-0">
-        <div style={{ fontFamily: MONO, fontSize: 10.5, letterSpacing: '0.1em', textTransform: 'uppercase', color }}>{label}</div>
-        <div className="truncate" style={{ fontSize: 11, color: C.muted }}>{sub}</div>
+        <div style={{ fontFamily: MONO, fontSize: 10.5, fontWeight: 800, letterSpacing: '0.1em', textTransform: 'uppercase', color }}>{label}</div>
+        <div className="truncate" style={{ fontSize: 11, fontWeight: 600, color: C.muted }}>{sub}</div>
       </div>
     </button>
   );
@@ -1003,7 +1003,7 @@ function QueueCard({ index, action, score, selected, onSelect }: {
       }}
     >
       <div className="flex items-center gap-2">
-        <span style={{ fontFamily: MONO, fontSize: 10.5, color: C.muted }}>{String(index).padStart(2, '0')}</span>
+        <span style={{ fontFamily: MONO, fontSize: 10.5, fontWeight: 700, color: C.muted }}>{String(index).padStart(2, '0')}</span>
         <span
           className="rounded px-1.5"
           style={{ fontFamily: MONO, fontSize: 9.5, color: sev, background: `${sev}1a`, border: `1px solid ${sev}55` }}
@@ -1106,7 +1106,7 @@ function ReservasCalendar({ monthOffset, onShiftMonth, onPick }: {
         <div style={{ fontFamily: MONO, fontSize: 12, fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase' }}>
           {monthLabel}
         </div>
-        <div className="ml-auto" style={{ fontFamily: MONO, fontSize: 10.5, color: C.muted }}>
+        <div className="ml-auto" style={{ fontFamily: MONO, fontSize: 10.5, fontWeight: 700, color: C.muted }}>
           {monthCount} DEPARTURES · {monthPax} PAX
         </div>
       </div>
