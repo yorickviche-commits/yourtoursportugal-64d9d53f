@@ -592,30 +592,8 @@ export default function OpsWizardPage() {
                       {open && (
                         <div className="space-y-2 px-3 pb-2.5" style={{ borderTop: `1px solid ${C.border}` }}>
                           <div className="flex flex-wrap items-center gap-1.5 pt-2.5">
-                            <Label style={{ marginRight: 2 }}>Readiness {readinessPercent(b)}%</Label>
-                            {(() => {
-                              const st = pillarStatus(b);
-                              const tone: Record<PillarStatus, { c: string; bg: string }> = {
-                                ok: { c: C.success, bg: 'rgba(15,157,107,0.09)' },
-                                warn: { c: C.high, bg: 'rgba(196,122,0,0.1)' },
-                                blocked: { c: C.critical, bg: 'rgba(217,45,67,0.09)' },
-                              };
-                              return PILLARS.map((p) => (
-                                <span
-                                  key={p.key}
-                                  title={p.label}
-                                  className="flex items-center gap-1 rounded-[7px] px-2 py-0.5"
-                                  style={{
-                                    fontFamily: MONO, fontSize: 10,
-                                    color: tone[st[p.key]].c, background: tone[st[p.key]].bg,
-                                    border: `1px solid ${tone[st[p.key]].c}55`,
-                                  }}
-                                >
-                                  <span className="h-1.5 w-1.5 rounded-full" style={{ background: tone[st[p.key]].c }} />
-                                  {p.short}
-                                </span>
-                              ));
-                            })()}
+                            <Label style={{ marginRight: 2, color: C.text }}>Readiness {readinessPercent(b)}%</Label>
+                            <PillarChips booking={b} />
                           </div>
                           <div className="flex flex-wrap gap-1.5">
                             {b.missing.length === 0 && (
