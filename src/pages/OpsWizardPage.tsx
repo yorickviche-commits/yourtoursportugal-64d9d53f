@@ -777,9 +777,139 @@ export default function OpsWizardPage() {
               </div>
             </div>
           )}
-        </section>
+        </BoardCard>
+        )}
+
+        {/* CARD 4 — LIVE ACTIVITY */}
+        {view === 'pipeline' && (
+        <BoardCard
+          id="activity"
+          title="LIVE ACTIVITY"
+          subtitle="Latest operational events"
+          count={mockActivity.length}
+          open={openCards.activity}
+          onToggle={() => toggleCard('activity')}
+          grow={0.8}
+        >
+          <div className="min-h-0 flex-1 space-y-2 overflow-y-auto p-3">
+            {mockActivity.map((ev, i) => {
+              const Icon = ACTIVITY_ICON[ev.icon] ?? Clock;
+              return (
+                <div key={i} className="flex items-start gap-2 rounded-[9px] px-2.5 py-2" style={{ border: `1.5px solid ${C.border}` }}>
+                  <Icon size={14} style={{ color: ev.color, flexShrink: 0, marginTop: 2 }} />
+                  <div className="min-w-0">
+                    <div style={{ fontSize: 12, fontWeight: 700, lineHeight: 1.35 }}>
+                      <span style={{ fontFamily: MONO, fontWeight: 800, color: C.accent, marginRight: 6 }}>{ev.time}</span>
+                      {ev.label}
+                    </div>
+                    <div style={{ fontSize: 11, fontWeight: 600, color: C.muted }}>{ev.sub}</div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </BoardCard>
         )}
       </main>
+
+      {/* CALENDAR EVENT POP-UP */}
+      {peek && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-6"
+          style={{ background: 'rgba(4,24,44,0.45)' }}
+          onClick={() => setPeek(null)}
+        >
+          <div
+            className="w-full max-w-[520px] p-4"
+            style={{ ...panelStyle, boxShadow: '0 24px 60px -20px rgba(4,24,44,0.5)' }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-start gap-2.5">
+              <span style={{ fontFamily: MONO, fontSize: 13, fontWeight: 800, color: C.accent }}>{peek.id}</span>
+              <div className="min-w-0 flex-1">
+                <div style={{ fontSize: 15, fontWeight: 800 }}>{peek.clientName}</div>
+                <div style={{ fontSize: 12, fontWeight: 600, color: C.muted }}>{peek.product}</div>
+              </div>
+              <button
+                onClick={() => setPeek(null)}
+                style={{ fontFamily: MONO, fontSize: 11, fontWeight: 800, color: C.muted }}
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="mt-3 grid grid-cols-4 gap-2">
+              {[
+                ['DEPARTURE', peek.departureDate],
+                ['PAX', String(peek.pax)],
+                ['LANG', peek.language],
+                ['READY', `${readinessPercent(peek)}%`],
+              ].map(([k, v]) => (
+                <div key={k} className="rounded-[9px] px-2 py-1.5" style={{ border: `1.5px solid ${C.border}` }}>
+                  <Label style={{ fontSize: 9.5 }}>{k}</Label>
+                  <div style={{ fontFamily: MONO, fontSize: 12.5, fontWeight: 800, marginTop: 2 }}>{v}</div>
+                </div>
+              ))}
+            </div>
+
+            <div className="mt-3">
+              <Label>Stage</Label>
+              <div style={{ fontSize: 12.5, fontWeight: 700, marginTop: 2 }}>{STAGE_LABEL[peek.stage]}</div>
+            </div>
+
+            <div className="mt-3 flex flex-wrap gap-1.5">
+              <PillarChips booking={peek} />
+            </div>
+
+            {peek.missing.length > 0 && (
+              <div className="mt-3 flex flex-wrap gap-1.5">
+                {peek.missing.map((m) => (
+                  <span
+                    key={m.field}
+                    className="rounded-[7px] px-2 py-0.5"
+                    style={{
+                      fontFamily: MONO, fontSize: 10, fontWeight: 800,
+                      color: m.blocking ? '#a81026' : '#8a5600',
+                      background: m.blocking ? 'rgba(217,45,67,0.16)' : 'rgba(196,122,0,0.18)',
+                      border: `1px solid ${m.blocking ? 'rgba(217,45,67,0.55)' : 'rgba(196,122,0,0.55)'}`,
+                    }}
+                  >
+                    {m.field}
+                  </span>
+                ))}
+              </div>
+            )}
+
+            <div className="mt-4 flex flex-wrap gap-2">
+              <button
+                onClick={() => window.open(`/leads/${peek.id}`, '_blank', 'noopener')}
+                className="flex items-center gap-1.5 rounded-[8px] px-3 py-2"
+                style={{ fontFamily: MONO, fontSize: 10.5, fontWeight: 800, color: '#fff', background: C.accent }}
+              >
+                <ExternalLink size={11} /> ABRIR DADOS GERAIS
+              </button>
+              <button
+                onClick={() => { setView('pipeline'); setSelectedStage(peek.stage); setExpandedBooking(peek.id); setPeek(null); }}
+                className="flex items-center gap-1.5 rounded-[8px] px-3 py-2"
+                style={{ fontFamily: MONO, fontSize: 10.5, fontWeight: 800, color: C.text, border: `1.5px solid ${C.border}` }}
+              >
+                <LayoutList size={11} /> VER NO PIPELINE
+              </button>
+              {peek.links.map((l) => (
+                <button
+                  key={l.type + l.label}
+                  onClick={() => openDeepLink(l.url)}
+                  className="flex items-center gap-1 rounded-[8px] px-2.5 py-2"
+                  style={{ fontFamily: MONO, fontSize: 10, fontWeight: 700, color: C.text, border: `1.5px solid ${C.border}` }}
+                >
+                  <ExternalLink size={10} /> {l.label}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
 
 
       {/* BOTTOM BAR */}
