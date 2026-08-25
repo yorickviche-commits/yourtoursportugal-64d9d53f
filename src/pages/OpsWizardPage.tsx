@@ -658,16 +658,19 @@ export default function OpsWizardPage() {
             </div>
           </div>
           )}
-        </section>
+        </BoardCard>
 
-        {/* COL 3 — REVIEW & APPROVE */}
+        {/* CARD 3 — REVIEW & APPROVE */}
         {view === 'pipeline' && (
-        <section className="flex w-[400px] shrink-0 flex-col overflow-hidden" style={panelStyle}>
+        <BoardCard
+          id="review"
+          title="REVIEW & APPROVE"
+          subtitle="Review the draft, then send"
+          open={openCards.review}
+          onToggle={() => toggleCard('review')}
+          grow={1}
+        >
 
-          <div className="px-4 pt-3.5 pb-2.5" style={{ borderBottom: `1px solid ${C.border}` }}>
-            <Label style={{ color: C.text, fontWeight: 700, fontSize: 11.5 }}>REVIEW &amp; APPROVE</Label>
-            <div style={{ fontSize: 11, color: C.muted, marginTop: 3 }}>Review the draft, then send</div>
-          </div>
 
           {!selected ? (
             <div className="flex flex-1 items-center justify-center px-6 text-center" style={{ fontSize: 12, color: C.muted }}>
