@@ -1684,6 +1684,125 @@ export type Database = {
           },
         ]
       }
+      ops_actions: {
+        Row: {
+          booking_id: string
+          created_at: string
+          deadline_iso: string | null
+          deadline_label: string
+          draft_body: string
+          draft_subject: string
+          id: string
+          links: Json
+          primary_label: string
+          priority_score: number
+          recipient: string
+          secondary_label: string
+          severity: string
+          stage: string
+          state: string
+          subtitle: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          booking_id: string
+          created_at?: string
+          deadline_iso?: string | null
+          deadline_label?: string
+          draft_body?: string
+          draft_subject?: string
+          id: string
+          links?: Json
+          primary_label?: string
+          priority_score?: number
+          recipient?: string
+          secondary_label?: string
+          severity?: string
+          stage?: string
+          state?: string
+          subtitle?: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          booking_id?: string
+          created_at?: string
+          deadline_iso?: string | null
+          deadline_label?: string
+          draft_body?: string
+          draft_subject?: string
+          id?: string
+          links?: Json
+          primary_label?: string
+          priority_score?: number
+          recipient?: string
+          secondary_label?: string
+          severity?: string
+          stage?: string
+          state?: string
+          subtitle?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ops_actions_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "ops_bookings"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ops_bookings: {
+        Row: {
+          client_name: string
+          created_at: string
+          days_in_stage: number
+          departure_date: string | null
+          id: string
+          language: string
+          last_contact_days: number
+          links: Json
+          missing: Json
+          pax: number
+          product: string
+          stage: string
+          updated_at: string
+        }
+        Insert: {
+          client_name: string
+          created_at?: string
+          days_in_stage?: number
+          departure_date?: string | null
+          id: string
+          language?: string
+          last_contact_days?: number
+          links?: Json
+          missing?: Json
+          pax?: number
+          product?: string
+          stage?: string
+          updated_at?: string
+        }
+        Update: {
+          client_name?: string
+          created_at?: string
+          days_in_stage?: number
+          departure_date?: string | null
+          id?: string
+          language?: string
+          last_contact_days?: number
+          links?: Json
+          missing?: Json
+          pax?: number
+          product?: string
+          stage?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       partner_files: {
         Row: {
           created_at: string
