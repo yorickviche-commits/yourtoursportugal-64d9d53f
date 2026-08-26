@@ -7,7 +7,6 @@ import {
 import { toast } from 'sonner';
 import { mockActivity } from '@/data/mockOps';
 import { useOpsData, seedOpsData } from '@/hooks/useOpsData';
-import { toast } from 'sonner';
 import type { ActionState, OpsAction, OpsBooking, OpsStage, Severity } from '@/types/ops';
 import { priorityScore } from '@/lib/priority';
 import { openDeepLink } from '@/lib/links';
