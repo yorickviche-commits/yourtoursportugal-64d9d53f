@@ -10,7 +10,7 @@ export type Database = {
   // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
-    PostgrestVersion: "14.1"
+    PostgrestVersion: "14.17"
   }
   public: {
     Tables: {
@@ -135,6 +135,153 @@ export type Database = {
           },
         ]
       }
+      agent_task_drafts: {
+        Row: {
+          action_type: string
+          agent_id: string | null
+          amount_eur: number | null
+          auto_advance_stage: boolean
+          auto_complete_task: boolean
+          ceo_approval_id: string | null
+          created_at: string
+          error_message: string | null
+          evidence: Json | null
+          executed_at: string | null
+          execution_result: Json | null
+          id: string
+          lead_id: string | null
+          nethunt_record_id: string | null
+          nethunt_task_id: string | null
+          origin: string
+          payload: Json
+          payload_approved: Json | null
+          review_note: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          stage_code: string | null
+          status: string
+          summary: string | null
+          task_id: string | null
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          action_type?: string
+          agent_id?: string | null
+          amount_eur?: number | null
+          auto_advance_stage?: boolean
+          auto_complete_task?: boolean
+          ceo_approval_id?: string | null
+          created_at?: string
+          error_message?: string | null
+          evidence?: Json | null
+          executed_at?: string | null
+          execution_result?: Json | null
+          id?: string
+          lead_id?: string | null
+          nethunt_record_id?: string | null
+          nethunt_task_id?: string | null
+          origin?: string
+          payload?: Json
+          payload_approved?: Json | null
+          review_note?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          stage_code?: string | null
+          status?: string
+          summary?: string | null
+          task_id?: string | null
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          action_type?: string
+          agent_id?: string | null
+          amount_eur?: number | null
+          auto_advance_stage?: boolean
+          auto_complete_task?: boolean
+          ceo_approval_id?: string | null
+          created_at?: string
+          error_message?: string | null
+          evidence?: Json | null
+          executed_at?: string | null
+          execution_result?: Json | null
+          id?: string
+          lead_id?: string | null
+          nethunt_record_id?: string | null
+          nethunt_task_id?: string | null
+          origin?: string
+          payload?: Json
+          payload_approved?: Json | null
+          review_note?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          stage_code?: string | null
+          status?: string
+          summary?: string | null
+          task_id?: string | null
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agent_task_drafts_ceo_approval_id_fkey"
+            columns: ["ceo_approval_id"]
+            isOneToOne: false
+            referencedRelation: "ceo_approval_queue"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "agent_task_drafts_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "agent_task_drafts_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_task_queue"
+            referencedColumns: ["lead_id"]
+          },
+          {
+            foreignKeyName: "agent_task_drafts_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "v_lead_economics"
+            referencedColumns: ["lead_id"]
+          },
+          {
+            foreignKeyName: "agent_task_drafts_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "v_lead_outcomes"
+            referencedColumns: ["lead_id"]
+          },
+          {
+            foreignKeyName: "agent_task_drafts_stage_code_fkey"
+            columns: ["stage_code"]
+            isOneToOne: false
+            referencedRelation: "nethunt_stage_codes"
+            referencedColumns: ["code"]
+          },
+          {
+            foreignKeyName: "agent_task_drafts_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "tasks"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "agent_task_drafts_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_task_queue"
+            referencedColumns: ["task_id"]
+          },
+        ]
+      }
       ai_agents: {
         Row: {
           agent_id: string
@@ -227,6 +374,27 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "leads"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "approvals_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_task_queue"
+            referencedColumns: ["lead_id"]
+          },
+          {
+            foreignKeyName: "approvals_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "v_lead_economics"
+            referencedColumns: ["lead_id"]
+          },
+          {
+            foreignKeyName: "approvals_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "v_lead_outcomes"
+            referencedColumns: ["lead_id"]
           },
           {
             foreignKeyName: "approvals_trip_id_fkey"
@@ -372,6 +540,27 @@ export type Database = {
             referencedRelation: "leads"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "calendar_events_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_task_queue"
+            referencedColumns: ["lead_id"]
+          },
+          {
+            foreignKeyName: "calendar_events_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "v_lead_economics"
+            referencedColumns: ["lead_id"]
+          },
+          {
+            foreignKeyName: "calendar_events_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "v_lead_outcomes"
+            referencedColumns: ["lead_id"]
+          },
         ]
       }
       ceo_approval_queue: {
@@ -477,6 +666,27 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "leads"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contacts_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_task_queue"
+            referencedColumns: ["lead_id"]
+          },
+          {
+            foreignKeyName: "contacts_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "v_lead_economics"
+            referencedColumns: ["lead_id"]
+          },
+          {
+            foreignKeyName: "contacts_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "v_lead_outcomes"
+            referencedColumns: ["lead_id"]
           },
         ]
       }
@@ -1027,6 +1237,27 @@ export type Database = {
             referencedRelation: "leads"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "lead_costing_data_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_task_queue"
+            referencedColumns: ["lead_id"]
+          },
+          {
+            foreignKeyName: "lead_costing_data_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "v_lead_economics"
+            referencedColumns: ["lead_id"]
+          },
+          {
+            foreignKeyName: "lead_costing_data_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "v_lead_outcomes"
+            referencedColumns: ["lead_id"]
+          },
         ]
       }
       lead_operations: {
@@ -1101,6 +1332,27 @@ export type Database = {
             referencedRelation: "leads"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "lead_operations_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_task_queue"
+            referencedColumns: ["lead_id"]
+          },
+          {
+            foreignKeyName: "lead_operations_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "v_lead_economics"
+            referencedColumns: ["lead_id"]
+          },
+          {
+            foreignKeyName: "lead_operations_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "v_lead_outcomes"
+            referencedColumns: ["lead_id"]
+          },
         ]
       }
       lead_payments: {
@@ -1157,6 +1409,27 @@ export type Database = {
             referencedRelation: "leads"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "lead_payments_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_task_queue"
+            referencedColumns: ["lead_id"]
+          },
+          {
+            foreignKeyName: "lead_payments_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "v_lead_economics"
+            referencedColumns: ["lead_id"]
+          },
+          {
+            foreignKeyName: "lead_payments_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "v_lead_outcomes"
+            referencedColumns: ["lead_id"]
+          },
         ]
       }
       lead_planner_data: {
@@ -1203,6 +1476,27 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "leads"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lead_planner_data_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_task_queue"
+            referencedColumns: ["lead_id"]
+          },
+          {
+            foreignKeyName: "lead_planner_data_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "v_lead_economics"
+            referencedColumns: ["lead_id"]
+          },
+          {
+            foreignKeyName: "lead_planner_data_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "v_lead_outcomes"
+            referencedColumns: ["lead_id"]
           },
         ]
       }
@@ -1571,6 +1865,42 @@ export type Database = {
         }
         Relationships: []
       }
+      nethunt_stage_codes: {
+        Row: {
+          code: string
+          created_at: string
+          description: string | null
+          is_terminal: boolean
+          next_code: string | null
+          sort_order: number
+          stage_group: string
+          stage_label: string
+          updated_at: string
+        }
+        Insert: {
+          code: string
+          created_at?: string
+          description?: string | null
+          is_terminal?: boolean
+          next_code?: string | null
+          sort_order: number
+          stage_group: string
+          stage_label: string
+          updated_at?: string
+        }
+        Update: {
+          code?: string
+          created_at?: string
+          description?: string | null
+          is_terminal?: boolean
+          next_code?: string | null
+          sort_order?: number
+          stage_group?: string
+          stage_label?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       nethunt_sync_log: {
         Row: {
           action: string | null
@@ -1681,6 +2011,27 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "leads"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "nethunt_timeline_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_task_queue"
+            referencedColumns: ["lead_id"]
+          },
+          {
+            foreignKeyName: "nethunt_timeline_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "v_lead_economics"
+            referencedColumns: ["lead_id"]
+          },
+          {
+            foreignKeyName: "nethunt_timeline_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "v_lead_outcomes"
+            referencedColumns: ["lead_id"]
           },
         ]
       }
@@ -2129,6 +2480,27 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "leads"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payment_links_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_task_queue"
+            referencedColumns: ["lead_id"]
+          },
+          {
+            foreignKeyName: "payment_links_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "v_lead_economics"
+            referencedColumns: ["lead_id"]
+          },
+          {
+            foreignKeyName: "payment_links_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "v_lead_outcomes"
+            referencedColumns: ["lead_id"]
           },
           {
             foreignKeyName: "payment_links_proposal_id_fkey"
@@ -3156,6 +3528,27 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "tasks_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_task_queue"
+            referencedColumns: ["lead_id"]
+          },
+          {
+            foreignKeyName: "tasks_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "v_lead_economics"
+            referencedColumns: ["lead_id"]
+          },
+          {
+            foreignKeyName: "tasks_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "v_lead_outcomes"
+            referencedColumns: ["lead_id"]
+          },
+          {
             foreignKeyName: "tasks_trip_id_fkey"
             columns: ["trip_id"]
             isOneToOne: false
@@ -3223,6 +3616,27 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "leads"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "travel_plans_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_task_queue"
+            referencedColumns: ["lead_id"]
+          },
+          {
+            foreignKeyName: "travel_plans_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "v_lead_economics"
+            referencedColumns: ["lead_id"]
+          },
+          {
+            foreignKeyName: "travel_plans_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "v_lead_outcomes"
+            referencedColumns: ["lead_id"]
           },
         ]
       }
@@ -3436,6 +3850,27 @@ export type Database = {
             referencedRelation: "leads"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "trips_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_task_queue"
+            referencedColumns: ["lead_id"]
+          },
+          {
+            foreignKeyName: "trips_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "v_lead_economics"
+            referencedColumns: ["lead_id"]
+          },
+          {
+            foreignKeyName: "trips_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "v_lead_outcomes"
+            referencedColumns: ["lead_id"]
+          },
         ]
       }
       used_photos: {
@@ -3473,6 +3908,27 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "leads"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "used_photos_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_task_queue"
+            referencedColumns: ["lead_id"]
+          },
+          {
+            foreignKeyName: "used_photos_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "v_lead_economics"
+            referencedColumns: ["lead_id"]
+          },
+          {
+            foreignKeyName: "used_photos_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "v_lead_outcomes"
+            referencedColumns: ["lead_id"]
           },
           {
             foreignKeyName: "used_photos_proposal_id_fkey"
@@ -3831,7 +4287,109 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      v_agent_task_queue: {
+        Row: {
+          action_label: string | null
+          all_day: boolean | null
+          assignee_emails: string[] | null
+          client_name: string | null
+          completed: boolean | null
+          creator_email: string | null
+          current_stage_code: string | null
+          declared_stage_code: string | null
+          description: string | null
+          draft_action_type: string | null
+          draft_id: string | null
+          draft_status: string | null
+          draft_updated_at: string | null
+          due_at: string | null
+          is_ai_task: boolean | null
+          lead_id: string | null
+          lead_nethunt_record_id: string | null
+          nethunt_stage: string | null
+          nethunt_task_id: string | null
+          next_stage_code: string | null
+          priority: string | null
+          queue_state: string | null
+          stage_group: string | null
+          task_id: string | null
+          task_updated_at: string | null
+          title: string | null
+          trip_finish: string | null
+          trip_start: string | null
+          yt_id: string | null
+        }
+        Relationships: []
+      }
+      v_conversion_by_segment: {
+        Row: {
+          abaixo_do_minimo: number | null
+          amostra_suficiente: boolean | null
+          decididas: number | null
+          dias_ate_decisao: number | null
+          dimension: string | null
+          ganhas: number | null
+          leads: number | null
+          margem_media: number | null
+          segment: string | null
+          taxa_conversao: number | null
+          valor_medio: number | null
+        }
+        Relationships: []
+      }
+      v_lead_economics: {
+        Row: {
+          costed_items: number | null
+          costing_version: number | null
+          lead_id: string | null
+          margin_pct: number | null
+          net_total: number | null
+          profit_total: number | null
+          pvp_total: number | null
+        }
+        Relationships: []
+      }
+      v_lead_outcomes: {
+        Row: {
+          annotations: number | null
+          budget_level: string | null
+          client_name: string | null
+          client_type: string | null
+          close_date: string | null
+          close_date_invalida: boolean | null
+          created_at: string | null
+          days_to_decision: number | null
+          destination: string | null
+          first_open_at: string | null
+          hours_to_first_open: number | null
+          is_historical: boolean | null
+          lead_id: string | null
+          margin_pct: number | null
+          net_total: number | null
+          number_of_days: number | null
+          opens: number | null
+          pax: number | null
+          profit_total: number | null
+          proposals_sent: number | null
+          pvp_total: number | null
+          sales_owner: string | null
+          source: string | null
+          status: string | null
+          value_band: string | null
+          won: boolean | null
+          yt_id: string | null
+        }
+        Relationships: []
+      }
+      v_learning_signal_health: {
+        Row: {
+          fonte: string | null
+          nota: string | null
+          registos: number | null
+          sinal: string | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       delete_email: {
@@ -3861,6 +4419,7 @@ export type Database = {
         }
         Returns: number
       }
+      nethunt_stage_code: { Args: { p_stage: string }; Returns: string }
       read_email_batch: {
         Args: { batch_size: number; queue_name: string; vt: number }
         Returns: {
