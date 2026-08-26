@@ -6,7 +6,8 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { mockActivity } from '@/data/mockOps';
-import { useOpsData } from '@/hooks/useOpsData';
+import { useOpsData, seedOpsData } from '@/hooks/useOpsData';
+import { toast } from 'sonner';
 import type { ActionState, OpsAction, OpsBooking, OpsStage, Severity } from '@/types/ops';
 import { priorityScore } from '@/lib/priority';
 import { openDeepLink } from '@/lib/links';
@@ -201,7 +202,21 @@ export default function OpsWizardPage() {
   });
   const [peek, setPeek] = useState<OpsBooking | null>(null);
 
-  const { bookings, actions, isLoading, isSeeded } = useOpsData();
+  const { bookings, actions, isLoading, isSeeded, refetch } = useOpsData();
+  const [seeding, setSeeding] = useState(false);
+
+  const handleSeed = async () => {
+    setSeeding(true);
+    try {
+      await seedOpsData();
+      await refetch();
+      toast.success('Dados operacionais importados para a base de dados');
+    } catch (e: any) {
+      toast.error(e?.message ?? 'Falha ao importar dados operacionais');
+    } finally {
+      setSeeding(false);
+    }
+  };
 
   const toggleCard = (k: CardKey) => setOpenCards((p) => ({ ...p, [k]: !p[k] }));
   const setAllCards = (v: boolean) => setOpenCards({ queue: v, pipeline: v, review: v, activity: v });
