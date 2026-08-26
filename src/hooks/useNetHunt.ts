@@ -256,15 +256,17 @@ export const useLeadSyncLog = (leadId?: string) =>
 
 /** Render a NetHunt field_change payload as readable text. */
 export function describeFieldChange(payload: any): { title: string; lines: string[] } {
-  const fa = payload?.fieldActions as Record<string, { remove?: any; add?: any; set?: any }> | undefined;
-  if (!fa) return { title: 'Alteração de registo', lines: [] };
-  const lines = Object.entries(fa).map(([field, action]) => {
-    const oldVal = action?.remove ?? action?.set ?? null;
-    const newVal = action?.add ?? action?.set ?? null;
+  const fa = payload?.fieldActions as Record<string, any> | undefined;
+  if (!fa || typeof fa !== 'object') return { title: 'Alteração de registo', lines: [] };
+  const lines: string[] = [];
+  for (const [field, action] of Object.entries(fa)) {
+    const a = action as any;
+    const oldVal = a?.remove ?? a?.set ?? null;
+    const newVal = a?.add ?? a?.set ?? null;
     const oldText = oldVal === null || oldVal === undefined ? '—' : String(oldVal);
     const newText = newVal === null || newVal === undefined ? '—' : String(newVal);
-    return `${field}: ${oldText} → ${newText}`;
-  });
+    lines.push(`${field}: ${oldText} → ${newText}`);
+  }
   const firstField = Object.keys(fa)[0];
   return { title: firstField ? `${firstField} alterado` : 'Alteração de registo', lines };
 }
