@@ -393,7 +393,28 @@ export default function OpsWizardPage() {
         <span style={{ fontFamily: MONO, fontSize: 10.5, fontWeight: 700, color: C.muted }}>
           {openCount}/4 PANELS OPEN
         </span>
+        <span
+          title={isSeeded ? 'Ligado à base de dados operacional' : 'A usar dataset de arranque (ainda sem dados na BD)'}
+          style={{
+            fontFamily: MONO, fontSize: 9.5, fontWeight: 800, padding: '2px 6px', borderRadius: 6,
+            color: isSeeded ? '#046c4e' : '#8a5300',
+            background: isSeeded ? 'rgba(4,108,78,0.10)' : 'rgba(217,138,0,0.12)',
+            border: `1.2px solid ${isSeeded ? 'rgba(4,108,78,0.35)' : 'rgba(217,138,0,0.35)'}`,
+          }}
+        >
+          {isLoading ? 'A CARREGAR…' : isSeeded ? 'LIVE DB' : 'SEED DATA'}
+        </span>
         <div className="ml-auto flex gap-1.5">
+          {!isSeeded && !isLoading && (
+            <button
+              onClick={handleSeed}
+              disabled={seeding}
+              className="flex items-center gap-1 rounded-[7px] px-2.5 py-1"
+              style={{ fontFamily: MONO, fontSize: 10, fontWeight: 800, color: C.text, background: '#fff', border: `1.5px solid ${C.border}` }}
+            >
+              {seeding ? 'A IMPORTAR…' : 'IMPORTAR PARA BD'}
+            </button>
+          )}
           <button
             onClick={() => setAllCards(true)}
             className="flex items-center gap-1 rounded-[7px] px-2.5 py-1"
