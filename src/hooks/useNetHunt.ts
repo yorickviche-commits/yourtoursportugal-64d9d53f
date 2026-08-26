@@ -237,6 +237,16 @@ export const useSyncLeadFull = () => {
   });
 };
 
+export interface SyncLogEntry {
+  id: string;
+  direction: string;
+  entity: string;
+  action: string;
+  status: string;
+  detail: any;
+  created_at: string;
+}
+
 /** Recent sync log entries for a lead (useful for diagnostics). */
 export const useLeadSyncLog = (leadId?: string) =>
   useQuery({
@@ -250,7 +260,7 @@ export const useLeadSyncLog = (leadId?: string) =>
         .order('created_at', { ascending: false })
         .limit(20);
       if (error) throw error;
-      return (data || []) as { id: string; direction: string; entity: string; action: string; status: string; detail: any; created_at: string }[];
+      return (data || []) as SyncLogEntry[];
     },
   });
 
