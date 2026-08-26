@@ -216,3 +216,67 @@ export const useSyncNow = () => {
     },
   });
 };
+
+/** Force a full timeline sync for a single linked lead. */
+export const useSyncLeadFull = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ recordId, leadId }: { recordId: string; leadId: string }) => {
+      const { data, error } = await supabase.functions.invoke('nethunt-pull', {
+        body: { recordId, fullTimeline: true, folder: 'deals' },
+      });
+      if (error) throw error;
+      return data as { ok: boolean; deals?: number; timeline?: { leads?: number; counts?: Record<string, number> }; error?: string };
+    },
+    onSuccess: (_d, v) => {
+      qc.invalidateQueries({ queryKey: ['nethunt-timeline', v.leadId] });
+      qc.invalidateQueries({ queryKey: ['lead-gmail', v.leadId] });
+      qc.invalidateQueries({ queryKey: ['lead-crm', v.leadId] });
+      qc.invalidateQueries({ queryKey: ['nethunt-sync-log', v.leadId] });
+    },
+  });
+};
+
+export interface SyncLogEntry {
+  id: string;
+  direction: string;
+  entity: string;
+  action: string;
+  status: string;
+  detail: any;
+  created_at: string;
+}
+
+/** Recent sync log entries for a lead (useful for diagnostics). */
+export const useLeadSyncLog = (leadId?: string) =>
+  useQuery({
+    queryKey: ['nethunt-sync-log', leadId],
+    enabled: !!leadId,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('nethunt_sync_log')
+        .select('id, direction, entity, action, status, detail, created_at')
+        .eq('lead_id', leadId!)
+        .order('created_at', { ascending: false })
+        .limit(20);
+      if (error) throw error;
+      return (data || []) as SyncLogEntry[];
+    },
+  });
+
+/** Render a NetHunt field_change payload as readable text. */
+export function describeFieldChange(payload: any): { title: string; lines: string[] } {
+  const fa = payload?.fieldActions as Record<string, any> | undefined;
+  if (!fa || typeof fa !== 'object') return { title: 'Alteração de registo', lines: [] };
+  const lines: string[] = [];
+  for (const [field, action] of Object.entries(fa)) {
+    const a = action as any;
+    const oldVal = a?.remove ?? a?.set ?? null;
+    const newVal = a?.add ?? a?.set ?? null;
+    const oldText = oldVal === null || oldVal === undefined ? '—' : String(oldVal);
+    const newText = newVal === null || newVal === undefined ? '—' : String(newVal);
+    lines.push(`${field}: ${oldText} → ${newText}`);
+  }
+  const firstField = Object.keys(fa)[0];
+  return { title: firstField ? `${firstField} alterado` : 'Alteração de registo', lines };
+}
