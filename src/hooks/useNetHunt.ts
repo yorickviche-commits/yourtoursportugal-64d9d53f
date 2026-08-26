@@ -255,12 +255,12 @@ export const useLeadSyncLog = (leadId?: string) =>
     queryFn: async () => {
       const { data, error } = await supabase
         .from('nethunt_sync_log')
-        .select('*')
+        .select('id, direction, entity, action, status, detail, created_at')
         .eq('lead_id', leadId!)
         .order('created_at', { ascending: false })
         .limit(20);
       if (error) throw error;
-      return (data || []) as unknown as SyncLogEntry[];
+      return (data || []) as SyncLogEntry[];
     },
   });
 
