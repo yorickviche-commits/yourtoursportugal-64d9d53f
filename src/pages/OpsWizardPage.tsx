@@ -5,7 +5,8 @@ import {
   CalendarDays, LayoutList, ChevronLeft,
 } from 'lucide-react';
 import { toast } from 'sonner';
-import { mockBookings, mockActions, mockActivity } from '@/data/mockOps';
+import { mockActivity } from '@/data/mockOps';
+import { useOpsData, seedOpsData } from '@/hooks/useOpsData';
 import type { ActionState, OpsAction, OpsBooking, OpsStage, Severity } from '@/types/ops';
 import { priorityScore } from '@/lib/priority';
 import { openDeepLink } from '@/lib/links';
@@ -200,6 +201,22 @@ export default function OpsWizardPage() {
   });
   const [peek, setPeek] = useState<OpsBooking | null>(null);
 
+  const { bookings, actions, isLoading, isSeeded, refetch } = useOpsData();
+  const [seeding, setSeeding] = useState(false);
+
+  const handleSeed = async () => {
+    setSeeding(true);
+    try {
+      await seedOpsData();
+      await refetch();
+      toast.success('Dados operacionais importados para a base de dados');
+    } catch (e: any) {
+      toast.error(e?.message ?? 'Falha ao importar dados operacionais');
+    } finally {
+      setSeeding(false);
+    }
+  };
+
   const toggleCard = (k: CardKey) => setOpenCards((p) => ({ ...p, [k]: !p[k] }));
   const setAllCards = (v: boolean) => setOpenCards({ queue: v, pipeline: v, review: v, activity: v });
   const openCount = Object.values(openCards).filter(Boolean).length;
@@ -208,28 +225,28 @@ export default function OpsWizardPage() {
 
   const bookingById = useMemo(() => {
     const m = new Map<string, OpsBooking>();
-    mockBookings.forEach((b) => m.set(b.id, b));
+    bookings.forEach((b) => m.set(b.id, b));
     return m;
-  }, []);
+  }, [bookings]);
 
   const scored = useMemo(
     () =>
-      mockActions
+      actions
         .filter((a) => !doneIds.includes(a.id) && a.state !== 'done')
         .map((a) => ({ action: a, score: priorityScore(a, bookingById.get(a.bookingId) as OpsBooking) }))
         .sort((x, y) => y.score - x.score || x.action.deadlineISO.localeCompare(y.action.deadlineISO)),
-    [doneIds, bookingById],
+    [doneIds, bookingById, actions],
   );
 
   const kpis = useMemo(() => {
-    const live = mockActions.filter((a) => !doneIds.includes(a.id) && a.state !== 'done');
+    const live = actions.filter((a) => !doneIds.includes(a.id) && a.state !== 'done');
     return {
       critical: live.filter((a) => a.severity === 'critical').length,
       approvals: live.filter((a) => a.state === 'awaiting_approval').length,
-      blocked: mockBookings.filter((b) => b.missing.some((m) => m.blocking)).length,
-      departures: mockBookings.filter((b) => isSoon(b.departureDate, 7)).length,
+      blocked: bookings.filter((b) => b.missing.some((m) => m.blocking)).length,
+      departures: bookings.filter((b) => isSoon(b.departureDate, 7)).length,
     };
-  }, [doneIds]);
+  }, [doneIds, actions, bookings]);
 
   const queue = useMemo(() => {
     return scored.filter(({ action }) => {
@@ -272,10 +289,10 @@ export default function OpsWizardPage() {
     return true;
   };
 
-  const filteredBookings = mockBookings.filter(matchStageFilter);
+  const filteredBookings = bookings.filter(matchStageFilter);
   const stageBookings = filteredBookings.filter((b) => b.stage === selectedStage);
   const maxStageCount = Math.max(1, ...STAGE_ORDER.map((s) => filteredBookings.filter((b) => b.stage === s).length));
-  const blockedBookings = mockBookings
+  const blockedBookings = bookings
     .filter((b) => b.missing.some((m) => m.blocking))
     .sort((a, b) => a.departureDate.localeCompare(b.departureDate));
 
@@ -390,7 +407,28 @@ export default function OpsWizardPage() {
         <span style={{ fontFamily: MONO, fontSize: 10.5, fontWeight: 700, color: C.muted }}>
           {openCount}/4 PANELS OPEN
         </span>
+        <span
+          title={isSeeded ? 'Ligado à base de dados operacional' : 'A usar dataset de arranque (ainda sem dados na BD)'}
+          style={{
+            fontFamily: MONO, fontSize: 9.5, fontWeight: 800, padding: '2px 6px', borderRadius: 6,
+            color: isSeeded ? '#046c4e' : '#8a5300',
+            background: isSeeded ? 'rgba(4,108,78,0.10)' : 'rgba(217,138,0,0.12)',
+            border: `1.2px solid ${isSeeded ? 'rgba(4,108,78,0.35)' : 'rgba(217,138,0,0.35)'}`,
+          }}
+        >
+          {isLoading ? 'A CARREGAR…' : isSeeded ? 'LIVE DB' : 'SEED DATA'}
+        </span>
         <div className="ml-auto flex gap-1.5">
+          {!isSeeded && !isLoading && (
+            <button
+              onClick={handleSeed}
+              disabled={seeding}
+              className="flex items-center gap-1 rounded-[7px] px-2.5 py-1"
+              style={{ fontFamily: MONO, fontSize: 10, fontWeight: 800, color: C.text, background: '#fff', border: `1.5px solid ${C.border}` }}
+            >
+              {seeding ? 'A IMPORTAR…' : 'IMPORTAR PARA BD'}
+            </button>
+          )}
           <button
             onClick={() => setAllCards(true)}
             className="flex items-center gap-1 rounded-[7px] px-2.5 py-1"
@@ -497,6 +535,7 @@ export default function OpsWizardPage() {
               monthOffset={monthOffset}
               onShiftMonth={(d) => setMonthOffset((m) => m + d)}
               onPick={(b) => setPeek(b)}
+              bookings={bookings}
             />
           ) : (
           <div className="min-h-0 flex-1 overflow-y-auto p-3">
@@ -1055,10 +1094,11 @@ function initials(name: string) {
 /* ── Reservas calendar (departures by day) ────────────────────────────── */
 const WEEKDAYS = ['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN'];
 
-function ReservasCalendar({ monthOffset, onShiftMonth, onPick }: {
+function ReservasCalendar({ monthOffset, onShiftMonth, onPick, bookings }: {
   monthOffset: number;
   onShiftMonth: (delta: number) => void;
   onPick: (b: OpsBooking) => void;
+  bookings: OpsBooking[];
 }) {
   const today = new Date();
   const base = new Date(today.getFullYear(), today.getMonth() + monthOffset, 1);
@@ -1073,7 +1113,7 @@ function ReservasCalendar({ monthOffset, onShiftMonth, onPick }: {
   while (cells.length % 7 !== 0) cells.push(null);
 
   const byDay = new Map<number, OpsBooking[]>();
-  mockBookings.forEach((b) => {
+  bookings.forEach((b) => {
     const d = new Date(b.departureDate);
     if (d.getFullYear() === year && d.getMonth() === month) {
       const list = byDay.get(d.getDate()) ?? [];
