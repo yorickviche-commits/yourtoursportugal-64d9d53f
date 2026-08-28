@@ -253,7 +253,7 @@ export const useLeadSyncLog = (leadId?: string) =>
     queryKey: ['nethunt-sync-log', leadId],
     enabled: !!leadId,
     queryFn: async () => {
-      const { data, error } = await supabase
+      const { data, error } = await (supabase as any)
         .from('nethunt_sync_log')
         .select('id, direction, entity, action, status, detail, created_at')
         .eq('lead_id', leadId!)

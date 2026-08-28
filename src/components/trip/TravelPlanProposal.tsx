@@ -65,6 +65,8 @@ export interface ProposalDay {
 
 import { toMapEmbedSrc, parseGoogleMapsUrl } from '@/lib/mapEmbed';
 import { buildRouteMapImage } from '@/lib/staticRouteMap';
+import { downloadProposalPdf } from '@/lib/proposalPdf';
+import { getProposalAppUrl } from '@/lib/proposalShare';
 import { uploadDataUrlImage, isDataUrl, uploadImageFile, removeWhiteBackground } from '@/lib/uploadDataUrlImage';
 
 export { toMapEmbedSrc };
@@ -529,6 +531,7 @@ const TravelPlanProposal = ({
       next.has(dayNum) ? next.delete(dayNum) : next.add(dayNum);
       return next;
     });
+  const [downloadingPdf, setDownloadingPdf] = useState(false);
   const [wetravelCheckoutUrl, setWetravelCheckoutUrl] = useState<string | null>(null);
   const [wetravelDepositEur, setWetravelDepositEur] = useState<number | null>(null);
 
@@ -736,6 +739,60 @@ const TravelPlanProposal = ({
     });
     return Math.round(total);
   })();
+
+  /**
+   * Canonical PDF: renders through the SAME builder used for the email
+   * attachment (`src/lib/proposalPdf.ts`), so the document the client receives
+   * by email is exactly the one downloaded here.
+   */
+  const handleDownloadPdf = useCallback(async () => {
+    if (!plan) return;
+    setDownloadingPdf(true);
+    try {
+      const proposalLang = (language || 'EN').toLowerCase().slice(0, 2);
+      const dayLabelByLang: Record<string, string> = { en: 'Day', fr: 'Jour', es: 'Día', pt: 'Dia', it: 'Giorno', de: 'Tag' };
+      const startDate = plan.days[0]?.date || travelDates || '';
+      const endDate = plan.days[plan.days.length - 1]?.date || travelEndDate || '';
+      const days = plan.days.map(d => ({
+        day_number: d.day_number,
+        date_label: d.date || `${dayLabelByLang[proposalLang] || 'Day'} ${d.day_number}`,
+        title: d.title,
+        subtitle: d.subtitle || '',
+        cover_image_url: d.images?.[0]?.url || '',
+        images: (d.images || []).map(img => ({ url: img.url, caption: img.caption || '' })),
+        items: d.bullets.map(b => (typeof b === 'string' ? b : b.text)),
+        accommodation: d.overnight ? { label: d.overnight, hotel_name: d.overnight, note: '' } : null,
+        map_url: d.mapUrl || '',
+      }));
+      const token = `ytp-${leadCode.toLowerCase().replace(/[^a-z0-9]/g, '-')}`;
+      const name = await downloadProposalPdf(
+        {
+          id: leadId,
+          title: plan.trip_title,
+          client_name: clientName,
+          date_range: startDate && endDate ? `${startDate} — ${endDate}` : startDate || endDate,
+          participants: `${pax}${paxChildren ? ` + ${paxChildren}` : ''}`,
+          summary_text: plan.narrative,
+          total_value_eur: totalPVP || null,
+          public_token: token,
+          booking_ref: ytId || leadCode,
+          hero_image_url: plan.cover_image?.url || null,
+          wetravel_checkout_url: wetravelCheckoutUrl,
+          closing_terms: { ...closing, accommodation, netPricing } as any,
+          language: proposalLang,
+          days,
+        },
+        getProposalAppUrl(token),
+        { idOverride: ytId || leadCode, filenameOverride: buildPdfFilename() },
+      );
+      toast({ title: 'PDF gerado', description: name });
+    } catch (e: any) {
+      toast({ title: 'Erro ao gerar PDF', description: e.message, variant: 'destructive' });
+    } finally {
+      setDownloadingPdf(false);
+    }
+  }, [plan, language, travelDates, travelEndDate, leadCode, leadId, clientName, pax, paxChildren,
+      totalPVP, ytId, wetravelCheckoutUrl, closing, accommodation, netPricing, buildPdfFilename, toast]);
 
   const hydratedRef = useRef(false);
   if (savedPlan && !plan && !hydratedRef.current) {
@@ -1359,7 +1416,7 @@ const TravelPlanProposal = ({
             <h4 className="text-xs font-bold uppercase text-muted-foreground">Resumo do Perfil</h4>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-xs">
               <div><span className="text-muted-foreground">Cliente:</span> <span className="font-medium">{clientName}</span></div>
-              <div><span className="text-muted-foreground">File ID:</span> <span className="font-medium">{leadCode}</span></div>
+              <div><span className="text-muted-foreground">Ref YT:</span> <span className="font-medium">{ytId || leadCode}</span></div>
               <div><span className="text-muted-foreground">Destino:</span> <span className="font-medium">{destination || '—'}</span></div>
               <div><span className="text-muted-foreground">Pax:</span> <span className="font-medium">{pax} adt{paxChildren ? ` + ${paxChildren} chl` : ''}</span></div>
               <div><span className="text-muted-foreground">Datas:</span> <span className="font-medium">{travelDates || '—'}{travelEndDate ? ` → ${travelEndDate}` : ''}</span></div>
@@ -1515,9 +1572,24 @@ const TravelPlanProposal = ({
           <Button variant="outline" size="sm" className="text-xs gap-1" onClick={handleSave} disabled={saving}>
             {saving ? <Loader2 className="h-3 w-3 animate-spin" /> : <Save className="h-3 w-3" />} Guardar
           </Button>
-          <Button variant="outline" size="sm" className="text-xs gap-1" onClick={handlePrintPdf}>
-
-            <FileText className="h-3 w-3" /> PDF
+          <Button
+            variant="outline"
+            size="sm"
+            className="text-xs gap-1"
+            onClick={handleDownloadPdf}
+            disabled={downloadingPdf || !plan}
+            title="Gera o PDF oficial — exatamente o mesmo documento que vai anexado no email"
+          >
+            {downloadingPdf ? <Loader2 className="h-3 w-3 animate-spin" /> : <FileText className="h-3 w-3" />} PDF
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="text-[10px] text-muted-foreground"
+            onClick={handlePrintPdf}
+            title="Imprimir o ecrã (alternativa)"
+          >
+            Imprimir
           </Button>
           <Button size="sm" className="text-xs gap-1 bg-[hsl(var(--success))] hover:bg-[hsl(var(--success))]/90 text-white" onClick={onGoToCosting}>
             <ArrowRight className="h-3 w-3" /> Costing

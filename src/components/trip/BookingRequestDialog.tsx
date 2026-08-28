@@ -60,21 +60,26 @@ const BookingRequestDialog = ({
   const editorRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const defaultSubject = `Booking Request — ${activityName} — ${tripCode}`;
-  const defaultBodyText = `Dear ${supplierName || '[Supplier Name]'},
+  // Assunto padrão: Ref YT · FSE · Data · Pedido de Reserva
+  const defaultSubject = [tripCode, supplierName, activityDate, 'Pedido de Reserva']
+    .map(v => (v || '').toString().trim())
+    .filter(Boolean)
+    .join(' · ');
 
-We would like to request a booking for the following service:
+  const defaultBodyText = `Bom dia,
 
-Service: ${activityName}
-Date: ${activityDate || '[Activity Date]'}
-Time: ${scheduleTime || '[Time TBD]'}
-Number of people: ${pax}
-Total value: €${netValue.toFixed(2)}
-Booking reference: ${tripCode}
+Vimos solicitar reserva para o seguinte serviço:
 
-Please confirm availability and send us the confirmation.
+Serviço: ${activityName}
+Data: ${activityDate || '[data a confirmar]'}
+Hora: ${scheduleTime || '[hora a confirmar]'}
+Nº de pessoas: ${pax}
+Valor acordado: €${netValue.toFixed(2)}
+Referência: ${tripCode}
 
-Best regards,
+Agradecemos a confirmação de disponibilidade e o envio da confirmação de reserva.
+
+Obrigado e bom trabalho,
 Your Tours Portugal
 reservas@yourtours.pt`;
 
@@ -85,6 +90,58 @@ reservas@yourtours.pt`;
   const [to, setTo] = useState(initialSupplierEmail);
   const [subject, setSubject] = useState(defaultSubject);
   const [attachments, setAttachments] = useState<AttachmentItem[]>([]);
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiPrompt, setAiPrompt] = useState('');
+
+  const AI_PROMPTS = [
+    'Pedido de disponibilidade para este serviço',
+    'Confirmar reserva já falada por telefone',
+    'Alterar horário do serviço',
+    'Alterar número de pax',
+    'Pedir tarifa net e condições de pagamento',
+    'Reconfirmação 48h antes do serviço',
+    'Pedido de fatura do serviço',
+  ];
+
+  const runAiCompose = async (instruction: string) => {
+    setAiLoading(true);
+    try {
+      const context = [
+        `Referência YT: ${tripCode}`,
+        `Fornecedor (FSE): ${supplierName || 'desconhecido'}`,
+        `Serviço: ${activityName}`,
+        `Data: ${activityDate || 'a confirmar'}`,
+        `Hora: ${scheduleTime || 'a confirmar'}`,
+        `Pax: ${pax}`,
+        `Valor net acordado: €${netValue.toFixed(2)}`,
+      ].join('\n');
+      const prompt = `Escreve um email operacional em PORTUGUÊS DE PORTUGAL para um fornecedor (FSE) da Your Tours Portugal.
+Objetivo: ${instruction}
+
+Contexto do serviço:
+${context}
+
+Regras: tom direto e cordial (estilo founder), parágrafos curtos, sem floreados, incluir sempre os dados do serviço relevantes, terminar com pedido de ação claro e assinatura "Your Tours Portugal · reservas@yourtours.pt".
+Devolve APENAS o corpo do email em texto simples, sem assunto e sem comentários.`;
+
+      const { data, error } = await supabase.functions.invoke('ai-assistant', {
+        body: { messages: [{ role: 'user', content: prompt }] },
+      });
+      if (error) throw error;
+      const reply = (data as any)?.reply || (data as any)?.error;
+      if (!reply) throw new Error('Sem resposta da AI');
+      if (editorRef.current) {
+        editorRef.current.innerHTML = `<div style="font-family:Arial,sans-serif;font-size:14px;line-height:1.5;color:#1a1a1a">${
+          escapeHtml(String(reply).trim()).replace(/\n/g, '<br>')
+        }</div>`;
+      }
+      toast({ title: 'Rascunho AI inserido', description: 'Revê e edita antes de enviar.' });
+    } catch (err: any) {
+      toast({ title: 'Erro na AI', description: err.message, variant: 'destructive' });
+    } finally {
+      setAiLoading(false);
+    }
+  };
 
   const handleOpen = async (isOpen: boolean) => {
     if (isOpen) {
