@@ -1416,7 +1416,7 @@ const TravelPlanProposal = ({
             <h4 className="text-xs font-bold uppercase text-muted-foreground">Resumo do Perfil</h4>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-xs">
               <div><span className="text-muted-foreground">Cliente:</span> <span className="font-medium">{clientName}</span></div>
-              <div><span className="text-muted-foreground">File ID:</span> <span className="font-medium">{leadCode}</span></div>
+              <div><span className="text-muted-foreground">Ref YT:</span> <span className="font-medium">{ytId || leadCode}</span></div>
               <div><span className="text-muted-foreground">Destino:</span> <span className="font-medium">{destination || '—'}</span></div>
               <div><span className="text-muted-foreground">Pax:</span> <span className="font-medium">{pax} adt{paxChildren ? ` + ${paxChildren} chl` : ''}</span></div>
               <div><span className="text-muted-foreground">Datas:</span> <span className="font-medium">{travelDates || '—'}{travelEndDate ? ` → ${travelEndDate}` : ''}</span></div>
