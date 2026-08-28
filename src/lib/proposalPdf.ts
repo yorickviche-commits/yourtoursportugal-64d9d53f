@@ -128,11 +128,16 @@ export function buildProposalEmailText(p: ProposalLite, weblink: string): string
   return lines.join('\n');
 }
 
-export async function buildProposalPdfBase64(
+/**
+ * Single source of truth for the client-facing PDF.
+ * Both the Travel Planner "PDF" button and the email attachment render through
+ * this builder, so the attached document is byte-for-byte the same document.
+ */
+export async function buildProposalPdfDoc(
   p: ProposalLite,
   weblink: string,
   opts?: { idOverride?: string | null },
-): Promise<{ base64: string; filename: string }> {
+): Promise<{ doc: jsPDF; filename: string }> {
   const t = getPdfDict(p.language);
   const doc = new jsPDF({ unit: 'pt', format: 'a4' });
   const pageW = doc.internal.pageSize.getWidth();
