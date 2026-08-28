@@ -703,9 +703,6 @@ export async function buildProposalPdfDoc(
     );
   }
 
-  const dataUri = doc.output('datauristring');
-  const base64 = dataUri.split(',')[1] || '';
-
   const sanitize = (s: string) => s.replace(/[\\/:*?"<>|]+/g, ' ').replace(/\s+/g, ' ').trim();
   const ytCode = sanitize(opts?.idOverride || p.booking_ref || (p.id ? `YT-${String(p.id).slice(0, 4).toUpperCase()}` : 'YT'));
   const client = sanitize(p.client_name || 'Client');
@@ -713,6 +710,32 @@ export async function buildProposalPdfDoc(
   const program = sanitize(p.title || 'Travel Plan');
   const parts = [ytCode, client, program, dates].filter(Boolean);
   const filename = `${parts.join(' - ').slice(0, 180)}.pdf`;
-  return { base64, filename };
+  return { doc, filename };
 }
+
+/** Email attachment flavour — same document, encoded as base64. */
+export async function buildProposalPdfBase64(
+  p: ProposalLite,
+  weblink: string,
+  opts?: { idOverride?: string | null },
+): Promise<{ base64: string; filename: string }> {
+  const { doc, filename } = await buildProposalPdfDoc(p, weblink, opts);
+  const dataUri = doc.output('datauristring');
+  return { base64: dataUri.split(',')[1] || '', filename };
+}
+
+/** Travel Planner download flavour — identical document, saved to disk. */
+export async function downloadProposalPdf(
+  p: ProposalLite,
+  weblink: string,
+  opts?: { idOverride?: string | null; filenameOverride?: string | null },
+): Promise<string> {
+  const { doc, filename } = await buildProposalPdfDoc(p, weblink, opts);
+  const finalName = opts?.filenameOverride
+    ? `${opts.filenameOverride.replace(/\.pdf$/i, '')}.pdf`
+    : filename;
+  doc.save(finalName);
+  return finalName;
+}
+
 
