@@ -562,6 +562,60 @@ const TravelPlanProposal = ({
       .slice(0, 180);
   }, [clientName, destination, language, leadCode, plan, travelDates, travelEndDate, ytId]);
 
+  /**
+   * Canonical PDF: renders through the SAME builder used for the email
+   * attachment (`src/lib/proposalPdf.ts`), so the document the client receives
+   * by email is exactly the one downloaded here.
+   */
+  const handleDownloadPdf = useCallback(async () => {
+    if (!plan) return;
+    setDownloadingPdf(true);
+    try {
+      const proposalLang = (language || 'EN').toLowerCase().slice(0, 2);
+      const dayLabelByLang: Record<string, string> = { en: 'Day', fr: 'Jour', es: 'Día', pt: 'Dia', it: 'Giorno', de: 'Tag' };
+      const startDate = plan.days[0]?.date || travelDates || '';
+      const endDate = plan.days[plan.days.length - 1]?.date || travelEndDate || '';
+      const days = plan.days.map(d => ({
+        day_number: d.day_number,
+        date_label: d.date || `${dayLabelByLang[proposalLang] || 'Day'} ${d.day_number}`,
+        title: d.title,
+        subtitle: d.subtitle || '',
+        cover_image_url: d.images?.[0]?.url || '',
+        images: (d.images || []).map(img => ({ url: img.url, caption: img.caption || '' })),
+        items: d.bullets.map(b => (typeof b === 'string' ? b : b.text)),
+        accommodation: d.overnight ? { label: d.overnight, hotel_name: d.overnight, note: '' } : null,
+        map_url: d.mapUrl || '',
+      }));
+      const token = `ytp-${leadCode.toLowerCase().replace(/[^a-z0-9]/g, '-')}`;
+      const name = await downloadProposalPdf(
+        {
+          id: leadId,
+          title: plan.trip_title,
+          client_name: clientName,
+          date_range: startDate && endDate ? `${startDate} — ${endDate}` : startDate || endDate,
+          participants: `${pax}${paxChildren ? ` + ${paxChildren}` : ''}`,
+          summary_text: plan.narrative,
+          total_value_eur: totalPVP || null,
+          public_token: token,
+          booking_ref: ytId || leadCode,
+          hero_image_url: plan.cover_image?.url || null,
+          wetravel_checkout_url: wetravelCheckoutUrl,
+          closing_terms: { ...closing, accommodation, netPricing } as any,
+          language: proposalLang,
+          days,
+        },
+        getProposalAppUrl(token),
+        { idOverride: ytId || leadCode, filenameOverride: buildPdfFilename() },
+      );
+      toast({ title: 'PDF gerado', description: name });
+    } catch (e: any) {
+      toast({ title: 'Erro ao gerar PDF', description: e.message, variant: 'destructive' });
+    } finally {
+      setDownloadingPdf(false);
+    }
+  }, [plan, language, travelDates, travelEndDate, leadCode, leadId, clientName, pax, paxChildren,
+      totalPVP, ytId, wetravelCheckoutUrl, closing, accommodation, netPricing, buildPdfFilename, toast]);
+
   const handlePrintPdf = useCallback(async () => {
     const filename = buildPdfFilename();
     if (!filename) return;
