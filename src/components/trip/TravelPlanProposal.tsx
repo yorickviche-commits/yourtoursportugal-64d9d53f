@@ -1572,9 +1572,24 @@ const TravelPlanProposal = ({
           <Button variant="outline" size="sm" className="text-xs gap-1" onClick={handleSave} disabled={saving}>
             {saving ? <Loader2 className="h-3 w-3 animate-spin" /> : <Save className="h-3 w-3" />} Guardar
           </Button>
-          <Button variant="outline" size="sm" className="text-xs gap-1" onClick={handlePrintPdf}>
-
-            <FileText className="h-3 w-3" /> PDF
+          <Button
+            variant="outline"
+            size="sm"
+            className="text-xs gap-1"
+            onClick={handleDownloadPdf}
+            disabled={downloadingPdf || !plan}
+            title="Gera o PDF oficial — exatamente o mesmo documento que vai anexado no email"
+          >
+            {downloadingPdf ? <Loader2 className="h-3 w-3 animate-spin" /> : <FileText className="h-3 w-3" />} PDF
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="text-[10px] text-muted-foreground"
+            onClick={handlePrintPdf}
+            title="Imprimir o ecrã (alternativa)"
+          >
+            Imprimir
           </Button>
           <Button size="sm" className="text-xs gap-1 bg-[hsl(var(--success))] hover:bg-[hsl(var(--success))]/90 text-white" onClick={onGoToCosting}>
             <ArrowRight className="h-3 w-3" /> Costing
