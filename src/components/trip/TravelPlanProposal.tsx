@@ -9,6 +9,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { RichInput, RichTextarea } from '@/components/ui/rich-editable';
 import { RichText } from '@/lib/richText';
 import { resolveClosingText } from '@/lib/closingTermsI18n';
+import { getHotelsDict, resolveHotelsText, mergeProposalHotels, type ProposalHotel } from '@/lib/proposalHotelsI18n';
 import { Card, CardContent } from '@/components/ui/card';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
