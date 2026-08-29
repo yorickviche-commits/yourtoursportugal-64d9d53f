@@ -199,43 +199,89 @@ export async function fetchGmailBody(messageId: string) {
   return ((data as any)?.body_html || '') as string;
 }
 
-/** Triggers an immediate NetHunt → Lovable pull. */
+export type SyncPeriod = 'yesterday' | '7d' | '30d' | '12m' | 'all';
+
+export const SYNC_PERIODS: { value: SyncPeriod; label: string }[] = [
+  { value: 'yesterday', label: 'Ontem' },
+  { value: '7d', label: 'Últimos 7 dias' },
+  { value: '30d', label: 'Último mês' },
+  { value: '12m', label: 'Último ano' },
+  { value: 'all', label: 'Tudo' },
+];
+
+export type SyncResult = {
+  ok?: boolean;
+  deals?: number;
+  tasks?: number;
+  timeline?: { leads?: number; counts?: Record<string, number> };
+  error?: string;
+};
+
+/** Manual NetHunt → Lovable pull, restricted to a period. */
 export const useSyncNow = () => {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async () => {
-      const { data, error } = await supabase.functions.invoke('nethunt-pull', { body: {} });
+    mutationFn: async (opts: { period?: SyncPeriod; timelineLimit?: number } = {}) => {
+      const { data, error } = await supabase.functions.invoke('nethunt-pull', {
+        body: { period: opts.period ?? '7d', timelineLimit: opts.timelineLimit },
+      });
       if (error) throw error;
-      return data;
+      return data as SyncResult;
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['nethunt-timeline'] });
       qc.invalidateQueries({ queryKey: ['nethunt-tasks'] });
       qc.invalidateQueries({ queryKey: ['lead-gmail'] });
       qc.invalidateQueries({ queryKey: ['leads'] });
+      qc.invalidateQueries({ queryKey: ['nethunt-sync-state'] });
     },
   });
 };
 
-/** Force a full timeline sync for a single linked lead. */
+/** Last manual sync stamp (written by the edge function). */
+export const useSyncState = () =>
+  useQuery({
+    queryKey: ['nethunt-sync-state'],
+    queryFn: async () => {
+      const { data, error } = await (supabase as any)
+        .from('nethunt_sync_state')
+        .select('key, since')
+        .in('key', ['last_manual_sync_at', 'last_manual_sync_period', 'last_manual_sync_result']);
+      if (error) throw error;
+      const map = new Map<string, string>((data || []).map((r: any) => [r.key, r.since]));
+      return {
+        at: map.get('last_manual_sync_at') ?? null,
+        period: (map.get('last_manual_sync_period') ?? null) as SyncPeriod | null,
+      };
+    },
+    staleTime: 30_000,
+  });
+
+/** Force a timeline sync for a single linked lead (optionally within a period). */
 export const useSyncLeadFull = () => {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async ({ recordId, leadId }: { recordId: string; leadId: string }) => {
+    mutationFn: async ({ recordId, period }: { recordId: string; leadId: string; period?: SyncPeriod }) => {
       const { data, error } = await supabase.functions.invoke('nethunt-pull', {
-        body: { recordId, fullTimeline: true, folder: 'deals' },
+        body: {
+          recordId,
+          folder: 'deals',
+          ...(period && period !== 'all' ? { period } : { fullTimeline: true }),
+        },
       });
       if (error) throw error;
-      return data as { ok: boolean; deals?: number; timeline?: { leads?: number; counts?: Record<string, number> }; error?: string };
+      return data as SyncResult;
     },
     onSuccess: (_d, v) => {
       qc.invalidateQueries({ queryKey: ['nethunt-timeline', v.leadId] });
       qc.invalidateQueries({ queryKey: ['lead-gmail', v.leadId] });
       qc.invalidateQueries({ queryKey: ['lead-crm', v.leadId] });
       qc.invalidateQueries({ queryKey: ['nethunt-sync-log', v.leadId] });
+      qc.invalidateQueries({ queryKey: ['nethunt-sync-state'] });
     },
   });
 };
+
 
 export interface SyncLogEntry {
   id: string;
