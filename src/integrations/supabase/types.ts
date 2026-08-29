@@ -1553,6 +1553,7 @@ export type Database = {
           pax_infants: number | null
           phone: string | null
           pvp_override: number | null
+          route_day_maps: Json
           route_map_path: string | null
           route_map_url: string | null
           sales_owner: string | null
@@ -1594,6 +1595,7 @@ export type Database = {
           pax_infants?: number | null
           phone?: string | null
           pvp_override?: number | null
+          route_day_maps?: Json
           route_map_path?: string | null
           route_map_url?: string | null
           sales_owner?: string | null
@@ -1635,6 +1637,7 @@ export type Database = {
           pax_infants?: number | null
           phone?: string | null
           pvp_override?: number | null
+          route_day_maps?: Json
           route_map_path?: string | null
           route_map_url?: string | null
           sales_owner?: string | null

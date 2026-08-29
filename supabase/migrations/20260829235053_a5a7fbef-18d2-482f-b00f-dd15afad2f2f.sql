@@ -1,0 +1,1 @@
+ALTER TABLE public.leads ADD COLUMN IF NOT EXISTS route_day_maps jsonb NOT NULL DEFAULT '[]'::jsonb;
