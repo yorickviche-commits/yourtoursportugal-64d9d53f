@@ -13,6 +13,7 @@ import LeadsFilesPage from "./pages/LeadsFilesPage";
 import LeadDetailPage from "./pages/LeadDetailPage";
 import PaymentsPage from "./pages/PaymentsPage";
 import LoginPage from "./pages/LoginPage";
+import SetupAccountPage from "./pages/SetupAccountPage";
 import SignupPage from "./pages/SignupPage";
 import ForgotPasswordPage from "./pages/ForgotPasswordPage";
 import ResetPasswordPage from "./pages/ResetPasswordPage";
