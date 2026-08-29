@@ -10,6 +10,8 @@ interface Profile {
   email: string | null;
   avatar_url: string | null;
   status: string;
+  phone?: string | null;
+  onboarding_completed_at?: string | null;
 }
 
 interface AuthContextType {
@@ -17,9 +19,13 @@ interface AuthContextType {
   session: Session | null;
   profile: Profile | null;
   roles: AppRole[];
+  /** Roles do enum + roles personalizados (códigos livres). */
+  roleCodes: string[];
+  onboardingCompleted: boolean;
   loading: boolean;
   isAdmin: boolean;
   hasRole: (role: AppRole) => boolean;
+  refreshProfile: () => Promise<void>;
   signOut: () => Promise<void>;
 }
 
