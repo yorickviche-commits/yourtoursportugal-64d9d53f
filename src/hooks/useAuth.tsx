@@ -41,6 +41,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [roles, setRoles] = useState<AppRole[]>([]);
   const [customRoles, setCustomRoles] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
+  const [profileLoaded, setProfileLoaded] = useState(false);
   const fetchProfile = async (userId: string) => {
     const { data } = await supabase
       .from('profiles')
@@ -48,6 +49,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       .eq('id', userId)
       .single();
     setProfile(data as Profile | null);
+    setProfileLoaded(true);
   };
 
   const fetchRoles = async (userId: string) => {
@@ -85,6 +87,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       } else {
         setProfile(null);
         setRoles([]);
+        setProfileLoaded(true);
       }
     };
 
@@ -147,7 +150,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
 
   return (
-    <AuthContext.Provider value={{ user, session, profile, roles, roleCodes, onboardingCompleted, loading, isAdmin, hasRole, refreshProfile, signOut }}>
+    <AuthContext.Provider value={{ user, session, profile, roles, roleCodes, onboardingCompleted, profileLoaded, loading, isAdmin, hasRole, refreshProfile, signOut }}>
       {children}
     </AuthContext.Provider>
   );

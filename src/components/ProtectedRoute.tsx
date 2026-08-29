@@ -12,11 +12,11 @@ interface ProtectedRouteProps {
 }
 
 const ProtectedRoute = ({ children, adminOnly = false }: ProtectedRouteProps) => {
-  const { user, loading, isAdmin, profile, onboardingCompleted } = useAuth();
+  const { user, loading, isAdmin, profile, profileLoaded, onboardingCompleted } = useAuth();
   const { canAccess, loading: permLoading } = usePagePermissions();
   const location = useLocation();
 
-  if (loading) {
+  if (loading || (user && !profileLoaded)) {
     return (
       <div className="flex h-screen flex-col items-center justify-center gap-4 bg-background">
         <BrandLogo imageClassName="h-14 w-14" />
@@ -28,7 +28,7 @@ const ProtectedRoute = ({ children, adminOnly = false }: ProtectedRouteProps) =>
   if (!user) return <Navigate to="/login" replace state={{ from: location.pathname + location.search }} />;
 
   // Onboarding obrigatório para contas novas (definir password + dados).
-  if (profile && !onboardingCompleted && location.pathname !== '/setup-account') {
+  if (profileLoaded && !onboardingCompleted && location.pathname !== '/setup-account') {
     return <Navigate to="/setup-account" replace />;
   }
 
