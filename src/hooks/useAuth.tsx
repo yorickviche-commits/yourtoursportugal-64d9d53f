@@ -36,6 +36,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [session, setSession] = useState<Session | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [roles, setRoles] = useState<AppRole[]>([]);
+  const [customRoles, setCustomRoles] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const fetchProfile = async (userId: string) => {
     const { data } = await supabase
@@ -52,6 +53,16 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       .select('role')
       .eq('user_id', userId);
     setRoles((data || []).map((r: any) => r.role as AppRole));
+
+    const { data: custom } = await supabase
+      .from('user_custom_roles' as any)
+      .select('role_code')
+      .eq('user_id', userId);
+    setCustomRoles(((custom as any[]) || []).map(r => r.role_code as string));
+  };
+
+  const refreshProfile = async () => {
+    if (user?.id) await fetchProfile(user.id);
   };
 
   useEffect(() => {
