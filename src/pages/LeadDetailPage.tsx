@@ -138,15 +138,12 @@ function MonthYearPicker({ value, onChange }: { value: string; onChange: (v: str
 const OperacoesTab = LeadOperationsEditor;
 
 
-const LEAD_STATUSES: { value: LeadStatus; label: string; color: string }[] = [
-  { value: 'new', label: 'Novo', color: 'bg-muted text-muted-foreground' },
-  { value: 'contacted', label: 'Contactado', color: 'bg-[hsl(var(--info)/0.15)] text-[hsl(var(--info))]' },
-  { value: 'qualified', label: 'Qualificado', color: 'bg-[hsl(var(--warning)/0.15)] text-[hsl(var(--warning))]' },
-  { value: 'proposal_sent', label: 'Proposta Enviada', color: 'bg-[hsl(var(--info)/0.15)] text-[hsl(var(--info))]' },
-  { value: 'negotiation', label: 'Negociação', color: 'bg-[hsl(var(--warning)/0.15)] text-[hsl(var(--warning))]' },
-  { value: 'won', label: 'Ganho ✓', color: 'bg-[hsl(var(--stable)/0.15)] text-[hsl(var(--stable))]' },
-  { value: 'lost', label: 'Perdido', color: 'bg-destructive/15 text-destructive' },
-];
+const LEAD_STATUSES: { value: LeadStatus; label: string; color: string }[] = LEAD_STAGES.map(s => ({
+  value: s.status,
+  label: s.label,
+  color: s.className,
+}));
+
 
 const statusColors: Record<string, string> = {
   draft: 'bg-stone-100 text-stone-600',
