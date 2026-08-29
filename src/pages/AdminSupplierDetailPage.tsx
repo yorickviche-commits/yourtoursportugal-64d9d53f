@@ -610,6 +610,17 @@ const AdminSupplierDetailPage = () => {
                 <Label className="text-xs">Descrição</Label>
                 <Textarea value={serviceForm.description || ''} onChange={e => setServiceForm({ ...serviceForm, description: e.target.value })} rows={2} />
               </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs">Imagem (URL)</Label>
+                <Input
+                  value={serviceForm.image_url || ''}
+                  onChange={e => setServiceForm({ ...serviceForm, image_url: e.target.value })}
+                  placeholder="https://..."
+                />
+                {serviceForm.image_url && (
+                  <img src={serviceForm.image_url} alt={serviceForm.name || 'Experiência'} className="h-24 w-full object-cover rounded-md border" />
+                )}
+              </div>
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1.5">
                   <Label className="text-xs">Categoria</Label>
