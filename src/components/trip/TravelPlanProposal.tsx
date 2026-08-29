@@ -528,6 +528,8 @@ const TravelPlanProposal = ({
       (['payment', 'cancellation', 'importantNotes', 'closingMessage'] as const).forEach(f => {
         next[f] = resolveClosingText(f, prev[f], language);
       });
+      next.notIncluded = resolveHotelsText('notIncludedDefault', prev.notIncluded, language);
+      next.nextSteps = resolveHotelsText('nextStepsDefault', prev.nextSteps, language);
       return next;
     });
   }, [language]);
