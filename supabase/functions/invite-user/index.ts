@@ -111,7 +111,6 @@ Deno.serve(async (req) => {
 
     const mime = [
       `To: ${email}`,
-      `From: ${header("Your Tours Portugal")} <me>`,
       `Subject: ${header(subject)}`,
       "MIME-Version: 1.0",
       'Content-Type: text/html; charset="UTF-8"',
