@@ -15,58 +15,45 @@ import StatusBadge from '@/components/StatusBadge';
 import { displayLeadCode } from '@/lib/leadCode';
 import LeadAgentsCell from '@/components/LeadAgentsCell';
 
-// Tabs alinhadas 1:1 com os stages do YT Sales Pipeline (NetHunt).
-const NETHUNT_PIPELINE: string[] = [
-  'SALES - New Lead',
-  'SALES - - Budgeting & Fine-Tuning',
-  'SALES - Final Negotiation & Ready to Book',
-  'OPERATIONS - Deposit/Payment Received',
-  'OPERATIONS - Suppliers Bookings & Confirmations',
-  'OPERATIONS - Technical Briefing (Internal & Suppliers Final Validations)',
-  'OPERATIONS - Trip Ready / In Execution',
-  'OPERATIONS - Post-Trip Loop / Feedback',
-  'OPERATIONS - Deferred / Postponed Trip',
-  'OPERATIONS - Archive',
-  'SALES - Archive',
-];
+import { LEAD_STAGES, resolveStage, normStage } from '@/lib/leadStages';
 
-const stageLabel = (stage: string) =>
-  stage.replace('SALES - - ', 'SALES · ').replace('SALES - ', 'SALES · ').replace('OPERATIONS - ', 'OPS · ');
-
-// Fallback: leads ainda sem stage NetHunt são colocadas no stage equivalente ao seu status.
-const STATUS_TO_STAGE: Record<string, string> = {
-  new: 'SALES - New Lead',
-  contacted: 'SALES - New Lead',
-  qualified: 'SALES - - Budgeting & Fine-Tuning',
-  proposal_sent: 'SALES - - Budgeting & Fine-Tuning',
-  negotiation: 'SALES - Final Negotiation & Ready to Book',
-  won: 'OPERATIONS - Deposit/Payment Received',
-  lost: 'SALES - Archive',
-};
-
-const norm = (s: string) => s.replace(/\s+/g, ' ').trim().toLowerCase();
-const leadStage = (l: any) => norm((l.nethunt_stage as string) || STATUS_TO_STAGE[l.status] || 'SALES - New Lead');
+const stageTabLabel = (s: { group: string; label: string }) =>
+  `${s.group === 'SALES' ? 'SALES' : 'OPS'} · ${s.label}`;
 
 type LeadStatusFilter = 'all' | string;
 
 const STATUS_TABS: { value: LeadStatusFilter; label: string }[] = [
   { value: 'all', label: 'Todas' },
-  ...NETHUNT_PIPELINE.map(s => ({ value: s, label: stageLabel(s) })),
+  ...LEAD_STAGES.map(s => ({ value: s.stage, label: stageTabLabel(s) })),
 ];
 
+const fmtDate = (v?: string | null) => {
+  if (!v) return null;
+  const d = new Date(v);
+  if (isNaN(d.getTime())) return v;
+  return d.toLocaleDateString('pt-PT');
+};
 
-const statusBadgeConfig: Record<string, { label: string; className: string }> = {
-  new: { label: 'Novo', className: 'bg-muted text-muted-foreground' },
-  contacted: { label: 'Contactado', className: 'bg-[hsl(var(--info))]/15 text-[hsl(var(--info))]' },
-  qualified: { label: 'Qualificado', className: 'bg-[hsl(var(--warning))]/15 text-[hsl(var(--warning))]' },
-  proposal_sent: { label: 'Proposta Enviada', className: 'bg-[hsl(var(--info))]/15 text-[hsl(var(--info))]' },
-  negotiation: { label: 'Negociação', className: 'bg-[hsl(var(--warning))]/15 text-[hsl(var(--warning))]' },
-  won: { label: 'Ganho ✓', className: 'bg-[hsl(var(--stable))]/15 text-[hsl(var(--stable))]' },
-  lost: { label: 'Perdido', className: 'bg-destructive/15 text-destructive' },
+/** Datas em 2 linhas sobrepostas (início / fim) para não alargar a tabela. */
+const LeadDates = ({ lead }: { lead: any }) => {
+  const start = fmtDate(lead.travel_dates);
+  const end = fmtDate(lead.travel_end_date);
+  const estimated = (lead.dates_type || 'estimated') !== 'concrete';
+  if (!start && !end) return <span className="text-muted-foreground">—</span>;
+  return (
+    <div className="leading-tight">
+      <div className="whitespace-nowrap">{start || '—'}</div>
+      {end && end !== start && (
+        <div className="whitespace-nowrap text-[10px] text-muted-foreground">→ {end}</div>
+      )}
+      {estimated && <div className="text-[10px] text-muted-foreground italic">estimadas</div>}
+    </div>
+  );
 };
 
 const fmtMoney = (n: number) =>
   n.toLocaleString('pt-PT', { maximumFractionDigits: 0 }) + '€';
+
 
 const LeadsFilesPage = () => {
   const navigate = useNavigate();
