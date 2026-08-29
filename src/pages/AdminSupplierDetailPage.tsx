@@ -64,7 +64,7 @@ const emptyService = {
   name: '', description: '', category: 'activity', duration: '', price: 0,
   price_child: 0, price_unit: 'per_person', currency: 'EUR', payment_conditions: '',
   cancellation_policy: '', refund_policy: '', booking_conditions: '', notes: '',
-  status: 'active', validity_start: '', validity_end: '',
+  status: 'active', validity_start: '', validity_end: '', image_url: '',
 };
 
 const AdminSupplierDetailPage = () => {
