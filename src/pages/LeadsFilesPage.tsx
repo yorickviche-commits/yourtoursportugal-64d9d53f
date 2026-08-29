@@ -208,14 +208,14 @@ const LeadsFilesPage = () => {
                   return (
                     <tr key={lead.id} onClick={() => navigate(`/leads/${lead.id}`)}
                       className="border-b border-border last:border-0 hover:bg-muted/30 transition-colors cursor-pointer">
-                      <td className="px-3 py-3 text-xs text-muted-foreground whitespace-nowrap">{displayLeadCode(lead)}</td>
-                      <td className="px-3 py-3"><p className="text-xs font-medium text-[hsl(var(--info))] hover:underline">{lead.client_name}</p></td>
-                      <td className="px-2 py-3 text-center"><ClientTypeBadge value={(lead as any).client_type} /></td>
-                      <td className="px-3 py-3 text-xs text-foreground">{lead.destination}</td>
-                      <td className="px-2 py-3 text-xs text-center text-foreground">{lead.number_of_days || '—'}</td>
-                      <td className="px-3 py-3 text-xs text-foreground"><LeadDates lead={lead} /></td>
-                      <td className="px-2 py-3 text-xs text-center text-foreground">{lead.pax}</td>
-                      <td className="px-3 py-3 text-xs text-right whitespace-nowrap">
+                      <td className="px-2 py-2.5 text-[11px] text-muted-foreground truncate">{displayLeadCode(lead)}</td>
+                      <td className="px-2 py-2.5"><p className="text-xs font-medium text-[hsl(var(--info))] hover:underline break-words leading-tight">{lead.client_name}</p></td>
+                      <td className="px-1 py-2.5 text-center"><ClientTypeBadge value={(lead as any).client_type} /></td>
+                      <td className="px-2 py-2.5 text-[11px] text-foreground break-words leading-tight">{lead.destination}</td>
+                      <td className="px-1 py-2.5 text-[11px] text-center text-foreground">{lead.number_of_days || '—'}</td>
+                      <td className="px-2 py-2.5 text-[11px] text-foreground"><LeadDates lead={lead} /></td>
+                      <td className="px-1 py-2.5 text-[11px] text-center text-foreground">{lead.pax}</td>
+                      <td className="px-2 py-2.5 text-[11px] text-right whitespace-nowrap">
                         {hasPvp ? (
                           <div className="leading-tight">
                             <div className="font-semibold text-foreground">{fmtMoney(cs.pvp)}</div>
@@ -225,14 +225,18 @@ const LeadsFilesPage = () => {
                           <span className="text-muted-foreground">—</span>
                         )}
                       </td>
-                      <td className="px-3 py-3 text-xs text-muted-foreground whitespace-nowrap">
-                        {new Date(lead.created_at).toLocaleDateString('pt-PT')} {new Date(lead.created_at).toLocaleTimeString('pt-PT', { hour: '2-digit', minute: '2-digit' })}
+                      <td className="px-2 py-2.5 text-[10px] text-muted-foreground leading-tight">
+                        <div>{new Date(lead.created_at).toLocaleDateString('pt-PT')}</div>
+                        <div>{new Date(lead.created_at).toLocaleTimeString('pt-PT', { hour: '2-digit', minute: '2-digit' })}</div>
                       </td>
-                      <td className="px-3 py-3" onClick={e => e.stopPropagation()}>
+                      <td className="px-2 py-2.5" onClick={e => e.stopPropagation()}>
                         <LeadAgentsCell leadId={lead.id} value={(lead as any).assigned_agents} />
                       </td>
-                      <td className="px-3 py-3 text-center"><StatusBadge label={badge.label} className={badge.className} /></td>
-                      <td className="px-2 py-3 text-center"><Eye className="h-4 w-4 text-muted-foreground mx-auto" /></td>
+                      <td className="px-2 py-2.5 text-center">
+                        <span className={cn('inline-block rounded-md px-1.5 py-1 text-[10px] font-medium leading-tight text-center break-words', badge.className)}>{badge.label}</span>
+                      </td>
+                      <td className="px-1 py-2.5 text-center"><Eye className="h-4 w-4 text-muted-foreground mx-auto" /></td>
+
                     </tr>
                   );
                 })}
