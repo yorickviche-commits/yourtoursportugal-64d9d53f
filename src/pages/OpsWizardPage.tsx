@@ -561,6 +561,13 @@ export default function OpsWizardPage() {
               >
                 <ExternalLink size={12} /> ABRIR LEAD
               </button>
+              <button
+                onClick={() => { setSelectedStage(peek.stage); setExpandedBooking(peek.id); setPeek(null); setOpen((p) => ({ ...p, pipeline: true })); }}
+                className="flex items-center gap-1.5 rounded-lg px-2.5 py-2"
+                style={{ fontSize: 12, fontWeight: 700, color: C.accent, border: `1.5px solid ${C.border}` }}
+              >
+                <LayoutList size={12} /> VER NO PIPELINE
+              </button>
               {peek.links.filter((l) => !l.url.startsWith('/')).map((l) => (
                 <button
                   key={l.type + l.label}
@@ -571,6 +578,7 @@ export default function OpsWizardPage() {
                   <ExternalLink size={11} /> {l.label}
                 </button>
               ))}
+
             </div>
           </div>
         </div>
