@@ -76,6 +76,9 @@ const App = () => (
             <Route path="/preview/:id" element={<ItineraryPreviewPage />} />
             <Route path="/proposal/:token" element={<PublicProposalPage />} />
 
+            <Route path="/setup-account" element={<ProtectedRoute><SetupAccountPage /></ProtectedRoute>} />
+            <Route path="/welcome" element={<Navigate to="/setup-account" replace />} />
+
             <Route path="/" element={<Navigate to="/leads" replace />} />
             <Route path="/leads" element={<ProtectedRoute><LeadsFilesPage /></ProtectedRoute>} />
             <Route path="/leads/:id" element={<ProtectedRoute><LeadDetailPage /></ProtectedRoute>} />
