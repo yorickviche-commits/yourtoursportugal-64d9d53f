@@ -17,6 +17,7 @@ import { openSupplierFileByUrl } from '@/lib/supplierFileUrl';
 import { useToast } from '@/hooks/use-toast';
 import { useLeadOperationsQuery, useSaveLeadOperations, useUpsertLeadOperation, DbLeadOperation } from '@/hooks/useLeadOperationsQuery';
 import { useUnsavedChangesGuard } from '@/hooks/useUnsavedChangesGuard';
+import { useUndoable } from '@/hooks/useUndoable';
 import { triggerCalendarSync } from '@/hooks/useCalendarSync';
 import ItemNotesDialog from '@/components/trip/ItemNotesDialog';
 import BookingRequestDialog from '@/components/trip/BookingRequestDialog';
@@ -101,8 +102,11 @@ const LeadOperationsEditor = ({ activeVersion, leadId, leadCode, pvpTotal = 0, s
   const saveOps = useSaveLeadOperations();
   const upsertOp = useUpsertLeadOperation();
 
-  const [rows, setRows] = useState<OpsRow[]>([]);
-  const [deletedKeys, setDeletedKeys] = useState<string[]>([]);
+  // Estado com histórico: qualquer ação (editar, adicionar, eliminar linha) é
+  // reversível com Ctrl/Cmd+Z e refazível com Ctrl+Shift+Z / Ctrl+Y.
+  const undoable = useUndoable<OpsRow[]>([], { bindKeyboard: true });
+  const rows = undoable.state;
+  const setRows = undoable.set;
   const [dirty, setDirty] = useState(false);
   const [expandedDays, setExpandedDays] = useState<Set<number>>(new Set([1, 2, 3, 4, 5, 6, 7, 8, 9, 10]));
   const [uploadingId, setUploadingId] = useState<string | null>(null);
@@ -225,14 +229,14 @@ const LeadOperationsEditor = ({ activeVersion, leadId, leadCode, pvpTotal = 0, s
         });
       });
 
-    setRows(built);
+    undoable.reset(built);
     initialized.current = true;
   }, [plannerDays, costingDays, operations, plannerLoading, opsLoading, costingLookup]);
 
   const updateRow = useCallback((itemKey: string, patch: Partial<OpsRow>) => {
     setRows(prev => prev.map(r => (r.itemKey === itemKey ? { ...r, ...patch } : r)));
     setDirty(true);
-  }, []);
+  }, [setRows]);
 
   const addRow = useCallback((dayNumber: number) => {
     const key = `d${dayNumber}-manual-${Math.random().toString(36).slice(2, 10)}`;
@@ -253,16 +257,21 @@ const LeadOperationsEditor = ({ activeVersion, leadId, leadCode, pvpTotal = 0, s
       invoiceName: null,
     }]);
     setDirty(true);
-  }, []);
+  }, [setRows]);
 
   const removeRow = useCallback((itemKey: string) => {
     setRows(prev => prev.filter(r => r.itemKey !== itemKey));
-    setDeletedKeys(prev => [...prev, itemKey]);
     setDirty(true);
-  }, []);
+  }, [setRows]);
 
   const handleSave = useCallback(async () => {
     try {
+      // Linhas gravadas que já não existem na tabela → eliminar.
+      // Calculado no momento da gravação, para que desfazer (Ctrl+Z) uma
+      // remoção restaure a linha sem risco de a apagar.
+      const deletedKeys = operations
+        .map(op => op.item_key)
+        .filter(key => !rows.some(r => r.itemKey === key));
       await saveOps.mutateAsync({
         leadId,
         deletedKeys,
@@ -284,7 +293,6 @@ const LeadOperationsEditor = ({ activeVersion, leadId, leadCode, pvpTotal = 0, s
           source: r.source,
         })),
       });
-      setDeletedKeys([]);
       setDirty(false);
       triggerCalendarSync(leadId, 'update');
       toast({ title: 'Operações gravadas' });
@@ -292,7 +300,7 @@ const LeadOperationsEditor = ({ activeVersion, leadId, leadCode, pvpTotal = 0, s
       toast({ title: 'Erro ao gravar', description: err.message, variant: 'destructive' });
       throw err;
     }
-  }, [saveOps, leadId, rows, deletedKeys, toast]);
+  }, [saveOps, leadId, rows, operations, toast]);
 
   const guard = useUnsavedChangesGuard(dirty, handleSave);
 
@@ -425,6 +433,7 @@ const LeadOperationsEditor = ({ activeVersion, leadId, leadCode, pvpTotal = 0, s
             <span>Faturas: {invoicedCount}/{totalItems}</span>
           </div>
         </div>
+        <span className="text-[10px] text-muted-foreground">Ctrl+Z desfaz · Ctrl+S grava</span>
         {dirty && <span className="text-[10px] text-[hsl(var(--warning))] font-medium">Alterações não gravadas</span>}
         <Button size="sm" variant="outline" className="h-7 gap-1 text-xs" onClick={() => setGuidePdfOpen(true)}>
           <FileDown className="h-3 w-3" /> Planning do Guia (PDF)
@@ -489,7 +498,9 @@ const LeadOperationsEditor = ({ activeVersion, leadId, leadCode, pvpTotal = 0, s
                         const bookingOpt = BOOKING_OPTIONS.find(o => o.value === row.bookingStatus);
                         const paymentOpt = PAYMENT_OPTIONS.find(o => o.value === row.paymentStatus);
                         const invoiceOpt = INVOICE_OPTIONS.find(o => o.value === row.invoiceStatus);
-                        const overBudget = row.realCost != null && row.netValue > 0 && row.realCost > row.netValue;
+                        // Qualquer custo real acima do NET previsto é desvio —
+                        // incluindo linhas não orçamentadas (NET 0).
+                        const overBudget = row.realCost != null && row.realCost > (row.netValue || 0);
 
                         return (
                           <div key={row.itemKey} className={cn(GRID, 'px-2 py-2 items-start text-xs hover:bg-muted/10')}>
