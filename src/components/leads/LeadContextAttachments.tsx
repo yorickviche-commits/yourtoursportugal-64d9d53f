@@ -30,7 +30,9 @@ function filenameFromPath(path?: string | null) {
   return path?.split('/').pop() || 'exact-itinerary.pdf';
 }
 
-export function LeadContextAttachments({ leadId, routeMapPath, exactItineraryPdfPath, routeMapUrl }: Props) {
+const MAPS_RE = /^https?:\/\/(www\.)?(google\.[a-z.]+\/maps|maps\.google\.[a-z.]+|maps\.app\.goo\.gl|goo\.gl\/maps)/i;
+
+export function LeadContextAttachments({ leadId, routeMapPath, exactItineraryPdfPath, routeMapUrl, routeDayMaps, numberOfDays }: Props) {
   const { toast } = useToast();
   const qc = useQueryClient();
   const mapInputRef = useRef<HTMLInputElement>(null);
@@ -42,7 +44,39 @@ export function LeadContextAttachments({ leadId, routeMapPath, exactItineraryPdf
   const [linkDraft, setLinkDraft] = useState<string>(routeMapUrl || '');
   const [linkSaving, setLinkSaving] = useState(false);
 
+  const savedDayMaps: RouteDayMap[] = Array.isArray(routeDayMaps) ? routeDayMaps : [];
+  const initialDayDrafts = () => {
+    const base = Math.max(savedDayMaps.length, numberOfDays && numberOfDays > 1 ? numberOfDays : 0, 1);
+    return Array.from({ length: base }, (_, i) => savedDayMaps.find(d => d.day === i + 1)?.url || '');
+  };
+  const [dayDrafts, setDayDrafts] = useState<string[]>(initialDayDrafts);
+  const [daysSaving, setDaysSaving] = useState(false);
+
+  useEffect(() => { setDayDrafts(initialDayDrafts()); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [JSON.stringify(savedDayMaps), numberOfDays]);
+
+  const dayDirty = JSON.stringify(dayDrafts.map((url, i) => ({ day: i + 1, url: url.trim() })).filter(d => d.url))
+    !== JSON.stringify(savedDayMaps.filter(d => d.url).map(d => ({ day: d.day, url: d.url.trim() })));
+
+  const saveDayMaps = async () => {
+    const payload = dayDrafts.map((url, i) => ({ day: i + 1, url: url.trim() })).filter(d => d.url);
+    const invalid = payload.find(d => !MAPS_RE.test(d.url));
+    if (invalid) {
+      toast({ title: `Link inválido no Dia ${invalid.day}`, description: 'Cola um link do Google Maps.', variant: 'destructive' });
+      return;
+    }
+    setDaysSaving(true);
+    try {
+      const { error } = await supabase.from('leads').update({ route_day_maps: payload } as any).eq('id', leadId);
+      if (error) throw error;
+      toast({ title: '🧭 Rotas por dia guardadas', description: `${payload.length} dia(s) com rota — o Travel Planner vai seguir cada rota no dia respetivo.` });
+      refresh();
+    } catch (e: any) {
+      toast({ title: 'Erro', description: e.message, variant: 'destructive' });
+    } finally { setDaysSaving(false); }
+  };
+
   useEffect(() => { setLinkDraft(routeMapUrl || ''); }, [routeMapUrl]);
+
 
   const parsedLink = parseGoogleMapsUrl(routeMapUrl || '');
 
