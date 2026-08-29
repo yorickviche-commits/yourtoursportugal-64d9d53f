@@ -23,6 +23,9 @@ interface PermRow {
 
 const AdminPermissionsPage = () => {
   const { isAdmin } = useAuth();
+  const { data: appRoles } = useAppRoles();
+  const ROLES = (appRoles || []).map(r => r.code);
+  const ROLE_LABELS: Record<string, string> = Object.fromEntries((appRoles || []).map(r => [r.code, r.label]));
   const [perms, setPerms] = useState<PermRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [changes, setChanges] = useState<Record<string, boolean>>({});
