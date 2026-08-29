@@ -757,12 +757,22 @@ const LeadCostingEditor = ({ costingDays, onChange, onSave, saving, plannerDays,
                                         ) : <span className="text-[9px] text-muted-foreground">—</span>}
                                       </td>
                                       <td className="px-1 py-1 align-middle min-w-[140px]">
-                                        <Input
-                                          className="h-auto min-h-7 text-xs border-0 bg-transparent shadow-none focus-visible:ring-1 px-1 py-1 whitespace-normal break-words leading-snug"
-                                          defaultValue={item.description}
-                                          onBlur={e => updateItem(dayIdx, itemIdx, { description: e.target.value })}
-                                          placeholder={isAcc ? 'Hotel / alojamento...' : 'Atividade...'}
-                                        />
+                                        <div className="flex items-start gap-0.5">
+                                          <Input
+                                            className="h-auto min-h-7 text-xs border-0 bg-transparent shadow-none focus-visible:ring-1 px-1 py-1 whitespace-normal break-words leading-snug"
+                                            defaultValue={item.description}
+                                            onBlur={e => updateItem(dayIdx, itemIdx, { description: e.target.value })}
+                                            placeholder={isAcc ? 'Hotel / alojamento...' : 'Atividade...'}
+                                          />
+                                          <button
+                                            type="button"
+                                            title="Escolher experiência do FSE"
+                                            onClick={() => setExpPicker({ dayIdx, itemIdx, supplier: item.supplier })}
+                                            className="mt-1 shrink-0 text-muted-foreground/60 hover:text-[hsl(var(--info))] transition-colors"
+                                          >
+                                            <Sparkles className="h-3.5 w-3.5" />
+                                          </button>
+                                        </div>
                                       </td>
                                       <td className="px-1 py-1 align-middle min-w-[110px]">
                                         <SupplierSearchDropdown
