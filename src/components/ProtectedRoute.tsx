@@ -12,7 +12,7 @@ interface ProtectedRouteProps {
 }
 
 const ProtectedRoute = ({ children, adminOnly = false }: ProtectedRouteProps) => {
-  const { user, loading, isAdmin, profile, profileLoaded, onboardingCompleted } = useAuth();
+  const { user, loading, isAdmin, profileLoaded, onboardingCompleted } = useAuth();
   const { canAccess, loading: permLoading } = usePagePermissions();
   const location = useLocation();
 
