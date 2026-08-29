@@ -394,6 +394,27 @@ const LeadCostingEditor = ({ costingDays, onChange, onSave, saving, plannerDays,
     onChange(updated);
   }, [costingDays, onChange]);
 
+  // Experience picker (FSE catalogue) → fills the cost row
+  const [expPicker, setExpPicker] = useState<{ dayIdx: number; itemIdx: number; supplier: string } | null>(null);
+
+  const applyExperience = useCallback((exp: PickedExperience) => {
+    if (!expPicker) return;
+    const { dayIdx, itemIdx } = expPicker;
+    const current = costingDays[dayIdx]?.items[itemIdx];
+    const pricingType: LeadCostItem['pricingType'] =
+      exp.priceUnit === 'per_person' ? 'per_person' : exp.priceUnit === 'per_night' ? 'per_night' : 'total';
+    updateItem(dayIdx, itemIdx, {
+      description: exp.name + (exp.duration ? ` (${exp.duration})` : ''),
+      supplier: exp.supplierName || current?.supplier || '',
+      pricingType,
+      priceAdults: exp.price,
+      priceChildren: exp.priceChild || 0,
+      isProtocol: true,
+    });
+    setExpPicker(null);
+  }, [expPicker, costingDays, updateItem]);
+
+
   const hasAccommodationSection = costingDays.some(isAccommodationDay);
 
   const addAccommodationSection = () => {
