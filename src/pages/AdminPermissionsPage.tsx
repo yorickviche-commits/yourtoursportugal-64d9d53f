@@ -9,12 +9,7 @@ import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { ShieldCheck, Save, LayoutGrid } from 'lucide-react';
 import { PAGES, permKey } from '@/lib/pagePermissions';
-
-const ROLES = ['super_admin', 'admin', 'sales_agent', 'operations_agent', 'finance', 'b2b_manager', 'viewer'] as const;
-const ROLE_LABELS: Record<string, string> = {
-  super_admin: 'Super Admin', admin: 'Admin', sales_agent: 'Sales', operations_agent: 'Operations',
-  finance: 'Finance', b2b_manager: 'B2B', viewer: 'Viewer',
-};
+import { useAppRoles } from '@/hooks/useUserAdmin';
 
 
 
