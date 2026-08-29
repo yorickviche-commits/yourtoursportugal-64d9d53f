@@ -54,6 +54,7 @@ import ProfilePage from "./pages/ProfilePage";
 import CatalogPage from "./pages/CatalogPage";
 import ProductsPage from "./pages/ProductsPage";
 import ProductDetailPage from "./pages/ProductDetailPage";
+import MapasPage from "./pages/MapasPage";
 import { BoldShortcutProvider } from "@/lib/richText";
 
 const queryClient = new QueryClient();
@@ -115,6 +116,7 @@ const App = () => (
             <Route path="/catalog" element={<ProtectedRoute><CatalogPage /></ProtectedRoute>} />
             <Route path="/products" element={<ProtectedRoute><ProductsPage /></ProtectedRoute>} />
             <Route path="/products/:magpieId" element={<ProtectedRoute><ProductDetailPage /></ProtectedRoute>} />
+            <Route path="/mapas" element={<ProtectedRoute><MapasPage /></ProtectedRoute>} />
             <Route path="/admin/users" element={<ProtectedRoute><AdminUsersPage /></ProtectedRoute>} />
             <Route path="/admin/permissions" element={<ProtectedRoute><AdminPermissionsPage /></ProtectedRoute>} />
             <Route path="/admin/settings" element={<ProtectedRoute><AdminSettingsPage /></ProtectedRoute>} />

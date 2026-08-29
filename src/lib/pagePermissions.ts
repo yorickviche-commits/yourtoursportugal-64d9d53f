@@ -14,6 +14,7 @@ export type PageKey =
   | 'partners'
   | 'catalog'
   | 'products'
+  | 'mapas'
   | 'profile'
   | 'admin_users'
   | 'admin_permissions'
@@ -43,6 +44,7 @@ export const PAGES: PageDef[] = [
   { key: 'comercial_suppliers', label: 'Fornecedores',         path: '/comercial/suppliers',  group: 'Comercial' },
   { key: 'catalog',              label: 'Catálogo Magpie',      path: '/catalog',              group: 'Comercial' },
   { key: 'products',             label: 'Catálogo de Produtos', path: '/products',             group: 'Comercial' },
+  { key: 'mapas',               label: 'Mapas',                path: '/mapas',                group: 'Comercial' },
   { key: 'partners',            label: 'Parceiros B2B',        path: '/partners',             group: 'Comercial' },
   { key: 'profile',             label: 'O Meu Perfil',         path: '/profile',              group: 'Visão Geral' },
   { key: 'admin_users',         label: 'Utilizadores',         path: '/admin/users',          group: 'Administração' },

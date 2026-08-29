@@ -1,6 +1,6 @@
 import { NavLink, useLocation } from 'react-router-dom';
 import {
-  Map, Users, CreditCard, Sparkles, LayoutDashboard,
+  Map, MapPin, Users, CreditCard, Sparkles, LayoutDashboard,
   FileText, Handshake, Grid3x3, Truck, Settings, Shield, Plug, ScrollText,
   Inbox, PackageSearch, Boxes, Brain, Radar,
   LogOut, ChevronDown, ChevronRight, Menu, X,
@@ -35,6 +35,7 @@ const comercialItems: NavItem[] = [
   { to: '/comercial/suppliers', icon: Truck, label: 'Fornecedores', pageKey: 'comercial_suppliers' },
   { to: '/catalog', icon: PackageSearch, label: 'Catálogo Magpie', pageKey: 'catalog' },
   { to: '/products', icon: Boxes, label: 'Catálogo de Produtos', pageKey: 'products' },
+  { to: '/mapas', icon: MapPin, label: 'Mapas', pageKey: 'mapas' },
   { to: '/partners', icon: Handshake, label: 'Parceiros B2B', pageKey: 'partners' },
 ];
 

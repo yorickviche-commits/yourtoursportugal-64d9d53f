@@ -1,0 +1,101 @@
+/*
+ * Estados de interação dos Mapas do Back Office.
+ * Importado uma vez em MapasPage.tsx — todas as classes têm prefixo `mapas-`
+ * para não colidir com o resto da app.
+ */
+
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+
+.mapas-root {
+  font-family: 'Plus Jakarta Sans', Inter, system-ui, sans-serif;
+}
+
+.mapas-root *,
+.mapas-root *::before,
+.mapas-root *::after {
+  box-sizing: border-box;
+}
+
+@keyframes mapas-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.mapas-btn-secondary:hover {
+  border-color: #94a3b8;
+}
+
+.mapas-btn-primary:not(:disabled):hover {
+  background: linear-gradient(180deg, #2f8bef, #0e356f);
+}
+
+.mapas-clear:not(:disabled):hover {
+  color: #1a80e5;
+  border-color: #1a80e5;
+}
+
+.mapas-chip:hover {
+  border-color: #1a80e5;
+}
+
+.mapas-result-card:hover {
+  border-color: #1a80e5;
+}
+
+.mapas-result-card[data-selected]:hover {
+  border-color: #3d9bff;
+}
+
+.mapas-handle:hover {
+  background: linear-gradient(180deg, #d5e6fb, #c6dcf7);
+}
+
+.mapas-gallery-nav {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 30px;
+  height: 30px;
+  border: none;
+  border-radius: 50%;
+  background: rgba(15, 23, 42, 0.55);
+  color: #fff;
+  font-size: 17px;
+  font-weight: 700;
+  line-height: 1;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.mapas-gallery-nav:hover {
+  background: rgba(15, 23, 42, 0.8);
+}
+
+/* controlo de zoom do Google Maps, alinhado com o design */
+.mapas-root .gm-bundled-control .gmnoprint > div {
+  border-radius: 10px !important;
+  box-shadow: 0 4px 14px rgba(15, 23, 42, 0.16) !important;
+}
+
+.mapas-root .gm-style-cc,
+.mapas-root .gmnoprint a {
+  font-size: 10px;
+}
+
+/* scrollbar discreta no painel de resultados */
+.mapas-root ::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.mapas-root ::-webkit-scrollbar-thumb {
+  background: #cbd8e6;
+  border-radius: 99px;
+}
+
+.mapas-root ::-webkit-scrollbar-track {
+  background: transparent;
+}
