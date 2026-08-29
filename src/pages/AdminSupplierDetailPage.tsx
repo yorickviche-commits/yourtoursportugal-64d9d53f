@@ -46,7 +46,7 @@ interface SupplierService {
   price_unit: string; currency: string; payment_conditions: string | null;
   cancellation_policy: string | null; refund_policy: string | null;
   booking_conditions: string | null; notes: string | null; status: string;
-  validity_start: string | null; validity_end: string | null;
+  validity_start: string | null; validity_end: string | null; image_url: string | null;
 }
 
 interface SupplierFile {
