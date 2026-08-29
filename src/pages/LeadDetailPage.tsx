@@ -925,6 +925,7 @@ const LeadDetailPage = ({ mode = 'lead' }: { mode?: 'lead' | 'booking' } = {}) =
             <LeadContextAttachments
               leadId={lead.id}
               routeMapPath={(lead as any).route_map_path}
+              routeMapUrl={(lead as any).route_map_url}
               exactItineraryPdfPath={(lead as any).exact_itinerary_pdf_path}
             />
 
