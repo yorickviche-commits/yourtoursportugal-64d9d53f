@@ -136,6 +136,24 @@ export async function sampleTimeline() {
 }
 
 
+export type SyncPeriod = "yesterday" | "7d" | "30d" | "12m" | "all";
+
+const PERIOD_DAYS: Record<Exclude<SyncPeriod, "all">, number> = {
+  yesterday: 1,
+  "7d": 7,
+  "30d": 30,
+  "12m": 365,
+};
+
+/** Period → ISO cutoff. `all` rebuilds the whole history. */
+export function periodSince(period?: SyncPeriod | null): string | null {
+  if (!period) return null;
+  if (period === "all") return EPOCH;
+  const days = PERIOD_DAYS[period];
+  if (!days) return null;
+  return new Date(Date.now() - days * 86400000).toISOString();
+}
+
 export type PullOpts = {
   recordId?: string;
   folder?: "deals" | "tasks";
@@ -145,6 +163,10 @@ export type PullOpts = {
   timelineLimit?: number;
   timelineOffset?: number;
   leadIds?: string[];
+  /** Manual sync window: reads only what changed inside this period. */
+  period?: SyncPeriod;
+  /** Explicit ISO cutoff (overrides `period`). */
+  since?: string;
 };
 
 export async function runPull(opts: PullOpts = {}) {
@@ -152,6 +174,13 @@ export async function runPull(opts: PullOpts = {}) {
   const logs: LogRow[] = [];
   const leadsByRid = new Map<string, string>();
   let deals = 0, tasks = 0;
+  const windowSince = opts.since ?? periodSince(opts.period);
+
+  const stamp = async (result: Record<string, unknown>) => {
+    await setState(sb, "last_manual_sync_at", new Date().toISOString());
+    if (opts.period) await setState(sb, "last_manual_sync_period", opts.period);
+    await setState(sb, "last_manual_sync_result", JSON.stringify(result).slice(0, 2000));
+  };
 
   if (opts.recordId) {
     const folder = opts.folder === "tasks" ? TASKS_FOLDER : DEALS_FOLDER;
@@ -168,14 +197,17 @@ export async function runPull(opts: PullOpts = {}) {
     }
     const timeline = await syncTimeline(sb, logs, {
       full: opts.fullTimeline,
+      since: windowSince ?? undefined,
       leadIds: opts.leadIds ?? (leadsByRid.size ? [...leadsByRid.values()] : undefined),
     });
     await logSync(sb, logs);
-    return { deals, tasks, timeline, mode: "single" };
+    const result = { deals, tasks, timeline, mode: "single" as const, period: opts.period ?? null };
+    await stamp(result);
+    return result;
   }
 
-  const dealsSince = (await getState(sb, "deals_since")) ?? EPOCH;
-  const tasksSince = (await getState(sb, "tasks_since")) ?? EPOCH;
+  const dealsSince = windowSince ?? (await getState(sb, "deals_since")) ?? EPOCH;
+  const tasksSince = windowSince ?? (await getState(sb, "tasks_since")) ?? EPOCH;
 
   const dealRecords = [
     ...(await pageRecords("new-record", DEALS_FOLDER, dealsSince)),
@@ -204,6 +236,7 @@ export async function runPull(opts: PullOpts = {}) {
 
   const timeline = await syncTimeline(sb, logs, {
     full: opts.fullTimeline,
+    since: windowSince ?? undefined,
     limit: opts.timelineLimit,
     offset: opts.timelineOffset,
     leadIds: opts.leadIds,
@@ -213,6 +246,9 @@ export async function runPull(opts: PullOpts = {}) {
   if (maxTask !== tasksSince) await setState(sb, "tasks_since", maxTask);
   await logSync(sb, logs);
 
-  return { deals, tasks, timeline, deals_since: maxDeal, tasks_since: maxTask };
+  const result = { deals, tasks, timeline, deals_since: maxDeal, tasks_since: maxTask, period: opts.period ?? null };
+  await stamp(result);
+  return result;
 }
+
 

@@ -155,7 +155,7 @@ export default function NetHuntTaskList() {
             <SelectItem value="all" className="text-xs">Todas</SelectItem>
           </SelectContent>
         </Select>
-        <Button size="sm" variant="outline" className="text-xs" onClick={() => { syncNow.mutate(); refetch(); }} disabled={syncNow.isPending}>
+        <Button size="sm" variant="outline" className="text-xs" onClick={() => { syncNow.mutate({ period: '7d' }); refetch(); }} disabled={syncNow.isPending}>
           {syncNow.isPending ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : <RefreshCw className="h-3 w-3 mr-1" />}
           {dataUpdatedAt ? formatDistanceToNow(new Date(dataUpdatedAt), { addSuffix: true, locale: pt }) : 'Sincronizar'}
         </Button>

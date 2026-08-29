@@ -14,6 +14,8 @@ serve(async (req) => {
       timelineLimit?: number;
       timelineOffset?: number;
       leadIds?: string[];
+      period?: "yesterday" | "7d" | "30d" | "12m" | "all";
+      since?: string;
     } = {};
     if (req.method === "POST") {
       try { body = await req.json(); } catch { /* cron sends an empty body */ }

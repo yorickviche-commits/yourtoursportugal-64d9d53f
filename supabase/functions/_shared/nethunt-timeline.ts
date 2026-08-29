@@ -75,11 +75,11 @@ function baseRow(lead: TimelineLead, type: string, id: string, time: string, ext
 }
 
 // ── NetHunt (per record) ─────────────────────────────────────────────────────
-async function nhEvents(lead: TimelineLead, full: boolean, sb: SupabaseClient) {
+async function nhEvents(lead: TimelineLead, full: boolean, sb: SupabaseClient, since?: string) {
   const rows: Row[] = [];
   for (const src of NH_SOURCES) {
     const stateKey = `tl:${lead.id}:${src.type}`;
-    let cursor = full ? EPOCH : (await getState(sb, stateKey)) ?? EPOCH;
+    let cursor = since ?? (full ? EPOCH : (await getState(sb, stateKey)) ?? EPOCH);
     let maxTime = cursor;
 
     for (let page = 0; page < 10; page++) {
@@ -144,7 +144,7 @@ const header = (headers: Row[] | undefined, name: string) =>
     | string
     | undefined ?? "";
 
-async function gmailEvents(lead: TimelineLead) {
+async function gmailEvents(lead: TimelineLead, since?: string) {
   const key = Deno.env.get("GOOGLE_MAIL_API_KEY");
   if (!key || !Deno.env.get("LOVABLE_API_KEY")) return [];
   const parts: string[] = [];
@@ -152,10 +152,12 @@ async function gmailEvents(lead: TimelineLead) {
   const ref = (lead.yt_id ?? "").match(/\d{3,}/)?.[0];
   if (ref) parts.push(`"YT${ref}"`);
   if (!parts.length) return [];
+  // Period filter: Gmail understands after:yyyy/mm/dd
+  const afterQ = since ? ` after:${since.slice(0, 10).replace(/-/g, "/")}` : "";
 
   const h = connHeaders(key);
   const listRes = await fetch(
-    `${GMAIL}/users/me/messages?maxResults=50&q=${encodeURIComponent(parts.join(" OR "))}`,
+    `${GMAIL}/users/me/messages?maxResults=50&q=${encodeURIComponent(`(${parts.join(" OR ")})${afterQ}`)}`,
     { headers: h },
   );
   if (!listRes.ok) return [];
@@ -195,7 +197,7 @@ async function gmailEvents(lead: TimelineLead) {
 }
 
 // ── Google Calendar (real calendar events) ──────────────────────────────────
-async function calendarEvents(sb: SupabaseClient, lead: TimelineLead) {
+async function calendarEvents(sb: SupabaseClient, lead: TimelineLead, since?: string) {
   const key = Deno.env.get("GOOGLE_CALENDAR_API_KEY");
   if (!key || !Deno.env.get("LOVABLE_API_KEY")) return [];
   const { data } = await sb
@@ -217,7 +219,7 @@ async function calendarEvents(sb: SupabaseClient, lead: TimelineLead) {
   const seen = new Set<string>();
   for (const q of queries) {
     const url = `${CAL}/calendars/${encodeURIComponent(calendarId)}/events` +
-      `?q=${encodeURIComponent(q)}&singleEvents=true&maxResults=100&timeMin=2023-01-01T00:00:00Z`;
+      `?q=${encodeURIComponent(q)}&singleEvents=true&maxResults=100&timeMin=${encodeURIComponent(since ?? "2023-01-01T00:00:00Z")}`;
     const res = await fetch(url, { headers: connHeaders(key) });
     if (!res.ok) continue;
     const body = await res.json();
@@ -283,12 +285,13 @@ export async function syncLeadTimeline(
   lead: TimelineLead,
   logs: LogRow[],
   full = false,
+  since?: string,
 ) {
   const collected: Row[] = [];
   for (const task of [
-    () => nhEvents(lead, full, sb),
-    () => gmailEvents(lead),
-    () => calendarEvents(sb, lead),
+    () => nhEvents(lead, full, sb, since),
+    () => gmailEvents(lead, since),
+    () => calendarEvents(sb, lead, since),
     () => localCalendarEvents(sb, lead),
   ]) {
     try {
@@ -329,7 +332,7 @@ async function linkedLeads(sb: SupabaseClient, leadIds?: string[]) {
 export async function syncTimeline(
   sb: SupabaseClient,
   logs: LogRow[],
-  opts: { full?: boolean; limit?: number; offset?: number; leadIds?: string[] } = {},
+  opts: { full?: boolean; limit?: number; offset?: number; leadIds?: string[]; since?: string } = {},
 ) {
   const leads = await linkedLeads(sb, opts.leadIds);
   if (!leads.length) return { leads: 0, counts: {} as Record<string, number> };
@@ -346,7 +349,7 @@ export async function syncTimeline(
 
   const counts: Record<string, number> = {};
   for (const lead of batch) {
-    const c = await syncLeadTimeline(sb, lead, logs, opts.full);
+    const c = await syncLeadTimeline(sb, lead, logs, opts.full, opts.since);
     for (const [k, v] of Object.entries(c)) counts[k] = (counts[k] ?? 0) + v;
   }
   if (opts.offset == null && !opts.leadIds) {

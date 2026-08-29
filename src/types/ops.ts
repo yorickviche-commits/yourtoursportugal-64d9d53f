@@ -25,6 +25,8 @@ export interface MissingItem {
 
 export interface OpsBooking {
   id: string;
+  /** Display reference (YT id / lead code). */
+  ref?: string;
   clientName: string;
   product: string;
   stage: OpsStage;

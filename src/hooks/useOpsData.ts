@@ -1,114 +1,244 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import type { OpsAction, OpsBooking, DeepLink, MissingItem, OpsStage, Severity, ActionState } from '@/types/ops';
-import { mockBookings, mockActions } from '@/data/mockOps';
+import type { OpsAction, OpsBooking, DeepLink, MissingItem, OpsStage, Severity, ActivityEvent } from '@/types/ops';
+import { gmailLink, calendarLink } from '@/lib/links';
 
-/** Maps a DB row to the OpsBooking shape the components already consume. */
-const toBooking = (r: any): OpsBooking => ({
-  id: r.id,
-  clientName: r.client_name ?? '',
-  product: r.product ?? '',
-  stage: (r.stage ?? 'deposit_received') as OpsStage,
-  departureDate: r.departure_date ?? '',
-  pax: r.pax ?? 0,
-  language: (r.language ?? 'EN') as OpsBooking['language'],
-  daysInStage: r.days_in_stage ?? 0,
-  lastContactDays: r.last_contact_days ?? 0,
-  missing: (r.missing ?? []) as MissingItem[],
-  links: (r.links ?? []) as DeepLink[],
-});
+const DAY = 86400000;
 
-const toAction = (r: any): OpsAction => ({
-  id: r.id,
-  bookingId: r.booking_id,
-  severity: (r.severity ?? 'medium') as Severity,
-  title: r.title ?? '',
-  subtitle: r.subtitle ?? '',
-  stage: (r.stage ?? 'deposit_received') as OpsStage,
-  deadlineLabel: r.deadline_label ?? '',
-  deadlineISO: r.deadline_iso ?? '',
-  state: (r.state ?? 'pending') as ActionState,
-  priorityScore: r.priority_score ?? 0,
-  primaryLabel: r.primary_label ?? '',
-  secondaryLabel: r.secondary_label ?? '',
-  draftSubject: r.draft_subject ?? '',
-  draftBody: r.draft_body ?? '',
-  recipient: r.recipient ?? '',
-  links: (r.links ?? []) as DeepLink[],
-});
+/** NetHunt stage → operational stage of the wizard. */
+function toStage(nethuntStage: string | null, status: string | null): OpsStage {
+  const s = (nethuntStage ?? '').toLowerCase();
+  if (s.includes('deposit') || s.includes('payment received')) return 'deposit_received';
+  if (s.includes('suppliers')) return 'suppliers_confirmation';
+  if (s.includes('technical')) return 'technical_briefing';
+  if (s.includes('in execution') || s.includes('trip ready')) return 'in_execution';
+  if (s.includes('post-trip') || s.includes('post trip')) return 'post_trip';
+  if (s.includes('deferred') || s.includes('postponed')) return 'deferred';
+  if (s.includes('archive')) return 'archived';
+  return status === 'won' ? 'deposit_received' : 'deposit_received';
+}
 
-export const bookingToRow = (b: OpsBooking) => ({
-  id: b.id,
-  client_name: b.clientName,
-  product: b.product,
-  stage: b.stage,
-  departure_date: b.departureDate || null,
-  pax: b.pax,
-  language: b.language,
-  days_in_stage: b.daysInStage,
-  last_contact_days: b.lastContactDays,
-  missing: b.missing,
-  links: b.links,
-});
+const daysSince = (iso?: string | null) =>
+  iso ? Math.max(0, Math.round((Date.now() - new Date(iso).getTime()) / DAY)) : 0;
 
-export const actionToRow = (a: OpsAction) => ({
-  id: a.id,
-  booking_id: a.bookingId,
-  severity: a.severity,
-  title: a.title,
-  subtitle: a.subtitle,
-  stage: a.stage,
-  deadline_label: a.deadlineLabel,
-  deadline_iso: a.deadlineISO || null,
-  state: a.state,
-  priority_score: a.priorityScore,
-  primary_label: a.primaryLabel,
-  secondary_label: a.secondaryLabel,
-  draft_subject: a.draftSubject,
-  draft_body: a.draftBody,
-  recipient: a.recipient,
-  links: a.links,
-});
+const daysUntil = (date?: string | null) => {
+  if (!date) return Number.POSITIVE_INFINITY;
+  const t = new Date(date).getTime();
+  return Number.isNaN(t) ? Number.POSITIVE_INFINITY : Math.round((t - Date.now()) / DAY);
+};
 
-/** Inserts the seed dataset (idempotent upsert). */
-export async function seedOpsData() {
-  const { error: bErr } = await supabase
-    .from('ops_bookings' as any)
-    .upsert(mockBookings.map(bookingToRow) as any, { onConflict: 'id' });
-  if (bErr) throw bErr;
-  const { error: aErr } = await supabase
-    .from('ops_actions' as any)
-    .upsert(mockActions.map(actionToRow) as any, { onConflict: 'id' });
-  if (aErr) throw aErr;
+const nethuntUrl = (recordId?: string | null) =>
+  recordId ? `https://nethunt.com/web/#nethunt/record/${recordId}` : null;
+
+type LeadRow = {
+  id: string;
+  yt_id: string | null;
+  lead_code: string | null;
+  client_name: string | null;
+  email: string | null;
+  destination: string | null;
+  pax: number | null;
+  status: string | null;
+  nethunt_stage: string | null;
+  nethunt_record_id: string | null;
+  trip_start: string | null;
+  travel_dates: string | null;
+  updated_at: string | null;
+};
+
+/** Builds bookings + actions from the real lead / payments / operations / briefing data. */
+function build(
+  leads: LeadRow[],
+  payments: { lead_id: string; kind: string | null; amount: number | null }[],
+  links: { lead_id: string | null; status: string | null }[],
+  operations: { lead_id: string; booking_status: string | null; supplier: string | null; activity_title: string | null; net_value: number | null }[],
+  emails: { lead_id: string | null; email_category: string | null; sent_at: string | null }[],
+) {
+  const byLead = <T extends { lead_id: string | null }>(rows: T[]) => {
+    const m = new Map<string, T[]>();
+    for (const r of rows) {
+      if (!r.lead_id) continue;
+      const list = m.get(r.lead_id) ?? [];
+      list.push(r);
+      m.set(r.lead_id, list);
+    }
+    return m;
+  };
+
+  const paysByLead = byLead(payments as { lead_id: string | null; kind: string | null; amount: number | null }[]);
+  const linksByLead = byLead(links);
+  const opsByLead = byLead(operations as { lead_id: string | null; booking_status: string | null; supplier: string | null; activity_title: string | null; net_value: number | null }[]);
+  const mailsByLead = byLead(emails);
+
+  const bookings: OpsBooking[] = [];
+  const actions: OpsAction[] = [];
+
+  for (const l of leads) {
+    const ref = l.yt_id || l.lead_code || l.id.slice(0, 8);
+    const departure = l.trip_start || (l.travel_dates && /^\d{4}-\d{2}-\d{2}/.test(l.travel_dates) ? l.travel_dates.slice(0, 10) : '') || '';
+    const dUntil = daysUntil(departure);
+    const stage = toStage(l.nethunt_stage, l.status);
+
+    const pays = paysByLead.get(l.id) ?? [];
+    const paid = pays.reduce((n, p) => n + Number(p.amount ?? 0), 0);
+    const hasLink = (linksByLead.get(l.id) ?? []).length > 0;
+
+    const ops = opsByLead.get(l.id) ?? [];
+    const unconfirmed = ops.filter((o) => (o.booking_status ?? 'pending').toLowerCase() !== 'confirmed');
+
+    const mails = mailsByLead.get(l.id) ?? [];
+    const clientBriefing = mails.some((m) => (m.email_category ?? '').toLowerCase().includes('client'));
+    const fseBriefing = mails.some((m) => !(m.email_category ?? '').toLowerCase().includes('client'));
+
+    const missing: MissingItem[] = [];
+    // Pillar 1 — client payments
+    if (paid <= 0) {
+      missing.push({ field: hasLink ? 'Payment pending (link sent)' : 'Deposit / payment not received', blocking: true });
+    }
+    // Pillar 2 — FSE & bookings (suppliers, guide, transport)
+    if (ops.length === 0) {
+      missing.push({ field: 'FSE supplier bookings not started', blocking: true });
+    } else if (unconfirmed.length) {
+      missing.push({
+        field: `FSE supplier bookings pending (${unconfirmed.length})`,
+        blocking: dUntil <= 7,
+      });
+    }
+    // Pillar 3 — briefing to FSEs / guide / transport
+    if (!fseBriefing) missing.push({ field: 'Supplier briefing FSE not sent', blocking: dUntil <= 3 });
+    // Pillar 4 — briefing & documents to client
+    if (!clientBriefing) missing.push({ field: 'Client briefing not sent', blocking: dUntil <= 3 });
+
+    const deepLinks: DeepLink[] = [
+      { type: 'internal', label: 'Lead', url: `/leads/${l.id}` },
+      ...(nethuntUrl(l.nethunt_record_id) ? [{ type: 'nethunt' as const, label: 'CRM', url: nethuntUrl(l.nethunt_record_id)! }] : []),
+      { type: 'gmail', label: 'Email', url: gmailLink(l.email || l.client_name || ref) },
+      ...(departure ? [{ type: 'calendar' as const, label: 'Calendar', url: calendarLink(departure) }] : []),
+    ];
+
+    const booking: OpsBooking = {
+      id: l.id,
+      ref,
+      clientName: l.client_name ?? '(sem nome)',
+      product: l.destination ?? '',
+      stage,
+      departureDate: departure,
+      pax: l.pax ?? 0,
+      language: 'EN',
+      daysInStage: daysSince(l.updated_at),
+      lastContactDays: daysSince(l.updated_at),
+      missing,
+      links: deepLinks,
+    };
+    bookings.push(booking);
+
+    // One action per blocking/warning gap, prioritised by departure proximity.
+    for (const m of missing) {
+      const severity: Severity = m.blocking && dUntil <= 3 ? 'critical' : m.blocking ? 'high' : 'medium';
+      const deadlineLabel = !departure
+        ? 'sem data'
+        : dUntil < 0 ? 'partiu' : dUntil === 0 ? 'hoje' : `D-${dUntil}`;
+      actions.push({
+        id: `${l.id}:${m.field}`,
+        bookingId: l.id,
+        severity,
+        title: `${ref} · ${m.field}`,
+        subtitle: `${booking.clientName}${booking.product ? ` — ${booking.product}` : ''}${departure ? ` · partida ${departure}` : ''}`,
+        stage,
+        deadlineLabel,
+        deadlineISO: departure ? new Date(departure).toISOString() : '',
+        state: m.blocking ? 'pending' : 'awaiting_supplier',
+        priorityScore: 0,
+        primaryLabel: 'ABRIR LEAD',
+        secondaryLabel: 'CRM',
+        draftSubject: `${ref} — ${m.field}`,
+        draftBody: '',
+        recipient: booking.clientName,
+        links: deepLinks,
+      });
+    }
+  }
+
+  return { bookings, actions };
 }
 
 export function useOpsData() {
   const query = useQuery({
-    queryKey: ['ops-data'],
+    queryKey: ['ops-data-real'],
     queryFn: async () => {
-      const [b, a] = await Promise.all([
-        supabase.from('ops_bookings' as any).select('*'),
-        supabase.from('ops_actions' as any).select('*'),
+      const { data: leadRows, error } = await supabase
+        .from('leads')
+        .select('id, yt_id, lead_code, client_name, email, destination, pax, status, nethunt_stage, nethunt_record_id, trip_start, travel_dates, updated_at')
+        .or('status.eq.won,nethunt_stage.ilike.OPERATIONS%')
+        .order('trip_start', { ascending: true, nullsFirst: false })
+        .limit(500);
+      if (error) throw error;
+
+      const leads = ((leadRows ?? []) as LeadRow[]).filter(
+        (l) => !/archive/i.test(l.nethunt_stage ?? ''),
+      );
+      const ids = leads.map((l) => l.id);
+      if (!ids.length) return { bookings: [], actions: [] };
+
+      const [pay, plink, ops, mails] = await Promise.all([
+        supabase.from('lead_payments').select('lead_id, kind, amount').in('lead_id', ids),
+        supabase.from('payment_links').select('lead_id, status').in('lead_id', ids),
+        supabase.from('lead_operations').select('lead_id, booking_status, supplier, activity_title, net_value').in('lead_id', ids),
+        supabase.from('booking_emails_log').select('lead_id, email_category, sent_at').in('lead_id', ids),
       ]);
-      if (b.error) throw b.error;
-      if (a.error) throw a.error;
-      return {
-        bookings: ((b.data ?? []) as any[]).map(toBooking),
-        actions: ((a.data ?? []) as any[]).map(toAction),
-      };
+
+      return build(
+        leads,
+        (pay.data ?? []) as any[],
+        (plink.data ?? []) as any[],
+        (ops.data ?? []) as any[],
+        (mails.data ?? []) as any[],
+      );
     },
-    staleTime: 30_000,
+    staleTime: 60_000,
   });
 
-  const empty = !query.data || query.data.bookings.length === 0;
-
   return {
-    // Fall back to the seed dataset while empty so the cockpit is never blank.
-    bookings: empty ? mockBookings : query.data!.bookings,
-    actions: empty ? mockActions : query.data!.actions,
-    isSeeded: !empty,
+    bookings: query.data?.bookings ?? [],
+    actions: query.data?.actions ?? [],
     isLoading: query.isLoading,
     error: query.error as Error | null,
     refetch: query.refetch,
   };
+}
+
+/** Recent real operational activity (audit log + CRM timeline). */
+export function useOpsActivity() {
+  return useQuery({
+    queryKey: ['ops-activity'],
+    queryFn: async (): Promise<ActivityEvent[]> => {
+      const [logs, timeline] = await Promise.all([
+        supabase.from('activity_logs').select('action_type, entity_type, entity_id, created_at').order('created_at', { ascending: false }).limit(15),
+        supabase.from('nethunt_timeline').select('event_type, subject, snippet, event_time').order('event_time', { ascending: false }).limit(15),
+      ]);
+
+      const fmt = (iso?: string | null) =>
+        iso ? new Date(iso).toLocaleString('pt-PT', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : '';
+
+      const a: ActivityEvent[] = ((logs.data ?? []) as any[]).map((r) => ({
+        time: fmt(r.created_at),
+        label: String(r.action_type ?? 'evento'),
+        sub: `${r.entity_type ?? ''} ${r.entity_id ?? ''}`.trim(),
+        icon: 'check',
+        color: '#0a6b4c',
+      }));
+      const b: ActivityEvent[] = ((timeline.data ?? []) as any[]).map((r) => ({
+        time: fmt(r.event_time),
+        label: String(r.subject ?? r.event_type ?? 'evento CRM'),
+        sub: String(r.snippet ?? '').slice(0, 120),
+        icon: r.event_type === 'email' ? 'mail' : r.event_type === 'calendar' ? 'clock' : 'check',
+        color: r.event_type === 'email' ? '#0f3fb8' : '#4b32b0',
+      }));
+
+      return [...a, ...b]
+        .sort((x, y) => y.time.localeCompare(x.time))
+        .slice(0, 20);
+    },
+    staleTime: 60_000,
+  });
 }
