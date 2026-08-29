@@ -161,23 +161,38 @@ const LeadsFilesPage = () => {
         ) : (
           /* Desktop: Table */
           <div className="bg-card rounded-lg border overflow-hidden">
-            <table className="w-full text-sm">
+            <table className="w-full table-fixed text-sm">
+              <colgroup>
+                <col className="w-[92px]" />
+                <col />
+                <col className="w-[56px]" />
+                <col className="w-[130px]" />
+                <col className="w-[48px]" />
+                <col className="w-[104px]" />
+                <col className="w-[48px]" />
+                <col className="w-[96px]" />
+                <col className="w-[86px]" />
+                <col className="w-[120px]" />
+                <col className="w-[160px]" />
+                <col className="w-[44px]" />
+              </colgroup>
               <thead>
                 <tr className="border-b border-border bg-muted/50">
-                  <th className="text-left px-3 py-2.5 font-medium text-muted-foreground text-xs">Id</th>
-                  <th className="text-left px-3 py-2.5 font-medium text-muted-foreground text-xs">Nome</th>
-                  <th className="text-center px-2 py-2.5 font-medium text-muted-foreground text-xs">Tipo</th>
-                  <th className="text-left px-3 py-2.5 font-medium text-muted-foreground text-xs">Destino</th>
-                  <th className="text-center px-2 py-2.5 font-medium text-muted-foreground text-xs">Dias</th>
-                  <th className="text-left px-3 py-2.5 font-medium text-muted-foreground text-xs">Datas</th>
-                  <th className="text-center px-2 py-2.5 font-medium text-muted-foreground text-xs">Pax</th>
-                  <th className="text-right px-3 py-2.5 font-medium text-muted-foreground text-xs">PVP / Margem</th>
-                  <th className="text-left px-3 py-2.5 font-medium text-muted-foreground text-xs">Data Criação</th>
-                  <th className="text-left px-3 py-2.5 font-medium text-muted-foreground text-xs">Agentes</th>
-                  <th className="text-center px-3 py-2.5 font-medium text-muted-foreground text-xs">Estado</th>
-                  <th className="text-center px-2 py-2.5 font-medium text-muted-foreground text-xs">Ver</th>
+                  <th className="text-left px-2 py-2.5 font-medium text-muted-foreground text-[11px]">Id</th>
+                  <th className="text-left px-2 py-2.5 font-medium text-muted-foreground text-[11px]">Nome</th>
+                  <th className="text-center px-1 py-2.5 font-medium text-muted-foreground text-[11px]">Tipo</th>
+                  <th className="text-left px-2 py-2.5 font-medium text-muted-foreground text-[11px]">Destino</th>
+                  <th className="text-center px-1 py-2.5 font-medium text-muted-foreground text-[11px]">Dias</th>
+                  <th className="text-left px-2 py-2.5 font-medium text-muted-foreground text-[11px]">Datas</th>
+                  <th className="text-center px-1 py-2.5 font-medium text-muted-foreground text-[11px]">Pax</th>
+                  <th className="text-right px-2 py-2.5 font-medium text-muted-foreground text-[11px]">PVP / Margem</th>
+                  <th className="text-left px-2 py-2.5 font-medium text-muted-foreground text-[11px]">Criação</th>
+                  <th className="text-left px-2 py-2.5 font-medium text-muted-foreground text-[11px]">Agentes</th>
+                  <th className="text-center px-2 py-2.5 font-medium text-muted-foreground text-[11px]">Estado</th>
+                  <th className="text-center px-1 py-2.5 font-medium text-muted-foreground text-[11px]">Ver</th>
                 </tr>
               </thead>
+
               <tbody>
                 {filteredLeads.map(lead => {
                   const badge = resolveStage(lead as any);
