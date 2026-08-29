@@ -119,15 +119,30 @@ const DepartmentKPIDashboard = () => {
 
 const PersonalKPIView = () => {
   const { user } = useAuth();
-  const { data } = useUserKPIs(user?.id, {});
-  if (!data) return null;
+  const { data, isLoading, error } = useUserKPIs(user?.id, {});
+
   return (
-    <div className="space-y-2">
+    <div className="space-y-3">
       <h2 className="text-sm font-semibold">Os Meus KPIs</h2>
-      <KPICards k={data} />
+      {isLoading && (
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          {Array.from({ length: 8 }).map((_, i) => (
+            <div key={i} className="h-20 animate-pulse rounded-md border border-border bg-muted/40" />
+          ))}
+        </div>
+      )}
+      {!isLoading && error && (
+        <p className="text-xs text-muted-foreground">Não foi possível carregar os KPIs. Tenta recarregar a página.</p>
+      )}
+      {!isLoading && !error && data && <KPICards k={data} />}
+      <div className="flex flex-wrap items-center gap-2 pt-1">
+        <Link to="/leads"><Button size="sm" variant="outline" className="text-xs">Ver as minhas Leads</Button></Link>
+        <Link to="/tasks"><Button size="sm" variant="outline" className="text-xs">Tarefas</Button></Link>
+      </div>
     </div>
   );
 };
+
 
 const Dashboard = () => {
   const [subPage, setSubPage] = useState<DashboardSubPage>('overview');
