@@ -2244,12 +2244,6 @@ const TravelPlanProposal = ({
                     <td className="px-3 py-2 font-bold text-slate-900 uppercase tracking-wide">{netPricing ? getPdfDict(language).totalPriceNet : h.total}</td>
                     <td className="px-3 py-2 text-right font-bold text-slate-900 whitespace-nowrap">{eur(totalPVP)}</td>
                   </tr>
-                  {perPerson > 0 && (
-                    <tr className="border-t border-slate-100">
-                      <td className="px-3 py-2 text-slate-600">{h.perPerson}</td>
-                      <td className="px-3 py-2 text-right text-slate-700 whitespace-nowrap">{eur(perPerson)}</td>
-                    </tr>
-                  )}
                 </tbody>
               </table>
             </div>
