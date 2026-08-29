@@ -5,12 +5,17 @@ import { useToast } from '@/hooks/use-toast';
 import { useQueryClient } from '@tanstack/react-query';
 import { parseGoogleMapsUrl } from '@/lib/mapEmbed';
 
+export interface RouteDayMap { day: number; url: string }
+
 interface Props {
   leadId: string;
   routeMapPath?: string | null;
   exactItineraryPdfPath?: string | null;
   routeMapUrl?: string | null;
+  routeDayMaps?: RouteDayMap[] | null;
+  numberOfDays?: number | null;
 }
+
 
 const BUCKET = 'lead-context';
 const MAX_PDF_BYTES = 7 * 1024 * 1024;
