@@ -34,6 +34,32 @@ export function LeadContextAttachments({ leadId, routeMapPath, exactItineraryPdf
   const [pdfUploading, setPdfUploading] = useState(false);
   const [mapUrl, setMapUrl] = useState<string | null>(null);
   const [pdfSizeLabel, setPdfSizeLabel] = useState<string>('');
+  const [linkDraft, setLinkDraft] = useState<string>(routeMapUrl || '');
+  const [linkSaving, setLinkSaving] = useState(false);
+
+  useEffect(() => { setLinkDraft(routeMapUrl || ''); }, [routeMapUrl]);
+
+  const parsedLink = parseGoogleMapsUrl(routeMapUrl || '');
+
+  const saveLink = async (value: string | null) => {
+    const clean = value?.trim() || null;
+    if (clean && !/^https?:\/\/(www\.)?(google\.[a-z.]+\/maps|maps\.google\.[a-z.]+|maps\.app\.goo\.gl|goo\.gl\/maps)/i.test(clean)) {
+      toast({ title: 'Link inválido', description: 'Cola um link do Google Maps (google.com/maps/... ou maps.app.goo.gl/...).', variant: 'destructive' });
+      return;
+    }
+    setLinkSaving(true);
+    try {
+      const { error } = await supabase.from('leads').update({ route_map_url: clean } as any).eq('id', leadId);
+      if (error) throw error;
+      toast({
+        title: clean ? '🧭 Rota Google Maps guardada' : 'Rota removida',
+        description: clean ? 'O Travel Planner vai seguir esta rota como base do programa.' : undefined,
+      });
+      refresh();
+    } catch (e: any) {
+      toast({ title: 'Erro', description: e.message, variant: 'destructive' });
+    } finally { setLinkSaving(false); }
+  };
 
   const refresh = () => {
     qc.invalidateQueries({ queryKey: ['leads'] });
