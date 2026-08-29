@@ -1554,6 +1554,7 @@ export type Database = {
           phone: string | null
           pvp_override: number | null
           route_map_path: string | null
+          route_map_url: string | null
           sales_owner: string | null
           source: string
           status: string
@@ -1594,6 +1595,7 @@ export type Database = {
           phone?: string | null
           pvp_override?: number | null
           route_map_path?: string | null
+          route_map_url?: string | null
           sales_owner?: string | null
           source?: string
           status?: string
@@ -1634,6 +1636,7 @@ export type Database = {
           phone?: string | null
           pvp_override?: number | null
           route_map_path?: string | null
+          route_map_url?: string | null
           sales_owner?: string | null
           source?: string
           status?: string

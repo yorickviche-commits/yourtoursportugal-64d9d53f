@@ -1,13 +1,15 @@
 import { useEffect, useRef, useState } from 'react';
-import { Loader2, MapPin, FileText, Upload, X, Sparkles } from 'lucide-react';
+import { Loader2, MapPin, FileText, Upload, X, Sparkles, Link2, Save } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useQueryClient } from '@tanstack/react-query';
+import { parseGoogleMapsUrl } from '@/lib/mapEmbed';
 
 interface Props {
   leadId: string;
   routeMapPath?: string | null;
   exactItineraryPdfPath?: string | null;
+  routeMapUrl?: string | null;
 }
 
 const BUCKET = 'lead-context';
@@ -23,7 +25,7 @@ function filenameFromPath(path?: string | null) {
   return path?.split('/').pop() || 'exact-itinerary.pdf';
 }
 
-export function LeadContextAttachments({ leadId, routeMapPath, exactItineraryPdfPath }: Props) {
+export function LeadContextAttachments({ leadId, routeMapPath, exactItineraryPdfPath, routeMapUrl }: Props) {
   const { toast } = useToast();
   const qc = useQueryClient();
   const mapInputRef = useRef<HTMLInputElement>(null);
@@ -32,6 +34,32 @@ export function LeadContextAttachments({ leadId, routeMapPath, exactItineraryPdf
   const [pdfUploading, setPdfUploading] = useState(false);
   const [mapUrl, setMapUrl] = useState<string | null>(null);
   const [pdfSizeLabel, setPdfSizeLabel] = useState<string>('');
+  const [linkDraft, setLinkDraft] = useState<string>(routeMapUrl || '');
+  const [linkSaving, setLinkSaving] = useState(false);
+
+  useEffect(() => { setLinkDraft(routeMapUrl || ''); }, [routeMapUrl]);
+
+  const parsedLink = parseGoogleMapsUrl(routeMapUrl || '');
+
+  const saveLink = async (value: string | null) => {
+    const clean = value?.trim() || null;
+    if (clean && !/^https?:\/\/(www\.)?(google\.[a-z.]+\/maps|maps\.google\.[a-z.]+|maps\.app\.goo\.gl|goo\.gl\/maps)/i.test(clean)) {
+      toast({ title: 'Link inválido', description: 'Cola um link do Google Maps (google.com/maps/... ou maps.app.goo.gl/...).', variant: 'destructive' });
+      return;
+    }
+    setLinkSaving(true);
+    try {
+      const { error } = await supabase.from('leads').update({ route_map_url: clean } as any).eq('id', leadId);
+      if (error) throw error;
+      toast({
+        title: clean ? '🧭 Rota Google Maps guardada' : 'Rota removida',
+        description: clean ? 'O Travel Planner vai seguir esta rota como base do programa.' : undefined,
+      });
+      refresh();
+    } catch (e: any) {
+      toast({ title: 'Erro', description: e.message, variant: 'destructive' });
+    } finally { setLinkSaving(false); }
+  };
 
   const refresh = () => {
     qc.invalidateQueries({ queryKey: ['leads'] });
@@ -127,6 +155,65 @@ export function LeadContextAttachments({ leadId, routeMapPath, exactItineraryPdf
   return (
     <div className="space-y-2">
       <label className="text-[10px] text-muted-foreground uppercase">Contexto extra para o Travel Planner</label>
+
+      {/* Google Maps route link */}
+      <div className="border rounded-md p-2 bg-muted/30 space-y-2">
+        <p className="text-xs font-medium flex items-center gap-1"><Link2 className="h-3 w-3 text-blue-600" /> Link Google Maps da rota exata <span className="text-muted-foreground/70 font-normal">(opcional)</span></p>
+        <div className="flex gap-2">
+          <input
+            value={linkDraft}
+            onChange={e => setLinkDraft(e.target.value)}
+            onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); saveLink(linkDraft); } }}
+            placeholder="https://www.google.com/maps/dir/Porto/Douro/Lisboa"
+            className="flex-1 h-8 rounded border bg-background px-2 text-xs"
+          />
+          <button
+            type="button"
+            onClick={() => saveLink(linkDraft)}
+            disabled={linkSaving || linkDraft.trim() === (routeMapUrl || '').trim()}
+            className="h-8 px-2 rounded bg-primary text-primary-foreground text-[11px] flex items-center gap-1 disabled:opacity-40"
+          >
+            {linkSaving ? <Loader2 className="h-3 w-3 animate-spin" /> : <Save className="h-3 w-3" />} Guardar
+          </button>
+          {routeMapUrl && (
+            <button
+              type="button"
+              onClick={() => { setLinkDraft(''); saveLink(null); }}
+              className="h-8 px-2 rounded border text-[11px] text-red-600 flex items-center gap-1"
+            >
+              <X className="h-3 w-3" /> Remover
+            </button>
+          )}
+        </div>
+
+        {routeMapUrl && (
+          <>
+            {parsedLink.waypoints.length > 0 && (
+              <p className="text-[10px] text-muted-foreground">
+                Pontos detetados: <span className="text-foreground">{parsedLink.waypoints.join(' → ')}</span>
+              </p>
+            )}
+            {parsedLink.embedSrc ? (
+              <iframe
+                src={parsedLink.embedSrc}
+                title="Rota Google Maps"
+                className="w-full h-40 rounded border"
+                loading="lazy"
+                referrerPolicy="no-referrer-when-downgrade"
+              />
+            ) : (
+              <p className="text-[10px] text-muted-foreground">
+                Link curto guardado (sem pré-visualização). <a href={routeMapUrl} target="_blank" rel="noreferrer" className="text-blue-600 hover:underline">Abrir no Google Maps</a>
+              </p>
+            )}
+            <div className="flex items-center gap-1.5 text-[11px] bg-blue-50 border border-blue-200 text-blue-800 rounded px-2 py-1">
+              <Sparkles className="h-3 w-3" />
+              <span><strong>Rota ativa</strong> — o Travel Planner vai usar esta sequência geográfica como base do programa.</span>
+            </div>
+          </>
+        )}
+      </div>
+
       <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
         {/* Route Map slot */}
         <div className="border rounded-md p-2 bg-muted/30">

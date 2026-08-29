@@ -143,6 +143,8 @@ interface TravelPlanProposalProps {
   defaultLanguage?: string;
   routeMapPath?: string;
   exactItineraryPdfPath?: string;
+  /** Google Maps share link of the exact route (from Dados Gerais). */
+  routeMapUrl?: string;
   onGoToCosting?: () => void;
   /** Accommodation block from Costing (day 0), shown to the client when enabled. */
   accommodation?: { name: string; nights: number; value?: number }[];
@@ -535,7 +537,7 @@ const TravelPlanProposal = ({
   numberOfDays, datesType, pax, paxChildren, paxInfants,
   travelStyles, comfortLevel, budgetLevel, magicQuestion, notes,
   defaultLanguage,
-  routeMapPath, exactItineraryPdfPath,
+  routeMapPath, exactItineraryPdfPath, routeMapUrl,
   onGoToCosting,
   accommodation = [],
   netPricing = false,
@@ -991,11 +993,17 @@ const TravelPlanProposal = ({
           leadData: { ...leadData, language: effectiveLang },
           extraInstructions: extra || undefined,
           routeMapPath, exactItineraryPdfPath,
+          routeMapUrl,
+          routeWaypoints: routeMapUrl ? parseGoogleMapsUrl(routeMapUrl).waypoints : undefined,
         },
       });
       if (error) throw new Error(await getFunctionErrorMessage(error));
       if (data?.error) throw new Error(data.error);
       const result = data.result as TravelPlanData;
+      // Seed the first day's map with the exact route link from Dados Gerais
+      if (routeMapUrl && Array.isArray(result.days) && result.days.length > 0 && !result.days[0].mapUrl) {
+        result.days = result.days.map((d, i) => (i === 0 ? { ...d, mapUrl: routeMapUrl } : d));
+      }
       setPlan(result);
       setViewMode('preview');
       setShowRegenInput(false);
@@ -1005,7 +1013,7 @@ const TravelPlanProposal = ({
     } finally {
       setGenerating(false);
     }
-  }, [leadData, leadId, language, toast, clearUsedPhotos, routeMapPath, exactItineraryPdfPath]);
+  }, [leadData, leadId, language, toast, clearUsedPhotos, routeMapPath, exactItineraryPdfPath, routeMapUrl]);
 
   // Manual: fetch images for the current plan (cover + per-day) using Unsplash + dedup
   const handleFillImages = useCallback(async () => {
@@ -1124,7 +1132,11 @@ const TravelPlanProposal = ({
           : userMessage;
 
       const { data, error } = await supabase.functions.invoke('generate-travel-plan', {
-        body: { leadData, extraInstructions: sectionInstruction, routeMapPath, exactItineraryPdfPath },
+        body: {
+          leadData, extraInstructions: sectionInstruction, routeMapPath, exactItineraryPdfPath,
+          routeMapUrl,
+          routeWaypoints: routeMapUrl ? parseGoogleMapsUrl(routeMapUrl).waypoints : undefined,
+        },
       });
       if (error) throw new Error(await getFunctionErrorMessage(error));
       if (data?.error) throw new Error(data.error);
@@ -1147,7 +1159,7 @@ const TravelPlanProposal = ({
     } finally {
       setSectionLoading(null);
     }
-  }, [plan, leadData, language, routeMapPath, exactItineraryPdfPath]);
+  }, [plan, leadData, language, routeMapPath, exactItineraryPdfPath, routeMapUrl]);
 
 
   // Save

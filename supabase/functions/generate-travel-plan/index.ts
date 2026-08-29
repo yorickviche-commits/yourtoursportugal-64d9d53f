@@ -99,6 +99,8 @@ interface RequestBody {
   extraInstructions?: string;
   routeMapPath?: string;
   exactItineraryPdfPath?: string;
+  routeMapUrl?: string;
+  routeWaypoints?: string[];
 }
 
 const LANGUAGE_MAP: Record<string, string> = {
@@ -434,7 +436,7 @@ serve(async (req) => {
   if (!__auth.ok) return __auth.response;
 
   try {
-    const { leadData, extraInstructions, routeMapPath, exactItineraryPdfPath } = (await req.json()) as RequestBody;
+    const { leadData, extraInstructions, routeMapPath, exactItineraryPdfPath, routeMapUrl, routeWaypoints } = (await req.json()) as RequestBody;
     const numDays = calculateDays(leadData);
     const dateRange = formatDateRange(leadData, numDays);
     const paxStr = `${leadData.pax} adult${leadData.pax > 1 ? 's' : ''}${leadData.paxChildren ? ` + ${leadData.paxChildren} children` : ''}${leadData.paxInfants ? ` + ${leadData.paxInfants} infants` : ''}`;
@@ -500,6 +502,8 @@ serve(async (req) => {
     const finalAttachments = attachments.filter(a => a.kind === 'image');
     const hasMap = finalAttachments.some(a => a.kind === 'image');
     const hasExactPdf = Boolean(exactItineraryContext);
+    const routeStops = Array.isArray(routeWaypoints) ? routeWaypoints.filter(w => typeof w === 'string' && w.trim()).slice(0, 40) : [];
+    const hasRouteLink = Boolean(routeMapUrl) || routeStops.length > 0;
     const notesItinerary = detectExactItineraryInNotes(leadData.notes);
     const hasExactNotes = notesItinerary.found;
     const hasExact = hasExactPdf || hasExactNotes;
@@ -520,6 +524,7 @@ ${leadData.magicQuestion ? `What would make this trip unforgettable: ${leadData.
 ${leadData.notes && !hasExactNotes ? `Additional notes: ${leadData.notes}` : ''}
 ${extraInstructions ? `\nADDITIONAL INSTRUCTIONS FROM TEAM: ${extraInstructions}` : ''}
 ${hasMap ? `\nATTACHED: a Google Maps route screenshot showing the intended geographic flow.` : ''}
+${hasRouteLink ? `\nEXACT GOOGLE MAPS ROUTE (provided by the agent as the geographic backbone of this programme${routeMapUrl ? `: ${routeMapUrl}` : ''}).${routeStops.length ? ` Ordered stops: ${routeStops.join(' -> ')}.` : ''} Build the day-by-day flow following this sequence in order: overnights, drives and activities must respect these places and their order. Do not invent regions outside this route, and do not reorder the stops. Distribute the stops across the ${effectiveDays} days realistically (driving times, buffers), adding local experiences and inspiration along the route.` : ''}
 ${hasExactNotes ? `\nEXACT ITINERARY PROVIDED BY THE AGENT (VERBATIM SOURCE OF TRUTH — copy titles and inclusion lines EXACTLY, do not rewrite, do not translate, do not embellish):\n---BEGIN EXACT ITINERARY---\n${notesItinerary.verbatim}\n---END EXACT ITINERARY---` : ''}
 ${hasExactPdf ? `\nEXACT ITINERARY STRUCTURED CONTEXT extracted VERBATIM from the uploaded PDF. This is the source of truth and must be followed LITERALLY — copy each day title and each inclusion line exactly as extracted:\n${exactItineraryContext}` : ''}
 
