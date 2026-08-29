@@ -1000,6 +1000,10 @@ const TravelPlanProposal = ({
       if (error) throw new Error(await getFunctionErrorMessage(error));
       if (data?.error) throw new Error(data.error);
       const result = data.result as TravelPlanData;
+      // Seed the first day's map with the exact route link from Dados Gerais
+      if (routeMapUrl && Array.isArray(result.days) && result.days.length > 0 && !result.days[0].mapUrl) {
+        result.days = result.days.map((d, i) => (i === 0 ? { ...d, mapUrl: routeMapUrl } : d));
+      }
       setPlan(result);
       setViewMode('preview');
       setShowRegenInput(false);
