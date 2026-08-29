@@ -22,6 +22,9 @@ interface AuthContextType {
   /** Roles do enum + roles personalizados (códigos livres). */
   roleCodes: string[];
   onboardingCompleted: boolean;
+  /** true quando o perfil já foi carregado (ou não há sessão). */
+  profileLoaded: boolean;
+
   loading: boolean;
   isAdmin: boolean;
   hasRole: (role: AppRole) => boolean;
