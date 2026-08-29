@@ -25,7 +25,7 @@ function filenameFromPath(path?: string | null) {
   return path?.split('/').pop() || 'exact-itinerary.pdf';
 }
 
-export function LeadContextAttachments({ leadId, routeMapPath, exactItineraryPdfPath }: Props) {
+export function LeadContextAttachments({ leadId, routeMapPath, exactItineraryPdfPath, routeMapUrl }: Props) {
   const { toast } = useToast();
   const qc = useQueryClient();
   const mapInputRef = useRef<HTMLInputElement>(null);
