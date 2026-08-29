@@ -306,6 +306,30 @@ Devolve APENAS o corpo do email em texto simples, sem assunto e sem comentários
 
           <div>
             <label className="text-[10px] text-muted-foreground uppercase font-medium">Corpo do email</label>
+
+            {/* AI compose helper */}
+            <div className="flex items-center gap-1.5 mb-1.5 flex-wrap">
+              <select
+                className="h-7 text-[11px] border rounded px-1.5 bg-background max-w-[260px]"
+                value={aiPrompt}
+                onChange={e => setAiPrompt(e.target.value)}
+              >
+                <option value="">Sugestões de prompt…</option>
+                {AI_PROMPTS.map(p => <option key={p} value={p}>{p}</option>)}
+              </select>
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                className="h-7 text-[11px] gap-1"
+                disabled={aiLoading}
+                onClick={() => runAiCompose(aiPrompt || 'Pedido de disponibilidade para este serviço')}
+              >
+                {aiLoading ? <Loader2 className="h-3 w-3 animate-spin" /> : <Sparkles className="h-3 w-3" />}
+                AI — Compor
+              </Button>
+              <span className="text-[10px] text-muted-foreground">Gera em PT e mantém-se editável</span>
+            </div>
             {/* Formatting toolbar */}
             <div className="flex items-center gap-1 border border-b-0 rounded-t-md bg-muted/30 px-1.5 py-1">
               <button type="button" onMouseDown={e => e.preventDefault()} onClick={() => exec('bold')}
