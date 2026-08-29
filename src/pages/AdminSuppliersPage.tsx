@@ -165,7 +165,7 @@ const AdminSuppliersPage = () => {
         ) : (
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {filtered.map(s => (
-              <Card key={s.id} className="cursor-pointer hover:border-primary/40 transition-colors" onClick={() => navigate(`/admin/suppliers/${s.id}`)}>
+              <Card key={s.id} className="cursor-pointer hover:border-primary/40 transition-colors" onClick={() => navigate(`/comercial/suppliers/${s.id}`)}>
                 <CardContent className="pt-4">
                   <div className="flex items-start justify-between">
                     <div>
