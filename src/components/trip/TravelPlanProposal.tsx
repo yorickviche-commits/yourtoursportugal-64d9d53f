@@ -69,8 +69,40 @@ import { buildRouteMapImage } from '@/lib/staticRouteMap';
 import { downloadProposalPdf } from '@/lib/proposalPdf';
 import { getProposalAppUrl } from '@/lib/proposalShare';
 import { uploadDataUrlImage, isDataUrl, uploadImageFile, removeWhiteBackground } from '@/lib/uploadDataUrlImage';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Calendar } from '@/components/ui/calendar';
+import { CalendarIcon } from 'lucide-react';
+import { format, parse, isValid } from 'date-fns';
 
 export { toMapEmbedSrc };
+
+const HOTEL_DATE_FMT = 'dd MMM yyyy';
+
+/** Small calendar pop-up used for hotel check-in / check-out (stores "01 Apr 2027"). */
+const HotelDateField = ({ label, value, onChange }: { label: string; value?: string; onChange: (v: string) => void }) => {
+  const parsed = value ? parse(value, HOTEL_DATE_FMT, new Date()) : undefined;
+  const selected = parsed && isValid(parsed) ? parsed : undefined;
+  return (
+    <Popover>
+      <PopoverTrigger asChild>
+        <Button variant="outline" className={cn('h-7 justify-start text-xs font-normal', !value && 'text-muted-foreground')}>
+          <CalendarIcon className="h-3 w-3 mr-1.5" />
+          {value || label}
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="w-auto p-0" align="start">
+        <Calendar
+          mode="single"
+          selected={selected}
+          defaultMonth={selected}
+          onSelect={date => onChange(date ? format(date, HOTEL_DATE_FMT) : '')}
+          initialFocus
+          className={cn('p-3 pointer-events-auto')}
+        />
+      </PopoverContent>
+    </Popover>
+  );
+};
 
 export interface TravelPlanData {
   trip_title: string;
