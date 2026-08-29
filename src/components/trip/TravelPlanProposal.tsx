@@ -2233,6 +2233,36 @@ const TravelPlanProposal = ({
             )}
           </div>
 
+          {/* Price breakdown — programme vs hotels */}
+          {totalPVP > 0 && (
+            <div className="rounded-lg border border-slate-200 bg-white overflow-hidden" style={{ backgroundColor: '#ffffff', printColorAdjust: 'exact', WebkitPrintColorAdjust: 'exact' } as any}>
+              <table className="w-full text-xs">
+                <tbody>
+                  <tr className="border-b border-slate-100">
+                    <td className="px-3 py-2 text-slate-700">{h.programmePrice}</td>
+                    <td className="px-3 py-2 text-right text-slate-800 font-medium whitespace-nowrap">{eur(programmeTotal)}</td>
+                  </tr>
+                  {hasHotels && hotelsTotal > 0 && (
+                    <tr className="border-b border-slate-100">
+                      <td className="px-3 py-2 text-slate-700">{h.hotelsPrice(hotelsNights, hotelsRooms)}</td>
+                      <td className="px-3 py-2 text-right text-slate-800 font-medium whitespace-nowrap">{eur(hotelsTotal)}</td>
+                    </tr>
+                  )}
+                  <tr className="bg-slate-50" style={{ backgroundColor: '#f8fafc', printColorAdjust: 'exact', WebkitPrintColorAdjust: 'exact' } as any}>
+                    <td className="px-3 py-2 font-bold text-slate-900 uppercase tracking-wide">{netPricing ? getPdfDict(language).totalPriceNet : h.total}</td>
+                    <td className="px-3 py-2 text-right font-bold text-slate-900 whitespace-nowrap">{eur(totalPVP)}</td>
+                  </tr>
+                  {perPerson > 0 && (
+                    <tr className="border-t border-slate-100">
+                      <td className="px-3 py-2 text-slate-600">{h.perPerson}</td>
+                      <td className="px-3 py-2 text-right text-slate-700 whitespace-nowrap">{eur(perPerson)}</td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          )}
+
 
           {/* What's Included — Day by Day Summary or override */}
           <div>
