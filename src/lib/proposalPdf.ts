@@ -498,26 +498,62 @@ export async function buildProposalPdfDoc(
         .map((d, i) => `**${t.day} ${d.day_number ?? i + 1} — ${stripBoldMarkers(d.title || '')}**\n${dayItems(d).slice(0, 6).map(b => `• ${b}`).join('\n')}`)
         .join('\n\n');
 
-      // Accommodation block (hotel + nights only), when enabled in Costing
+      // Hotels Included block (from Costing + details edited in the planner)
+      const hd = getHotelsDict(p.language);
       const acc: any[] = Array.isArray(closing.accommodation) ? closing.accommodation : [];
-      const accText = acc
-        .map(a => {
-          const nights = Number(a?.nights) || 0;
-          const label = String(a?.name || '').trim();
-          if (!label) return '';
-          const unit = nights === 1 ? t.night : t.nights;
-          return nights > 0 ? `• ${label} — ${nights} ${unit}` : `• ${label}`;
+      const hotels = mergeProposalHotels(acc, Array.isArray(closing.hotels) ? closing.hotels : []);
+      const hotelsNights = hotels.reduce((s, x) => s + (Number(x.nights) || 0), 0);
+      const hotelsRooms = hotels.reduce((s, x) => Math.max(s, Number(x.rooms) || 0), 0);
+      const hotelsTotal = Math.round(hotels.reduce((s, x) => s + (Number(x.value) || 0), 0));
+      const programmeTotal = Math.max(0, total - hotelsTotal);
+      const eur = (n: number) => `€ ${Number(n || 0).toLocaleString('en-US')}`;
+
+      if (total > 0) {
+        const rows: Array<[string, string]> = [[hd.programmePrice, eur(programmeTotal)]];
+        if (hotels.length && hotelsTotal > 0) rows.push([hd.hotelsPrice(hotelsNights, hotelsRooms), eur(hotelsTotal)]);
+        rows.push([closing.netPricing ? t.totalPriceNet : hd.total, eur(total)]);
+        ensureSpace(rows.length * 18 + 24);
+        rows.forEach(([label, value], i) => {
+          const bold = i === rows.length - 1;
+          doc.setFont('helvetica', bold ? 'bold' : 'normal');
+          doc.setFontSize(10);
+          doc.setTextColor(bold ? 10 : 60, bold ? 37 : 60, bold ? 64 : 60);
+          doc.text(label, margin + 4, y + 11);
+          doc.text(value, pageW - margin - 4, y + 11, { align: 'right' });
+          doc.setDrawColor(228, 232, 238);
+          doc.line(margin, y + 16, pageW - margin, y + 16);
+          y += 18;
+        });
+        y += 12;
+      }
+
+      const hotelsText = hotels
+        .map(hotel => {
+          const parts = [`**${hotel.name}**${hotel.city ? ` — ${hotel.city}` : ''}`];
+          const meta = [
+            hotel.checkIn ? `${hd.checkIn}: ${hotel.checkIn}` : '',
+            hotel.checkOut ? `${hd.checkOut}: ${hotel.checkOut}` : '',
+            hotel.nights ? `${hotel.nights} ${hd.nights.toLowerCase()}` : '',
+            hotel.rooms ? `${hotel.rooms} ${hd.rooms.toLowerCase()}` : '',
+            hotel.value ? eur(hotel.value) : '',
+          ].filter(Boolean).join('  ·  ');
+          if (meta) parts.push(meta);
+          if (hotel.description) parts.push(stripBoldMarkers(hotel.description));
+          if (hotel.mapUrl) parts.push(hotel.mapUrl);
+          return parts.join('\n');
         })
-        .filter(Boolean)
-        .join('\n');
+        .join('\n\n');
 
       const blocks: Array<{ heading: string; text: string }> = [
-        ...(accText ? [{ heading: t.accommodation, text: accText }] : []),
+        ...(hotelsText ? [{ heading: hd.hotelsIncluded, text: hotelsText }] : []),
         { heading: t.included, text: (closing.inclusionsOverride?.trim() || autoIncluded) },
+        { heading: hd.notIncluded, text: resolveHotelsText('notIncludedDefault', closing.notIncluded, p.language) },
         { heading: t.paymentConditions, text: resolveClosingText('payment', closing.payment, p.language) },
         { heading: t.cancellationConditions, text: resolveClosingText('cancellation', closing.cancellation, p.language) },
         { heading: t.importantNotes, text: resolveClosingText('importantNotes', closing.importantNotes, p.language) },
+        { heading: hd.nextSteps, text: resolveHotelsText('nextStepsDefault', closing.nextSteps, p.language) },
       ];
+
 
       blocks.forEach(({ heading, text }) => {
         if (!text || !String(text).trim()) return;
