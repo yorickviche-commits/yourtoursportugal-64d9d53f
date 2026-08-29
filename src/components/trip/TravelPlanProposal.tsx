@@ -143,6 +143,8 @@ interface TravelPlanProposalProps {
   defaultLanguage?: string;
   routeMapPath?: string;
   exactItineraryPdfPath?: string;
+  /** Google Maps share link of the exact route (from Dados Gerais). */
+  routeMapUrl?: string;
   onGoToCosting?: () => void;
   /** Accommodation block from Costing (day 0), shown to the client when enabled. */
   accommodation?: { name: string; nights: number; value?: number }[];
