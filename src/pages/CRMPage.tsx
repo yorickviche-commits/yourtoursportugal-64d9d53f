@@ -11,6 +11,7 @@ import { RefreshCw, ExternalLink, Search, GripVertical } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { DragDropContext, Droppable, Draggable, DropResult } from '@hello-pangea/dnd';
 import { toast } from '@/hooks/use-toast';
+import NetHuntSyncBar from '@/components/crm/NetHuntSyncBar';
 
 interface NethuntFolder {
   id: string;
@@ -235,6 +236,8 @@ const CRMPage = () => {
             </a>
           </div>
         </div>
+
+        <NetHuntSyncBar onDone={() => selectedFolder && fetchRecords(selectedFolder)} />
 
         {error && (
           <div className="bg-destructive/10 text-destructive text-sm p-3 rounded-md flex-shrink-0">
