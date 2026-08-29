@@ -138,6 +138,7 @@ const LeadsFilesPage = () => {
                         <ClientTypeBadge value={(lead as any).client_type} />
                       </div>
                       <p className="text-xs text-muted-foreground mt-0.5">{lead.destination || '—'} · {lead.pax} pax · {lead.number_of_days || '—'} dias</p>
+                      <div className="text-xs text-muted-foreground mt-0.5"><LeadDates lead={lead} /></div>
                     </div>
                     <StatusBadge label={badge.label} className={badge.className} />
                   </div>
