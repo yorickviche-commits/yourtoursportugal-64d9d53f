@@ -5,12 +5,17 @@ import { useToast } from '@/hooks/use-toast';
 import { useQueryClient } from '@tanstack/react-query';
 import { parseGoogleMapsUrl } from '@/lib/mapEmbed';
 
+export interface RouteDayMap { day: number; url: string }
+
 interface Props {
   leadId: string;
   routeMapPath?: string | null;
   exactItineraryPdfPath?: string | null;
   routeMapUrl?: string | null;
+  routeDayMaps?: RouteDayMap[] | null;
+  numberOfDays?: number | null;
 }
+
 
 const BUCKET = 'lead-context';
 const MAX_PDF_BYTES = 7 * 1024 * 1024;
@@ -25,7 +30,9 @@ function filenameFromPath(path?: string | null) {
   return path?.split('/').pop() || 'exact-itinerary.pdf';
 }
 
-export function LeadContextAttachments({ leadId, routeMapPath, exactItineraryPdfPath, routeMapUrl }: Props) {
+const MAPS_RE = /^https?:\/\/(www\.)?(google\.[a-z.]+\/maps|maps\.google\.[a-z.]+|maps\.app\.goo\.gl|goo\.gl\/maps)/i;
+
+export function LeadContextAttachments({ leadId, routeMapPath, exactItineraryPdfPath, routeMapUrl, routeDayMaps, numberOfDays }: Props) {
   const { toast } = useToast();
   const qc = useQueryClient();
   const mapInputRef = useRef<HTMLInputElement>(null);
@@ -37,7 +44,39 @@ export function LeadContextAttachments({ leadId, routeMapPath, exactItineraryPdf
   const [linkDraft, setLinkDraft] = useState<string>(routeMapUrl || '');
   const [linkSaving, setLinkSaving] = useState(false);
 
+  const savedDayMaps: RouteDayMap[] = Array.isArray(routeDayMaps) ? routeDayMaps : [];
+  const initialDayDrafts = () => {
+    const base = Math.max(savedDayMaps.length, numberOfDays && numberOfDays > 1 ? numberOfDays : 0, 1);
+    return Array.from({ length: base }, (_, i) => savedDayMaps.find(d => d.day === i + 1)?.url || '');
+  };
+  const [dayDrafts, setDayDrafts] = useState<string[]>(initialDayDrafts);
+  const [daysSaving, setDaysSaving] = useState(false);
+
+  useEffect(() => { setDayDrafts(initialDayDrafts()); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [JSON.stringify(savedDayMaps), numberOfDays]);
+
+  const dayDirty = JSON.stringify(dayDrafts.map((url, i) => ({ day: i + 1, url: url.trim() })).filter(d => d.url))
+    !== JSON.stringify(savedDayMaps.filter(d => d.url).map(d => ({ day: d.day, url: d.url.trim() })));
+
+  const saveDayMaps = async () => {
+    const payload = dayDrafts.map((url, i) => ({ day: i + 1, url: url.trim() })).filter(d => d.url);
+    const invalid = payload.find(d => !MAPS_RE.test(d.url));
+    if (invalid) {
+      toast({ title: `Link inválido no Dia ${invalid.day}`, description: 'Cola um link do Google Maps.', variant: 'destructive' });
+      return;
+    }
+    setDaysSaving(true);
+    try {
+      const { error } = await supabase.from('leads').update({ route_day_maps: payload } as any).eq('id', leadId);
+      if (error) throw error;
+      toast({ title: '🧭 Rotas por dia guardadas', description: `${payload.length} dia(s) com rota — o Travel Planner vai seguir cada rota no dia respetivo.` });
+      refresh();
+    } catch (e: any) {
+      toast({ title: 'Erro', description: e.message, variant: 'destructive' });
+    } finally { setDaysSaving(false); }
+  };
+
   useEffect(() => { setLinkDraft(routeMapUrl || ''); }, [routeMapUrl]);
+
 
   const parsedLink = parseGoogleMapsUrl(routeMapUrl || '');
 
@@ -213,6 +252,70 @@ export function LeadContextAttachments({ leadId, routeMapPath, exactItineraryPdf
           </>
         )}
       </div>
+
+      {/* Per-day Google Maps routes (multi-day programmes) */}
+      <div className="border rounded-md p-2 bg-muted/30 space-y-2">
+        <div className="flex items-center justify-between gap-2">
+          <p className="text-xs font-medium flex items-center gap-1">
+            <Link2 className="h-3 w-3 text-blue-600" /> Rota Google Maps por dia <span className="text-muted-foreground/70 font-normal">(multi-dia, opcional)</span>
+          </p>
+          <button
+            type="button"
+            onClick={saveDayMaps}
+            disabled={daysSaving || !dayDirty}
+            className="h-7 px-2 rounded bg-primary text-primary-foreground text-[11px] flex items-center gap-1 disabled:opacity-40"
+          >
+            {daysSaving ? <Loader2 className="h-3 w-3 animate-spin" /> : <Save className="h-3 w-3" />} Guardar rotas
+          </button>
+        </div>
+
+        <div className="space-y-1.5">
+          {dayDrafts.map((url, i) => {
+            const parsed = parseGoogleMapsUrl(url);
+            return (
+              <div key={i} className="space-y-1">
+                <div className="flex items-center gap-1.5">
+                  <span className="w-12 shrink-0 text-[10px] font-semibold text-muted-foreground uppercase">Dia {i + 1}</span>
+                  <input
+                    value={url}
+                    onChange={e => setDayDrafts(prev => prev.map((v, idx) => (idx === i ? e.target.value : v)))}
+                    onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); saveDayMaps(); } }}
+                    placeholder="https://www.google.com/maps/dir/..."
+                    className="flex-1 h-8 rounded border bg-background px-2 text-xs"
+                  />
+                  <button
+                    type="button"
+                    title="Remover dia"
+                    onClick={() => setDayDrafts(prev => prev.filter((_, idx) => idx !== i))}
+                    className="h-8 w-8 rounded border text-red-600 flex items-center justify-center"
+                  >
+                    <X className="h-3 w-3" />
+                  </button>
+                </div>
+                {url.trim() && parsed.waypoints.length > 0 && (
+                  <p className="pl-[3.6rem] text-[10px] text-muted-foreground">{parsed.waypoints.join(' → ')}</p>
+                )}
+              </div>
+            );
+          })}
+        </div>
+
+        <button
+          type="button"
+          onClick={() => setDayDrafts(prev => [...prev, ''])}
+          className="h-7 px-2 rounded border text-[11px] flex items-center gap-1"
+        >
+          + Adicionar dia
+        </button>
+
+        {savedDayMaps.length > 0 && (
+          <div className="flex items-center gap-1.5 text-[11px] bg-blue-50 border border-blue-200 text-blue-800 rounded px-2 py-1">
+            <Sparkles className="h-3 w-3" />
+            <span><strong>{savedDayMaps.length} rota(s) por dia ativas</strong> — cada dia do programa é gerado a seguir a sua própria rota e o mapa fica no dia correspondente.</span>
+          </div>
+        )}
+      </div>
+
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
         {/* Route Map slot */}

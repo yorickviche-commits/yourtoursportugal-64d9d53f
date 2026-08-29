@@ -145,6 +145,8 @@ interface TravelPlanProposalProps {
   exactItineraryPdfPath?: string;
   /** Google Maps share link of the exact route (from Dados Gerais). */
   routeMapUrl?: string;
+  /** Per-day Google Maps routes (multi-day programmes). */
+  routeDayMaps?: { day: number; url: string }[];
   onGoToCosting?: () => void;
   /** Accommodation block from Costing (day 0), shown to the client when enabled. */
   accommodation?: { name: string; nights: number; value?: number }[];
@@ -537,7 +539,7 @@ const TravelPlanProposal = ({
   numberOfDays, datesType, pax, paxChildren, paxInfants,
   travelStyles, comfortLevel, budgetLevel, magicQuestion, notes,
   defaultLanguage,
-  routeMapPath, exactItineraryPdfPath, routeMapUrl,
+  routeMapPath, exactItineraryPdfPath, routeMapUrl, routeDayMaps,
   onGoToCosting,
   accommodation = [],
   netPricing = false,
@@ -995,14 +997,24 @@ const TravelPlanProposal = ({
           routeMapPath, exactItineraryPdfPath,
           routeMapUrl,
           routeWaypoints: routeMapUrl ? parseGoogleMapsUrl(routeMapUrl).waypoints : undefined,
+          routeDayMaps: (routeDayMaps || []).filter(d => d?.url).map(d => ({
+            day: d.day,
+            url: d.url,
+            waypoints: parseGoogleMapsUrl(d.url).waypoints,
+          })),
         },
       });
       if (error) throw new Error(await getFunctionErrorMessage(error));
       if (data?.error) throw new Error(data.error);
       const result = data.result as TravelPlanData;
       // Seed the first day's map with the exact route link from Dados Gerais
-      if (routeMapUrl && Array.isArray(result.days) && result.days.length > 0 && !result.days[0].mapUrl) {
-        result.days = result.days.map((d, i) => (i === 0 ? { ...d, mapUrl: routeMapUrl } : d));
+      if (Array.isArray(result.days) && result.days.length > 0) {
+        const perDay = new Map((routeDayMaps || []).filter(d => d?.url).map(d => [d.day, d.url]));
+        result.days = result.days.map((d, i) => {
+          if (d.mapUrl) return d;
+          const url = perDay.get(i + 1) || (i === 0 && perDay.size === 0 ? routeMapUrl : undefined);
+          return url ? { ...d, mapUrl: url } : d;
+        });
       }
       setPlan(result);
       setViewMode('preview');
@@ -1013,7 +1025,7 @@ const TravelPlanProposal = ({
     } finally {
       setGenerating(false);
     }
-  }, [leadData, leadId, language, toast, clearUsedPhotos, routeMapPath, exactItineraryPdfPath, routeMapUrl]);
+  }, [leadData, leadId, language, toast, clearUsedPhotos, routeMapPath, exactItineraryPdfPath, routeMapUrl, routeDayMaps]);
 
   // Manual: fetch images for the current plan (cover + per-day) using Unsplash + dedup
   const handleFillImages = useCallback(async () => {
@@ -1136,6 +1148,11 @@ const TravelPlanProposal = ({
           leadData, extraInstructions: sectionInstruction, routeMapPath, exactItineraryPdfPath,
           routeMapUrl,
           routeWaypoints: routeMapUrl ? parseGoogleMapsUrl(routeMapUrl).waypoints : undefined,
+          routeDayMaps: (routeDayMaps || []).filter(d => d?.url).map(d => ({
+            day: d.day,
+            url: d.url,
+            waypoints: parseGoogleMapsUrl(d.url).waypoints,
+          })),
         },
       });
       if (error) throw new Error(await getFunctionErrorMessage(error));
@@ -1159,7 +1176,7 @@ const TravelPlanProposal = ({
     } finally {
       setSectionLoading(null);
     }
-  }, [plan, leadData, language, routeMapPath, exactItineraryPdfPath, routeMapUrl]);
+  }, [plan, leadData, language, routeMapPath, exactItineraryPdfPath, routeMapUrl, routeDayMaps]);
 
 
   // Save

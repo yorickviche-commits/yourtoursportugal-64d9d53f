@@ -926,8 +926,11 @@ const LeadDetailPage = ({ mode = 'lead' }: { mode?: 'lead' | 'booking' } = {}) =
               leadId={lead.id}
               routeMapPath={(lead as any).route_map_path}
               routeMapUrl={(lead as any).route_map_url}
+              routeDayMaps={(lead as any).route_day_maps}
+              numberOfDays={Number(formState.numberOfDays) || undefined}
               exactItineraryPdfPath={(lead as any).exact_itinerary_pdf_path}
             />
+
 
             <div className="flex items-center justify-between border-t pt-4">
               <Button variant="destructive" size="sm" className="text-xs gap-1" onClick={handleRemove} disabled={deleteLeadMutation.isPending}>
@@ -963,6 +966,8 @@ const LeadDetailPage = ({ mode = 'lead' }: { mode?: 'lead' | 'booking' } = {}) =
             defaultLanguage={idioma[0]}
             routeMapPath={(lead as any).route_map_path || undefined}
             routeMapUrl={(lead as any).route_map_url || undefined}
+            routeDayMaps={(lead as any).route_day_maps || undefined}
+
             exactItineraryPdfPath={(lead as any).exact_itinerary_pdf_path || undefined}
             accommodation={proposalAccommodation}
             netPricing={(lead as any).client_type === 'B2B'}
