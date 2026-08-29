@@ -125,7 +125,7 @@ const LeadsFilesPage = () => {
           /* Mobile: Card List */
           <div className="space-y-3">
             {filteredLeads.map(lead => {
-              const badge = statusBadgeConfig[lead.status] || statusBadgeConfig.new;
+              const badge = resolveStage(lead as any);
               const cs = costingMap[lead.id];
               const hasPvp = cs && cs.pvp > 0;
               return (
@@ -179,7 +179,7 @@ const LeadsFilesPage = () => {
               </thead>
               <tbody>
                 {filteredLeads.map(lead => {
-                  const badge = statusBadgeConfig[lead.status] || statusBadgeConfig.new;
+                  const badge = resolveStage(lead as any);
                   const cs = costingMap[lead.id];
                   const hasPvp = cs && cs.pvp > 0;
                   const marginColor = hasPvp
