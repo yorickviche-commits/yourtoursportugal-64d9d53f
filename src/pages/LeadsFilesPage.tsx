@@ -82,7 +82,7 @@ const LeadsFilesPage = () => {
         l.email,
         String(l.pax ?? ''),
         String(l.number_of_days ?? ''),
-        statusBadgeConfig[l.status]?.label,
+        resolveStage(l as any).label,
       ].filter(Boolean).join(' ').toLowerCase();
       return haystack.includes(q);
     });
