@@ -197,7 +197,7 @@ const LeadsFilesPage = () => {
                       <td className="px-2 py-3 text-center"><ClientTypeBadge value={(lead as any).client_type} /></td>
                       <td className="px-3 py-3 text-xs text-foreground">{lead.destination}</td>
                       <td className="px-2 py-3 text-xs text-center text-foreground">{lead.number_of_days || '—'}</td>
-                      <td className="px-3 py-3 text-xs text-muted-foreground">{lead.travel_dates}</td>
+                      <td className="px-3 py-3 text-xs text-foreground"><LeadDates lead={lead} /></td>
                       <td className="px-2 py-3 text-xs text-center text-foreground">{lead.pax}</td>
                       <td className="px-3 py-3 text-xs text-right whitespace-nowrap">
                         {hasPvp ? (
