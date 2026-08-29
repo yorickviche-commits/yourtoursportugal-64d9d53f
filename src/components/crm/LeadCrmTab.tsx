@@ -24,7 +24,8 @@ import { useToast } from '@/hooks/use-toast';
 import {
   NETHUNT_STAGES, SOURCE_OPTIONS, netHuntRecordUrl,
   useLeadTimeline, useNHTasks, usePushLead, useAddComment,
-  useCreateNHTask, useUpdateNHTask, useSyncNow, useLeadGmail, fetchGmailBody,
+  useCreateNHTask, useUpdateNHTask, useSyncNow, useSyncLeadFull, useLeadGmail, fetchGmailBody,
+  SYNC_PERIODS, type SyncPeriod,
 } from '@/hooks/useNetHunt';
 
 const TYPE_FILTERS = [
@@ -79,6 +80,8 @@ export default function LeadCrmTab({ leadId }: Props) {
   const pushLead = usePushLead();
   const addComment = useAddComment();
   const syncNow = useSyncNow();
+  const syncLead = useSyncLeadFull();
+  const [syncPeriod, setSyncPeriod] = useState<SyncPeriod>('7d');
   const gmail = useLeadGmail(lead?.email, lead?.yt_id);
   const [bodies, setBodies] = useState<Record<string, string>>({});
 
