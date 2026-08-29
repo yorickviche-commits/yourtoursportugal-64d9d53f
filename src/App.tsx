@@ -54,6 +54,7 @@ import ProfilePage from "./pages/ProfilePage";
 import CatalogPage from "./pages/CatalogPage";
 import ProductsPage from "./pages/ProductsPage";
 import ProductDetailPage from "./pages/ProductDetailPage";
+import MapasPage from "./pages/MapasPage";
 import { BoldShortcutProvider } from "@/lib/richText";
 
 const queryClient = new QueryClient();
