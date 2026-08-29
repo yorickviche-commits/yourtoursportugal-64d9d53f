@@ -921,21 +921,23 @@ const PricingConditions = ({ proposal, lang }: { proposal: any; lang: string }) 
     .join('\n\n');
   const includedText: string = closing.inclusionsOverride?.trim() || autoIncluded;
   const dict = getPdfDict(lang);
+  const h = getHotelsDict(lang);
   const accommodation: any[] = Array.isArray(closing.accommodation) ? closing.accommodation : [];
-  const accommodationText = accommodation
-    .map(a => {
-      const name = String(a?.name || '').trim();
-      if (!name) return '';
-      const nights = Number(a?.nights) || 0;
-      return nights > 0 ? `• ${name} — ${nights} ${nights === 1 ? dict.night : dict.nights}` : `• ${name}`;
-    })
-    .filter(Boolean)
-    .join('\n');
+  const hotels = mergeProposalHotels(accommodation, Array.isArray(closing.hotels) ? closing.hotels : []);
+  const hasHotels = hotels.length > 0;
+  const hotelsNights = hotels.reduce((s, x) => s + (Number(x.nights) || 0), 0);
+  const hotelsRooms = hotels.reduce((s, x) => Math.max(s, Number(x.rooms) || 0), 0);
+  const hotelsTotal = Math.round(hotels.reduce((s, x) => s + (Number(x.value) || 0), 0));
+  const programmeTotal = Math.max(0, total - hotelsTotal);
+  const eur = (n: number) => `€ ${Number(n || 0).toLocaleString('en-US')}`;
   const paymentText: string = resolveClosingText('payment', closing.payment, lang);
   const cancellationText: string = resolveClosingText('cancellation', closing.cancellation, lang);
   const notesText: string = resolveClosingText('importantNotes', closing.importantNotes, lang);
+  const notIncludedText: string = resolveHotelsText('notIncludedDefault', closing.notIncluded, lang);
+  const nextStepsText: string = resolveHotelsText('nextStepsDefault', closing.nextSteps, lang);
   const hasAny = total > 0 || includedText || paymentText || cancellationText || notesText;
   if (!hasAny) return null;
+
 
   return (
     <section id="pricing" className="scroll-mt-16">
