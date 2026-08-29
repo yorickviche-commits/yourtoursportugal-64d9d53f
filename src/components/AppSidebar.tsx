@@ -1,6 +1,6 @@
 import { NavLink, useLocation } from 'react-router-dom';
 import {
-  Map, Users, CreditCard, Sparkles, LayoutDashboard,
+  Map, MapPin, Users, CreditCard, Sparkles, LayoutDashboard,
   FileText, Handshake, Grid3x3, Truck, Settings, Shield, Plug, ScrollText,
   Inbox, PackageSearch, Boxes, Brain, Radar,
   LogOut, ChevronDown, ChevronRight, Menu, X,
