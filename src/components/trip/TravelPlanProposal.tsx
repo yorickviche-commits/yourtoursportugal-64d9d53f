@@ -102,7 +102,7 @@ interface TravelPlanProposalProps {
   exactItineraryPdfPath?: string;
   onGoToCosting?: () => void;
   /** Accommodation block from Costing (day 0), shown to the client when enabled. */
-  accommodation?: { name: string; nights: number }[];
+  accommodation?: { name: string; nights: number; value?: number }[];
   /** B2B leads see "TOTAL NET PRICE" instead of "TOTAL PRICE". */
   netPricing?: boolean;
 }
@@ -114,6 +114,10 @@ interface ClosingTerms {
   cancellation: string;
   importantNotes: string;
   closingMessage: string;
+  notIncluded?: string;
+  nextSteps?: string;
+  /** Hotel details edited here; name/nights/value come from Costing. */
+  hotels?: ProposalHotel[];
 }
 
 const TERMS_URL = 'https://drive.google.com/file/d/12AkvW2Ob0LtcooaciWY4e-nEx7hlOnQC/view?usp=sharing';
@@ -125,7 +129,11 @@ const DEFAULT_CLOSING: ClosingTerms = {
   cancellation: '• Free cancellation with 100% refund up to 7 days prior to the tour date.\n• For cancellations made less than 30 days before the tour date, the total amount is non-refundable.',
   importantNotes: '• The rates presented include all the itinerary and experiences mentioned in the proposition.\n• The presented rates are valid on the date this proposal is sent. Up until your final confirmation, there\'s the possibility of price/availability/conditions changes beyond our process.\n• The rates include all taxes and personal accident insurance.\n• Terms and Conditions referring to all our products/services are available publicly on our website.',
   closingMessage: 'That said, we await your feedback and your thoughts on the program and proposal.\n\nIf helpful, we suggest scheduling a short video call with our team to walk through the experience together, clarify any details, and fine-tune the plan according to your vision.\n\nPlease let us know if the proposal aligns with your expectations so we can move confidently to the next steps.',
+  notIncluded: getHotelsDict('en').notIncludedDefault,
+  nextSteps: getHotelsDict('en').nextStepsDefault,
+  hotels: [],
 };
+
 
 const LANGUAGE_OPTIONS: { value: string; label: string }[] = [
   { value: 'PT', label: 'PT' },
