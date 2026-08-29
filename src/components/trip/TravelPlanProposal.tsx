@@ -1155,7 +1155,7 @@ const TravelPlanProposal = ({
     } finally {
       setSectionLoading(null);
     }
-  }, [plan, leadData, language, routeMapPath, exactItineraryPdfPath]);
+  }, [plan, leadData, language, routeMapPath, exactItineraryPdfPath, routeMapUrl]);
 
 
   // Save
