@@ -693,7 +693,7 @@ const LeadDetailPage = ({ mode = 'lead' }: { mode?: 'lead' | 'booking' } = {}) =
     return <AppLayout><div className="text-center py-20"><p className="text-muted-foreground">Simulação não encontrada</p><Link to="/leads" className="text-[hsl(var(--info))] text-sm hover:underline mt-2 inline-block">Voltar</Link></div></AppLayout>;
   }
 
-  const currentStatusConfig = LEAD_STATUSES.find(s => s.value === leadStatus) || LEAD_STATUSES[0];
+  const currentStage = resolveStage({ nethunt_stage: (lead as any).nethunt_stage, status: leadStatus });
 
   return (
     <AppLayout>
@@ -710,30 +710,38 @@ const LeadDetailPage = ({ mode = 'lead' }: { mode?: 'lead' | 'booking' } = {}) =
               </h1>
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <button className={cn("text-sm font-semibold px-2 py-0.5 rounded inline-flex items-center gap-1 cursor-pointer hover:opacity-80 transition-opacity", currentStatusConfig.color)}>
-                    [ {currentStatusConfig.label} ] <ChevronDown className="h-3 w-3" />
+                  <button className={cn("text-sm font-semibold px-2 py-0.5 rounded inline-flex items-center gap-1 cursor-pointer hover:opacity-80 transition-opacity", currentStage.className)}>
+                    [ {currentStage.group === 'SALES' ? 'SALES' : 'OPS'} · {currentStage.label} ] <ChevronDown className="h-3 w-3" />
                   </button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="start">
-                  {LEAD_STATUSES.map(s => (
-                    <DropdownMenuItem key={s.value} onClick={async () => {
-                      const prev = leadStatus;
-                      setLeadStatus(s.value);
-                      try {
-                        await updateLeadMutation.mutateAsync({ id: lead.id, updates: { status: s.value } });
-                        await logActivity('lead_status_changed', 'lead', lead.id, { from: prev, to: s.value });
-                        toast({ title: 'Estado atualizado', description: s.label });
-                        // Trigger calendar sync on status transition
-                        if (s.value === 'won') triggerCalendarSync(lead.id, 'create', 500);
-                        else if (prev === 'won') triggerCalendarSync(lead.id, 'delete', 500);
-                      } catch (err: any) {
-                        setLeadStatus(prev);
-                        toast({ title: 'Erro ao atualizar estado', description: err.message, variant: 'destructive' });
-                      }
-                    }} className={cn("text-xs cursor-pointer", leadStatus === s.value && "font-bold")}>{s.label}</DropdownMenuItem>
+                <DropdownMenuContent align="start" className="max-h-[70vh] overflow-y-auto">
+                  {(['SALES', 'OPERATIONS'] as const).map(group => (
+                    <div key={group}>
+                      <div className="px-2 py-1 text-[10px] font-bold uppercase tracking-wide text-muted-foreground">{group}</div>
+                      {LEAD_STAGES.filter(s => s.group === group).map(s => (
+                        <DropdownMenuItem key={s.stage} onClick={async () => {
+                          const prevStatus = leadStatus;
+                          setLeadStatus(s.status);
+                          try {
+                            await updateLeadMutation.mutateAsync({
+                              id: lead.id,
+                              updates: { status: s.status, nethunt_stage: s.stage } as any,
+                            });
+                            await logActivity('lead_status_changed', 'lead', lead.id, { from: prevStatus, to: s.stage });
+                            toast({ title: 'Estado atualizado', description: s.label });
+                            if (s.status === 'won') triggerCalendarSync(lead.id, 'create', 500);
+                            else if (prevStatus === 'won') triggerCalendarSync(lead.id, 'delete', 500);
+                          } catch (err: any) {
+                            setLeadStatus(prevStatus);
+                            toast({ title: 'Erro ao atualizar estado', description: err.message, variant: 'destructive' });
+                          }
+                        }} className={cn("text-xs cursor-pointer", currentStage.stage === s.stage && "font-bold")}>{s.label}</DropdownMenuItem>
+                      ))}
+                    </div>
                   ))}
                 </DropdownMenuContent>
               </DropdownMenu>
+
               <div className="mt-1"><CalendarSyncBadge leadId={lead.id} leadStatus={leadStatus} /></div>
             </div>
             <PaymentSummaryBar leadId={lead.id} totalPVP={costingTotalPVP} />
