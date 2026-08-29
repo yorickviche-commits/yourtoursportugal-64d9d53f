@@ -13,6 +13,7 @@ import LeadsFilesPage from "./pages/LeadsFilesPage";
 import LeadDetailPage from "./pages/LeadDetailPage";
 import PaymentsPage from "./pages/PaymentsPage";
 import LoginPage from "./pages/LoginPage";
+import SetupAccountPage from "./pages/SetupAccountPage";
 import SignupPage from "./pages/SignupPage";
 import ForgotPasswordPage from "./pages/ForgotPasswordPage";
 import ResetPasswordPage from "./pages/ResetPasswordPage";
@@ -68,6 +69,7 @@ const App = () => (
           <TourProvider>
           <Routes>
             <Route path="/login" element={<LoginPage />} />
+            {/* onboarding */}
             <Route path="/signup" element={<SignupPage />} />
             <Route path="/forgot-password" element={<ForgotPasswordPage />} />
             <Route path="/reset-password" element={<ResetPasswordPage />} />
@@ -75,6 +77,9 @@ const App = () => (
             <Route path="/.lovable/oauth/consent" element={<OAuthConsentPage />} />
             <Route path="/preview/:id" element={<ItineraryPreviewPage />} />
             <Route path="/proposal/:token" element={<PublicProposalPage />} />
+
+            <Route path="/setup-account" element={<ProtectedRoute><SetupAccountPage /></ProtectedRoute>} />
+            <Route path="/welcome" element={<Navigate to="/setup-account" replace />} />
 
             <Route path="/" element={<Navigate to="/leads" replace />} />
             <Route path="/leads" element={<ProtectedRoute><LeadsFilesPage /></ProtectedRoute>} />

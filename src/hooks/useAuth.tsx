@@ -10,6 +10,8 @@ interface Profile {
   email: string | null;
   avatar_url: string | null;
   status: string;
+  phone?: string | null;
+  onboarding_completed_at?: string | null;
 }
 
 interface AuthContextType {
@@ -17,9 +19,13 @@ interface AuthContextType {
   session: Session | null;
   profile: Profile | null;
   roles: AppRole[];
+  /** Roles do enum + roles personalizados (códigos livres). */
+  roleCodes: string[];
+  onboardingCompleted: boolean;
   loading: boolean;
   isAdmin: boolean;
   hasRole: (role: AppRole) => boolean;
+  refreshProfile: () => Promise<void>;
   signOut: () => Promise<void>;
 }
 
@@ -30,6 +36,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [session, setSession] = useState<Session | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [roles, setRoles] = useState<AppRole[]>([]);
+  const [customRoles, setCustomRoles] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const fetchProfile = async (userId: string) => {
     const { data } = await supabase
@@ -46,6 +53,16 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       .select('role')
       .eq('user_id', userId);
     setRoles((data || []).map((r: any) => r.role as AppRole));
+
+    const { data: custom } = await supabase
+      .from('user_custom_roles' as any)
+      .select('role_code')
+      .eq('user_id', userId);
+    setCustomRoles(((custom as any[]) || []).map(r => r.role_code as string));
+  };
+
+  const refreshProfile = async () => {
+    if (user?.id) await fetchProfile(user.id);
   };
 
   useEffect(() => {
@@ -114,6 +131,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const isAdmin = roles.includes('super_admin') || roles.includes('admin');
   const hasRole = (role: AppRole) => roles.includes(role);
+  const roleCodes = [...roles as string[], ...customRoles];
+  const onboardingCompleted = !!profile?.onboarding_completed_at;
 
   const signOut = async () => {
     await supabase.auth.signOut();
@@ -121,10 +140,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setSession(null);
     setProfile(null);
     setRoles([]);
+    setCustomRoles([]);
   };
 
   return (
-    <AuthContext.Provider value={{ user, session, profile, roles, loading, isAdmin, hasRole, signOut }}>
+    <AuthContext.Provider value={{ user, session, profile, roles, roleCodes, onboardingCompleted, loading, isAdmin, hasRole, refreshProfile, signOut }}>
       {children}
     </AuthContext.Provider>
   );
