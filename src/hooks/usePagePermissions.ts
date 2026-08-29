@@ -31,8 +31,8 @@ export function usePagePermissions() {
     if (isAdmin) return true;
     if (!query.data) return false;
     const key = permKey(page);
-    // Any role granting the page unlocks it.
-    return roles.some(r => query.data!.some(p => p.role === r && p.permission === key && p.granted));
+    // Any role (enum ou personalizado) granting the page unlocks it.
+    return roleCodes.some(r => query.data!.some(p => p.role === r && p.permission === key && p.granted));
   };
 
   const allowedPages = PAGES.filter(p => canAccess(p.key)).map(p => p.key);
