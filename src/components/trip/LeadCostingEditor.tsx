@@ -13,6 +13,7 @@ import { cn, formatDayLabelPT } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import SupplierSearchDropdown from './SupplierSearchDropdown';
+import SupplierExperiencePicker, { type PickedExperience } from './SupplierExperiencePicker';
 import CostingSmartImportDialog, { type ImportedCostRow } from './CostingSmartImportDialog';
 import type { PlannerDay, PeriodKey } from './TravelPlannerEditor';
 
@@ -393,6 +394,27 @@ const LeadCostingEditor = ({ costingDays, onChange, onSave, saving, plannerDays,
     onChange(updated);
   }, [costingDays, onChange]);
 
+  // Experience picker (FSE catalogue) → fills the cost row
+  const [expPicker, setExpPicker] = useState<{ dayIdx: number; itemIdx: number; supplier: string } | null>(null);
+
+  const applyExperience = useCallback((exp: PickedExperience) => {
+    if (!expPicker) return;
+    const { dayIdx, itemIdx } = expPicker;
+    const current = costingDays[dayIdx]?.items[itemIdx];
+    const pricingType: LeadCostItem['pricingType'] =
+      exp.priceUnit === 'per_person' ? 'per_person' : exp.priceUnit === 'per_night' ? 'per_night' : 'total';
+    updateItem(dayIdx, itemIdx, {
+      description: exp.name + (exp.duration ? ` (${exp.duration})` : ''),
+      supplier: exp.supplierName || current?.supplier || '',
+      pricingType,
+      priceAdults: exp.price,
+      priceChildren: exp.priceChild || 0,
+      isProtocol: true,
+    });
+    setExpPicker(null);
+  }, [expPicker, costingDays, updateItem]);
+
+
   const hasAccommodationSection = costingDays.some(isAccommodationDay);
 
   const addAccommodationSection = () => {
@@ -735,12 +757,22 @@ const LeadCostingEditor = ({ costingDays, onChange, onSave, saving, plannerDays,
                                         ) : <span className="text-[9px] text-muted-foreground">—</span>}
                                       </td>
                                       <td className="px-1 py-1 align-middle min-w-[140px]">
-                                        <Input
-                                          className="h-auto min-h-7 text-xs border-0 bg-transparent shadow-none focus-visible:ring-1 px-1 py-1 whitespace-normal break-words leading-snug"
-                                          defaultValue={item.description}
-                                          onBlur={e => updateItem(dayIdx, itemIdx, { description: e.target.value })}
-                                          placeholder={isAcc ? 'Hotel / alojamento...' : 'Atividade...'}
-                                        />
+                                        <div className="flex items-start gap-0.5">
+                                          <Input
+                                            className="h-auto min-h-7 text-xs border-0 bg-transparent shadow-none focus-visible:ring-1 px-1 py-1 whitespace-normal break-words leading-snug"
+                                            defaultValue={item.description}
+                                            onBlur={e => updateItem(dayIdx, itemIdx, { description: e.target.value })}
+                                            placeholder={isAcc ? 'Hotel / alojamento...' : 'Atividade...'}
+                                          />
+                                          <button
+                                            type="button"
+                                            title="Escolher experiência do FSE"
+                                            onClick={() => setExpPicker({ dayIdx, itemIdx, supplier: item.supplier })}
+                                            className="mt-1 shrink-0 text-muted-foreground/60 hover:text-[hsl(var(--info))] transition-colors"
+                                          >
+                                            <Sparkles className="h-3.5 w-3.5" />
+                                          </button>
+                                        </div>
                                       </td>
                                       <td className="px-1 py-1 align-middle min-w-[110px]">
                                         <SupplierSearchDropdown
@@ -948,6 +980,13 @@ const LeadCostingEditor = ({ costingDays, onChange, onSave, saving, plannerDays,
         pax={pax}
         paxChildren={paxChildren}
         onConfirm={applySmartImport}
+      />
+
+      <SupplierExperiencePicker
+        open={!!expPicker}
+        onOpenChange={(o) => { if (!o) setExpPicker(null); }}
+        supplierName={expPicker?.supplier}
+        onPick={applyExperience}
       />
 
 

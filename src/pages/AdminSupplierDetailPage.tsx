@@ -46,7 +46,7 @@ interface SupplierService {
   price_unit: string; currency: string; payment_conditions: string | null;
   cancellation_policy: string | null; refund_policy: string | null;
   booking_conditions: string | null; notes: string | null; status: string;
-  validity_start: string | null; validity_end: string | null;
+  validity_start: string | null; validity_end: string | null; image_url: string | null;
 }
 
 interface SupplierFile {
@@ -64,7 +64,7 @@ const emptyService = {
   name: '', description: '', category: 'activity', duration: '', price: 0,
   price_child: 0, price_unit: 'per_person', currency: 'EUR', payment_conditions: '',
   cancellation_policy: '', refund_policy: '', booking_conditions: '', notes: '',
-  status: 'active', validity_start: '', validity_end: '',
+  status: 'active', validity_start: '', validity_end: '', image_url: '',
 };
 
 const AdminSupplierDetailPage = () => {
@@ -309,7 +309,7 @@ const AdminSupplierDetailPage = () => {
       <div className="space-y-4">
         {/* Header */}
         <div className="flex items-center gap-3">
-          <Button variant="ghost" size="icon" onClick={() => navigate('/admin/suppliers')}>
+          <Button variant="ghost" size="icon" onClick={() => navigate('/comercial/suppliers')}>
             <ArrowLeft className="h-5 w-5" />
           </Button>
           <Package className="h-5 w-5 text-primary" />
@@ -609,6 +609,17 @@ const AdminSupplierDetailPage = () => {
               <div className="space-y-1.5">
                 <Label className="text-xs">Descrição</Label>
                 <Textarea value={serviceForm.description || ''} onChange={e => setServiceForm({ ...serviceForm, description: e.target.value })} rows={2} />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs">Imagem (URL)</Label>
+                <Input
+                  value={serviceForm.image_url || ''}
+                  onChange={e => setServiceForm({ ...serviceForm, image_url: e.target.value })}
+                  placeholder="https://..."
+                />
+                {serviceForm.image_url && (
+                  <img src={serviceForm.image_url} alt={serviceForm.name || 'Experiência'} className="h-24 w-full object-cover rounded-md border" />
+                )}
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1.5">

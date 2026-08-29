@@ -3320,6 +3320,7 @@ export type Database = {
           description: string | null
           duration: string | null
           id: string
+          image_url: string | null
           name: string
           notes: string | null
           payment_conditions: string | null
@@ -3343,6 +3344,7 @@ export type Database = {
           description?: string | null
           duration?: string | null
           id?: string
+          image_url?: string | null
           name: string
           notes?: string | null
           payment_conditions?: string | null
@@ -3366,6 +3368,7 @@ export type Database = {
           description?: string | null
           duration?: string | null
           id?: string
+          image_url?: string | null
           name?: string
           notes?: string | null
           payment_conditions?: string | null
