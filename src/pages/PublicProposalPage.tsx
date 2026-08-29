@@ -33,6 +33,10 @@ class MapErrorBoundary extends Component<{ children: ReactNode; fallback: string
 
 const PublicProposalPage = () => {
   const { token } = useParams<{ token: string }>();
+  // `?print=1` renders the document-only version used for the PDF attachment
+  // (same layout the client sees, without any interactive control).
+  const printMode = typeof window !== 'undefined'
+    && new URLSearchParams(window.location.search).get('print') === '1';
   const { data: proposal, isLoading } = useProposalByToken(token || '');
   const { data: annotations = [] } = useProposalAnnotations(proposal?.id || '');
   const { data: events = [] } = useProposalEvents(proposal?.id || '');
@@ -47,7 +51,7 @@ const PublicProposalPage = () => {
   const [noteText, setNoteText] = useState('');
   const [sentiment, setSentiment] = useState<Sentiment>(null);
   const [submitted, setSubmitted] = useState(false);
-  const [navOpen, setNavOpen] = useState(false);
+  const [navOpen, setNavOpen] = useState(printMode);
   const [openItem, setOpenItem] = useState<{ day: number; item: number; sentiment: Sentiment } | null>(null);
   const [itemDraft, setItemDraft] = useState('');
 
@@ -171,7 +175,7 @@ const PublicProposalPage = () => {
   ) : null;
 
   return (
-    <div className="min-h-screen bg-slate-50 font-sans">
+    <div className="min-h-screen bg-slate-50 font-sans" data-proposal-doc {...(printMode ? { 'data-print-mode': '1' } : {})}>
       {/* ─── HERO ─── */}
       <section>
         <div className="relative w-full aspect-[21/9] overflow-hidden bg-[#0a2540]">
@@ -225,7 +229,7 @@ const PublicProposalPage = () => {
 
 
       {/* ─── STICKY NAV ─── */}
-      <nav className="sticky top-0 z-30 bg-white border-b border-slate-200 shadow-sm">
+      <nav data-interactive className="sticky top-0 z-30 bg-white border-b border-slate-200 shadow-sm">
         <div className="max-w-4xl mx-auto px-4">
           <div className="flex items-center gap-1 overflow-x-auto py-2 text-sm no-scrollbar">
             <a href="#summary" className="shrink-0 px-3 py-1.5 rounded-full hover:bg-sky-50 text-slate-600 font-medium">{dict.summary}</a>
@@ -249,7 +253,9 @@ const PublicProposalPage = () => {
           <div className="bg-white rounded-xl border border-slate-200 p-5">
             <button onClick={() => setNavOpen(!navOpen)} className="flex items-center justify-between w-full text-left">
               <span className="font-medium text-slate-700">{dict.programDayByDay}</span>
-              {navOpen ? <ChevronUp className="h-4 w-4 text-slate-400" /> : <ChevronDown className="h-4 w-4 text-slate-400" />}
+              <span data-interactive>
+                {navOpen ? <ChevronUp className="h-4 w-4 text-slate-400" /> : <ChevronDown className="h-4 w-4 text-slate-400" />}
+              </span>
             </button>
             {navOpen && (
               <div className="mt-3 space-y-1">
@@ -330,7 +336,7 @@ const PublicProposalPage = () => {
                             isLiked ? 'bg-emerald-500' : isChange ? 'bg-amber-500' : 'bg-sky-400',
                           )} />
                           <RichText className="flex-1 text-sm text-slate-700" value={item} />
-                          <div className="flex items-center gap-1 shrink-0">
+                          <div data-interactive className="flex items-center gap-1 shrink-0">
                             <button
                               onClick={() => {
                                 if (isLiked) return; // already liked
@@ -439,7 +445,7 @@ const PublicProposalPage = () => {
                 {day.map_url && (() => {
                   const embed = toMapEmbedSrc(day.map_url);
                   return (
-                    <div className="mt-5">
+                    <div className="mt-5" data-map-embed={day.map_url}>
                       {embed && (
                         <div className="rounded-xl overflow-hidden border border-slate-200 aspect-[16/9]">
                           <iframe
@@ -468,6 +474,7 @@ const PublicProposalPage = () => {
 
                 {/* Comment this day link */}
                 <button
+                  data-interactive
                   onClick={() => { setSelectedDay(idx); setNotepadTab('day'); setNotepadOpen(true); }}
                   className="mt-4 text-xs text-slate-400 hover:text-sky-600 flex items-center gap-1 transition-colors"
                 >
@@ -579,6 +586,7 @@ const PublicProposalPage = () => {
 
       {/* ─── FLOATING ANNOTATION BUTTON ─── */}
       <button
+        data-interactive
         onClick={() => setNotepadOpen(true)}
         className="fixed bottom-24 right-5 z-40 w-12 h-12 bg-sky-500 text-white rounded-full shadow-lg flex items-center justify-center hover:bg-sky-600 transition-colors"
         title={dict.addNote}
@@ -588,7 +596,7 @@ const PublicProposalPage = () => {
 
       {/* ─── APPROVAL BAR ─── */}
       {proposal.status === 'sent' && !approvalMode && (
-        <div className="fixed bottom-0 left-0 right-0 z-30 bg-white border-t border-slate-200 shadow-2xl">
+        <div data-interactive className="fixed bottom-0 left-0 right-0 z-30 bg-white border-t border-slate-200 shadow-2xl">
           <div className="max-w-4xl mx-auto px-4 py-3 flex items-center gap-2">
             <button onClick={() => setApprovalMode('approve')} className="flex-1 px-4 py-3 bg-emerald-600 text-white rounded-xl font-medium text-sm hover:bg-emerald-700 transition-colors">
               {dict.approveProgram}
