@@ -68,6 +68,7 @@ const App = () => (
           <TourProvider>
           <Routes>
             <Route path="/login" element={<LoginPage />} />
+            {/* onboarding */}
             <Route path="/signup" element={<SignupPage />} />
             <Route path="/forgot-password" element={<ForgotPasswordPage />} />
             <Route path="/reset-password" element={<ResetPasswordPage />} />
