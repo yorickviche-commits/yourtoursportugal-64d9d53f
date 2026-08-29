@@ -18,15 +18,25 @@ function wait(ms: number) {
   return new Promise<void>(resolve => window.setTimeout(resolve, ms));
 }
 
-async function waitForImages(doc: Document) {
+/**
+ * Lazy images never fire `load` while off-screen, so force eager loading and
+ * never block longer than `timeoutMs` on any single image.
+ */
+async function waitForImages(doc: Document, timeoutMs = 12000) {
   const images = Array.from(doc.images);
+  images.forEach(img => {
+    img.loading = 'eager';
+    img.removeAttribute('loading');
+  });
   await Promise.all(
     images.map(img =>
       img.complete
         ? Promise.resolve()
         : new Promise<void>(resolve => {
-            img.addEventListener('load', () => resolve(), { once: true });
-            img.addEventListener('error', () => resolve(), { once: true });
+            const done = () => resolve();
+            img.addEventListener('load', done, { once: true });
+            img.addEventListener('error', done, { once: true });
+            window.setTimeout(done, timeoutMs);
           }),
     ),
   );
