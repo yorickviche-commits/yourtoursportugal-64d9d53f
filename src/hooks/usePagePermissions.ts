@@ -9,7 +9,7 @@ import { PAGES, PageKey, permKey } from '@/lib/pagePermissions';
  * super_admin and admin bypass the matrix (full access).
  */
 export function usePagePermissions() {
-  const { roles, user, loading: authLoading } = useAuth();
+  const { roles, roleCodes, user, loading: authLoading } = useAuth();
 
   const query = useQuery({
     queryKey: ['permissions_matrix'],

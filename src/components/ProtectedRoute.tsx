@@ -26,6 +26,12 @@ const ProtectedRoute = ({ children, adminOnly = false }: ProtectedRouteProps) =>
   }
 
   if (!user) return <Navigate to="/login" replace state={{ from: location.pathname + location.search }} />;
+
+  // Onboarding obrigatório para contas novas (definir password + dados).
+  if (profile && !onboardingCompleted && location.pathname !== '/setup-account') {
+    return <Navigate to="/setup-account" replace />;
+  }
+
   if (adminOnly && !isAdmin) return <Navigate to="/" replace />;
 
   // Enforce page-level permissions matrix (skips admins).
