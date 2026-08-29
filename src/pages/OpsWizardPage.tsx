@@ -666,11 +666,13 @@ function QueueCard({ index, action, score, booking, onOpen, onDone }: {
 /* ── Reservas calendar (departures by day) ────────────────────────────── */
 const WEEKDAYS = ['SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SÁB', 'DOM'];
 
-function ReservasCalendar({ monthOffset, onShiftMonth, onPick, bookings }: {
+function ReservasCalendar({ monthOffset, onShiftMonth, onToday, onPick, bookings, filter }: {
   monthOffset: number;
   onShiftMonth: (delta: number) => void;
+  onToday: () => void;
   onPick: (b: OpsBooking) => void;
   bookings: OpsBooking[];
+  filter: CalFilter;
 }) {
   const today = new Date();
   const base = new Date(today.getFullYear(), today.getMonth() + monthOffset, 1);
@@ -684,8 +686,14 @@ function ReservasCalendar({ monthOffset, onShiftMonth, onPick, bookings }: {
   ];
   while (cells.length % 7 !== 0) cells.push(null);
 
+  const visible = bookings.filter((b) => {
+    if (filter === 'ALL') return true;
+    const st = bookingState(b);
+    return filter === 'READY' ? st === 'ok' : st !== 'ok';
+  });
+
   const byDay = new Map<number, OpsBooking[]>();
-  bookings.forEach((b) => {
+  visible.forEach((b) => {
     if (!b.departureDate) return;
     const d = new Date(b.departureDate);
     if (d.getFullYear() === year && d.getMonth() === month) {
@@ -696,27 +704,34 @@ function ReservasCalendar({ monthOffset, onShiftMonth, onPick, bookings }: {
   });
 
   const monthLabel = base.toLocaleDateString('pt-PT', { month: 'long', year: 'numeric' });
-  const monthCount = [...byDay.values()].reduce((n, l) => n + l.length, 0);
-  const monthPax = [...byDay.values()].flat().reduce((n, b) => n + b.pax, 0);
+  const all = [...byDay.values()].flat();
+  const monthPax = all.reduce((n, b) => n + b.pax, 0);
+  const ready = all.filter((b) => bookingState(b) === 'ok').length;
+  const missing = all.length - ready;
 
   return (
     <div className="p-4">
-      <div className="mb-3 flex items-center gap-2">
+      <div className="mb-3 flex flex-wrap items-center gap-2">
         <button onClick={() => onShiftMonth(-1)} className="rounded-lg p-1.5" style={{ border: `1.5px solid ${C.border}`, color: C.text }}>
           <ChevronLeft size={16} />
+        </button>
+        <button onClick={onToday} className="rounded-lg px-2.5 py-1.5" style={{ fontSize: 11.5, fontWeight: 800, border: `1.5px solid ${C.border}`, color: C.accent }}>
+          HOJE
         </button>
         <button onClick={() => onShiftMonth(1)} className="rounded-lg p-1.5" style={{ border: `1.5px solid ${C.border}`, color: C.text }}>
           <ChevronRight size={16} />
         </button>
-        <div style={{ fontSize: 15, fontWeight: 800, textTransform: 'capitalize' }}>{monthLabel}</div>
-        <div className="ml-auto" style={{ fontSize: 12.5, fontWeight: 700, color: C.muted }}>
-          {monthCount} partidas · {monthPax} pax
+        <div style={{ fontSize: 17, fontWeight: 800, textTransform: 'capitalize' }}>{monthLabel}</div>
+        <div className="ml-auto flex flex-wrap items-center gap-3" style={{ fontSize: 12.5, fontWeight: 700 }}>
+          <span style={{ color: C.muted }}>{all.length} partidas · {monthPax} pax</span>
+          <span style={{ color: C.success }}>{ready} ready to go</span>
+          <span style={{ color: C.critical }}>{missing} em falta</span>
         </div>
       </div>
 
       <div className="grid grid-cols-7 gap-1.5 pb-1.5">
         {WEEKDAYS.map((d) => (
-          <div key={d} style={{ fontSize: 11.5, fontWeight: 700, color: C.muted, textAlign: 'center' }}>{d}</div>
+          <div key={d} style={{ fontSize: 12, fontWeight: 800, color: C.muted, textAlign: 'center' }}>{d}</div>
         ))}
       </div>
 
@@ -727,7 +742,7 @@ function ReservasCalendar({ monthOffset, onShiftMonth, onPick, bookings }: {
           return (
             <div
               key={i}
-              className="min-h-[104px] rounded-xl p-2"
+              className="min-h-[150px] rounded-xl p-2"
               style={{
                 background: day ? (isToday ? 'rgba(28,79,216,0.07)' : '#fff') : C.soft,
                 border: `1.5px solid ${isToday ? 'rgba(28,79,216,0.4)' : C.border}`,
@@ -735,22 +750,26 @@ function ReservasCalendar({ monthOffset, onShiftMonth, onPick, bookings }: {
             >
               {day && (
                 <>
-                  <div style={{ fontSize: 12, fontWeight: 700, color: isToday ? C.accent : C.muted }}>
+                  <div style={{ fontSize: 13, fontWeight: 800, color: isToday ? C.accent : C.muted }}>
                     {String(day).padStart(2, '0')}
                   </div>
-                  <div className="mt-1.5 space-y-1">
+                  <div className="mt-1.5 space-y-1.5">
                     {items.map((b) => {
-                      const blocked = b.missing.some((m) => m.blocking);
-                      const color = blocked ? C.critical : C.success;
+                      const color = STATE_COLOR[bookingState(b)];
                       return (
                         <button
                           key={b.id}
                           onClick={() => onPick(b)}
-                          className="block w-full truncate rounded-lg px-1.5 py-1 text-left"
-                          style={{ fontSize: 11, fontWeight: 700, color, background: `${color}14`, border: `1px solid ${color}44` }}
+                          className="block w-full rounded-lg px-1.5 py-1 text-left"
+                          style={{ background: `${color}12`, border: `1px solid ${color}44` }}
                           title={`${b.ref} · ${b.clientName} · ${b.product} · ${b.pax} pax`}
                         >
-                          {b.ref} · {b.pax}p
+                          <div className="flex items-center gap-1.5">
+                            <span className="h-2 w-2 shrink-0 rounded-full" style={{ background: color }} />
+                            <span className="truncate" style={{ fontSize: 11.5, fontWeight: 800, color }}>{b.ref}</span>
+                          </div>
+                          <div className="truncate" style={{ fontSize: 11.5, fontWeight: 700, color: C.text }}>{b.clientName}</div>
+                          <div style={{ fontSize: 11, fontWeight: 700, color: C.muted }}>{b.pax} pax</div>
                         </button>
                       );
                     })}
@@ -762,10 +781,12 @@ function ReservasCalendar({ monthOffset, onShiftMonth, onPick, bookings }: {
         })}
       </div>
 
-      <div className="mt-3 flex items-center gap-4" style={{ fontSize: 12, fontWeight: 700, color: C.muted }}>
-        <span className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-full" style={{ background: C.success }} /> PRONTA</span>
-        <span className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-full" style={{ background: C.critical }} /> BLOQUEADA</span>
+      <div className="mt-3 flex flex-wrap items-center gap-4" style={{ fontSize: 12, fontWeight: 700, color: C.muted }}>
+        <span className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-full" style={{ background: C.success }} /> READY TO GO</span>
+        <span className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-full" style={{ background: C.high }} /> PARCIAL</span>
+        <span className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-full" style={{ background: C.critical }} /> EM FALTA</span>
       </div>
     </div>
   );
 }
+
