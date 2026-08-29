@@ -83,7 +83,8 @@ export interface RouteMapImage {
 const routeCache = new Map<string, { polyline: string | null; stops: string[]; image?: string | null } | null>();
 
 async function fetchRoute(mapUrl: string, width = 640, height = 300) {
-  const key = mapUrl.trim();
+  const key = (mapUrl || '').trim();
+  if (!/^https?:\/\//i.test(key)) return null;
   if (routeCache.has(key)) return routeCache.get(key)!;
   try {
     const { data, error } = await supabase.functions.invoke('route-map-image', {
