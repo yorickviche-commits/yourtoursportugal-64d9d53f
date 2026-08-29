@@ -139,11 +139,6 @@ function MonthYearPicker({ value, onChange }: { value: string; onChange: (v: str
 const OperacoesTab = LeadOperationsEditor;
 
 
-const LEAD_STATUSES: { value: LeadStatus; label: string; color: string }[] = LEAD_STAGES.map(s => ({
-  value: s.status,
-  label: s.label,
-  color: s.className,
-}));
 
 
 const statusColors: Record<string, string> = {
