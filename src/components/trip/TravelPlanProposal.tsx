@@ -1525,7 +1525,27 @@ const TravelPlanProposal = ({
   if (!displayPlan) return null;
   const t = getLabels(language);
   const d = getProposalDict(language);
+  const h = getHotelsDict(language);
   const displayId = ytId || leadCode;
+
+  // ─── Hotels Included (from Costing day 0 + details edited here) ───
+  const hotels = mergeProposalHotels(accommodation, closing.hotels || []);
+  const hasHotels = hotels.length > 0;
+  const hotelsNights = hotels.reduce((s, x) => s + (Number(x.nights) || 0), 0);
+  const hotelsRooms = hotels.reduce((s, x) => Math.max(s, Number(x.rooms) || 0), 0);
+  const hotelsTotal = Math.round(hotels.reduce((s, x) => s + (Number(x.value) || 0), 0));
+  const programmeTotal = Math.max(0, totalPVP - hotelsTotal);
+  const perPerson = pax + (paxChildren || 0) > 0 ? Math.round(totalPVP / (pax + (paxChildren || 0))) : 0;
+  const eur = (n: number) => `€ ${Number(n || 0).toLocaleString('en-US')}`;
+  const updateHotel = (name: string, patch: Partial<ProposalHotel>) =>
+    setClosing(c => {
+      const list = [...(c.hotels || [])];
+      const i = list.findIndex(x => (x.name || '').trim().toLowerCase() === name.trim().toLowerCase());
+      if (i >= 0) list[i] = { ...list[i], ...patch, name };
+      else list.push({ name, ...patch });
+      return { ...c, hotels: list };
+    });
+
 
   // Day-by-day summary sent to the AI image generator
   const programContext = [
