@@ -1856,14 +1856,16 @@ const TravelPlanProposal = ({
                         onChange={e => updateHotel(hotel.name, { city: e.target.value })} />
                       <Input className="h-7 text-xs" placeholder="URL Google Maps" value={hotel.mapUrl || ''}
                         onChange={e => updateHotel(hotel.name, { mapUrl: e.target.value })} />
-                      <Input className="h-7 text-xs" placeholder="Check-in (ex. 01 Apr 2027)" value={hotel.checkIn || ''}
-                        onChange={e => updateHotel(hotel.name, { checkIn: e.target.value })} />
-                      <Input className="h-7 text-xs" placeholder="Check-out (ex. 03 Apr 2027)" value={hotel.checkOut || ''}
-                        onChange={e => updateHotel(hotel.name, { checkOut: e.target.value })} />
+                      <HotelDateField label="Check-in" value={hotel.checkIn}
+                        onChange={v => updateHotel(hotel.name, { checkIn: v, ...nightsPatch(v, hotel.checkOut) })} />
+                      <HotelDateField label="Check-out" value={hotel.checkOut}
+                        onChange={v => updateHotel(hotel.name, { checkOut: v, ...nightsPatch(hotel.checkIn, v) })} />
+                      <Input className="h-7 text-xs" type="number" min={0} placeholder="Nº de noites" value={hotel.nights ?? ''}
+                        onChange={e => updateHotel(hotel.name, { nights: Number(e.target.value) || 0 })} />
                       <Input className="h-7 text-xs" type="number" min={0} placeholder="Nº de quartos" value={hotel.rooms ?? ''}
                         onChange={e => updateHotel(hotel.name, { rooms: Number(e.target.value) || 0 })} />
-                      <div className="text-[10px] text-muted-foreground flex items-center">
-                        {hotel.nights || 0} {h.nights.toLowerCase()} · {eur(hotel.value || 0)} (do Costing)
+                      <div className="text-[10px] text-muted-foreground flex items-center md:col-span-2">
+                        {eur(hotel.value || 0)} (do Costing)
                       </div>
                       <div className="md:col-span-2">
                         <RichTextarea className="text-xs min-h-[70px]" placeholder="Descrição do hotel (cliente)"
