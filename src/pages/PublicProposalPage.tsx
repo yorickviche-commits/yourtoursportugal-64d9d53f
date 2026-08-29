@@ -9,6 +9,7 @@ import foundersAsset from '@/assets/founders.png.asset.json';
 import { toMapEmbedSrc } from '@/lib/mapEmbed';
 import { RichText, stripBoldMarkers } from '@/lib/richText';
 import { resolveClosingText } from '@/lib/closingTermsI18n';
+import { getHotelsDict, resolveHotelsText, mergeProposalHotels } from '@/lib/proposalHotelsI18n';
 import { getPdfDict } from '@/lib/proposalPdfI18n';
 
 const TERMS_URL = 'https://drive.google.com/file/d/12AkvW2Ob0LtcooaciWY4e-nEx7hlOnQC/view?usp=sharing';
