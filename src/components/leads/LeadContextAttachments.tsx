@@ -1,13 +1,15 @@
 import { useEffect, useRef, useState } from 'react';
-import { Loader2, MapPin, FileText, Upload, X, Sparkles } from 'lucide-react';
+import { Loader2, MapPin, FileText, Upload, X, Sparkles, Link2, Save } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useQueryClient } from '@tanstack/react-query';
+import { parseGoogleMapsUrl } from '@/lib/mapEmbed';
 
 interface Props {
   leadId: string;
   routeMapPath?: string | null;
   exactItineraryPdfPath?: string | null;
+  routeMapUrl?: string | null;
 }
 
 const BUCKET = 'lead-context';
