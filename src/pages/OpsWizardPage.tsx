@@ -119,11 +119,12 @@ export default function OpsWizardPage() {
   const [kpiFilter, setKpiFilter] = useState<KpiFilter>(null);
   const [selectedStage, setSelectedStage] = useState<OpsStage>('deposit_received');
   const [expandedBooking, setExpandedBooking] = useState<string | null>(null);
-  const [view, setView] = useState<'pipeline' | 'calendar'>('pipeline');
   const [monthOffset, setMonthOffset] = useState(0);
+  const [calFilter, setCalFilter] = useState<CalFilter>('ALL');
   const [stageFilter, setStageFilter] = useState<StageFilter>('ALL');
   const [peek, setPeek] = useState<OpsBooking | null>(null);
-  const [open, setOpen] = useState({ queue: true, blocked: true, pipeline: true, activity: false });
+  const [open, setOpen] = useState({ calendar: true, queue: true, blocked: true, pipeline: true, activity: false });
+
 
   const { bookings, actions, isLoading, refetch } = useOpsData();
   const activity = useOpsActivity();
