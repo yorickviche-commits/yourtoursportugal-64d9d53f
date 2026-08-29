@@ -57,6 +57,20 @@
     --info-foreground: 0 0% 100%;
     --info-muted: 210 100% 96%;
 
+    /* Lead pipeline stage colors (NetHunt) */
+    --stage-new: 330 85% 52%;
+    --stage-budget: 32 95% 48%;
+    --stage-nego: 268 68% 56%;
+    --stage-archive-sales: 0 72% 51%;
+    --stage-deposit: 214 90% 50%;
+    --stage-suppliers: 187 72% 38%;
+    --stage-briefing: 243 58% 56%;
+    --stage-ready: 145 63% 36%;
+    --stage-posttrip: 199 22% 44%;
+    --stage-deferred: 22 58% 44%;
+    --stage-archive-ops: 355 52% 34%;
+
+
     --sidebar-background: 0 0% 100%;
     --sidebar-foreground: 222 47% 11%;
     --sidebar-primary: 200 98% 39%;
