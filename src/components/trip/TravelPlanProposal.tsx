@@ -1009,7 +1009,7 @@ const TravelPlanProposal = ({
     } finally {
       setGenerating(false);
     }
-  }, [leadData, leadId, language, toast, clearUsedPhotos, routeMapPath, exactItineraryPdfPath]);
+  }, [leadData, leadId, language, toast, clearUsedPhotos, routeMapPath, exactItineraryPdfPath, routeMapUrl]);
 
   // Manual: fetch images for the current plan (cover + per-day) using Unsplash + dedup
   const handleFillImages = useCallback(async () => {
