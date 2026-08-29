@@ -2303,6 +2303,21 @@ const TravelPlanProposal = ({
             )}
           </div>
 
+          {/* What's Not Included */}
+          <div>
+            <h3 className="text-base font-serif font-bold text-slate-800 mb-2">{h.notIncluded}</h3>
+            {viewMode === 'edit' ? (
+              <RichTextarea
+                className="text-xs min-h-[100px]"
+                value={closing.notIncluded || ''}
+                onChange={v => setClosing(c => ({ ...c, notIncluded: v }))}
+              />
+            ) : (
+              <RichText as="div" className="text-xs text-slate-700 whitespace-pre-wrap ml-3" value={closing.notIncluded || ''} preserveNewlines />
+            )}
+          </div>
+
+
           {/* Reservation & Payment */}
           <div>
             <h3 className="text-base font-serif font-bold text-slate-800 mb-2">{t.paymentConditions}</h3>
