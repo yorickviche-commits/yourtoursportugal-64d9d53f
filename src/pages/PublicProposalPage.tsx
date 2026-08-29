@@ -1065,7 +1065,14 @@ const PricingConditions = ({ proposal, lang }: { proposal: any; lang: string }) 
             <h3 className="text-sm font-serif font-bold text-slate-800 mb-2">{L.notes}</h3>
             <RichText as="div" className="text-sm text-slate-600 whitespace-pre-wrap leading-relaxed" value={notesText} preserveNewlines />
           </div>
+          {nextStepsText && (
+            <div>
+              <h3 className="text-sm font-serif font-bold text-slate-800 mb-2">{h.nextSteps}</h3>
+              <RichText as="div" className="text-sm text-slate-700 whitespace-pre-wrap leading-relaxed" value={nextStepsText} preserveNewlines />
+            </div>
+          )}
         </div>
+
       </div>
     </section>
   );
