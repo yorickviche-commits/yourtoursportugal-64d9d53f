@@ -315,6 +315,30 @@ export type Database = {
         }
         Relationships: []
       }
+      app_roles: {
+        Row: {
+          code: string
+          created_at: string
+          is_system: boolean
+          label: string
+          updated_at: string
+        }
+        Insert: {
+          code: string
+          created_at?: string
+          is_system?: boolean
+          label: string
+          updated_at?: string
+        }
+        Update: {
+          code?: string
+          created_at?: string
+          is_system?: boolean
+          label?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       approvals: {
         Row: {
           client_name: string | null
@@ -2517,7 +2541,7 @@ export type Database = {
           granted: boolean
           id: string
           permission: string
-          role: Database["public"]["Enums"]["app_role"]
+          role: string
           updated_at: string
         }
         Insert: {
@@ -2525,7 +2549,7 @@ export type Database = {
           granted?: boolean
           id?: string
           permission: string
-          role: Database["public"]["Enums"]["app_role"]
+          role: string
           updated_at?: string
         }
         Update: {
@@ -2533,7 +2557,7 @@ export type Database = {
           granted?: boolean
           id?: string
           permission?: string
-          role?: Database["public"]["Enums"]["app_role"]
+          role?: string
           updated_at?: string
         }
         Relationships: []
@@ -2691,6 +2715,7 @@ export type Database = {
           full_name: string | null
           id: string
           last_login_at: string | null
+          onboarding_completed_at: string | null
           phone: string | null
           status: string
           updated_at: string
@@ -2702,6 +2727,7 @@ export type Database = {
           full_name?: string | null
           id: string
           last_login_at?: string | null
+          onboarding_completed_at?: string | null
           phone?: string | null
           status?: string
           updated_at?: string
@@ -2713,6 +2739,7 @@ export type Database = {
           full_name?: string | null
           id?: string
           last_login_at?: string | null
+          onboarding_completed_at?: string | null
           phone?: string | null
           status?: string
           updated_at?: string
@@ -3935,6 +3962,92 @@ export type Database = {
             columns: ["proposal_id"]
             isOneToOne: false
             referencedRelation: "proposals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_custom_roles: {
+        Row: {
+          created_at: string
+          id: string
+          role_code: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          role_code: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          role_code?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_custom_roles_role_code_fkey"
+            columns: ["role_code"]
+            isOneToOne: false
+            referencedRelation: "app_roles"
+            referencedColumns: ["code"]
+          },
+          {
+            foreignKeyName: "user_custom_roles_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_invites: {
+        Row: {
+          accepted_at: string | null
+          created_at: string
+          email: string
+          expires_at: string
+          id: string
+          invited_by: string | null
+          last_sent_at: string | null
+          role_code: string
+          status: string
+          token: string
+          updated_at: string
+        }
+        Insert: {
+          accepted_at?: string | null
+          created_at?: string
+          email: string
+          expires_at?: string
+          id?: string
+          invited_by?: string | null
+          last_sent_at?: string | null
+          role_code?: string
+          status?: string
+          token?: string
+          updated_at?: string
+        }
+        Update: {
+          accepted_at?: string | null
+          created_at?: string
+          email?: string
+          expires_at?: string
+          id?: string
+          invited_by?: string | null
+          last_sent_at?: string | null
+          role_code?: string
+          status?: string
+          token?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_invites_invited_by_fkey"
+            columns: ["invited_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
         ]
