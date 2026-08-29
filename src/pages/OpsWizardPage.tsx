@@ -221,6 +221,159 @@ export default function OpsWizardPage() {
             active={kpiFilter === 'departures'} onClick={() => setKpiFilter(kpiFilter === 'departures' ? null : 'departures')} />
         </div>
 
+        {/* ★ CALENDÁRIO OPS — centro da visão */}
+        <Section
+          title="Calendário Ops"
+          subtitle="Partidas por dia — clique num evento para ver o que falta e abrir a lead"
+          count={bookings.filter((b) => b.departureDate).length}
+          open={open.calendar}
+          onToggle={() => toggle('calendar')}
+          headerRight={(['ALL', 'READY', 'MISSING'] as CalFilter[]).map((f) => (
+            <button
+              key={f}
+              onClick={() => setCalFilter(f)}
+              className="rounded-lg px-2.5 py-1.5"
+              style={{
+                fontSize: 11.5, fontWeight: 800,
+                color: calFilter === f ? '#fff' : C.text,
+                background: calFilter === f ? C.accent : '#fff',
+                border: `1.5px solid ${calFilter === f ? C.accent : C.border}`,
+              }}
+            >
+              {f === 'ALL' ? 'TODAS' : f === 'READY' ? 'READY TO GO' : 'EM FALTA'}
+            </button>
+          ))}
+        >
+          <ReservasCalendar
+            monthOffset={monthOffset}
+            onShiftMonth={(d) => setMonthOffset((m) => m + d)}
+            onToday={() => setMonthOffset(0)}
+            onPick={(b) => setPeek(b)}
+            bookings={bookings}
+            filter={calFilter}
+          />
+        </Section>
+
+        {/* PIPELINE — uma linha de fases */}
+        <Section
+          title="Pipeline operacional"
+          subtitle="Clique numa fase para filtrar as reservas"
+          count={filteredBookings.length}
+          open={open.pipeline}
+          onToggle={() => toggle('pipeline')}
+          headerRight={([['ALL', 'TODAS'], ['SOON', '≤7 DIAS'], ['BLOCKED', 'BLOQUEADAS']] as const).map(([v, lbl]) => (
+            <button
+              key={v}
+              onClick={() => setStageFilter(v)}
+              className="rounded-lg px-2.5 py-1.5"
+              style={{
+                fontSize: 11.5, fontWeight: 700,
+                color: stageFilter === v ? '#fff' : C.muted,
+                background: stageFilter === v ? C.accent : '#fff',
+                border: `1.5px solid ${stageFilter === v ? C.accent : C.border}`,
+              }}
+            >
+              {lbl}
+            </button>
+          ))}
+        >
+          <div className="p-4">
+            <div className="flex gap-2 overflow-x-auto pb-1">
+              {STAGE_ORDER.map((stage) => {
+                const items = filteredBookings.filter((b) => b.stage === stage);
+                const blocked = items.filter((b) => b.missing.some((m) => m.blocking)).length;
+                const active = selectedStage === stage;
+                return (
+                  <button
+                    key={stage}
+                    onClick={() => { setSelectedStage(stage); setExpandedBooking(null); }}
+                    className="flex shrink-0 items-center gap-2 rounded-xl px-3 py-2"
+                    style={{
+                      background: active ? 'rgba(28,79,216,0.07)' : '#fff',
+                      border: `1.5px solid ${active ? 'rgba(28,79,216,0.4)' : C.border}`,
+                    }}
+                    title={STAGE_LABEL[stage]}
+                  >
+                    <span style={{ fontSize: 13, fontWeight: active ? 800 : 600, whiteSpace: 'nowrap' }}>{STAGE_SHORT[stage]}</span>
+                    <span className="rounded-full px-1.5" style={{ fontSize: 11.5, fontWeight: 800, color: C.accentLight, background: 'rgba(28,79,216,0.1)' }}>
+                      {items.length}
+                    </span>
+                    {blocked > 0 && <span className="h-2 w-2 rounded-full" style={{ background: C.critical }} />}
+                  </button>
+                );
+              })}
+            </div>
+
+            <div className="mt-4">
+              <Label>Reservas em {STAGE_LABEL[selectedStage]}</Label>
+              <div className="mt-2 space-y-2">
+                {stageBookings.length === 0 && (
+                  <div style={{ fontSize: 13, color: C.muted }}>Nenhuma reserva nesta fase.</div>
+                )}
+                {stageBookings.map((b) => {
+                  const isOpen = expandedBooking === b.id;
+                  return (
+                    <div key={b.id} className="rounded-xl" style={{ border: `1.5px solid ${C.border}` }}>
+                      <button
+                        onClick={() => setExpandedBooking(isOpen ? null : b.id)}
+                        className="flex w-full flex-wrap items-center gap-3 px-3.5 py-3 text-left"
+                      >
+                        {isOpen ? <ChevronDown size={16} style={{ color: C.muted }} /> : <ChevronRight size={16} style={{ color: C.muted }} />}
+                        <span style={{ fontSize: 13, fontWeight: 800, color: C.accentLight }}>{b.ref}</span>
+                        <span style={{ fontSize: 14.5, fontWeight: 700 }}>{b.clientName}</span>
+                        <span className="truncate" style={{ fontSize: 13, color: C.muted }}>{b.product}</span>
+                        <span className="ml-auto" style={{ fontSize: 13, fontWeight: 700, color: C.muted }}>{b.departureDate || 'sem data'}</span>
+                        <span style={{ fontSize: 13, fontWeight: 700, color: C.muted }}>{b.pax} pax</span>
+                        <span className="rounded px-2" style={{ fontSize: 12, fontWeight: 800, color: C.accentLight, background: 'rgba(28,79,216,0.08)' }}>
+                          {readinessPercent(b)}%
+                        </span>
+                      </button>
+                      {isOpen && (
+                        <div className="space-y-3 px-3.5 pb-3.5" style={{ borderTop: `1px solid ${C.border}` }}>
+                          <div className="flex flex-wrap items-center gap-2 pt-3">
+                            <PillarChips booking={b} />
+                          </div>
+                          <div className="flex flex-wrap gap-2">
+                            {b.missing.length === 0 && (
+                              <span style={{ fontSize: 12.5, fontWeight: 700, color: C.success }}>NADA EM FALTA</span>
+                            )}
+                            {b.missing.map((m) => (
+                              <span
+                                key={m.field}
+                                className="rounded-lg px-2 py-0.5"
+                                style={{
+                                  fontSize: 11.5, fontWeight: 700,
+                                  color: m.blocking ? C.critical : C.high,
+                                  background: m.blocking ? 'rgba(217,45,67,0.09)' : 'rgba(196,122,0,0.1)',
+                                  border: `1px solid ${m.blocking ? 'rgba(217,45,67,0.3)' : 'rgba(196,122,0,0.3)'}`,
+                                }}
+                              >
+                                {m.field}
+                              </span>
+                            ))}
+                          </div>
+                          <div className="flex flex-wrap gap-2">
+                            {b.links.map((l) => (
+                              <button
+                                key={l.type + l.label}
+                                onClick={() => (l.url.startsWith('/') ? navigate(l.url) : openDeepLink(l.url))}
+                                className="flex items-center gap-1.5 rounded-lg px-2.5 py-1.5"
+                                style={{ fontSize: 12, fontWeight: 700, color: C.text, border: `1.5px solid ${C.border}` }}
+                              >
+                                <ExternalLink size={11} /> {l.label}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        </Section>
+
         {/* PRIORITY QUEUE */}
         <Section
           title="Fila de prioridade"
@@ -307,167 +460,6 @@ export default function OpsWizardPage() {
           </div>
         </Section>
 
-        {/* PIPELINE / CALENDAR */}
-        <Section
-          title={view === 'pipeline' ? 'Pipeline operacional' : 'Calendário de reservas'}
-          subtitle={view === 'pipeline' ? 'Clique numa fase para filtrar' : 'Partidas por dia — clique num evento'}
-          count={view === 'pipeline' ? filteredBookings.length : undefined}
-          open={open.pipeline}
-          onToggle={() => toggle('pipeline')}
-          headerRight={
-            <>
-              {([['pipeline', 'PIPELINE'], ['calendar', 'CALENDÁRIO']] as const).map(([v, lbl]) => (
-                <button
-                  key={v}
-                  onClick={() => setView(v)}
-                  className="flex items-center gap-1.5 rounded-lg px-2.5 py-1.5"
-                  style={{
-                    fontSize: 11.5, fontWeight: 800,
-                    color: view === v ? '#fff' : C.text,
-                    background: view === v ? C.accent : '#fff',
-                    border: `1.5px solid ${view === v ? C.accent : C.border}`,
-                  }}
-                >
-                  {v === 'calendar' ? <CalendarDays size={12} /> : <LayoutList size={12} />} {lbl}
-                </button>
-              ))}
-            </>
-          }
-        >
-          {view === 'calendar' ? (
-            <ReservasCalendar
-              monthOffset={monthOffset}
-              onShiftMonth={(d) => setMonthOffset((m) => m + d)}
-              onPick={(b) => setPeek(b)}
-              bookings={bookings}
-            />
-          ) : (
-            <div className="p-4">
-              <div className="mb-3 flex flex-wrap items-center gap-2">
-                <Label style={{ marginRight: 4 }}>Filtro</Label>
-                {([['ALL', 'TODAS'], ['SOON', '≤7 DIAS'], ['BLOCKED', 'BLOQUEADAS']] as const).map(([v, lbl]) => (
-                  <button
-                    key={v}
-                    onClick={() => setStageFilter(v)}
-                    className="rounded-lg px-2.5 py-1.5"
-                    style={{
-                      fontSize: 11.5, fontWeight: 700,
-                      color: stageFilter === v ? '#fff' : C.muted,
-                      background: stageFilter === v ? C.accent : '#fff',
-                      border: `1.5px solid ${stageFilter === v ? C.accent : C.border}`,
-                    }}
-                  >
-                    {lbl}
-                  </button>
-                ))}
-              </div>
-
-              <div className="grid gap-2 md:grid-cols-2">
-                {STAGE_ORDER.map((stage) => {
-                  const items = filteredBookings.filter((b) => b.stage === stage);
-                  const blocked = items.filter((b) => b.missing.some((m) => m.blocking)).length;
-                  const active = selectedStage === stage;
-                  return (
-                    <button
-                      key={stage}
-                      onClick={() => { setSelectedStage(stage); setExpandedBooking(null); }}
-                      className="w-full rounded-xl px-3.5 py-3 text-left"
-                      style={{
-                        background: active ? 'rgba(28,79,216,0.07)' : '#fff',
-                        border: `1.5px solid ${active ? 'rgba(28,79,216,0.4)' : C.border}`,
-                      }}
-                    >
-                      <div className="flex items-center gap-2">
-                        <span style={{ fontSize: 14, fontWeight: active ? 800 : 600 }}>{STAGE_LABEL[stage]}</span>
-                        <span className="rounded-full px-2" style={{ fontSize: 12, fontWeight: 800, color: C.accentLight, background: 'rgba(28,79,216,0.08)' }}>
-                          {items.length}
-                        </span>
-                        {blocked > 0 && (
-                          <span className="ml-auto flex items-center gap-1.5" style={{ fontSize: 12, fontWeight: 700, color: C.critical }}>
-                            <span className="h-2 w-2 rounded-full" style={{ background: C.critical }} />
-                            {blocked} bloqueadas
-                          </span>
-                        )}
-                      </div>
-                      <div className="mt-2 h-[4px] w-full rounded-full" style={{ background: 'rgba(10,37,64,0.08)' }}>
-                        <div className="h-full rounded-full" style={{ width: `${(items.length / maxStageCount) * 100}%`, background: active ? C.accentLight : C.accent }} />
-                      </div>
-                    </button>
-                  );
-                })}
-              </div>
-
-              <div className="mt-5">
-                <Label>Reservas em {STAGE_LABEL[selectedStage]}</Label>
-                <div className="mt-2 space-y-2">
-                  {stageBookings.length === 0 && (
-                    <div style={{ fontSize: 13, color: C.muted }}>Nenhuma reserva nesta fase.</div>
-                  )}
-                  {stageBookings.map((b) => {
-                    const isOpen = expandedBooking === b.id;
-                    return (
-                      <div key={b.id} className="rounded-xl" style={{ border: `1.5px solid ${C.border}` }}>
-                        <button
-                          onClick={() => setExpandedBooking(isOpen ? null : b.id)}
-                          className="flex w-full flex-wrap items-center gap-3 px-3.5 py-3 text-left"
-                        >
-                          {isOpen ? <ChevronDown size={16} style={{ color: C.muted }} /> : <ChevronRight size={16} style={{ color: C.muted }} />}
-                          <span style={{ fontSize: 13, fontWeight: 800, color: C.accentLight }}>{b.ref}</span>
-                          <span style={{ fontSize: 14.5, fontWeight: 700 }}>{b.clientName}</span>
-                          <span className="truncate" style={{ fontSize: 13, color: C.muted }}>{b.product}</span>
-                          <span className="ml-auto" style={{ fontSize: 13, fontWeight: 700, color: C.muted }}>{b.departureDate || 'sem data'}</span>
-                          <span style={{ fontSize: 13, fontWeight: 700, color: C.muted }}>{b.pax} pax</span>
-                          <span className="rounded px-2" style={{ fontSize: 12, fontWeight: 800, color: C.accentLight, background: 'rgba(28,79,216,0.08)' }}>
-                            {readinessPercent(b)}%
-                          </span>
-                        </button>
-                        {isOpen && (
-                          <div className="space-y-3 px-3.5 pb-3.5" style={{ borderTop: `1px solid ${C.border}` }}>
-                            <div className="flex flex-wrap items-center gap-2 pt-3">
-                              <PillarChips booking={b} />
-                            </div>
-                            <div className="flex flex-wrap gap-2">
-                              {b.missing.length === 0 && (
-                                <span style={{ fontSize: 12.5, fontWeight: 700, color: C.success }}>NADA EM FALTA</span>
-                              )}
-                              {b.missing.map((m) => (
-                                <span
-                                  key={m.field}
-                                  className="rounded-lg px-2 py-0.5"
-                                  style={{
-                                    fontSize: 11.5, fontWeight: 700,
-                                    color: m.blocking ? C.critical : C.high,
-                                    background: m.blocking ? 'rgba(217,45,67,0.09)' : 'rgba(196,122,0,0.1)',
-                                    border: `1px solid ${m.blocking ? 'rgba(217,45,67,0.3)' : 'rgba(196,122,0,0.3)'}`,
-                                  }}
-                                >
-                                  {m.field}
-                                </span>
-                              ))}
-                            </div>
-                            <div className="flex flex-wrap gap-2">
-                              {b.links.map((l) => (
-                                <button
-                                  key={l.type + l.label}
-                                  onClick={() => (l.url.startsWith('/') ? navigate(l.url) : openDeepLink(l.url))}
-                                  className="flex items-center gap-1.5 rounded-lg px-2.5 py-1.5"
-                                  style={{ fontSize: 12, fontWeight: 700, color: C.text, border: `1.5px solid ${C.border}` }}
-                                >
-                                  <ExternalLink size={11} /> {l.label}
-                                </button>
-                              ))}
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            </div>
-          )}
-        </Section>
-
         {/* ACTIVITY */}
         <Section
           title="Atividade recente"
@@ -498,6 +490,7 @@ export default function OpsWizardPage() {
             })}
           </div>
         </Section>
+
       </div>
 
       {/* CALENDAR EVENT POP-UP */}
