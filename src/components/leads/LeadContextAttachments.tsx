@@ -155,6 +155,65 @@ export function LeadContextAttachments({ leadId, routeMapPath, exactItineraryPdf
   return (
     <div className="space-y-2">
       <label className="text-[10px] text-muted-foreground uppercase">Contexto extra para o Travel Planner</label>
+
+      {/* Google Maps route link */}
+      <div className="border rounded-md p-2 bg-muted/30 space-y-2">
+        <p className="text-xs font-medium flex items-center gap-1"><Link2 className="h-3 w-3 text-blue-600" /> Link Google Maps da rota exata <span className="text-muted-foreground/70 font-normal">(opcional)</span></p>
+        <div className="flex gap-2">
+          <input
+            value={linkDraft}
+            onChange={e => setLinkDraft(e.target.value)}
+            onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); saveLink(linkDraft); } }}
+            placeholder="https://www.google.com/maps/dir/Porto/Douro/Lisboa"
+            className="flex-1 h-8 rounded border bg-background px-2 text-xs"
+          />
+          <button
+            type="button"
+            onClick={() => saveLink(linkDraft)}
+            disabled={linkSaving || linkDraft.trim() === (routeMapUrl || '').trim()}
+            className="h-8 px-2 rounded bg-primary text-primary-foreground text-[11px] flex items-center gap-1 disabled:opacity-40"
+          >
+            {linkSaving ? <Loader2 className="h-3 w-3 animate-spin" /> : <Save className="h-3 w-3" />} Guardar
+          </button>
+          {routeMapUrl && (
+            <button
+              type="button"
+              onClick={() => { setLinkDraft(''); saveLink(null); }}
+              className="h-8 px-2 rounded border text-[11px] text-red-600 flex items-center gap-1"
+            >
+              <X className="h-3 w-3" /> Remover
+            </button>
+          )}
+        </div>
+
+        {routeMapUrl && (
+          <>
+            {parsedLink.waypoints.length > 0 && (
+              <p className="text-[10px] text-muted-foreground">
+                Pontos detetados: <span className="text-foreground">{parsedLink.waypoints.join(' → ')}</span>
+              </p>
+            )}
+            {parsedLink.embedSrc ? (
+              <iframe
+                src={parsedLink.embedSrc}
+                title="Rota Google Maps"
+                className="w-full h-40 rounded border"
+                loading="lazy"
+                referrerPolicy="no-referrer-when-downgrade"
+              />
+            ) : (
+              <p className="text-[10px] text-muted-foreground">
+                Link curto guardado (sem pré-visualização). <a href={routeMapUrl} target="_blank" rel="noreferrer" className="text-blue-600 hover:underline">Abrir no Google Maps</a>
+              </p>
+            )}
+            <div className="flex items-center gap-1.5 text-[11px] bg-blue-50 border border-blue-200 text-blue-800 rounded px-2 py-1">
+              <Sparkles className="h-3 w-3" />
+              <span><strong>Rota ativa</strong> — o Travel Planner vai usar esta sequência geográfica como base do programa.</span>
+            </div>
+          </>
+        )}
+      </div>
+
       <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
         {/* Route Map slot */}
         <div className="border rounded-md p-2 bg-muted/30">
