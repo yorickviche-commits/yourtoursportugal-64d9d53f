@@ -1,0 +1,1 @@
+select cron.unschedule('nethunt-pull-every-2-min');
