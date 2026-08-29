@@ -69,8 +69,50 @@ import { buildRouteMapImage } from '@/lib/staticRouteMap';
 import { downloadProposalPdf } from '@/lib/proposalPdf';
 import { getProposalAppUrl } from '@/lib/proposalShare';
 import { uploadDataUrlImage, isDataUrl, uploadImageFile, removeWhiteBackground } from '@/lib/uploadDataUrlImage';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Calendar } from '@/components/ui/calendar';
+import { CalendarIcon } from 'lucide-react';
+import { format, parse, isValid } from 'date-fns';
 
 export { toMapEmbedSrc };
+
+const HOTEL_DATE_FMT = 'dd MMM yyyy';
+
+/** Auto-computes the nights count when both hotel dates are known. */
+const nightsPatch = (checkIn?: string, checkOut?: string): { nights?: number } => {
+  if (!checkIn || !checkOut) return {};
+  const a = parse(checkIn, HOTEL_DATE_FMT, new Date());
+  const b = parse(checkOut, HOTEL_DATE_FMT, new Date());
+  if (!isValid(a) || !isValid(b)) return {};
+  const n = Math.round((b.getTime() - a.getTime()) / 86400000);
+  return n > 0 ? { nights: n } : {};
+};
+
+/** Small calendar pop-up used for hotel check-in / check-out (stores "01 Apr 2027"). */
+const HotelDateField = ({ label, value, onChange }: { label: string; value?: string; onChange: (v: string) => void }) => {
+  const parsed = value ? parse(value, HOTEL_DATE_FMT, new Date()) : undefined;
+  const selected = parsed && isValid(parsed) ? parsed : undefined;
+  return (
+    <Popover>
+      <PopoverTrigger asChild>
+        <Button variant="outline" className={cn('h-7 justify-start text-xs font-normal', !value && 'text-muted-foreground')}>
+          <CalendarIcon className="h-3 w-3 mr-1.5" />
+          {value || label}
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="w-auto p-0" align="start">
+        <Calendar
+          mode="single"
+          selected={selected}
+          defaultMonth={selected}
+          onSelect={date => onChange(date ? format(date, HOTEL_DATE_FMT) : '')}
+          initialFocus
+          className={cn('p-3 pointer-events-auto')}
+        />
+      </PopoverContent>
+    </Popover>
+  );
+};
 
 export interface TravelPlanData {
   trip_title: string;
@@ -1824,14 +1866,16 @@ const TravelPlanProposal = ({
                         onChange={e => updateHotel(hotel.name, { city: e.target.value })} />
                       <Input className="h-7 text-xs" placeholder="URL Google Maps" value={hotel.mapUrl || ''}
                         onChange={e => updateHotel(hotel.name, { mapUrl: e.target.value })} />
-                      <Input className="h-7 text-xs" placeholder="Check-in (ex. 01 Apr 2027)" value={hotel.checkIn || ''}
-                        onChange={e => updateHotel(hotel.name, { checkIn: e.target.value })} />
-                      <Input className="h-7 text-xs" placeholder="Check-out (ex. 03 Apr 2027)" value={hotel.checkOut || ''}
-                        onChange={e => updateHotel(hotel.name, { checkOut: e.target.value })} />
+                      <HotelDateField label="Check-in" value={hotel.checkIn}
+                        onChange={v => updateHotel(hotel.name, { checkIn: v, ...nightsPatch(v, hotel.checkOut) })} />
+                      <HotelDateField label="Check-out" value={hotel.checkOut}
+                        onChange={v => updateHotel(hotel.name, { checkOut: v, ...nightsPatch(hotel.checkIn, v) })} />
+                      <Input className="h-7 text-xs" type="number" min={0} placeholder="Nº de noites" value={hotel.nights ?? ''}
+                        onChange={e => updateHotel(hotel.name, { nights: Number(e.target.value) || 0 })} />
                       <Input className="h-7 text-xs" type="number" min={0} placeholder="Nº de quartos" value={hotel.rooms ?? ''}
                         onChange={e => updateHotel(hotel.name, { rooms: Number(e.target.value) || 0 })} />
-                      <div className="text-[10px] text-muted-foreground flex items-center">
-                        {hotel.nights || 0} {h.nights.toLowerCase()} · {eur(hotel.value || 0)} (do Costing)
+                      <div className="text-[10px] text-muted-foreground flex items-center md:col-span-2">
+                        {eur(hotel.value || 0)} (do Costing)
                       </div>
                       <div className="md:col-span-2">
                         <RichTextarea className="text-xs min-h-[70px]" placeholder="Descrição do hotel (cliente)"
