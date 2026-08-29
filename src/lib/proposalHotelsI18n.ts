@@ -189,7 +189,8 @@ export function mergeProposalHotels(
     return {
       ...match,
       name: row.name,
-      nights: row.nights ?? match.nights ?? 0,
+      // Manually edited nights (in the planner) win over the Costing value
+      nights: Number(match.nights) > 0 ? Number(match.nights) : (row.nights ?? 0),
       value: row.value ?? match.value ?? 0,
     };
   });
