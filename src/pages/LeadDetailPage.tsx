@@ -966,6 +966,8 @@ const LeadDetailPage = ({ mode = 'lead' }: { mode?: 'lead' | 'booking' } = {}) =
             defaultLanguage={idioma[0]}
             routeMapPath={(lead as any).route_map_path || undefined}
             routeMapUrl={(lead as any).route_map_url || undefined}
+            routeDayMaps={(lead as any).route_day_maps || undefined}
+
             exactItineraryPdfPath={(lead as any).exact_itinerary_pdf_path || undefined}
             accommodation={proposalAccommodation}
             netPricing={(lead as any).client_type === 'B2B'}
