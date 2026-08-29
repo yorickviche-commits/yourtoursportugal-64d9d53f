@@ -2360,6 +2360,20 @@ const TravelPlanProposal = ({
             )}
           </div>
 
+          {/* Your next steps */}
+          <div>
+            <h3 className="text-base font-serif font-bold text-slate-800 mb-2">{h.nextSteps}</h3>
+            {viewMode === 'edit' ? (
+              <RichTextarea
+                className="text-xs min-h-[100px]"
+                value={closing.nextSteps || ''}
+                onChange={v => setClosing(c => ({ ...c, nextSteps: v }))}
+              />
+            ) : (
+              <RichText as="div" className="text-xs text-slate-700 whitespace-pre-wrap ml-3" value={closing.nextSteps || ''} preserveNewlines />
+            )}
+          </div>
+
           {/* Closing Message */}
           <div className="pt-4 border-t border-slate-200 text-xs text-slate-700 space-y-3 leading-relaxed">
             {viewMode === 'edit' ? (
