@@ -13,6 +13,7 @@ import { cn, formatDayLabelPT } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import SupplierSearchDropdown from './SupplierSearchDropdown';
+import SupplierExperiencePicker, { type PickedExperience } from './SupplierExperiencePicker';
 import CostingSmartImportDialog, { type ImportedCostRow } from './CostingSmartImportDialog';
 import type { PlannerDay, PeriodKey } from './TravelPlannerEditor';
 
