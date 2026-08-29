@@ -993,6 +993,8 @@ const TravelPlanProposal = ({
           leadData: { ...leadData, language: effectiveLang },
           extraInstructions: extra || undefined,
           routeMapPath, exactItineraryPdfPath,
+          routeMapUrl,
+          routeWaypoints: routeMapUrl ? parseGoogleMapsUrl(routeMapUrl).waypoints : undefined,
         },
       });
       if (error) throw new Error(await getFunctionErrorMessage(error));
