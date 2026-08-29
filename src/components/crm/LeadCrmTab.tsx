@@ -146,7 +146,7 @@ export default function LeadCrmTab({ leadId }: Props) {
       <div className="bg-card border rounded-lg p-6 text-center space-y-3">
         <p className="text-sm font-medium">Esta lead ainda não está ligada a um record do NetHunt.</p>
         <p className="text-xs text-muted-foreground">A ligação é feita automaticamente pela referência YT ({lead.yt_id || '—'}) na próxima sincronização.</p>
-        <Button size="sm" variant="outline" className="text-xs" onClick={() => syncNow.mutate()} disabled={syncNow.isPending}>
+        <Button size="sm" variant="outline" className="text-xs" onClick={() => syncNow.mutate({ period: '7d' })} disabled={syncNow.isPending}>
           {syncNow.isPending ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : <RefreshCw className="h-3 w-3 mr-1" />} Sincronizar agora
         </Button>
       </div>
@@ -169,8 +169,34 @@ export default function LeadCrmTab({ leadId }: Props) {
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <Button size="sm" variant="outline" className="text-xs" onClick={() => { syncNow.mutate(); refetch(); timeline.refetch(); }} disabled={syncNow.isPending}>
-            {syncNow.isPending ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : <RefreshCw className="h-3 w-3 mr-1" />} Sincronizar
+          <Select value={syncPeriod} onValueChange={(v) => setSyncPeriod(v as SyncPeriod)}>
+            <SelectTrigger className="h-8 w-[140px] text-xs"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              {SYNC_PERIODS.map((p) => (
+                <SelectItem key={p.value} value={p.value} className="text-xs">{p.label}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Button
+            size="sm"
+            variant="outline"
+            className="text-xs"
+            disabled={syncNow.isPending || syncLead.isPending}
+            onClick={async () => {
+              try {
+                if (lead.nethunt_record_id) {
+                  await syncLead.mutateAsync({ recordId: lead.nethunt_record_id, leadId: lead.id, period: syncPeriod });
+                } else {
+                  await syncNow.mutateAsync({ period: syncPeriod });
+                }
+                refetch(); timeline.refetch();
+                toast({ title: 'Sincronizado', description: `Período: ${SYNC_PERIODS.find((p) => p.value === syncPeriod)?.label}` });
+              } catch (e: any) {
+                toast({ title: 'Falha na sincronização', description: e?.message, variant: 'destructive' });
+              }
+            }}
+          >
+            {(syncNow.isPending || syncLead.isPending) ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : <RefreshCw className="h-3 w-3 mr-1" />} Sincronizar
           </Button>
           {linked && (
             <a href={netHuntRecordUrl(lead.nethunt_record_id)} target="_blank" rel="noreferrer">
