@@ -14,6 +14,7 @@ export type PageKey =
   | 'partners'
   | 'catalog'
   | 'products'
+  | 'mapas'
   | 'profile'
   | 'admin_users'
   | 'admin_permissions'
