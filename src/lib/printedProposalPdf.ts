@@ -112,9 +112,7 @@ export async function buildPrintedProposalPdf(
     }
     if (!root) throw new Error('A proposta não carregou em tempo útil.');
 
-    console.log('[pdf] root ready', root.scrollHeight);
     await replaceMaps(doc);
-    console.log('[pdf] maps done');
     await waitForImages(doc);
     await (doc as any).fonts?.ready?.catch?.(() => undefined);
     await wait(600);
@@ -123,7 +121,6 @@ export async function buildPrintedProposalPdf(
     iframe.style.height = `${root.scrollHeight + 200}px`;
     await wait(300);
 
-    console.log('[pdf] capturing', root.scrollHeight);
     const canvas = await html2canvas(root, {
       backgroundColor: '#ffffff',
       scale: 2,
@@ -138,7 +135,6 @@ export async function buildPrintedProposalPdf(
       scrollY: 0,
     });
 
-    console.log('[pdf] captured', canvas.width, canvas.height);
     const pdf = new jsPDF({ unit: 'mm', format: 'a4', compress: true });
     const pxPerMm = canvas.width / A4.w;
     const pageHeightPx = Math.floor(A4.h * pxPerMm);
