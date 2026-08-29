@@ -131,6 +131,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const isAdmin = roles.includes('super_admin') || roles.includes('admin');
   const hasRole = (role: AppRole) => roles.includes(role);
+  const roleCodes = [...roles as string[], ...customRoles];
+  const onboardingCompleted = !!profile?.onboarding_completed_at;
 
   const signOut = async () => {
     await supabase.auth.signOut();
@@ -138,10 +140,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setSession(null);
     setProfile(null);
     setRoles([]);
+    setCustomRoles([]);
   };
 
   return (
-    <AuthContext.Provider value={{ user, session, profile, roles, loading, isAdmin, hasRole, signOut }}>
+    <AuthContext.Provider value={{ user, session, profile, roles, roleCodes, onboardingCompleted, loading, isAdmin, hasRole, refreshProfile, signOut }}>
       {children}
     </AuthContext.Provider>
   );
