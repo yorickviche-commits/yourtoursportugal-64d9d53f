@@ -982,6 +982,13 @@ const LeadCostingEditor = ({ costingDays, onChange, onSave, saving, plannerDays,
         onConfirm={applySmartImport}
       />
 
+      <SupplierExperiencePicker
+        open={!!expPicker}
+        onOpenChange={(o) => { if (!o) setExpPicker(null); }}
+        supplierName={expPicker?.supplier}
+        onPick={applyExperience}
+      />
+
 
     </div>
 
