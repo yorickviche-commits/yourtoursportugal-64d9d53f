@@ -9,6 +9,7 @@ import foundersAsset from '@/assets/founders.png.asset.json';
 import { toMapEmbedSrc } from '@/lib/mapEmbed';
 import { RichText, stripBoldMarkers } from '@/lib/richText';
 import { resolveClosingText } from '@/lib/closingTermsI18n';
+import { getHotelsDict, resolveHotelsText, mergeProposalHotels } from '@/lib/proposalHotelsI18n';
 import { getPdfDict } from '@/lib/proposalPdfI18n';
 
 const TERMS_URL = 'https://drive.google.com/file/d/12AkvW2Ob0LtcooaciWY4e-nEx7hlOnQC/view?usp=sharing';
@@ -921,21 +922,23 @@ const PricingConditions = ({ proposal, lang }: { proposal: any; lang: string }) 
     .join('\n\n');
   const includedText: string = closing.inclusionsOverride?.trim() || autoIncluded;
   const dict = getPdfDict(lang);
+  const h = getHotelsDict(lang);
   const accommodation: any[] = Array.isArray(closing.accommodation) ? closing.accommodation : [];
-  const accommodationText = accommodation
-    .map(a => {
-      const name = String(a?.name || '').trim();
-      if (!name) return '';
-      const nights = Number(a?.nights) || 0;
-      return nights > 0 ? `• ${name} — ${nights} ${nights === 1 ? dict.night : dict.nights}` : `• ${name}`;
-    })
-    .filter(Boolean)
-    .join('\n');
+  const hotels = mergeProposalHotels(accommodation, Array.isArray(closing.hotels) ? closing.hotels : []);
+  const hasHotels = hotels.length > 0;
+  const hotelsNights = hotels.reduce((s, x) => s + (Number(x.nights) || 0), 0);
+  const hotelsRooms = hotels.reduce((s, x) => Math.max(s, Number(x.rooms) || 0), 0);
+  const hotelsTotal = Math.round(hotels.reduce((s, x) => s + (Number(x.value) || 0), 0));
+  const programmeTotal = Math.max(0, total - hotelsTotal);
+  const eur = (n: number) => `€ ${Number(n || 0).toLocaleString('en-US')}`;
   const paymentText: string = resolveClosingText('payment', closing.payment, lang);
   const cancellationText: string = resolveClosingText('cancellation', closing.cancellation, lang);
   const notesText: string = resolveClosingText('importantNotes', closing.importantNotes, lang);
+  const notIncludedText: string = resolveHotelsText('notIncludedDefault', closing.notIncluded, lang);
+  const nextStepsText: string = resolveHotelsText('nextStepsDefault', closing.nextSteps, lang);
   const hasAny = total > 0 || includedText || paymentText || cancellationText || notesText;
   if (!hasAny) return null;
+
 
   return (
     <section id="pricing" className="scroll-mt-16">
@@ -968,16 +971,86 @@ const PricingConditions = ({ proposal, lang }: { proposal: any; lang: string }) 
           </div>
         )}
         <div className="p-6 space-y-5">
-          {accommodationText && (
-            <div>
-              <h3 className="text-sm font-serif font-bold text-slate-800 mb-2">{dict.accommodation}</h3>
-              <RichText as="div" className="text-sm text-slate-700 whitespace-pre-wrap leading-relaxed" value={accommodationText} preserveNewlines />
+          {total > 0 && (
+            <div className="rounded-lg border border-slate-200 overflow-hidden">
+              <table className="w-full text-sm">
+                <tbody>
+                  <tr className="border-b border-slate-100">
+                    <td className="px-3 py-2 text-slate-700">{h.programmePrice}</td>
+                    <td className="px-3 py-2 text-right font-medium text-slate-800 whitespace-nowrap">{eur(programmeTotal)}</td>
+                  </tr>
+                  {hasHotels && hotelsTotal > 0 && (
+                    <tr className="border-b border-slate-100">
+                      <td className="px-3 py-2 text-slate-700">{h.hotelsPrice(hotelsNights, hotelsRooms)}</td>
+                      <td className="px-3 py-2 text-right font-medium text-slate-800 whitespace-nowrap">{eur(hotelsTotal)}</td>
+                    </tr>
+                  )}
+                  <tr className="bg-slate-50">
+                    <td className="px-3 py-2 font-bold uppercase tracking-wide text-[#0a2540]">{closing.netPricing ? dict.totalPriceNet : h.total}</td>
+                    <td className="px-3 py-2 text-right font-bold text-[#0a2540] whitespace-nowrap">{eur(total)}</td>
+                  </tr>
+                </tbody>
+              </table>
             </div>
           )}
+          {hasHotels && (
+            <div>
+              <h3 className="text-sm font-serif font-bold text-slate-800 mb-2">{h.hotelsIncluded}</h3>
+              <div className="space-y-3">
+                {hotels.map(hotel => (
+                  <div key={hotel.name} className="text-sm">
+                    <p className="font-semibold text-slate-800">
+                      {hotel.mapUrl ? (
+                        <a href={hotel.mapUrl} target="_blank" rel="noopener noreferrer" className="text-[#0a2540] underline">{hotel.name}</a>
+                      ) : hotel.name}
+                      {hotel.city ? <span className="font-normal text-slate-500"> · {hotel.city}</span> : null}
+                    </p>
+                    {hotel.description && (
+                      <RichText as="p" className="text-xs text-slate-600 leading-relaxed mt-1" value={hotel.description} preserveNewlines />
+                    )}
+                  </div>
+                ))}
+              </div>
+              <div className="mt-3 overflow-x-auto rounded-lg border border-slate-200">
+                <table className="w-full text-xs">
+                  <thead>
+                    <tr className="bg-slate-50 text-slate-600">
+                      <th className="text-left font-semibold px-3 py-2">{h.hotel}</th>
+                      <th className="text-left font-semibold px-3 py-2">{h.checkIn}</th>
+                      <th className="text-left font-semibold px-3 py-2">{h.checkOut}</th>
+                      <th className="text-right font-semibold px-3 py-2">{h.nights}</th>
+                      <th className="text-right font-semibold px-3 py-2">{h.rooms}</th>
+                      <th className="text-right font-semibold px-3 py-2">{h.rate}</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {hotels.map(hotel => (
+                      <tr key={hotel.name} className="border-t border-slate-100">
+                        <td className="px-3 py-2 text-slate-800">{hotel.name}</td>
+                        <td className="px-3 py-2 text-slate-600">{hotel.checkIn || '—'}</td>
+                        <td className="px-3 py-2 text-slate-600">{hotel.checkOut || '—'}</td>
+                        <td className="px-3 py-2 text-right text-slate-600">{hotel.nights || '—'}</td>
+                        <td className="px-3 py-2 text-right text-slate-600">{hotel.rooms || '—'}</td>
+                        <td className="px-3 py-2 text-right font-medium text-slate-800">{hotel.value ? eur(hotel.value) : '—'}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              <p className="text-[10px] text-slate-500 mt-2">{h.hotelsTableNote} {h.mapsLinkNote}</p>
+            </div>
+          )}
+
           {includedText && (
             <div>
               <h3 className="text-sm font-serif font-bold text-slate-800 mb-2">{L.included}</h3>
               <RichText as="div" className="text-sm text-slate-700 whitespace-pre-wrap leading-relaxed" value={includedText} preserveNewlines />
+            </div>
+          )}
+          {notIncludedText && (
+            <div>
+              <h3 className="text-sm font-serif font-bold text-slate-800 mb-2">{h.notIncluded}</h3>
+              <RichText as="div" className="text-sm text-slate-700 whitespace-pre-wrap leading-relaxed" value={notIncludedText} preserveNewlines />
             </div>
           )}
           <div>
@@ -992,7 +1065,14 @@ const PricingConditions = ({ proposal, lang }: { proposal: any; lang: string }) 
             <h3 className="text-sm font-serif font-bold text-slate-800 mb-2">{L.notes}</h3>
             <RichText as="div" className="text-sm text-slate-600 whitespace-pre-wrap leading-relaxed" value={notesText} preserveNewlines />
           </div>
+          {nextStepsText && (
+            <div>
+              <h3 className="text-sm font-serif font-bold text-slate-800 mb-2">{h.nextSteps}</h3>
+              <RichText as="div" className="text-sm text-slate-700 whitespace-pre-wrap leading-relaxed" value={nextStepsText} preserveNewlines />
+            </div>
+          )}
         </div>
+
       </div>
     </section>
   );

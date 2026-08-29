@@ -341,6 +341,7 @@ const LeadDetailPage = ({ mode = 'lead' }: { mode?: 'lead' | 'booking' } = {}) =
       .map(i => ({
         name: i.description.trim(),
         nights: i.pricingType === 'per_night' ? Number(i.numAdults) || 0 : 0,
+        value: Number((i as any).pvpTotal) || 0,
       }));
   }, [costingDays]);
 

@@ -9,6 +9,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { RichInput, RichTextarea } from '@/components/ui/rich-editable';
 import { RichText } from '@/lib/richText';
 import { resolveClosingText } from '@/lib/closingTermsI18n';
+import { getHotelsDict, resolveHotelsText, mergeProposalHotels, type ProposalHotel } from '@/lib/proposalHotelsI18n';
 import { Card, CardContent } from '@/components/ui/card';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -102,7 +103,7 @@ interface TravelPlanProposalProps {
   exactItineraryPdfPath?: string;
   onGoToCosting?: () => void;
   /** Accommodation block from Costing (day 0), shown to the client when enabled. */
-  accommodation?: { name: string; nights: number }[];
+  accommodation?: { name: string; nights: number; value?: number }[];
   /** B2B leads see "TOTAL NET PRICE" instead of "TOTAL PRICE". */
   netPricing?: boolean;
 }
@@ -114,6 +115,10 @@ interface ClosingTerms {
   cancellation: string;
   importantNotes: string;
   closingMessage: string;
+  notIncluded?: string;
+  nextSteps?: string;
+  /** Hotel details edited here; name/nights/value come from Costing. */
+  hotels?: ProposalHotel[];
 }
 
 const TERMS_URL = 'https://drive.google.com/file/d/12AkvW2Ob0LtcooaciWY4e-nEx7hlOnQC/view?usp=sharing';
@@ -125,7 +130,11 @@ const DEFAULT_CLOSING: ClosingTerms = {
   cancellation: '• Free cancellation with 100% refund up to 7 days prior to the tour date.\n• For cancellations made less than 30 days before the tour date, the total amount is non-refundable.',
   importantNotes: '• The rates presented include all the itinerary and experiences mentioned in the proposition.\n• The presented rates are valid on the date this proposal is sent. Up until your final confirmation, there\'s the possibility of price/availability/conditions changes beyond our process.\n• The rates include all taxes and personal accident insurance.\n• Terms and Conditions referring to all our products/services are available publicly on our website.',
   closingMessage: 'That said, we await your feedback and your thoughts on the program and proposal.\n\nIf helpful, we suggest scheduling a short video call with our team to walk through the experience together, clarify any details, and fine-tune the plan according to your vision.\n\nPlease let us know if the proposal aligns with your expectations so we can move confidently to the next steps.',
+  notIncluded: getHotelsDict('en').notIncludedDefault,
+  nextSteps: getHotelsDict('en').nextStepsDefault,
+  hotels: [],
 };
+
 
 const LANGUAGE_OPTIONS: { value: string; label: string }[] = [
   { value: 'PT', label: 'PT' },
@@ -519,6 +528,8 @@ const TravelPlanProposal = ({
       (['payment', 'cancellation', 'importantNotes', 'closingMessage'] as const).forEach(f => {
         next[f] = resolveClosingText(f, prev[f], language);
       });
+      next.notIncluded = resolveHotelsText('notIncludedDefault', prev.notIncluded, language);
+      next.nextSteps = resolveHotelsText('nextStepsDefault', prev.nextSteps, language);
       return next;
     });
   }, [language]);
@@ -1514,7 +1525,27 @@ const TravelPlanProposal = ({
   if (!displayPlan) return null;
   const t = getLabels(language);
   const d = getProposalDict(language);
+  const h = getHotelsDict(language);
   const displayId = ytId || leadCode;
+
+  // ─── Hotels Included (from Costing day 0 + details edited here) ───
+  const hotels = mergeProposalHotels(accommodation, closing.hotels || []);
+  const hasHotels = hotels.length > 0;
+  const hotelsNights = hotels.reduce((s, x) => s + (Number(x.nights) || 0), 0);
+  const hotelsRooms = hotels.reduce((s, x) => Math.max(s, Number(x.rooms) || 0), 0);
+  const hotelsTotal = Math.round(hotels.reduce((s, x) => s + (Number(x.value) || 0), 0));
+  const programmeTotal = Math.max(0, totalPVP - hotelsTotal);
+  const perPerson = pax + (paxChildren || 0) > 0 ? Math.round(totalPVP / (pax + (paxChildren || 0))) : 0;
+  const eur = (n: number) => `€ ${Number(n || 0).toLocaleString('en-US')}`;
+  const updateHotel = (name: string, patch: Partial<ProposalHotel>) =>
+    setClosing(c => {
+      const list = [...(c.hotels || [])];
+      const i = list.findIndex(x => (x.name || '').trim().toLowerCase() === name.trim().toLowerCase());
+      if (i >= 0) list[i] = { ...list[i], ...patch, name };
+      else list.push({ name, ...patch });
+      return { ...c, hotels: list };
+    });
+
 
   // Day-by-day summary sent to the AI image generator
   const programContext = [
@@ -1778,6 +1809,90 @@ const TravelPlanProposal = ({
               onSend={msg => handleSectionChat('summary', msg)} onClose={() => setActiveChat(null)} />
           </div>
         )}
+
+        {/* HOTELS INCLUDED — only when the Costing accommodation block is active */}
+        {hasHotels && (
+          <div className="border-b p-6 md:p-8 bg-white print:break-before-page">
+            <h2 className="text-lg font-serif font-bold text-slate-800 mb-4">{h.hotelsIncluded}</h2>
+
+            <div className="space-y-4">
+              {hotels.map(hotel => (
+                <div key={hotel.name} className="text-sm">
+                  <p className="font-semibold text-slate-800">
+                    {hotel.mapUrl ? (
+                      <a href={hotel.mapUrl} target="_blank" rel="noopener noreferrer" className="text-[#0a2540] underline">
+                        {hotel.name}
+                      </a>
+                    ) : hotel.name}
+                    {hotel.city ? <span className="text-slate-500 font-normal"> · {hotel.city}</span> : null}
+                  </p>
+                  {viewMode === 'edit' ? (
+                    <div className="mt-2 grid grid-cols-1 md:grid-cols-2 gap-2 print:hidden">
+                      <Input className="h-7 text-xs" placeholder="Cidade" value={hotel.city || ''}
+                        onChange={e => updateHotel(hotel.name, { city: e.target.value })} />
+                      <Input className="h-7 text-xs" placeholder="URL Google Maps" value={hotel.mapUrl || ''}
+                        onChange={e => updateHotel(hotel.name, { mapUrl: e.target.value })} />
+                      <Input className="h-7 text-xs" placeholder="Check-in (ex. 01 Apr 2027)" value={hotel.checkIn || ''}
+                        onChange={e => updateHotel(hotel.name, { checkIn: e.target.value })} />
+                      <Input className="h-7 text-xs" placeholder="Check-out (ex. 03 Apr 2027)" value={hotel.checkOut || ''}
+                        onChange={e => updateHotel(hotel.name, { checkOut: e.target.value })} />
+                      <Input className="h-7 text-xs" type="number" min={0} placeholder="Nº de quartos" value={hotel.rooms ?? ''}
+                        onChange={e => updateHotel(hotel.name, { rooms: Number(e.target.value) || 0 })} />
+                      <div className="text-[10px] text-muted-foreground flex items-center">
+                        {hotel.nights || 0} {h.nights.toLowerCase()} · {eur(hotel.value || 0)} (do Costing)
+                      </div>
+                      <div className="md:col-span-2">
+                        <RichTextarea className="text-xs min-h-[70px]" placeholder="Descrição do hotel (cliente)"
+                          value={hotel.description || ''} onChange={v => updateHotel(hotel.name, { description: v })} />
+                      </div>
+                    </div>
+                  ) : hotel.description ? (
+                    <RichText as="p" className="text-xs text-slate-600 mt-1 leading-relaxed" value={hotel.description} preserveNewlines />
+                  ) : null}
+                </div>
+              ))}
+            </div>
+
+            <div className="mt-5 overflow-hidden rounded-lg border border-slate-200">
+              <table className="w-full text-xs">
+                <thead>
+                  <tr className="bg-slate-50 text-slate-600" style={{ backgroundColor: '#f8fafc', printColorAdjust: 'exact', WebkitPrintColorAdjust: 'exact' } as any}>
+                    <th className="text-left font-semibold px-3 py-2">{h.hotel}</th>
+                    <th className="text-left font-semibold px-3 py-2">{h.checkIn}</th>
+                    <th className="text-left font-semibold px-3 py-2">{h.checkOut}</th>
+                    <th className="text-right font-semibold px-3 py-2">{h.nights}</th>
+                    <th className="text-right font-semibold px-3 py-2">{h.rooms}</th>
+                    <th className="text-right font-semibold px-3 py-2">{h.rate}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {hotels.map(hotel => (
+                    <tr key={hotel.name} className="border-t border-slate-100">
+                      <td className="px-3 py-2 text-slate-800">
+                        {hotel.mapUrl ? (
+                          <a href={hotel.mapUrl} target="_blank" rel="noopener noreferrer" className="text-[#0a2540] underline">{hotel.name}</a>
+                        ) : hotel.name}
+                      </td>
+                      <td className="px-3 py-2 text-slate-600">{hotel.checkIn || '—'}</td>
+                      <td className="px-3 py-2 text-slate-600">{hotel.checkOut || '—'}</td>
+                      <td className="px-3 py-2 text-right text-slate-600">{hotel.nights || '—'}</td>
+                      <td className="px-3 py-2 text-right text-slate-600">{hotel.rooms || '—'}</td>
+                      <td className="px-3 py-2 text-right text-slate-800 font-medium">{hotel.value ? eur(hotel.value) : '—'}</td>
+                    </tr>
+                  ))}
+                  <tr className="border-t border-slate-200 bg-slate-50" style={{ backgroundColor: '#f8fafc', printColorAdjust: 'exact', WebkitPrintColorAdjust: 'exact' } as any}>
+                    <td className="px-3 py-2 font-semibold text-slate-800" colSpan={5}>
+                      {h.hotelsPrice(hotelsNights, hotelsRooms)}
+                    </td>
+                    <td className="px-3 py-2 text-right font-bold text-slate-900">{eur(hotelsTotal)}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <p className="text-[10px] text-slate-500 mt-2">{h.hotelsTableNote} {h.mapsLinkNote}</p>
+          </div>
+        )}
+
 
         {/* FULL DAY-BY-DAY */}
         {viewMode === 'edit' && (
@@ -2118,6 +2233,36 @@ const TravelPlanProposal = ({
             )}
           </div>
 
+          {/* Price breakdown — programme vs hotels */}
+          {totalPVP > 0 && (
+            <div className="rounded-lg border border-slate-200 bg-white overflow-hidden" style={{ backgroundColor: '#ffffff', printColorAdjust: 'exact', WebkitPrintColorAdjust: 'exact' } as any}>
+              <table className="w-full text-xs">
+                <tbody>
+                  <tr className="border-b border-slate-100">
+                    <td className="px-3 py-2 text-slate-700">{h.programmePrice}</td>
+                    <td className="px-3 py-2 text-right text-slate-800 font-medium whitespace-nowrap">{eur(programmeTotal)}</td>
+                  </tr>
+                  {hasHotels && hotelsTotal > 0 && (
+                    <tr className="border-b border-slate-100">
+                      <td className="px-3 py-2 text-slate-700">{h.hotelsPrice(hotelsNights, hotelsRooms)}</td>
+                      <td className="px-3 py-2 text-right text-slate-800 font-medium whitespace-nowrap">{eur(hotelsTotal)}</td>
+                    </tr>
+                  )}
+                  <tr className="bg-slate-50" style={{ backgroundColor: '#f8fafc', printColorAdjust: 'exact', WebkitPrintColorAdjust: 'exact' } as any}>
+                    <td className="px-3 py-2 font-bold text-slate-900 uppercase tracking-wide">{netPricing ? getPdfDict(language).totalPriceNet : h.total}</td>
+                    <td className="px-3 py-2 text-right font-bold text-slate-900 whitespace-nowrap">{eur(totalPVP)}</td>
+                  </tr>
+                  {perPerson > 0 && (
+                    <tr className="border-t border-slate-100">
+                      <td className="px-3 py-2 text-slate-600">{h.perPerson}</td>
+                      <td className="px-3 py-2 text-right text-slate-700 whitespace-nowrap">{eur(perPerson)}</td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          )}
+
 
           {/* What's Included — Day by Day Summary or override */}
           <div>
@@ -2158,6 +2303,21 @@ const TravelPlanProposal = ({
             )}
           </div>
 
+          {/* What's Not Included */}
+          <div>
+            <h3 className="text-base font-serif font-bold text-slate-800 mb-2">{h.notIncluded}</h3>
+            {viewMode === 'edit' ? (
+              <RichTextarea
+                className="text-xs min-h-[100px]"
+                value={closing.notIncluded || ''}
+                onChange={v => setClosing(c => ({ ...c, notIncluded: v }))}
+              />
+            ) : (
+              <RichText as="div" className="text-xs text-slate-700 whitespace-pre-wrap ml-3" value={closing.notIncluded || ''} preserveNewlines />
+            )}
+          </div>
+
+
           {/* Reservation & Payment */}
           <div>
             <h3 className="text-base font-serif font-bold text-slate-800 mb-2">{t.paymentConditions}</h3>
@@ -2197,6 +2357,20 @@ const TravelPlanProposal = ({
               />
             ) : (
               <RichText as="div" className="text-xs text-slate-600 whitespace-pre-wrap ml-3" value={closing.importantNotes} preserveNewlines />
+            )}
+          </div>
+
+          {/* Your next steps */}
+          <div>
+            <h3 className="text-base font-serif font-bold text-slate-800 mb-2">{h.nextSteps}</h3>
+            {viewMode === 'edit' ? (
+              <RichTextarea
+                className="text-xs min-h-[100px]"
+                value={closing.nextSteps || ''}
+                onChange={v => setClosing(c => ({ ...c, nextSteps: v }))}
+              />
+            ) : (
+              <RichText as="div" className="text-xs text-slate-700 whitespace-pre-wrap ml-3" value={closing.nextSteps || ''} preserveNewlines />
             )}
           </div>
 
