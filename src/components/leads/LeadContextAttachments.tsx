@@ -253,6 +253,70 @@ export function LeadContextAttachments({ leadId, routeMapPath, exactItineraryPdf
         )}
       </div>
 
+      {/* Per-day Google Maps routes (multi-day programmes) */}
+      <div className="border rounded-md p-2 bg-muted/30 space-y-2">
+        <div className="flex items-center justify-between gap-2">
+          <p className="text-xs font-medium flex items-center gap-1">
+            <Link2 className="h-3 w-3 text-blue-600" /> Rota Google Maps por dia <span className="text-muted-foreground/70 font-normal">(multi-dia, opcional)</span>
+          </p>
+          <button
+            type="button"
+            onClick={saveDayMaps}
+            disabled={daysSaving || !dayDirty}
+            className="h-7 px-2 rounded bg-primary text-primary-foreground text-[11px] flex items-center gap-1 disabled:opacity-40"
+          >
+            {daysSaving ? <Loader2 className="h-3 w-3 animate-spin" /> : <Save className="h-3 w-3" />} Guardar rotas
+          </button>
+        </div>
+
+        <div className="space-y-1.5">
+          {dayDrafts.map((url, i) => {
+            const parsed = parseGoogleMapsUrl(url);
+            return (
+              <div key={i} className="space-y-1">
+                <div className="flex items-center gap-1.5">
+                  <span className="w-12 shrink-0 text-[10px] font-semibold text-muted-foreground uppercase">Dia {i + 1}</span>
+                  <input
+                    value={url}
+                    onChange={e => setDayDrafts(prev => prev.map((v, idx) => (idx === i ? e.target.value : v)))}
+                    onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); saveDayMaps(); } }}
+                    placeholder="https://www.google.com/maps/dir/..."
+                    className="flex-1 h-8 rounded border bg-background px-2 text-xs"
+                  />
+                  <button
+                    type="button"
+                    title="Remover dia"
+                    onClick={() => setDayDrafts(prev => prev.filter((_, idx) => idx !== i))}
+                    className="h-8 w-8 rounded border text-red-600 flex items-center justify-center"
+                  >
+                    <X className="h-3 w-3" />
+                  </button>
+                </div>
+                {url.trim() && parsed.waypoints.length > 0 && (
+                  <p className="pl-[3.6rem] text-[10px] text-muted-foreground">{parsed.waypoints.join(' → ')}</p>
+                )}
+              </div>
+            );
+          })}
+        </div>
+
+        <button
+          type="button"
+          onClick={() => setDayDrafts(prev => [...prev, ''])}
+          className="h-7 px-2 rounded border text-[11px] flex items-center gap-1"
+        >
+          + Adicionar dia
+        </button>
+
+        {savedDayMaps.length > 0 && (
+          <div className="flex items-center gap-1.5 text-[11px] bg-blue-50 border border-blue-200 text-blue-800 rounded px-2 py-1">
+            <Sparkles className="h-3 w-3" />
+            <span><strong>{savedDayMaps.length} rota(s) por dia ativas</strong> — cada dia do programa é gerado a seguir a sua própria rota e o mapa fica no dia correspondente.</span>
+          </div>
+        )}
+      </div>
+
+
       <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
         {/* Route Map slot */}
         <div className="border rounded-md p-2 bg-muted/30">
