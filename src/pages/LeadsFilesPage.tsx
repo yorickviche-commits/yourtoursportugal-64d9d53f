@@ -70,7 +70,7 @@ const LeadsFilesPage = () => {
   const filteredLeads = useMemo(() => {
     const q = search.trim().toLowerCase();
     return leads.filter(l => {
-      if (statusFilter !== 'all' && leadStage(l) !== norm(statusFilter)) return false;
+      if (statusFilter !== 'all' && normStage(resolveStage(l as any).stage) !== normStage(statusFilter)) return false;
       if (!q) return true;
       const haystack = [
         displayLeadCode(l),
