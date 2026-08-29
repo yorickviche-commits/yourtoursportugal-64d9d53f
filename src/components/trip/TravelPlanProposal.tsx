@@ -1810,6 +1810,90 @@ const TravelPlanProposal = ({
           </div>
         )}
 
+        {/* HOTELS INCLUDED — only when the Costing accommodation block is active */}
+        {hasHotels && (
+          <div className="border-b p-6 md:p-8 bg-white print:break-before-page">
+            <h2 className="text-lg font-serif font-bold text-slate-800 mb-4">{h.hotelsIncluded}</h2>
+
+            <div className="space-y-4">
+              {hotels.map(hotel => (
+                <div key={hotel.name} className="text-sm">
+                  <p className="font-semibold text-slate-800">
+                    {hotel.mapUrl ? (
+                      <a href={hotel.mapUrl} target="_blank" rel="noopener noreferrer" className="text-[#0a2540] underline">
+                        {hotel.name}
+                      </a>
+                    ) : hotel.name}
+                    {hotel.city ? <span className="text-slate-500 font-normal"> · {hotel.city}</span> : null}
+                  </p>
+                  {viewMode === 'edit' ? (
+                    <div className="mt-2 grid grid-cols-1 md:grid-cols-2 gap-2 print:hidden">
+                      <Input className="h-7 text-xs" placeholder="Cidade" value={hotel.city || ''}
+                        onChange={e => updateHotel(hotel.name, { city: e.target.value })} />
+                      <Input className="h-7 text-xs" placeholder="URL Google Maps" value={hotel.mapUrl || ''}
+                        onChange={e => updateHotel(hotel.name, { mapUrl: e.target.value })} />
+                      <Input className="h-7 text-xs" placeholder="Check-in (ex. 01 Apr 2027)" value={hotel.checkIn || ''}
+                        onChange={e => updateHotel(hotel.name, { checkIn: e.target.value })} />
+                      <Input className="h-7 text-xs" placeholder="Check-out (ex. 03 Apr 2027)" value={hotel.checkOut || ''}
+                        onChange={e => updateHotel(hotel.name, { checkOut: e.target.value })} />
+                      <Input className="h-7 text-xs" type="number" min={0} placeholder="Nº de quartos" value={hotel.rooms ?? ''}
+                        onChange={e => updateHotel(hotel.name, { rooms: Number(e.target.value) || 0 })} />
+                      <div className="text-[10px] text-muted-foreground flex items-center">
+                        {hotel.nights || 0} {h.nights.toLowerCase()} · {eur(hotel.value || 0)} (do Costing)
+                      </div>
+                      <div className="md:col-span-2">
+                        <RichTextarea className="text-xs min-h-[70px]" placeholder="Descrição do hotel (cliente)"
+                          value={hotel.description || ''} onChange={v => updateHotel(hotel.name, { description: v })} />
+                      </div>
+                    </div>
+                  ) : hotel.description ? (
+                    <RichText as="p" className="text-xs text-slate-600 mt-1 leading-relaxed" value={hotel.description} preserveNewlines />
+                  ) : null}
+                </div>
+              ))}
+            </div>
+
+            <div className="mt-5 overflow-hidden rounded-lg border border-slate-200">
+              <table className="w-full text-xs">
+                <thead>
+                  <tr className="bg-slate-50 text-slate-600" style={{ backgroundColor: '#f8fafc', printColorAdjust: 'exact', WebkitPrintColorAdjust: 'exact' } as any}>
+                    <th className="text-left font-semibold px-3 py-2">{h.hotel}</th>
+                    <th className="text-left font-semibold px-3 py-2">{h.checkIn}</th>
+                    <th className="text-left font-semibold px-3 py-2">{h.checkOut}</th>
+                    <th className="text-right font-semibold px-3 py-2">{h.nights}</th>
+                    <th className="text-right font-semibold px-3 py-2">{h.rooms}</th>
+                    <th className="text-right font-semibold px-3 py-2">{h.rate}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {hotels.map(hotel => (
+                    <tr key={hotel.name} className="border-t border-slate-100">
+                      <td className="px-3 py-2 text-slate-800">
+                        {hotel.mapUrl ? (
+                          <a href={hotel.mapUrl} target="_blank" rel="noopener noreferrer" className="text-[#0a2540] underline">{hotel.name}</a>
+                        ) : hotel.name}
+                      </td>
+                      <td className="px-3 py-2 text-slate-600">{hotel.checkIn || '—'}</td>
+                      <td className="px-3 py-2 text-slate-600">{hotel.checkOut || '—'}</td>
+                      <td className="px-3 py-2 text-right text-slate-600">{hotel.nights || '—'}</td>
+                      <td className="px-3 py-2 text-right text-slate-600">{hotel.rooms || '—'}</td>
+                      <td className="px-3 py-2 text-right text-slate-800 font-medium">{hotel.value ? eur(hotel.value) : '—'}</td>
+                    </tr>
+                  ))}
+                  <tr className="border-t border-slate-200 bg-slate-50" style={{ backgroundColor: '#f8fafc', printColorAdjust: 'exact', WebkitPrintColorAdjust: 'exact' } as any}>
+                    <td className="px-3 py-2 font-semibold text-slate-800" colSpan={5}>
+                      {h.hotelsPrice(hotelsNights, hotelsRooms)}
+                    </td>
+                    <td className="px-3 py-2 text-right font-bold text-slate-900">{eur(hotelsTotal)}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <p className="text-[10px] text-slate-500 mt-2">{h.hotelsTableNote} {h.mapsLinkNote}</p>
+          </div>
+        )}
+
+
         {/* FULL DAY-BY-DAY */}
         {viewMode === 'edit' && (
           <div className="flex items-center gap-2 px-6 py-2 border-b bg-muted/20 print:hidden">
