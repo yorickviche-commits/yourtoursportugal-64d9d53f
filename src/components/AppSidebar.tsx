@@ -35,6 +35,7 @@ const comercialItems: NavItem[] = [
   { to: '/comercial/suppliers', icon: Truck, label: 'Fornecedores', pageKey: 'comercial_suppliers' },
   { to: '/catalog', icon: PackageSearch, label: 'Catálogo Magpie', pageKey: 'catalog' },
   { to: '/products', icon: Boxes, label: 'Catálogo de Produtos', pageKey: 'products' },
+  { to: '/mapas', icon: MapPin, label: 'Mapas', pageKey: 'mapas' },
   { to: '/partners', icon: Handshake, label: 'Parceiros B2B', pageKey: 'partners' },
 ];
 
