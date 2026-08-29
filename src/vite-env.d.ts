@@ -1,4 +1,5 @@
 /// <reference types="vite/client" />
+/// <reference types="google.maps" />
 
 declare module '*.asset.json' {
   const asset: {
