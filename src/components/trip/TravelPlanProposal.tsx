@@ -78,6 +78,16 @@ export { toMapEmbedSrc };
 
 const HOTEL_DATE_FMT = 'dd MMM yyyy';
 
+/** Auto-computes the nights count when both hotel dates are known. */
+const nightsPatch = (checkIn?: string, checkOut?: string): { nights?: number } => {
+  if (!checkIn || !checkOut) return {};
+  const a = parse(checkIn, HOTEL_DATE_FMT, new Date());
+  const b = parse(checkOut, HOTEL_DATE_FMT, new Date());
+  if (!isValid(a) || !isValid(b)) return {};
+  const n = Math.round((b.getTime() - a.getTime()) / 86400000);
+  return n > 0 ? { nights: n } : {};
+};
+
 /** Small calendar pop-up used for hotel check-in / check-out (stores "01 Apr 2027"). */
 const HotelDateField = ({ label, value, onChange }: { label: string; value?: string; onChange: (v: string) => void }) => {
   const parsed = value ? parse(value, HOTEL_DATE_FMT, new Date()) : undefined;
