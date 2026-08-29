@@ -36,7 +36,25 @@ const AuthCallbackPage = () => {
       }
 
       completed = true;
-      navigate(consumeAuthRedirect(), { replace: true });
+
+      // Novas contas (perfil sem onboarding concluído) passam pelo setup antes de /leads.
+      let onboarded = false;
+      for (let attempt = 0; attempt < 5; attempt++) {
+        const { data: prof } = await supabase
+          .from('profiles')
+          .select('onboarding_completed_at')
+          .eq('id', userData.user.id)
+          .maybeSingle();
+        if (prof) {
+          onboarded = !!prof.onboarding_completed_at;
+          break;
+        }
+        await new Promise((r) => window.setTimeout(r, 400));
+      }
+      if (!active) return;
+
+      navigate(onboarded ? consumeAuthRedirect() : '/setup-account', { replace: true });
+
     };
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {

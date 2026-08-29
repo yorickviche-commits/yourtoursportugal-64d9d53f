@@ -1889,6 +1889,51 @@ export type Database = {
         }
         Relationships: []
       }
+      map_locations: {
+        Row: {
+          city: string | null
+          district: string | null
+          formatted_address: string | null
+          geocoded_at: string
+          latitude: number | null
+          longitude: number | null
+          provider: string
+          query: string
+          source: Database["public"]["Enums"]["map_source"]
+          source_id: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          city?: string | null
+          district?: string | null
+          formatted_address?: string | null
+          geocoded_at?: string
+          latitude?: number | null
+          longitude?: number | null
+          provider?: string
+          query: string
+          source: Database["public"]["Enums"]["map_source"]
+          source_id: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          city?: string | null
+          district?: string | null
+          formatted_address?: string | null
+          geocoded_at?: string
+          latitude?: number | null
+          longitude?: number | null
+          provider?: string
+          query?: string
+          source?: Database["public"]["Enums"]["map_source"]
+          source_id?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       nethunt_stage_codes: {
         Row: {
           code: string
@@ -2636,6 +2681,13 @@ export type Database = {
             isOneToOne: true
             referencedRelation: "magpie_products"
             referencedColumns: ["magpie_id"]
+          },
+          {
+            foreignKeyName: "product_local_magpie_id_fkey"
+            columns: ["magpie_id"]
+            isOneToOne: true
+            referencedRelation: "v_map_produtos"
+            referencedColumns: ["id"]
           },
         ]
       }
@@ -4503,6 +4555,80 @@ export type Database = {
         }
         Relationships: []
       }
+      v_map_experiencias: {
+        Row: {
+          cat: string | null
+          city: string | null
+          description: string | null
+          dest: string | null
+          docs: number | null
+          drive_url: string | null
+          dur: string | null
+          id: string | null
+          latitude: number | null
+          longitude: number | null
+          name: string | null
+          price: string | null
+          status: string | null
+        }
+        Relationships: []
+      }
+      v_map_fses: {
+        Row: {
+          cat: string | null
+          city: string | null
+          description: string | null
+          dest: string | null
+          docs: number | null
+          drive_url: string | null
+          dur: string | null
+          id: string | null
+          latitude: number | null
+          longitude: number | null
+          name: string | null
+          price: string | null
+          status: string | null
+        }
+        Relationships: []
+      }
+      v_map_pending_geocode: {
+        Row: {
+          query: string | null
+          source: Database["public"]["Enums"]["map_source"] | null
+          source_id: string | null
+        }
+        Relationships: []
+      }
+      v_map_produto_stops: {
+        Row: {
+          label: string | null
+          latitude: number | null
+          longitude: number | null
+          ord: number | null
+          product_ref: string | null
+        }
+        Relationships: []
+      }
+      v_map_produtos: {
+        Row: {
+          addresses: Json | null
+          cat: string | null
+          city: string | null
+          description: string | null
+          dest: string | null
+          docs: number | null
+          drive_url: string | null
+          dur: string | null
+          id: string | null
+          images: Json | null
+          latitude: number | null
+          longitude: number | null
+          name: string | null
+          price: string | null
+          status: string | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       delete_email: {
@@ -4523,6 +4649,12 @@ export type Database = {
       }
       is_admin: { Args: { _user_id: string }; Returns: boolean }
       is_internal_user: { Args: { _user_id: string }; Returns: boolean }
+      map_destino: { Args: { region: string }; Returns: string }
+      map_destino_from_district: { Args: { district: string }; Returns: string }
+      map_destino_resolved: {
+        Args: { district: string; region: string }
+        Returns: string
+      }
       move_to_dlq: {
         Args: {
           dlq_name: string
@@ -4568,6 +4700,7 @@ export type Database = {
         | "finance"
         | "b2b_manager"
         | "viewer"
+      map_source: "fse" | "experiencia" | "produto"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -4704,6 +4837,7 @@ export const Constants = {
         "b2b_manager",
         "viewer",
       ],
+      map_source: ["fse", "experiencia", "produto"],
     },
   },
 } as const
