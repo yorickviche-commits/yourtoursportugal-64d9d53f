@@ -109,7 +109,8 @@ export async function buildRouteMapImage(
   width = 1000,
   height = 460,
 ): Promise<RouteMapImage | null> {
-  if (typeof document === 'undefined' || !mapUrl) return null;
+  if (typeof document === 'undefined') return null;
+  if (!mapUrl || !/^https?:\/\//i.test(mapUrl.trim())) return null;
 
   const route = await fetchRoute(mapUrl, 640, Math.round((640 * height) / width));
 
