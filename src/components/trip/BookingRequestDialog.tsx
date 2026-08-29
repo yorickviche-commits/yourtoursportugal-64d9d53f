@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react';
-import { Mail, Loader2, Send, Bold, Underline, Link as LinkIcon, Paperclip, Image as ImageIcon, X } from 'lucide-react';
+import { Mail, Loader2, Send, Bold, Underline, Link as LinkIcon, Paperclip, Image as ImageIcon, X, Sparkles } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
