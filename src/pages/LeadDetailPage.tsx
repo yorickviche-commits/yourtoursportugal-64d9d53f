@@ -14,6 +14,7 @@ import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { LeadStatus } from '@/types/leads';
+import { LEAD_STAGES, resolveStage } from '@/lib/leadStages';
 import TravelPlannerEditor, { PlannerDay, PlannerItem, PeriodKey, emptyPeriods, genId } from '@/components/trip/TravelPlannerEditor';
 import TravelPlanProposal from '@/components/trip/TravelPlanProposal';
 import LeadAgentsAssignment from '@/components/LeadAgentsAssignment';
