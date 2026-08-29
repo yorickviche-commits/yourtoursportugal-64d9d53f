@@ -1128,7 +1128,11 @@ const TravelPlanProposal = ({
           : userMessage;
 
       const { data, error } = await supabase.functions.invoke('generate-travel-plan', {
-        body: { leadData, extraInstructions: sectionInstruction, routeMapPath, exactItineraryPdfPath },
+        body: {
+          leadData, extraInstructions: sectionInstruction, routeMapPath, exactItineraryPdfPath,
+          routeMapUrl,
+          routeWaypoints: routeMapUrl ? parseGoogleMapsUrl(routeMapUrl).waypoints : undefined,
+        },
       });
       if (error) throw new Error(await getFunctionErrorMessage(error));
       if (data?.error) throw new Error(data.error);
