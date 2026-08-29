@@ -49,9 +49,35 @@ const ACTIVITY_ICON: Record<string, any> = {
   euro: Euro, check: CheckCircle2, plane: Plane, clock: Clock, mail: MessageSquare,
 };
 
+const STAGE_SHORT: Record<OpsStage, string> = {
+  deposit_received: 'Depósito',
+  suppliers_confirmation: 'Reservas FSE',
+  technical_briefing: 'Briefing técnico',
+  clients_final_briefing: 'Briefing cliente',
+  in_execution: 'Em execução',
+  post_trip: 'Pós-viagem',
+  deferred: 'Adiada',
+  archived: 'Arquivo',
+};
+
 type KpiFilter = null | 'critical' | 'approvals' | 'blocked' | 'departures';
 type SevFilter = 'ALL' | 'CRITICAL' | 'HIGH' | 'MEDIUM';
 type StageFilter = 'ALL' | 'SOON' | 'BLOCKED';
+type CalFilter = 'ALL' | 'READY' | 'MISSING';
+
+/** Estado global de uma reserva a partir dos 4 pilares. */
+function bookingState(b: OpsBooking): 'ok' | 'warn' | 'blocked' {
+  const st = pillarStatus(b);
+  const vals = PILLARS.map((p) => st[p.key]);
+  if (vals.some((v) => v === 'blocked')) return 'blocked';
+  if (vals.some((v) => v === 'warn')) return 'warn';
+  return 'ok';
+}
+
+const STATE_COLOR: Record<'ok' | 'warn' | 'blocked', string> = {
+  ok: C.success, warn: C.high, blocked: C.critical,
+};
+
 
 const DAY = 86400000;
 const isSoon = (iso: string, days: number) => {
