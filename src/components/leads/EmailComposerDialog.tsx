@@ -9,6 +9,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useQueryClient } from '@tanstack/react-query';
 import { cn } from '@/lib/utils';
 import { buildProposalPdfBase64, type ProposalLite } from '@/lib/proposalPdf';
+import { buildPrintedProposalPdf, proposalPdfFilename } from '@/lib/printedProposalPdf';
 import { getProposalShareUrl } from '@/lib/proposalShare';
 
 
@@ -203,10 +204,20 @@ const EmailComposerDialog = ({ lead, children, open: openProp, onOpenChange, ini
       const attachments: any[] = [];
       if (isProposalTemplate && attachPdf && proposal) {
         try {
-          const { base64, filename } = await buildProposalPdfBase64(proposal, weblink);
+          // Canonical document: the exact same file the "Imprimir" button produces.
+          const { base64, filename } = await buildPrintedProposalPdf(
+            proposal.public_token || '',
+            proposalPdfFilename(proposal),
+          );
           attachments.push({ filename, mimeType: 'application/pdf', contentBase64: base64 });
         } catch (e) {
-          console.error('PDF build failed', e);
+          console.error('Printed PDF build failed, falling back', e);
+          try {
+            const { base64, filename } = await buildProposalPdfBase64(proposal, weblink);
+            attachments.push({ filename, mimeType: 'application/pdf', contentBase64: base64 });
+          } catch (err) {
+            console.error('PDF build failed', err);
+          }
         }
       }
       const { data, error } = await supabase.functions.invoke('send-booking-email', {

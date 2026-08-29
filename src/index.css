@@ -239,3 +239,9 @@
 .rich-editable b {
   font-weight: 700;
 }
+
+/* Document-only rendering of the public proposal (`/proposal/:token?print=1`),
+   used to build the PDF attached to client emails. */
+[data-print-mode] [data-interactive] {
+  display: none !important;
+}

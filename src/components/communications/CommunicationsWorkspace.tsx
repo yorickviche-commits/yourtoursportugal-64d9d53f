@@ -30,6 +30,7 @@ import {
   type EmailBlocks, type ProgramLite,
 } from '@/lib/emailHtml';
 import { buildProposalPdfBase64, type ProposalLite } from '@/lib/proposalPdf';
+import { buildPrintedProposalPdf, proposalPdfFilename } from '@/lib/printedProposalPdf';
 
 const PURPOSES = [
   { value: 'auto', label: 'Auto (recomendado)' },
@@ -149,10 +150,19 @@ export function CommunicationsWorkspace({
     (async () => {
       try {
         const weblink = proposalRow.public_token ? getProposalShareUrl(proposalRow.public_token) : '';
-        const { base64, filename } = await buildProposalPdfBase64(proposalRow, weblink, {
-          idOverride: leadRef?.yt_id || leadRef?.lead_code || null,
-        });
-        if (!cancelled) setPlanPdf({ filename, contentBase64: base64 });
+        const idOverride = leadRef?.yt_id || leadRef?.lead_code || null;
+        try {
+          // Canonical document: same file the "Imprimir" button produces.
+          const printed = await buildPrintedProposalPdf(
+            proposalRow.public_token || '',
+            proposalPdfFilename(proposalRow, idOverride),
+          );
+          if (!cancelled) setPlanPdf({ filename: printed.filename, contentBase64: printed.base64 });
+        } catch (e) {
+          console.error('Printed PDF build failed, falling back', e);
+          const { base64, filename } = await buildProposalPdfBase64(proposalRow, weblink, { idOverride });
+          if (!cancelled) setPlanPdf({ filename, contentBase64: base64 });
+        }
       } catch (e) {
         console.error('Travel plan PDF build failed', e);
       } finally {
