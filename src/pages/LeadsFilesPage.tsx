@@ -161,23 +161,38 @@ const LeadsFilesPage = () => {
         ) : (
           /* Desktop: Table */
           <div className="bg-card rounded-lg border overflow-hidden">
-            <table className="w-full text-sm">
+            <table className="w-full table-fixed text-sm">
+              <colgroup>
+                <col className="w-[92px]" />
+                <col />
+                <col className="w-[56px]" />
+                <col className="w-[130px]" />
+                <col className="w-[48px]" />
+                <col className="w-[104px]" />
+                <col className="w-[48px]" />
+                <col className="w-[96px]" />
+                <col className="w-[86px]" />
+                <col className="w-[120px]" />
+                <col className="w-[160px]" />
+                <col className="w-[44px]" />
+              </colgroup>
               <thead>
                 <tr className="border-b border-border bg-muted/50">
-                  <th className="text-left px-3 py-2.5 font-medium text-muted-foreground text-xs">Id</th>
-                  <th className="text-left px-3 py-2.5 font-medium text-muted-foreground text-xs">Nome</th>
-                  <th className="text-center px-2 py-2.5 font-medium text-muted-foreground text-xs">Tipo</th>
-                  <th className="text-left px-3 py-2.5 font-medium text-muted-foreground text-xs">Destino</th>
-                  <th className="text-center px-2 py-2.5 font-medium text-muted-foreground text-xs">Dias</th>
-                  <th className="text-left px-3 py-2.5 font-medium text-muted-foreground text-xs">Datas</th>
-                  <th className="text-center px-2 py-2.5 font-medium text-muted-foreground text-xs">Pax</th>
-                  <th className="text-right px-3 py-2.5 font-medium text-muted-foreground text-xs">PVP / Margem</th>
-                  <th className="text-left px-3 py-2.5 font-medium text-muted-foreground text-xs">Data Criação</th>
-                  <th className="text-left px-3 py-2.5 font-medium text-muted-foreground text-xs">Agentes</th>
-                  <th className="text-center px-3 py-2.5 font-medium text-muted-foreground text-xs">Estado</th>
-                  <th className="text-center px-2 py-2.5 font-medium text-muted-foreground text-xs">Ver</th>
+                  <th className="text-left px-2 py-2.5 font-medium text-muted-foreground text-[11px]">Id</th>
+                  <th className="text-left px-2 py-2.5 font-medium text-muted-foreground text-[11px]">Nome</th>
+                  <th className="text-center px-1 py-2.5 font-medium text-muted-foreground text-[11px]">Tipo</th>
+                  <th className="text-left px-2 py-2.5 font-medium text-muted-foreground text-[11px]">Destino</th>
+                  <th className="text-center px-1 py-2.5 font-medium text-muted-foreground text-[11px]">Dias</th>
+                  <th className="text-left px-2 py-2.5 font-medium text-muted-foreground text-[11px]">Datas</th>
+                  <th className="text-center px-1 py-2.5 font-medium text-muted-foreground text-[11px]">Pax</th>
+                  <th className="text-right px-2 py-2.5 font-medium text-muted-foreground text-[11px]">PVP / Margem</th>
+                  <th className="text-left px-2 py-2.5 font-medium text-muted-foreground text-[11px]">Criação</th>
+                  <th className="text-left px-2 py-2.5 font-medium text-muted-foreground text-[11px]">Agentes</th>
+                  <th className="text-center px-2 py-2.5 font-medium text-muted-foreground text-[11px]">Estado</th>
+                  <th className="text-center px-1 py-2.5 font-medium text-muted-foreground text-[11px]">Ver</th>
                 </tr>
               </thead>
+
               <tbody>
                 {filteredLeads.map(lead => {
                   const badge = resolveStage(lead as any);
@@ -193,14 +208,14 @@ const LeadsFilesPage = () => {
                   return (
                     <tr key={lead.id} onClick={() => navigate(`/leads/${lead.id}`)}
                       className="border-b border-border last:border-0 hover:bg-muted/30 transition-colors cursor-pointer">
-                      <td className="px-3 py-3 text-xs text-muted-foreground whitespace-nowrap">{displayLeadCode(lead)}</td>
-                      <td className="px-3 py-3"><p className="text-xs font-medium text-[hsl(var(--info))] hover:underline">{lead.client_name}</p></td>
-                      <td className="px-2 py-3 text-center"><ClientTypeBadge value={(lead as any).client_type} /></td>
-                      <td className="px-3 py-3 text-xs text-foreground">{lead.destination}</td>
-                      <td className="px-2 py-3 text-xs text-center text-foreground">{lead.number_of_days || '—'}</td>
-                      <td className="px-3 py-3 text-xs text-foreground"><LeadDates lead={lead} /></td>
-                      <td className="px-2 py-3 text-xs text-center text-foreground">{lead.pax}</td>
-                      <td className="px-3 py-3 text-xs text-right whitespace-nowrap">
+                      <td className="px-2 py-2.5 text-[11px] text-muted-foreground truncate">{displayLeadCode(lead)}</td>
+                      <td className="px-2 py-2.5"><p className="text-xs font-medium text-[hsl(var(--info))] hover:underline break-words leading-tight">{lead.client_name}</p></td>
+                      <td className="px-1 py-2.5 text-center"><ClientTypeBadge value={(lead as any).client_type} /></td>
+                      <td className="px-2 py-2.5 text-[11px] text-foreground break-words leading-tight">{lead.destination}</td>
+                      <td className="px-1 py-2.5 text-[11px] text-center text-foreground">{lead.number_of_days || '—'}</td>
+                      <td className="px-2 py-2.5 text-[11px] text-foreground"><LeadDates lead={lead} /></td>
+                      <td className="px-1 py-2.5 text-[11px] text-center text-foreground">{lead.pax}</td>
+                      <td className="px-2 py-2.5 text-[11px] text-right whitespace-nowrap">
                         {hasPvp ? (
                           <div className="leading-tight">
                             <div className="font-semibold text-foreground">{fmtMoney(cs.pvp)}</div>
@@ -210,14 +225,18 @@ const LeadsFilesPage = () => {
                           <span className="text-muted-foreground">—</span>
                         )}
                       </td>
-                      <td className="px-3 py-3 text-xs text-muted-foreground whitespace-nowrap">
-                        {new Date(lead.created_at).toLocaleDateString('pt-PT')} {new Date(lead.created_at).toLocaleTimeString('pt-PT', { hour: '2-digit', minute: '2-digit' })}
+                      <td className="px-2 py-2.5 text-[10px] text-muted-foreground leading-tight">
+                        <div>{new Date(lead.created_at).toLocaleDateString('pt-PT')}</div>
+                        <div>{new Date(lead.created_at).toLocaleTimeString('pt-PT', { hour: '2-digit', minute: '2-digit' })}</div>
                       </td>
-                      <td className="px-3 py-3" onClick={e => e.stopPropagation()}>
+                      <td className="px-2 py-2.5" onClick={e => e.stopPropagation()}>
                         <LeadAgentsCell leadId={lead.id} value={(lead as any).assigned_agents} />
                       </td>
-                      <td className="px-3 py-3 text-center"><StatusBadge label={badge.label} className={badge.className} /></td>
-                      <td className="px-2 py-3 text-center"><Eye className="h-4 w-4 text-muted-foreground mx-auto" /></td>
+                      <td className="px-2 py-2.5 text-center">
+                        <span className={cn('inline-block rounded-md px-1.5 py-1 text-[10px] font-medium leading-tight text-center break-words', badge.className)}>{badge.label}</span>
+                      </td>
+                      <td className="px-1 py-2.5 text-center"><Eye className="h-4 w-4 text-muted-foreground mx-auto" /></td>
+
                     </tr>
                   );
                 })}
