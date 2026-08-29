@@ -39,7 +39,9 @@ export default function LeadOpsAnalyticsPanel({ rows, pvpTotal, dayTitles = {} }
     const real = rows.reduce((s, r) => s + (r.realCost ?? r.netValue ?? 0), 0);
     const filled = rows.filter(r => r.realCost != null).length;
     const deviation = real - net;
-    const deviationPct = net > 0 ? (deviation / net) * 100 : 0;
+    // Se não havia NET previsto (linhas extra não orçamentadas), qualquer custo
+    // real é 100% de desvio — não 0%.
+    const deviationPct = net > 0 ? (deviation / net) * 100 : (real > 0 ? 100 : 0);
     const plannedMargin = pvpTotal - net;
     const realMargin = pvpTotal - real;
     const plannedMarginPct = pvpTotal > 0 ? (plannedMargin / pvpTotal) * 100 : 0;
@@ -79,12 +81,15 @@ export default function LeadOpsAnalyticsPanel({ rows, pvpTotal, dayTitles = {} }
     };
   }, [rows, pvpTotal, dayTitles]);
 
+  // Sem PVP definido não há margem calculável — evita mostrar 0% a vermelho.
+  const hasPvp = pvpTotal > 0;
   const marginTone = (pct: number): 'good' | 'warn' | 'bad' =>
-    pct > BUSINESS_CONFIG.DEFAULT_MARGIN_PERCENT ? 'good'
-      : pct >= 25 ? 'warn' : 'bad';
+    !hasPvp ? 'warn'
+      : pct > BUSINESS_CONFIG.DEFAULT_MARGIN_PERCENT ? 'good'
+        : pct >= 25 ? 'warn' : 'bad';
 
-  const marginAlert =
-    m.realMarginPct > BUSINESS_CONFIG.DEFAULT_MARGIN_PERCENT ? 'Margem saudável (> 30%)'
+  const marginAlert = !hasPvp ? 'PVP não definido — margem indisponível'
+    : m.realMarginPct > BUSINESS_CONFIG.DEFAULT_MARGIN_PERCENT ? 'Margem saudável (> 30%)'
       : m.realMarginPct >= 25 ? 'Aviso: margem entre 25% e 30%'
         : 'Risco: margem abaixo de 25%';
 
