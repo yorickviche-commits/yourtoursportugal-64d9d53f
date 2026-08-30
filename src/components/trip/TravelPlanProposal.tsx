@@ -553,6 +553,8 @@ const TravelPlanProposal = ({
   onGoToCosting,
   accommodation = [],
   netPricing = false,
+  version = 0,
+
 }: TravelPlanProposalProps) => {
   const { toast } = useToast();
   const queryClient = useQueryClient();
