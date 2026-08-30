@@ -849,8 +849,12 @@ const LeadCostingEditor = ({ costingDays, onChange, onSave, saving, plannerDays,
                 </div>
                 <div className="text-right shrink-0">
                   <span className="text-xs font-medium">NET {dayNet.toFixed(0)}€</span>
-                  <span className="text-[10px] text-muted-foreground ml-2">PVP {dayPVP.toFixed(0)}€</span>
+                  <span className="text-[10px] text-muted-foreground ml-2">
+                    PVP {dayPVP.toFixed(0)}€
+                    {dayOptPVP > 0 && <span className="text-[hsl(var(--warning))] ml-1">(+{dayOptPVP.toFixed(0)}€ opc.)</span>}
+                  </span>
                 </div>
+
               </CollapsibleTrigger>
 
               <CollapsibleContent>
