@@ -542,10 +542,15 @@ const LeadCostingEditor = ({ costingDays, onChange, onSave, saving, plannerDays,
     }
   };
 
-  // Grand totals (only 'aceite' and 'neutro' items)
-  const activeItems = costingDays.flatMap(d => d.items.filter(i => i.status !== 'eliminar'));
+  // Grand totals — os opcionais ficam sempre FORA do preço base do programa
+  const activeItems = costingDays.flatMap(d => d.items.filter(i => i.status !== 'eliminar' && i.status !== 'opcionais'));
+  const optionalItems = costingDays.flatMap(d =>
+    d.items.filter(i => i.status === 'opcionais').map(i => ({ item: i, day: d })),
+  );
+  const optionalsPVP = optionalItems.reduce((s, x) => s + x.item.pvpTotal, 0);
   const grandNet = activeItems.reduce((s, i) => s + i.netTotal, 0);
   const computedPVP = activeItems.reduce((s, i) => s + i.pvpTotal, 0);
+
   const totalPax = (pax || 0) + (paxChildren || 0);
 
   // Editable PVP override (drives margin & per-pax dynamically). NET is read-only.
