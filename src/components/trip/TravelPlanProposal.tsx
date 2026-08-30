@@ -1322,7 +1322,7 @@ const TravelPlanProposal = ({
         try {
           const [{ data: savedProposal }, { data: tripData }] = await Promise.all([
             supabase.from('proposals').select('id, wetravel_checkout_url, deposit_amount_eur')
-              .eq('lead_id', leadId).maybeSingle(),
+              .eq('lead_id', leadId).eq('version', version).maybeSingle(),
             supabase.from('trips').select('total_value')
               .eq('lead_id', leadId).order('updated_at', { ascending: false }).limit(1).maybeSingle(),
           ]);
