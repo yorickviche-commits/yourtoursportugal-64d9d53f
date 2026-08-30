@@ -866,9 +866,22 @@ const TravelPlanProposal = ({
   }, [plan, language, travelDates, travelEndDate, leadCode, leadId, clientName, pax, paxChildren,
       totalPVP, ytId, wetravelCheckoutUrl, closing, accommodation, netPricing, buildPdfFilename, toast]);
 
-  const hydratedRef = useRef(false);
-  if (savedPlan && !plan && !hydratedRef.current) {
-    hydratedRef.current = true;
+  // Hidratação por (lead, versão): ao mudar de versão o estado local é
+  // descartado para que editar/gravar a versão N nunca escreva o conteúdo
+  // de outra versão.
+  const hydratedRef = useRef<string>('');
+  const versionKey = `${leadId}:${version}`;
+  useEffect(() => {
+    hydratedRef.current = '';
+    planUndo.reset(null);
+    setClosing(DEFAULT_CLOSING);
+    setWetravelCheckoutUrl(null);
+    setWetravelDepositEur(null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [leadId, version]);
+  if (savedPlan && !plan && hydratedRef.current !== versionKey) {
+    hydratedRef.current = versionKey;
+
     const days = Array.isArray(savedPlan.days) ? savedPlan.days as unknown as ProposalDay[] : [];
     // Restore cover_image + closing terms from extra_instructions metadata
     let cover_image: ProposalImage | undefined;
