@@ -1223,12 +1223,12 @@ function PaymentSummaryBar({ leadId, totalPVP }: { leadId: string; totalPVP: num
   const { data: prop } = useQuery({
     queryKey: ['lead_proposal_totals', leadId],
     queryFn: async () => {
+      const live = await getLeadLiveVersion(leadId);
       const { data } = await (supabase as any)
         .from('proposals')
         .select('total_value_eur, deposit_amount_eur, updated_at')
         .eq('lead_id', leadId)
-        .order('updated_at', { ascending: false })
-        .limit(1)
+        .eq('version', live)
         .maybeSingle();
       return data as { total_value_eur: number | null; deposit_amount_eur: number | null } | null;
     },
