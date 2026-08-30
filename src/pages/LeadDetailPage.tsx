@@ -714,14 +714,9 @@ const LeadDetailPage = ({ mode = 'lead' }: { mode?: 'lead' | 'booking' } = {}) =
   }, [lead, createLeadMutation, navigate, toast]);
 
 
-  const handleNewVersion = useCallback(async () => {
-    if (!lead) return;
-    const newVersion = activeVersion + 1;
-    setActiveVersion(newVersion);
-    await updateLeadMutation.mutateAsync({ id: lead.id, updates: { active_version: newVersion } });
-    await logActivity('lead_new_version', 'lead', lead.id, { version: newVersion });
-    toast({ title: `Versão V${newVersion} criada` });
-  }, [lead, activeVersion, updateLeadMutation, toast]);
+  // A criação/eliminação de versões vive no LeadVersionBar (useLeadVersions).
+
+
 
   const handleRemove = useCallback(async () => {
     if (!lead) return;
