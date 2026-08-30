@@ -47,6 +47,8 @@ const invalidateLead = (qc: ReturnType<typeof useQueryClient>, leadId: string) =
   qc.invalidateQueries({ queryKey: ['travel_plan', leadId] });
   qc.invalidateQueries({ queryKey: ['lead_costing_data_proposal', leadId] });
   qc.invalidateQueries({ queryKey: ['leads_costing_summary'] });
+  qc.invalidateQueries({ queryKey: ['proposals'] });
+  qc.invalidateQueries({ queryKey: ['proposals_list'] });
 };
 
 /** Creates version N+1 as a full copy of the live version (general data, planner, costing, travel plan). */
