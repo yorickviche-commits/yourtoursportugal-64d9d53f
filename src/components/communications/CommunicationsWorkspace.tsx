@@ -11,6 +11,7 @@ import {
   Sparkles, Loader2, Send, Wand2, Paperclip, LinkIcon, X, Eye, CheckCircle2, AlertTriangle, PencilLine,
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
+import { getLeadLiveVersion } from '@/lib/proposalVersion';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -132,6 +133,7 @@ export function CommunicationsWorkspace({
         .from('proposals')
         .select('*')
         .eq(scope === 'lead' ? 'lead_id' : 'trip_id', entityId)
+        .eq('version', scope === 'lead' ? await getLeadLiveVersion(entityId) : 0)
         .order('created_at', { ascending: false })
         .limit(1)
         .maybeSingle();

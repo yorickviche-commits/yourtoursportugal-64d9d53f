@@ -6,6 +6,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
+import { getLeadLiveVersion } from '@/lib/proposalVersion';
 import { useQueryClient } from '@tanstack/react-query';
 import { cn } from '@/lib/utils';
 import { buildProposalPdfBase64, type ProposalLite } from '@/lib/proposalPdf';
@@ -131,8 +132,7 @@ const EmailComposerDialog = ({ lead, children, open: openProp, onOpenChange, ini
           .from('proposals')
           .select('*')
           .eq('lead_id', lead.leadId)
-          .order('created_at', { ascending: false })
-          .limit(1)
+          .eq('version', await getLeadLiveVersion(lead.leadId))
           .maybeSingle();
         if (error) throw error;
         let proposalData: any = data;
