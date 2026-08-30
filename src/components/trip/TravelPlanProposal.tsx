@@ -74,6 +74,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Calendar } from '@/components/ui/calendar';
 import { CalendarIcon } from 'lucide-react';
 import { format, parse, isValid } from 'date-fns';
+import { buildProposalToken } from '@/lib/proposalVersion';
 
 export { toMapEmbedSrc };
 
