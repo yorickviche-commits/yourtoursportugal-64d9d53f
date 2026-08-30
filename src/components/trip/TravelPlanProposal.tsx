@@ -1314,6 +1314,7 @@ const TravelPlanProposal = ({
 
       queryClient.invalidateQueries({ queryKey: ['travel_plan', leadId] });
       queryClient.invalidateQueries({ queryKey: ['proposals'] });
+      queryClient.invalidateQueries({ queryKey: ['proposals_list'] });
       toast({ title: 'Plano guardado!', description: 'Proposta cliente atualizada automaticamente.' });
       setSaving(false);
 
