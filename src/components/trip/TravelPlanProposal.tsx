@@ -1608,6 +1608,8 @@ const TravelPlanProposal = ({
   // ─── Hotels Included (from Costing day 0 + details edited here) ───
   const hotels = mergeProposalHotels(accommodation, closing.hotels || []);
   const hasHotels = hotels.length > 0;
+  const showHotels = closing.showHotels !== false;
+  const showHotelDetails = closing.showHotelDetails !== false;
   const hotelsNights = hotels.reduce((s, x) => s + (Number(x.nights) || 0), 0);
   const hotelsRooms = hotels.reduce((s, x) => Math.max(s, Number(x.rooms) || 0), 0);
   const hotelsTotal = Math.round(hotels.reduce((s, x) => s + (Number(x.value) || 0), 0));
