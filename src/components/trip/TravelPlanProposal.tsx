@@ -10,6 +10,7 @@ import { RichInput, RichTextarea } from '@/components/ui/rich-editable';
 import { RichText } from '@/lib/richText';
 import { resolveClosingText } from '@/lib/closingTermsI18n';
 import { getHotelsDict, resolveHotelsText, mergeProposalHotels, type ProposalHotel } from '@/lib/proposalHotelsI18n';
+import { Switch } from '@/components/ui/switch';
 import { Card, CardContent } from '@/components/ui/card';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -165,6 +166,10 @@ interface ClosingTerms {
   nextSteps?: string;
   /** Hotel details edited here; name/nights/value come from Costing. */
   hotels?: ProposalHotel[];
+  /** Master switch for the "Hotels Included" section (PDF + digital itinerary). */
+  showHotels?: boolean;
+  /** Switch for the detailed table (check-in/out, nights, rooms, rate). */
+  showHotelDetails?: boolean;
 }
 
 const TERMS_URL = 'https://drive.google.com/file/d/12AkvW2Ob0LtcooaciWY4e-nEx7hlOnQC/view?usp=sharing';
@@ -179,6 +184,8 @@ const DEFAULT_CLOSING: ClosingTerms = {
   notIncluded: getHotelsDict('en').notIncludedDefault,
   nextSteps: getHotelsDict('en').nextStepsDefault,
   hotels: [],
+  showHotels: true,
+  showHotelDetails: true,
 };
 
 
@@ -1602,6 +1609,8 @@ const TravelPlanProposal = ({
   // ─── Hotels Included (from Costing day 0 + details edited here) ───
   const hotels = mergeProposalHotels(accommodation, closing.hotels || []);
   const hasHotels = hotels.length > 0;
+  const showHotels = closing.showHotels !== false;
+  const showHotelDetails = closing.showHotelDetails !== false;
   const hotelsNights = hotels.reduce((s, x) => s + (Number(x.nights) || 0), 0);
   const hotelsRooms = hotels.reduce((s, x) => Math.max(s, Number(x.rooms) || 0), 0);
   const hotelsTotal = Math.round(hotels.reduce((s, x) => s + (Number(x.value) || 0), 0));
@@ -1874,11 +1883,31 @@ const TravelPlanProposal = ({
         )}
 
         {/* HOTELS INCLUDED — only when the Costing accommodation block is active */}
-        {hasHotels && (
+        {hasHotels && (showHotels || viewMode === 'edit') && (
           <div className="border-b p-6 md:p-8 bg-white print:break-before-page">
-            <h2 className="text-lg font-serif font-bold text-slate-800 mb-4">{h.hotelsIncluded}</h2>
+            {showHotels && (
+              <h2 className="text-lg font-serif font-bold text-slate-800 mb-4">{h.hotelsIncluded}</h2>
+            )}
 
-            <div className="space-y-4">
+            {viewMode === 'edit' && (
+              <div className="mb-4 flex flex-wrap items-center gap-6 rounded-lg border bg-muted/30 px-3 py-2 print:hidden">
+                <label className="flex items-center gap-2 text-xs cursor-pointer">
+                  <Switch checked={showHotels} onCheckedChange={v => setClosing(c => ({ ...c, showHotels: v }))} />
+                  Ativar Hotéis no PDF e Itinerário
+                </label>
+                <label className="flex items-center gap-2 text-xs cursor-pointer">
+                  <Switch
+                    checked={showHotelDetails}
+                    disabled={!showHotels}
+                    onCheckedChange={v => setClosing(c => ({ ...c, showHotelDetails: v }))}
+                  />
+                  Ativar detalhado tarifa e nº noites
+                </label>
+              </div>
+            )}
+
+            <div className={cn('space-y-4', !showHotels && 'hidden')}>
+
               {hotels.map(hotel => (
                 <div key={hotel.name} className="text-sm">
                   <p className="font-semibold text-slate-800">
@@ -1918,6 +1947,8 @@ const TravelPlanProposal = ({
               ))}
             </div>
 
+            {showHotels && showHotelDetails && (
+            <>
             <div className="mt-5 overflow-hidden rounded-lg border border-slate-200">
               <table className="w-full text-xs">
                 <thead>
@@ -1955,6 +1986,8 @@ const TravelPlanProposal = ({
               </table>
             </div>
             <p className="text-[10px] text-slate-500 mt-2">{h.hotelsTableNote} {h.mapsLinkNote}</p>
+            </>
+            )}
           </div>
         )}
 

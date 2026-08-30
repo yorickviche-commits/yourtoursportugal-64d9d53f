@@ -936,7 +936,9 @@ const PricingConditions = ({ proposal, lang }: { proposal: any; lang: string }) 
   const h = getHotelsDict(lang);
   const accommodation: any[] = Array.isArray(closing.accommodation) ? closing.accommodation : [];
   const hotels = mergeProposalHotels(accommodation, Array.isArray(closing.hotels) ? closing.hotels : []);
-  const hasHotels = hotels.length > 0;
+  const showHotels = closing.showHotels !== false;
+  const showHotelDetails = closing.showHotelDetails !== false;
+  const hasHotels = hotels.length > 0 && showHotels;
   const hotelsNights = hotels.reduce((s, x) => s + (Number(x.nights) || 0), 0);
   const hotelsRooms = hotels.reduce((s, x) => Math.max(s, Number(x.rooms) || 0), 0);
   const hotelsTotal = Math.round(hotels.reduce((s, x) => s + (Number(x.value) || 0), 0));
@@ -1022,6 +1024,7 @@ const PricingConditions = ({ proposal, lang }: { proposal: any; lang: string }) 
                   </div>
                 ))}
               </div>
+              {showHotelDetails && (<>
               <div className="mt-3 overflow-x-auto rounded-lg border border-slate-200">
                 <table className="w-full text-xs">
                   <thead>
@@ -1049,6 +1052,7 @@ const PricingConditions = ({ proposal, lang }: { proposal: any; lang: string }) 
                 </table>
               </div>
               <p className="text-[10px] text-slate-500 mt-2">{h.hotelsTableNote} {h.mapsLinkNote}</p>
+              </>)}
             </div>
           )}
 
