@@ -1948,6 +1948,7 @@ const TravelPlanProposal = ({
             </div>
 
             {showHotels && showHotelDetails && (
+            <>
             <div className="mt-5 overflow-hidden rounded-lg border border-slate-200">
               <table className="w-full text-xs">
                 <thead>
