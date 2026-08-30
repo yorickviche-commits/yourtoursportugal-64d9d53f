@@ -684,6 +684,147 @@ const LeadCostingEditor = ({ costingDays, onChange, onSave, saving, plannerDays,
           const isAcc = isAccommodationDay(day);
           const accVisible = day.date !== 'hidden';
 
+          const tableHead = (
+                      <thead>
+                        <tr className="bg-muted/30 text-muted-foreground uppercase">
+                          <th className="w-[18px]"></th>
+                          <th className="text-left px-1.5 py-1.5 font-medium w-[50px]">Camada</th>
+                          <th className="text-left px-1.5 py-1.5 font-medium min-w-[140px]">{isAcc ? 'Alojamento' : 'Atividade'}</th>
+                          <th className="text-left px-1.5 py-1.5 font-medium w-[110px]">Fornecedor</th>
+                          <th className="text-center px-1 py-1.5 font-medium w-[80px]">{isAcc ? 'Por Noite/Total' : 'Por Pessoa/Total'}</th>
+                          <th className="text-center px-1 py-1.5 font-medium w-[55px]">{isAcc ? 'Nº Noites' : 'Nº Adt'}</th>
+                          <th className="text-center px-1 py-1.5 font-medium w-[65px]">Preço Adt</th>
+                          <th className="text-center px-1 py-1.5 font-medium w-[55px]">Nº Cri</th>
+                          <th className="text-center px-1 py-1.5 font-medium w-[65px]">Preço Cri</th>
+                          <th className="text-center px-1 py-1.5 font-medium w-[75px]">NET Total</th>
+                          <th className="text-center px-1 py-1.5 font-medium w-[60px]">Margem %</th>
+                          <th className="text-center px-1 py-1.5 font-medium w-[75px]">PVP Total</th>
+                          <th className="text-center px-1 py-1.5 font-medium w-[60px]">Lucro €</th>
+                          <th className="w-[55px]"></th>
+                        </tr>
+                      </thead>
+          );
+
+          const renderRow = (item: LeadCostItem, dragIdx: number) => {
+            const itemIdx = day.items.indexOf(item);
+                              const statusCfg = STATUS_OPTIONS.find(s => s.value === item.status) || STATUS_OPTIONS[0];
+                              const StatusIcon = statusCfg.icon;
+                              const isDeleted = item.status === 'eliminar';
+                              const layer = item.costLayer && LAYER_CONFIG[item.costLayer] ? LAYER_CONFIG[item.costLayer] : null;
+
+                              return (
+                                <Draggable key={item.id} draggableId={item.id} index={dragIdx}>
+                                  {(dragProvided, dragSnapshot) => (
+                                    <tr
+                                      ref={dragProvided.innerRef}
+                                      {...dragProvided.draggableProps}
+                                      style={dragProvided.draggableProps.style}
+                                      className={cn(
+                                        "border-t border-border/30 hover:bg-muted/10 transition-colors",
+                                        isDeleted && "opacity-40 line-through",
+                                        dragSnapshot.isDragging && "bg-background shadow-lg ring-1 ring-[hsl(var(--info)/0.3)]",
+                                      )}
+                                    >
+                                      <td className="px-0.5 py-1 align-middle">
+                                        <span {...dragProvided.dragHandleProps} className="flex items-center justify-center text-muted-foreground/50 hover:text-[hsl(var(--info))] cursor-grab active:cursor-grabbing" title="Arrastar">
+                                          <GripVertical className="h-3.5 w-3.5" />
+                                        </span>
+                                      </td>
+                                      <td className="px-1 py-1">
+                                        {layer ? (
+                                          <span className={cn("inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[9px] font-medium", layer.bg, layer.text)} title={layer.label}>
+                                            {layer.emoji}
+                                            {item.isFixedRate && <span className="ml-0.5 text-[8px]">🔒</span>}
+                                            {item.isProtocol && <span className="ml-0.5 text-[8px]">✓</span>}
+                                          </span>
+                                        ) : <span className="text-[9px] text-muted-foreground">—</span>}
+                                      </td>
+                                      <td className="px-1 py-1 align-middle min-w-[140px]">
+                                        <div className="flex items-start gap-0.5">
+                                          <Input
+                                            className="h-auto min-h-7 text-xs border-0 bg-transparent shadow-none focus-visible:ring-1 px-1 py-1 whitespace-normal break-words leading-snug"
+                                            defaultValue={item.description}
+                                            onBlur={e => updateItem(dayIdx, itemIdx, { description: e.target.value })}
+                                            placeholder={isAcc ? 'Hotel / alojamento...' : 'Atividade...'}
+                                          />
+                                          <button
+                                            type="button"
+                                            title="Escolher experiência do FSE"
+                                            onClick={() => setExpPicker({ dayIdx, itemIdx, supplier: item.supplier })}
+                                            className="mt-1 shrink-0 text-muted-foreground/60 hover:text-[hsl(var(--info))] transition-colors"
+                                          >
+                                            <Sparkles className="h-3.5 w-3.5" />
+                                          </button>
+                                        </div>
+                                      </td>
+                                      <td className="px-1 py-1 align-middle min-w-[110px]">
+                                        <SupplierSearchDropdown
+                                          value={item.supplier}
+                                          onChange={v => updateItem(dayIdx, itemIdx, { supplier: v })}
+                                          className="whitespace-normal break-words h-auto min-h-7 py-1"
+                                        />
+                                      </td>
+                                      <td className="px-1 py-1">
+                                        <Select defaultValue={item.pricingType} onValueChange={v => updateItem(dayIdx, itemIdx, { pricingType: v as any })}>
+                                          <SelectTrigger className="h-7 text-[10px] border-0 bg-transparent shadow-none"><SelectValue /></SelectTrigger>
+                                          <SelectContent>
+                                            <SelectItem value="total" className="text-xs">TOTAL</SelectItem>
+                                            {isAcc
+                                              ? <SelectItem value="per_night" className="text-xs">POR NOITE</SelectItem>
+                                              : <SelectItem value="per_person" className="text-xs">POR PESSOA</SelectItem>}
+                                          </SelectContent>
+                                        </Select>
+                                      </td>
+                                      <td className="px-1 py-1">
+                                        <Input className="h-7 text-xs text-center border-0 bg-muted/30 shadow-none focus-visible:ring-1 px-1" type="number" defaultValue={item.numAdults} onBlur={e => updateItem(dayIdx, itemIdx, { numAdults: Number(e.target.value) })} />
+                                      </td>
+                                      <td className="px-1 py-1">
+                                        <Input className="h-7 text-xs text-center border-0 bg-muted/30 shadow-none focus-visible:ring-1 px-1" type="number" defaultValue={item.priceAdults} onBlur={e => updateItem(dayIdx, itemIdx, { priceAdults: Number(e.target.value) })} />
+                                      </td>
+                                      <td className="px-1 py-1">
+                                        <Input className="h-7 text-xs text-center border-0 bg-muted/30 shadow-none focus-visible:ring-1 px-1" type="number" defaultValue={item.numChildren} onBlur={e => updateItem(dayIdx, itemIdx, { numChildren: Number(e.target.value) })} />
+                                      </td>
+                                      <td className="px-1 py-1">
+                                        <Input className="h-7 text-xs text-center border-0 bg-muted/30 shadow-none focus-visible:ring-1 px-1" type="number" defaultValue={item.priceChildren} onBlur={e => updateItem(dayIdx, itemIdx, { priceChildren: Number(e.target.value) })} />
+                                      </td>
+                                      <td className="px-1 py-1 text-center text-xs font-semibold">{item.netTotal.toFixed(0)}€</td>
+                                      <td className="px-1 py-1">
+                                        <Input className="h-7 text-xs text-center border-0 bg-transparent shadow-none focus-visible:ring-1 px-1" type="number" defaultValue={item.marginPercent} onBlur={e => updateItem(dayIdx, itemIdx, { marginPercent: Number(e.target.value) })} />
+                                      </td>
+                                      <td className="px-1 py-1 text-center text-xs font-medium">{item.pvpTotal.toFixed(1)}</td>
+                                      <td className="px-1 py-1 text-center text-xs font-medium text-[hsl(var(--success))]">{item.profit.toFixed(1)}</td>
+                                      <td className="px-1 py-1">
+                                        <div className="flex items-center gap-0.5">
+                                          <Select defaultValue={item.status} onValueChange={v => updateItem(dayIdx, itemIdx, { status: v as any })}>
+                                            <SelectTrigger className="h-6 w-auto text-[10px] border-0 bg-transparent shadow-none gap-0 px-0.5">
+                                              <StatusIcon className={cn("h-3.5 w-3.5", statusCfg.className)} />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                              {STATUS_OPTIONS.map(opt => (
+                                                <SelectItem key={opt.value} value={opt.value} className="text-xs">
+                                                  <div className="flex items-center gap-1.5">
+                                                    <opt.icon className={cn("h-3.5 w-3.5", opt.className)} />
+                                                    {opt.label}
+                                                  </div>
+                                                </SelectItem>
+                                              ))}
+                                            </SelectContent>
+                                          </Select>
+                                          <CostNoteDialog
+                                            item={item}
+                                            onUpdate={(notes) => updateItem(dayIdx, itemIdx, { notes })}
+                                          />
+                                          <button onClick={() => removeItem(dayIdx, itemIdx)} className="p-0.5 text-destructive/50 hover:text-destructive transition-colors">
+                                            <Trash2 className="h-3 w-3" />
+                                          </button>
+                                        </div>
+                                      </td>
+                                    </tr>
+                                  )}
+                                </Draggable>
+                              );
+          };
+
           return (
             <Collapsible key={day.day} open={expanded} onOpenChange={() => toggleDay(day.day)}>
               <CollapsibleTrigger className="w-full flex items-center gap-3 p-4 hover:bg-muted/20 transition-colors text-left">
