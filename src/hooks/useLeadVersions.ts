@@ -87,6 +87,27 @@ export const useCreateLeadVersion = () => {
       const failed = ins.find((r: any) => r?.error);
       if (failed?.error) throw failed.error;
 
+      // Duplicar a proposta/itinerário digital da versão de origem, com
+      // public_token NOVO e em rascunho — o link antigo fica congelado.
+      const { data: srcProposal } = await supabase
+        .from('proposals').select('*').eq('lead_id', leadId).eq('version', fromVersion).maybeSingle();
+      if (srcProposal) {
+        const {
+          id: _pid, created_at: _pc, updated_at: _pu, created_by: _pb,
+          public_token: _pt, sent_at: _ps, approved_at: _pa, ...rest
+        } = srcProposal as any;
+        const { error: pErr } = await supabase.from('proposals').insert({
+          ...rest,
+          lead_id: leadId,
+          version: newVersion,
+          public_token: buildProposalToken((leadRow as any)?.yt_id || (leadRow as any)?.lead_code || 'ytp', newVersion),
+          status: 'draft',
+          sent_at: null,
+          approved_at: null,
+        } as any);
+        if (pErr) throw pErr;
+      }
+
       const { error: upErr } = await supabase.from('leads').update({ active_version: newVersion } as any).eq('id', leadId);
       if (upErr) throw upErr;
       return newVersion;
