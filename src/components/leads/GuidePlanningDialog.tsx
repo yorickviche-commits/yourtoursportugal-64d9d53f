@@ -10,6 +10,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
 import { Checkbox } from '@/components/ui/checkbox';
 import { supabase } from '@/integrations/supabase/client';
+import { getLeadLiveVersion } from '@/lib/proposalVersion';
 import { useToast } from '@/hooks/use-toast';
 import { getProposalAppUrl } from '@/lib/proposalShare';
 import { generateGuidePlanningPdf } from '@/lib/guidePlanningPdf';
@@ -51,8 +52,7 @@ export default function GuidePlanningDialog({ open, onOpenChange, leadId, leadCo
         .from('proposals')
         .select('public_token, days, updated_at')
         .eq('lead_id', leadId)
-        .order('updated_at', { ascending: false })
-        .limit(1);
+        .eq('version', await getLeadLiveVersion(leadId));
       if (error) throw error;
       return data?.[0] || null;
     },

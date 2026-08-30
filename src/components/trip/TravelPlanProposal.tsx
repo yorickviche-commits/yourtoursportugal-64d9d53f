@@ -74,6 +74,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Calendar } from '@/components/ui/calendar';
 import { CalendarIcon } from 'lucide-react';
 import { format, parse, isValid } from 'date-fns';
+import { buildProposalToken } from '@/lib/proposalVersion';
 
 export { toMapEmbedSrc };
 
@@ -734,14 +735,15 @@ const TravelPlanProposal = ({
 
 
 
-  // Load WeTravel checkout if already set on the proposal
+  // Load WeTravel checkout if already set on the proposal (desta versão)
   useQuery({
-    queryKey: ['proposal_wetravel', leadId],
+    queryKey: ['proposal_wetravel', leadId, version],
     queryFn: async () => {
       const { data } = await supabase
         .from('proposals')
         .select('wetravel_checkout_url, deposit_amount_eur')
         .eq('lead_id', leadId)
+        .eq('version', version)
         .maybeSingle();
       if (data?.wetravel_checkout_url) {
         setWetravelCheckoutUrl(data.wetravel_checkout_url);
@@ -1250,7 +1252,6 @@ const TravelPlanProposal = ({
 
 
       // Auto-create/update proposal from travel plan
-      const token = `ytp-${leadCode.toLowerCase().replace(/[^a-z0-9]/g, '-')}`;
       const dateRange = startDate && endDate ? `${startDate} — ${endDate}` : startDate || '';
       const dayLabelByLang: Record<string, string> = { en: 'Day', fr: 'Jour', es: 'Día', pt: 'Dia', it: 'Giorno', de: 'Tag' };
       const proposalDays = planToSave.days.map((d, i) => ({
@@ -1265,11 +1266,13 @@ const TravelPlanProposal = ({
         map_url: d.mapUrl || '',
       }));
 
-      // Check if proposal already exists for this lead
+      // Uma proposta por (lead, versão) — gravar a versão N nunca toca nos
+      // links das outras versões.
       const { data: existingProposal } = await supabase
         .from('proposals')
         .select('id')
         .eq('lead_id', leadId)
+        .eq('version', version)
         .maybeSingle();
 
       if (existingProposal) {
@@ -1287,9 +1290,11 @@ const TravelPlanProposal = ({
           closing_terms: { ...closing, accommodation, netPricing } as any,
         }).eq('id', existingProposal.id);
       } else {
+        const token = buildProposalToken(leadCode, version);
         await supabase.from('proposals').insert({
           public_token: token,
           lead_id: leadId,
+          version,
           title: planToSave.trip_title,
           client_name: clientName,
           date_range: dateRange,
@@ -1303,12 +1308,13 @@ const TravelPlanProposal = ({
           status: 'draft',
           total_value_eur: totalPVP || null,
           closing_terms: { ...closing, accommodation, netPricing } as any,
-        });
-        console.log(`[YTP] Proposal created — public URL: /proposal/${token}`);
+        } as any);
+        console.log(`[YTP] Proposal created (V${version}) — public URL: /proposal/${token}`);
       }
 
       queryClient.invalidateQueries({ queryKey: ['travel_plan', leadId] });
       queryClient.invalidateQueries({ queryKey: ['proposals'] });
+      queryClient.invalidateQueries({ queryKey: ['proposals_list'] });
       toast({ title: 'Plano guardado!', description: 'Proposta cliente atualizada automaticamente.' });
       setSaving(false);
 
@@ -1317,7 +1323,7 @@ const TravelPlanProposal = ({
         try {
           const [{ data: savedProposal }, { data: tripData }] = await Promise.all([
             supabase.from('proposals').select('id, wetravel_checkout_url, deposit_amount_eur')
-              .eq('lead_id', leadId).maybeSingle(),
+              .eq('lead_id', leadId).eq('version', version).maybeSingle(),
             supabase.from('trips').select('total_value')
               .eq('lead_id', leadId).order('updated_at', { ascending: false }).limit(1).maybeSingle(),
           ]);

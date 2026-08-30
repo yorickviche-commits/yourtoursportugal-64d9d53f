@@ -37,6 +37,7 @@ export interface Proposal {
   days: ProposalDay[];
   map_stops: MapStop[];
   lead_id: string | null;
+  version: number;
   created_at: string;
   updated_at: string;
   sent_at: string | null;
@@ -92,7 +93,8 @@ export const useProposalsListQuery = () =>
     queryFn: async () => {
       const { data, error } = await supabase
         .from('proposals')
-        .select('id, public_token, client_name, client_email, booking_ref, title, date_range, participants, language, status, lead_id, created_at, updated_at, sent_at, approved_at, wetravel_checkout_url')
+        .select('id, public_token, client_name, client_email, booking_ref, title, date_range, participants, language, status, lead_id, version, created_at, updated_at, sent_at, approved_at, wetravel_checkout_url')
+        .order('version', { ascending: false })
         .order('created_at', { ascending: false });
       if (error) throw error;
       return (data || []) as ProposalListItem[];

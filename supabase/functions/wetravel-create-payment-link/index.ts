@@ -202,8 +202,12 @@ serve(async (req) => {
 
       // Drop the Book Now button whenever the active link disappears.
       if (row.is_active) {
+        const { data: leadRowForProposal } = await supabase
+          .from("leads").select("active_version").eq("id", row.lead_id).maybeSingle();
         await supabase.from("proposals")
-          .update({ wetravel_checkout_url: null }).eq("lead_id", row.lead_id);
+          .update({ wetravel_checkout_url: null })
+          .eq("lead_id", row.lead_id)
+          .eq("version", Number((leadRowForProposal as any)?.active_version ?? 0));
       }
 
       const { error: delErr } = await supabase.from("payment_links").delete().eq("id", row.id);

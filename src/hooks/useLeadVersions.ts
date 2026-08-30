@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { buildProposalToken } from '@/lib/proposalVersion';
 
 export interface DbLeadVersion {
   id: string;
@@ -47,6 +48,8 @@ const invalidateLead = (qc: ReturnType<typeof useQueryClient>, leadId: string) =
   qc.invalidateQueries({ queryKey: ['travel_plan', leadId] });
   qc.invalidateQueries({ queryKey: ['lead_costing_data_proposal', leadId] });
   qc.invalidateQueries({ queryKey: ['leads_costing_summary'] });
+  qc.invalidateQueries({ queryKey: ['proposals'] });
+  qc.invalidateQueries({ queryKey: ['proposals_list'] });
 };
 
 /** Creates version N+1 as a full copy of the live version (general data, planner, costing, travel plan). */
@@ -85,6 +88,27 @@ export const useCreateLeadVersion = () => {
       const failed = ins.find((r: any) => r?.error);
       if (failed?.error) throw failed.error;
 
+      // Duplicar a proposta/itinerário digital da versão de origem, com
+      // public_token NOVO e em rascunho — o link antigo fica congelado.
+      const { data: srcProposal } = await supabase
+        .from('proposals').select('*').eq('lead_id', leadId).eq('version', fromVersion).maybeSingle();
+      if (srcProposal) {
+        const {
+          id: _pid, created_at: _pc, updated_at: _pu, created_by: _pb,
+          public_token: _pt, sent_at: _ps, approved_at: _pa, ...rest
+        } = srcProposal as any;
+        const { error: pErr } = await supabase.from('proposals').insert({
+          ...rest,
+          lead_id: leadId,
+          version: newVersion,
+          public_token: buildProposalToken((leadRow as any)?.yt_id || (leadRow as any)?.lead_code || 'ytp', newVersion),
+          status: 'draft',
+          sent_at: null,
+          approved_at: null,
+        } as any);
+        if (pErr) throw pErr;
+      }
+
       const { error: upErr } = await supabase.from('leads').update({ active_version: newVersion } as any).eq('id', leadId);
       if (upErr) throw upErr;
       return newVersion;
@@ -113,6 +137,15 @@ export const useDeleteLeadVersion = () => {
     mutationFn: async ({ leadId, version }: { leadId: string; version: number }) => {
       if (version <= 0) throw new Error('A versão base (V0) não pode ser apagada.');
       const prev = version - 1;
+
+      // Proposta desta versão (+ anotações) desaparece com a versão.
+      const { data: propRow } = await supabase
+        .from('proposals').select('id').eq('lead_id', leadId).eq('version', version).maybeSingle();
+      if (propRow) {
+        await supabase.from('proposal_annotations').delete().eq('proposal_id', (propRow as any).id);
+        const { error: pdErr } = await supabase.from('proposals').delete().eq('id', (propRow as any).id);
+        if (pdErr) throw pdErr;
+      }
 
       const del = await Promise.all([
         supabase.from('lead_planner_data').delete().eq('lead_id', leadId).eq('version', version),

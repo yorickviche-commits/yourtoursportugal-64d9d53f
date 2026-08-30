@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { getLeadLiveVersion } from '@/lib/proposalVersion';
 
 export type ParticipantFees = 'all' | 'none' | 'credit_card' | 'service';
 
@@ -152,9 +153,11 @@ export const useSetPaymentLinkActive = () => {
       if (error) throw error;
 
       // Propagate to every proposal of this lead so the Book Now button shows/hides
+      const liveVersion = await getLeadLiveVersion(leadId);
       const { error: pErr } = await (supabase.from('proposals') as any)
         .update({ wetravel_checkout_url: active ? url : null })
-        .eq('lead_id', leadId);
+        .eq('lead_id', leadId)
+        .eq('version', liveVersion);
       if (pErr) throw pErr;
     },
     onSuccess: () => {

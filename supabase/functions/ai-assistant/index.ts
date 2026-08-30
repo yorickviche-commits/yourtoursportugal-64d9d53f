@@ -167,7 +167,7 @@ async function runTool(sb: SupabaseClient, name: string, args: any): Promise<unk
       const lead = await findLead(sb, args?.lead_code, args?.lead_id);
       if (!lead) return { error: "Lead não encontrada" };
       const [proposal, costing, ops, links, tasks] = await Promise.all([
-        sb.from("proposals").select("title, status, total_value_eur, deposit_amount_eur, language, date_range, sent_at, wetravel_checkout_url, public_token").eq("lead_id", lead.id).maybeSingle(),
+        sb.from("proposals").select("title, status, total_value_eur, deposit_amount_eur, language, date_range, sent_at, wetravel_checkout_url, public_token").eq("lead_id", lead.id).eq("version", (lead as any).active_version ?? 0).maybeSingle(),
         sb.from("lead_costing_data").select("day_number, title, items").eq("lead_id", lead.id).eq("version", (lead as any).active_version ?? 0).order("day_number"),
         sb.from("lead_operations").select("day_number, activity_title, supplier, net_value, real_cost, booking_status, payment_status, pax, schedule_time").eq("lead_id", lead.id).order("day_number"),
         sb.from("payment_links").select("title, url, amount_cents, currency, status, is_active, created_at").eq("lead_id", lead.id),

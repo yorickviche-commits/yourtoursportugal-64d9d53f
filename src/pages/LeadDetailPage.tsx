@@ -20,6 +20,7 @@ import TravelPlanProposal from '@/components/trip/TravelPlanProposal';
 import LeadAgentsAssignment from '@/components/LeadAgentsAssignment';
 import { LeadContextAttachments } from '@/components/leads/LeadContextAttachments';
 import { useProposalsListQuery, useProposalAnnotations } from '@/hooks/useProposalsQuery';
+import { getLeadLiveVersion } from '@/lib/proposalVersion';
 import { toast as sonnerToast } from 'sonner';
 // ItineraryEditor removed — replaced by Propostas tab
 import EditableCostingTable, { CostingDayData, CostingItem } from '@/components/trip/EditableCostingTable';
@@ -207,10 +208,16 @@ const ProposalAnnotationsPreview = ({ proposalId }: { proposalId: string }) => {
   );
 };
 
-const LeadProposalsTab = ({ leadId, clientName }: { leadId: string; clientName: string }) => {
+const LeadProposalsTab = ({ leadId, clientName, versions = [], liveVersion = 0 }: {
+  leadId: string; clientName: string;
+  versions?: { version: number; name: string }[]; liveVersion?: number;
+}) => {
   const { data: allProposals = [], isLoading } = useProposalsListQuery();
-  const proposals = allProposals.filter(p => p.lead_id === leadId);
+  const proposals = allProposals
+    .filter(p => p.lead_id === leadId)
+    .sort((a, b) => (b.version ?? 0) - (a.version ?? 0));
   const navigate = useNavigate();
+  const versionName = (v: number) => versions.find(x => x.version === v)?.name || `V${v}`;
 
   const copyLink = (token: string) => {
     navigator.clipboard.writeText(getProposalShareUrl(token));
@@ -236,6 +243,12 @@ const LeadProposalsTab = ({ leadId, clientName }: { leadId: string; clientName: 
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2 mb-1">
+                    <span className="text-[10px] px-2 py-0.5 rounded-full font-semibold bg-[#0a2540] text-white">
+                      {versionName(p.version ?? 0)}
+                    </span>
+                    {(p.version ?? 0) === liveVersion && (
+                      <span className="text-[10px] px-2 py-0.5 rounded-full font-semibold bg-green-600 text-white">LIVE</span>
+                    )}
                     <span className={cn("text-[10px] px-2 py-0.5 rounded-full font-medium", statusColors[p.status] || statusColors.draft)}>
                       {statusLabels[p.status] || p.status}
                     </span>
@@ -245,9 +258,11 @@ const LeadProposalsTab = ({ leadId, clientName }: { leadId: string; clientName: 
                   <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground">
                     {p.date_range && <span>{p.date_range}</span>}
                     {p.participants && <span>• {p.participants}</span>}
+                    <span>• Atualizada {new Date(p.updated_at).toLocaleDateString('pt-PT')}</span>
                   </div>
                 </div>
               </div>
+
 
               {/* Public link — prominent */}
               <div className="mt-3 flex items-center gap-2 bg-primary/5 border border-primary/20 rounded-lg p-2.5">
@@ -1134,7 +1149,7 @@ const LeadDetailPage = ({ mode = 'lead' }: { mode?: 'lead' | 'booking' } = {}) =
         )}
 
         {/* Propostas */}
-        {activeTab === 'propostas' && lead && <LeadProposalsTab leadId={lead.id} clientName={formState.clientName} />}
+        {activeTab === 'propostas' && lead && <LeadProposalsTab leadId={lead.id} clientName={formState.clientName} versions={leadVersions} liveVersion={liveVersion} />}
 
         {/* CRM — espelho bidirecional do record NetHunt */}
         {activeTab === 'crm' && lead && <LeadCrmTab leadId={lead.id} />}
@@ -1209,12 +1224,12 @@ function PaymentSummaryBar({ leadId, totalPVP }: { leadId: string; totalPVP: num
   const { data: prop } = useQuery({
     queryKey: ['lead_proposal_totals', leadId],
     queryFn: async () => {
+      const live = await getLeadLiveVersion(leadId);
       const { data } = await (supabase as any)
         .from('proposals')
         .select('total_value_eur, deposit_amount_eur, updated_at')
         .eq('lead_id', leadId)
-        .order('updated_at', { ascending: false })
-        .limit(1)
+        .eq('version', live)
         .maybeSingle();
       return data as { total_value_eur: number | null; deposit_amount_eur: number | null } | null;
     },
