@@ -74,6 +74,7 @@ serve(async (req) => {
           .from("lead_planner_data")
           .select("day_number, title, description, activities")
           .eq("lead_id", leadId)
+          .eq("version", (lead as any)?.active_version ?? 0)
           .order("day_number")
       ).data || [];
       payments = (await sb.from("lead_payments").select("kind, amount, currency, paid_at").eq("lead_id", leadId)).data || [];

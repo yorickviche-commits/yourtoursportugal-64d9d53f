@@ -153,7 +153,10 @@ interface TravelPlanProposalProps {
   accommodation?: { name: string; nights: number; value?: number }[];
   /** B2B leads see "TOTAL NET PRICE" instead of "TOTAL PRICE". */
   netPricing?: boolean;
+  /** Version of the lead being edited/consulted (travel_plans + costing are versioned). */
+  version?: number;
 }
+
 
 interface ClosingTerms {
   showPricing?: boolean;
@@ -550,6 +553,8 @@ const TravelPlanProposal = ({
   onGoToCosting,
   accommodation = [],
   netPricing = false,
+  version = 0,
+
 }: TravelPlanProposalProps) => {
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -747,12 +752,13 @@ const TravelPlanProposal = ({
     enabled: !!leadId,
   });
 
-  // Load saved plan from DB
+  // Load saved plan from DB (per version)
   const { data: savedPlan, isLoading: loadingSaved } = useQuery({
-    queryKey: ['travel_plan', leadId],
+    queryKey: ['travel_plan', leadId, version],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('travel_plans').select('*').eq('lead_id', leadId)
+        .eq('version', version)
         .order('created_at', { ascending: false }).limit(1).maybeSingle();
       if (error) throw error;
       return data;
@@ -760,20 +766,21 @@ const TravelPlanProposal = ({
     enabled: !!leadId,
   });
 
-  // Load costing data to compute total PVP for the proposal
+  // Load costing data (same version) to compute total PVP for the proposal
   const { data: costingDaysData } = useQuery({
-    queryKey: ['lead_costing_data_proposal', leadId],
+    queryKey: ['lead_costing_data_proposal', leadId, version],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('lead_costing_data').select('items, day_number, version')
         .eq('lead_id', leadId)
-        .order('version', { ascending: false })
+        .eq('version', version)
         .order('day_number', { ascending: true });
       if (error) throw error;
       return data || [];
     },
     enabled: !!leadId,
   });
+
 
   // Load lead-level PVP override (manual price adjustment)
   const { data: leadPvpOverride } = useQuery({
@@ -790,9 +797,8 @@ const TravelPlanProposal = ({
   const totalPVP = (() => {
     if (leadPvpOverride != null && leadPvpOverride > 0) return Math.round(leadPvpOverride);
     if (!costingDaysData || costingDaysData.length === 0) return 0;
-    // Use latest version only
-    const latestVersion = costingDaysData[0]?.version ?? 0;
-    const rows = costingDaysData.filter((d: any) => d.version === latestVersion);
+    const rows = costingDaysData;
+
     let total = 0;
     rows.forEach((d: any) => {
       const items = Array.isArray(d.items) ? d.items : [];
@@ -1228,13 +1234,15 @@ const TravelPlanProposal = ({
       const metadata = JSON.stringify({ cover_image: planToSave.cover_image || null, brand_logo: planToSave.brand_logo || null, closing, language });
       const { data: existingPlanRow } = await supabase
         .from('travel_plans').select('id').eq('lead_id', leadId)
+        .eq('version', version)
         .order('updated_at', { ascending: false }).limit(1).maybeSingle();
       const planPayload = {
         lead_id: leadId, file_id: leadCode, trip_title: planToSave.trip_title,
         client_name: clientName, start_date: startDate, end_date: endDate,
         pax: paxStr, narrative: planToSave.narrative, days: planToSave.days as any,
-        extra_instructions: metadata, status: 'draft',
+        extra_instructions: metadata, status: 'draft', version,
       };
+
       const { error } = existingPlanRow
         ? await supabase.from('travel_plans').update(planPayload).eq('id', existingPlanRow.id)
         : await supabase.from('travel_plans').insert(planPayload);

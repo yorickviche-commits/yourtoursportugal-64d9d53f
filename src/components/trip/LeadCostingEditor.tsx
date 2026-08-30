@@ -256,10 +256,12 @@ interface LeadCostingEditorProps {
   endDate?: string | null;
   pvpOverride?: number | null;
   onPvpOverrideChange?: (v: number | null) => void;
+  /** Lead version being edited (travel_plans are versioned). */
+  version?: number;
 }
 
 // ─── Component ───────────────────────────────────────
-const LeadCostingEditor = ({ costingDays, onChange, onSave, saving, plannerDays, pax, paxChildren, destination, leadId, leadCode, clientName, startDate, endDate, pvpOverride: pvpOverrideProp, onPvpOverrideChange }: LeadCostingEditorProps) => {
+const LeadCostingEditor = ({ costingDays, onChange, onSave, saving, plannerDays, pax, paxChildren, destination, leadId, leadCode, clientName, startDate, endDate, pvpOverride: pvpOverrideProp, onPvpOverrideChange, version = 0 }: LeadCostingEditorProps) => {
   const [expandedDays, setExpandedDays] = useState<number[]>(costingDays.length > 0 ? costingDays.map(d => d.day) : []);
   const [autoFilling, setAutoFilling] = useState(false);
   const [payLinkOpen, setPayLinkOpen] = useState(false);
@@ -333,6 +335,7 @@ const LeadCostingEditor = ({ costingDays, onChange, onSave, saving, plannerDays,
     try {
       const { data, error } = await supabase
         .from('travel_plans').select('days').eq('lead_id', leadId)
+        .eq('version', version)
         .order('created_at', { ascending: false }).limit(1).maybeSingle();
       if (error) throw error;
       const tpDays: any[] = Array.isArray((data as any)?.days) ? ((data as any).days as any[]) : [];

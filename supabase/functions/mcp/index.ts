@@ -109,8 +109,8 @@ var get_lead_default = defineTool2({
     if (error) throw new ToolError2(error.message);
     if (!data) throw new ToolError2("Lead not found");
     const [planner, costing] = await Promise.all([
-      supabase.from("lead_planner_data").select("*").eq("lead_id", data.id).maybeSingle(),
-      supabase.from("lead_costing_data").select("*").eq("lead_id", data.id).maybeSingle()
+      supabase.from("lead_planner_data").select("*").eq("lead_id", data.id).eq("version", data.active_version ?? 0).order("day_number"),
+      supabase.from("lead_costing_data").select("*").eq("lead_id", data.id).eq("version", data.active_version ?? 0).order("day_number")
     ]);
     const payload = { lead: data, planner: planner.data ?? null, costing: costing.data ?? null };
     return {

@@ -44,8 +44,11 @@ import { getProposalShareUrl } from '@/lib/proposalShare';
 import { displayLeadCode } from '@/lib/leadCode';
 import { useUnsavedChangesGuard } from '@/hooks/useUnsavedChangesGuard';
 import LeadCrmTab from '@/components/crm/LeadCrmTab';
+import LeadVersionBar from '@/components/leads/LeadVersionBar';
+import { useLeadVersionsQuery, pickGeneralData, saveVersionGeneralData } from '@/hooks/useLeadVersions';
 import { triggerCalendarSync } from '@/hooks/useCalendarSync';
 import CalendarSyncBadge from '@/components/CalendarSyncBadge';
+
 import {
   AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter,
 } from '@/components/ui/alert-dialog';
@@ -308,22 +311,35 @@ const LeadDetailPage = ({ mode = 'lead' }: { mode?: 'lead' | 'booking' } = {}) =
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  // Load persisted planner data
+  // ---- Versões da lead -------------------------------------------------
+  // `leads.active_version` é sempre a versão LIVE; `selectedVersion` é a
+  // versão que está a ser consultada nos submenus (estado partilhado).
+  const { data: leadVersions = [] } = useLeadVersionsQuery(id);
+  const [selectedVersionState, setSelectedVersionState] = useState<number | null>(null);
+  const [editingArchived, setEditingArchived] = useState(false);
+  const liveVersion = lead?.active_version ?? 0;
+  const selectedVersion = selectedVersionState ?? liveVersion;
+  const isArchivedVersion = selectedVersion !== liveVersion;
+  const locked = isArchivedVersion && !editingArchived;
+  const selectedVersionMeta = leadVersions.find(v => v.version === selectedVersion);
+
+  // Load persisted planner data (da versão selecionada)
   const { data: savedPlannerDays } = useQuery({
-    queryKey: ['lead_planner', id, lead?.active_version],
+    queryKey: ['lead_planner', id, selectedVersion],
     queryFn: async () => {
       if (!id) return [];
       const { data, error } = await supabase
         .from('lead_planner_data')
         .select('*')
         .eq('lead_id', id)
-        .eq('version', lead?.active_version ?? 0)
+        .eq('version', selectedVersion)
         .order('day_number', { ascending: true });
       if (error) throw error;
       return data || [];
     },
     enabled: !!id && !!lead,
   });
+
 
   // Accommodation block (Costing day 0) shown to the client when not hidden.
   const proposalAccommodation = useMemo(() => {
@@ -338,16 +354,16 @@ const LeadDetailPage = ({ mode = 'lead' }: { mode?: 'lead' | 'booking' } = {}) =
       }));
   }, [costingDays]);
 
-  // Load persisted costing data
+  // Load persisted costing data (da versão selecionada)
   const { data: savedCostingDays } = useQuery({
-    queryKey: ['lead_costing', id, lead?.active_version],
+    queryKey: ['lead_costing', id, selectedVersion],
     queryFn: async () => {
       if (!id) return [];
       const { data, error } = await supabase
         .from('lead_costing_data')
         .select('*')
         .eq('lead_id', id)
-        .eq('version', lead?.active_version ?? 0)
+        .eq('version', selectedVersion)
         .order('day_number', { ascending: true });
       if (error) throw error;
       return data || [];
@@ -355,9 +371,24 @@ const LeadDetailPage = ({ mode = 'lead' }: { mode?: 'lead' | 'booking' } = {}) =
     enabled: !!id && !!lead,
   });
 
+  // Ao trocar de versão, limpar o estado local para não contaminar a versão nova.
+  const plannerHydratedRef = useRef<string>('');
+  const costingHydratedRef = useRef<string>('');
+  useEffect(() => {
+    plannerHydratedRef.current = '';
+    costingHydratedRef.current = '';
+    setPlannerDays([]);
+    costingUndo.reset([]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id, selectedVersion]);
+
   // Hydrate planner from DB
   useEffect(() => {
-    if (savedPlannerDays && savedPlannerDays.length > 0 && plannerDays.length === 0) {
+    const key = `${id}:${selectedVersion}`;
+    if (!savedPlannerDays || plannerHydratedRef.current === key) return;
+    plannerHydratedRef.current = key;
+    {
+
       setPlannerDays(savedPlannerDays.map((d: any) => {
         // If saved with period structure
         if (d.activities && typeof d.activities === 'object' && !Array.isArray(d.activities) && d.activities.morning) {
@@ -388,11 +419,15 @@ const LeadDetailPage = ({ mode = 'lead' }: { mode?: 'lead' | 'booking' } = {}) =
         };
       }));
     }
-  }, [savedPlannerDays]);
+  }, [savedPlannerDays, id, selectedVersion]);
 
   // Hydrate costing from DB
   useEffect(() => {
-    if (savedCostingDays && savedCostingDays.length > 0 && costingDays.length === 0) {
+    const key = `${id}:${selectedVersion}`;
+    if (!savedCostingDays || costingHydratedRef.current === key) return;
+    costingHydratedRef.current = key;
+    {
+
       costingUndo.reset(savedCostingDays.map((d: any) => ({
         day: d.day_number,
         title: d.title || `Dia ${d.day_number}`,
@@ -415,7 +450,7 @@ const LeadDetailPage = ({ mode = 'lead' }: { mode?: 'lead' | 'booking' } = {}) =
         })) : [],
       })));
     }
-  }, [savedCostingDays]);
+  }, [savedCostingDays, id, selectedVersion]);
 
   const [formState, setFormState] = useState({
     ytId: '',
@@ -430,18 +465,17 @@ const LeadDetailPage = ({ mode = 'lead' }: { mode?: 'lead' | 'booking' } = {}) =
   const [idioma, setIdioma] = useState<string[]>(['EN']);
   const [origem, setOrigem] = useState<string[]>([]);
   const [travelStyles, setTravelStyles] = useState<string[]>([]);
-  const [activeVersion, setActiveVersion] = useState(0);
 
-  // Save planner data to DB
+  // Save planner data to DB (sempre na versão selecionada)
   const savePlannerData = useCallback(async (days: PlannerDay[]) => {
     if (!id || !lead) return;
     try {
-      await supabase.from('lead_planner_data').delete().eq('lead_id', id).eq('version', activeVersion);
+      await supabase.from('lead_planner_data').delete().eq('lead_id', id).eq('version', selectedVersion);
       if (days.length > 0) {
         await supabase.from('lead_planner_data').insert(
           days.map(d => ({
             lead_id: id,
-            version: activeVersion,
+            version: selectedVersion,
             day_number: d.day,
             title: d.title,
             description: d.date || '',
@@ -454,18 +488,18 @@ const LeadDetailPage = ({ mode = 'lead' }: { mode?: 'lead' | 'booking' } = {}) =
     } catch (e) {
       console.error('Failed to save planner data:', e);
     }
-  }, [id, lead, activeVersion, queryClient]);
+  }, [id, lead, selectedVersion, queryClient]);
 
-  // Save costing data to DB
+  // Save costing data to DB (sempre na versão selecionada)
   const saveCostingData = useCallback(async (days: LeadCostingDay[]) => {
     if (!id || !lead) return;
     try {
-      await supabase.from('lead_costing_data').delete().eq('lead_id', id).eq('version', activeVersion);
+      await supabase.from('lead_costing_data').delete().eq('lead_id', id).eq('version', selectedVersion);
       if (days.length > 0) {
         await supabase.from('lead_costing_data').insert(
           days.map(d => ({
             lead_id: id,
-            version: activeVersion,
+            version: selectedVersion,
             day_number: d.day,
             title: d.title,
             items: (d.items || []) as any,
@@ -473,86 +507,108 @@ const LeadDetailPage = ({ mode = 'lead' }: { mode?: 'lead' | 'booking' } = {}) =
         );
       }
       queryClient.invalidateQueries({ queryKey: ['lead_costing', id] });
+      queryClient.invalidateQueries({ queryKey: ['leads_costing_summary'] });
     } catch (e) {
       console.error('Failed to save costing data:', e);
     }
-  }, [id, lead, activeVersion, queryClient]);
+  }, [id, lead, selectedVersion, queryClient]);
 
-  // Sync form from DB lead
+
+  // Fonte dos Dados Gerais: a tabela `leads` na versão LIVE, o snapshot da
+  // versão em `lead_versions.general_data` quando se consulta uma versão antiga.
+  const generalSource = useMemo(() => {
+    if (!lead) return null;
+    if (isArchivedVersion) {
+      const g = selectedVersionMeta?.general_data;
+      if (g && Object.keys(g).length > 0) return g as any;
+    }
+    return lead as any;
+  }, [lead, isArchivedVersion, selectedVersionMeta]);
+
+  // Sync form from the selected version's general data
   useEffect(() => {
-    if (!lead) return;
+    if (!lead || !generalSource) return;
+    const g: any = generalSource;
     setFormState({
-      ytId: (lead as any).yt_id || '',
-      clientName: lead.client_name || '',
-      email: lead.email || '',
-      phone: lead.phone || '',
-      travelDates: lead.travel_dates || '',
-      travelEndDate: lead.travel_end_date || '',
-      numberOfDays: lead.number_of_days || 0,
-      datesType: (lead.dates_type as any) || 'estimated',
-      pax: lead.pax || 2,
-      paxChildren: lead.pax_children || 0,
-      paxInfants: lead.pax_infants || 0,
-      budgetLevel: lead.budget_level || '',
-      notes: lead.notes || '',
-      salesOwner: lead.sales_owner || '',
-      clientType: normalizeClientType((lead as any).client_type),
+      ytId: g.yt_id || '',
+      clientName: g.client_name || '',
+      email: g.email || '',
+      phone: g.phone || '',
+      travelDates: g.travel_dates || '',
+      travelEndDate: g.travel_end_date || '',
+      numberOfDays: g.number_of_days || 0,
+      datesType: (g.dates_type as any) || 'estimated',
+      pax: g.pax || 2,
+      paxChildren: g.pax_children || 0,
+      paxInfants: g.pax_infants || 0,
+      budgetLevel: g.budget_level || '',
+      notes: g.notes || '',
+      salesOwner: g.sales_owner || '',
+      clientType: normalizeClientType(g.client_type),
     });
-    setLeadStatus((lead.status as LeadStatus) || 'new');
-    setCategoria(lead.comfort_level ? [lead.comfort_level] : []);
-    setDestino(lead.destination ? lead.destination.split(', ').filter(Boolean) : []);
-    setOrigem(lead.source === 'ai_simulation' ? ['AI Simulation'] : lead.source ? [lead.source] : []);
-    setTravelStyles(Array.isArray(lead.travel_style) ? lead.travel_style : []);
-    setActiveVersion(lead.active_version || 0);
+    setLeadStatus((g.status as LeadStatus) || 'new');
+    setCategoria(g.comfort_level ? [g.comfort_level] : []);
+    setDestino(g.destination ? String(g.destination).split(', ').filter(Boolean) : []);
+    setOrigem(g.source === 'ai_simulation' ? ['AI Simulation'] : g.source ? [g.source] : []);
+    setTravelStyles(Array.isArray(g.travel_style) ? g.travel_style : []);
     const savedOverride = (lead as any).pvp_override;
     setPvpOverride(savedOverride != null ? Number(savedOverride) : null);
-  }, [lead]);
+  }, [lead, generalSource]);
 
   const updateFormField = (key: string, value: any) => {
     setFormState(prev => ({ ...prev, [key]: value }));
   };
 
+  const buildGeneralSnapshot = useCallback(() => ({
+    yt_id: formState.ytId || null,
+    client_name: formState.clientName,
+    email: formState.email,
+    phone: formState.phone,
+    client_type: formState.clientType,
+    destination: destino.join(', ') || 'A definir',
+    travel_dates: formState.travelDates,
+    travel_end_date: formState.travelEndDate,
+    number_of_days: formState.numberOfDays,
+    dates_type: formState.datesType,
+    pax: formState.pax,
+    pax_children: formState.paxChildren,
+    pax_infants: formState.paxInfants,
+    budget_level: formState.budgetLevel,
+    notes: formState.notes,
+    sales_owner: formState.salesOwner,
+    status: leadStatus,
+    comfort_level: categoria[0] || '',
+    travel_style: travelStyles,
+    source: (origem[0]?.toLowerCase().replace(/ /g, '_') || (lead as any)?.source) as any,
+  }), [formState, destino, leadStatus, categoria, travelStyles, origem, lead]);
+
   const handleSave = useCallback(async () => {
     if (!lead) return;
+    const general = buildGeneralSnapshot();
     try {
-      await updateLeadMutation.mutateAsync({
-        id: lead.id,
-        updates: {
-          client_name: formState.clientName,
-          yt_id: formState.ytId || null,
-          email: formState.email,
-          phone: formState.phone,
-          travel_dates: formState.travelDates,
-          travel_end_date: formState.travelEndDate,
-          number_of_days: formState.numberOfDays,
-          dates_type: formState.datesType,
-          pax: formState.pax,
-          pax_children: formState.paxChildren,
-          pax_infants: formState.paxInfants,
-          budget_level: formState.budgetLevel,
-          notes: formState.notes,
-          sales_owner: formState.salesOwner,
-          client_type: formState.clientType,
-          status: leadStatus,
-          destination: destino.join(', ') || 'A definir',
-          comfort_level: categoria[0] || '',
-          travel_style: travelStyles,
-          source: (origem[0]?.toLowerCase().replace(/ /g, '_') || lead.source) as any,
-          active_version: activeVersion,
-        },
-      });
+      if (isArchivedVersion) {
+        // Gravar SÓ na versão arquivada — nunca na tabela `leads` nem na live.
+        await saveVersionGeneralData(lead.id, selectedVersion, general);
+        queryClient.invalidateQueries({ queryKey: ['lead_versions', lead.id] });
+        toast({ title: 'Versão arquivada guardada', description: `${selectedVersionMeta?.name || `V${selectedVersion}`} atualizada (a versão LIVE não foi alterada).` });
+        return;
+      }
+      // `active_version` NUNCA é alterado ao gravar.
+      await updateLeadMutation.mutateAsync({ id: lead.id, updates: general as any });
+      await saveVersionGeneralData(lead.id, liveVersion, general);
+      queryClient.invalidateQueries({ queryKey: ['lead_versions', lead.id] });
       await logActivity('lead_updated', 'lead', lead.id, { client_name: formState.clientName });
       toast({ title: 'Simulação guardada!', description: `${formState.clientName} atualizado com sucesso.` });
       if (leadStatus === 'won') triggerCalendarSync(lead.id, 'update');
     } catch (err: any) {
       toast({ title: 'Erro ao guardar', description: err.message, variant: 'destructive' });
     }
-  }, [lead, formState, leadStatus, destino, categoria, travelStyles, origem, activeVersion, updateLeadMutation, toast]);
+  }, [lead, buildGeneralSnapshot, isArchivedVersion, selectedVersion, selectedVersionMeta, liveVersion, formState.clientName, leadStatus, updateLeadMutation, queryClient, toast]);
 
-  // Dirty tracking — deteta alterações por gravar no formulário / tags / versão
+  // Dirty tracking — compara com a fonte da versão selecionada
   const isDirty = useMemo(() => {
-    if (!lead) return false;
-    const l: any = lead;
+    if (!lead || !generalSource) return false;
+    const l: any = generalSource;
     if ((l.yt_id || '') !== formState.ytId) return true;
     if ((l.client_name || '') !== formState.clientName) return true;
     if ((l.email || '') !== formState.email) return true;
@@ -567,15 +623,15 @@ const LeadDetailPage = ({ mode = 'lead' }: { mode?: 'lead' | 'booking' } = {}) =
     if ((l.budget_level || '') !== formState.budgetLevel) return true;
     if ((l.notes || '') !== formState.notes) return true;
     if ((l.sales_owner || '') !== formState.salesOwner) return true;
-    if (normalizeClientType((l as any).client_type) !== formState.clientType) return true;
+    if (normalizeClientType(l.client_type) !== formState.clientType) return true;
     if ((l.comfort_level || '') !== (categoria[0] || '')) return true;
     const savedDest = (l.destination ? String(l.destination).split(', ').filter(Boolean) : []).join('|');
     if (savedDest !== destino.join('|')) return true;
     const savedStyles = Array.isArray(l.travel_style) ? l.travel_style.join('|') : '';
     if (savedStyles !== travelStyles.join('|')) return true;
-    if ((l.active_version || 0) !== activeVersion) return true;
     return false;
-  }, [lead, formState, categoria, destino, travelStyles, activeVersion]);
+  }, [lead, generalSource, formState, categoria, destino, travelStyles]);
+
 
   const guard = useUnsavedChangesGuard(isDirty, handleSave);
 
@@ -658,14 +714,9 @@ const LeadDetailPage = ({ mode = 'lead' }: { mode?: 'lead' | 'booking' } = {}) =
   }, [lead, createLeadMutation, navigate, toast]);
 
 
-  const handleNewVersion = useCallback(async () => {
-    if (!lead) return;
-    const newVersion = activeVersion + 1;
-    setActiveVersion(newVersion);
-    await updateLeadMutation.mutateAsync({ id: lead.id, updates: { active_version: newVersion } });
-    await logActivity('lead_new_version', 'lead', lead.id, { version: newVersion });
-    toast({ title: `Versão V${newVersion} criada` });
-  }, [lead, activeVersion, updateLeadMutation, toast]);
+  // A criação/eliminação de versões vive no LeadVersionBar (useLeadVersions).
+
+
 
   const handleRemove = useCallback(async () => {
     if (!lead) return;
@@ -736,6 +787,26 @@ const LeadDetailPage = ({ mode = 'lead' }: { mode?: 'lead' | 'booking' } = {}) =
   }
 
   const currentStage = resolveStage({ nethunt_stage: (lead as any).nethunt_stage, status: leadStatus });
+
+  // Seletor de versões partilhado pelos 3 submenus (Dados Gerais / Travel Plan / Custos)
+  const versionBar = (
+    <LeadVersionBar
+      leadId={lead.id}
+      versions={leadVersions}
+      liveVersion={liveVersion}
+      selectedVersion={selectedVersion}
+      onSelect={setSelectedVersionState}
+      editingArchived={editingArchived}
+      onToggleEditArchived={setEditingArchived}
+      extraActions={
+        <Button variant="outline" size="sm" className="text-xs gap-1" onClick={handleDuplicate} disabled={createLeadMutation.isPending}>
+          <Copy className="h-3 w-3" /> Duplicar Lead
+        </Button>
+      }
+    />
+  );
+
+
 
   return (
     <AppLayout>
@@ -809,20 +880,10 @@ const LeadDetailPage = ({ mode = 'lead' }: { mode?: 'lead' | 'booking' } = {}) =
         {/* Dados Gerais */}
         {activeTab === 'dados_gerais' && (
           <div className="space-y-6">
-            <div className="flex items-center gap-3">
-              <div className="flex items-center gap-1">
-                {Array.from({ length: activeVersion + 1 }, (_, i) => i).map(v => (
-                  <button key={v} onClick={() => setActiveVersion(v)} className={cn("px-2.5 py-1 text-xs rounded border transition-colors", activeVersion === v ? "bg-[hsl(var(--info))] text-white border-[hsl(var(--info))]" : "border-border text-muted-foreground hover:text-foreground")}>V{v}</button>
-                ))}
-              </div>
-              <span className="text-xs text-muted-foreground">🔒 Versão · V{activeVersion}</span>
-              <Button variant="outline" size="sm" className="text-xs gap-1" onClick={handleDuplicate} disabled={createLeadMutation.isPending}>
-                <Copy className="h-3 w-3" /> Duplicar
-              </Button>
-              <Button variant="outline" size="sm" className="text-xs gap-1" onClick={handleNewVersion}>
-                <Plus className="h-3 w-3" /> Nova Versão
-              </Button>
-            </div>
+            {versionBar}
+
+            <fieldset disabled={locked} className="space-y-6 disabled:opacity-95">
+
 
             <div>
               <h3 className="text-sm font-bold text-foreground mb-3">Informação geral</h3>
@@ -976,13 +1037,13 @@ const LeadDetailPage = ({ mode = 'lead' }: { mode?: 'lead' | 'booking' } = {}) =
               numberOfDays={Number(formState.numberOfDays) || undefined}
               exactItineraryPdfPath={(lead as any).exact_itinerary_pdf_path}
             />
-
+            </fieldset>
 
             <div className="flex items-center justify-between border-t pt-4">
               <Button variant="destructive" size="sm" className="text-xs gap-1" onClick={handleRemove} disabled={deleteLeadMutation.isPending}>
                 <Trash2 className="h-3 w-3" /> Remover
               </Button>
-              <Button size="sm" className="text-xs gap-1" onClick={handleSave} disabled={updateLeadMutation.isPending}>
+              <Button size="sm" className="text-xs gap-1" onClick={handleSave} disabled={updateLeadMutation.isPending || locked}>
                 {updateLeadMutation.isPending ? <Loader2 className="h-3 w-3 animate-spin" /> : <Save className="h-3 w-3" />} Guardar
               </Button>
             </div>
@@ -991,6 +1052,10 @@ const LeadDetailPage = ({ mode = 'lead' }: { mode?: 'lead' | 'booking' } = {}) =
 
         {/* Travel Planner */}
         {activeTab === 'travel_planner' && (
+          <div className="space-y-4">
+            {versionBar}
+            <fieldset disabled={locked} className="disabled:opacity-95">
+
           <TravelPlanProposal
             leadId={lead.id}
             leadCode={lead.lead_code}
@@ -1017,21 +1082,27 @@ const LeadDetailPage = ({ mode = 'lead' }: { mode?: 'lead' | 'booking' } = {}) =
             exactItineraryPdfPath={(lead as any).exact_itinerary_pdf_path || undefined}
             accommodation={proposalAccommodation}
             netPricing={(lead as any).client_type === 'B2B'}
+            version={selectedVersion}
             onGoToCosting={() => setActiveTab('custos')}
           />
+            </fieldset>
+          </div>
         )}
 
         {/* Custos */}
         {activeTab === 'custos' && (
           <div className="space-y-4">
+            {versionBar}
             <div className="flex items-center justify-between">
               <h3 className="text-sm font-bold text-foreground">Orçamentação & Margens</h3>
             </div>
+
             <div className="bg-muted/50 rounded-lg border p-3 text-xs space-y-1">
               <p><span className="font-medium">Pax:</span> {formState.pax} adultos + {formState.paxChildren} crianças · <span className="font-medium">Destino:</span> {destino.join(', ') || 'A definir'}</p>
               <p><span className="font-medium">Planner:</span> {plannerDays.length} dias definidos</p>
             </div>
             <LeadCostingEditor
+              version={selectedVersion}
               costingDays={costingDays}
               onChange={setCostingDays}
               onSave={async (days) => {
@@ -1071,7 +1142,7 @@ const LeadDetailPage = ({ mode = 'lead' }: { mode?: 'lead' | 'booking' } = {}) =
 
         {/* Operações — apenas para reservas confirmadas (status = won) */}
         {activeTab === 'operacoes' && lead && (
-          <OperacoesTab activeVersion={activeVersion} leadId={lead.id} leadCode={formState.ytId || (lead as any)?.yt_id || displayLeadCode(lead)} pvpTotal={costingTotalPVP} startDate={/^\d{4}-\d{2}-\d{2}$/.test(formState.travelDates || '') ? formState.travelDates : null} />
+          <OperacoesTab activeVersion={liveVersion} leadId={lead.id} leadCode={formState.ytId || (lead as any)?.yt_id || displayLeadCode(lead)} pvpTotal={costingTotalPVP} startDate={/^\d{4}-\d{2}-\d{2}$/.test(formState.travelDates || '') ? formState.travelDates : null} />
         )}
 
 
