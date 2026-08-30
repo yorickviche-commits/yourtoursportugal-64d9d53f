@@ -1102,6 +1102,7 @@ const LeadDetailPage = ({ mode = 'lead' }: { mode?: 'lead' | 'booking' } = {}) =
               <p><span className="font-medium">Planner:</span> {plannerDays.length} dias definidos</p>
             </div>
             <LeadCostingEditor
+              version={selectedVersion}
               costingDays={costingDays}
               onChange={setCostingDays}
               onSave={async (days) => {

@@ -62,13 +62,15 @@ const SupplierAgentPage = () => {
 
   // Pull lead costing items + operations for the selected lead
   const { data: costingDays = [], isLoading: costingLoading } = useQuery({
-    queryKey: ['lead_costing_data', selectedLeadId],
+    queryKey: ['lead_costing_data', selectedLeadId, (selectedLead as any)?.active_version ?? 0],
     queryFn: async () => {
       if (!selectedLeadId) return [];
+      // Fora do detalhe da lead lê-se sempre a versão LIVE (`leads.active_version`).
       const { data, error } = await supabase
         .from('lead_costing_data')
         .select('*')
         .eq('lead_id', selectedLeadId)
+        .eq('version', (selectedLead as any)?.active_version ?? 0)
         .order('day_number');
       if (error) throw error;
       return data;

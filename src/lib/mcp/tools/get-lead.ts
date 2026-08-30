@@ -25,8 +25,8 @@ export default defineTool({
     if (!data) throw new ToolError("Lead not found");
 
     const [planner, costing] = await Promise.all([
-      supabase.from("lead_planner_data").select("*").eq("lead_id", data.id).maybeSingle(),
-      supabase.from("lead_costing_data").select("*").eq("lead_id", data.id).maybeSingle(),
+      supabase.from("lead_planner_data").select("*").eq("lead_id", data.id).eq("version", (data as any).active_version ?? 0).order("day_number"),
+      supabase.from("lead_costing_data").select("*").eq("lead_id", data.id).eq("version", (data as any).active_version ?? 0).order("day_number"),
     ]);
 
     const payload = { lead: data, planner: planner.data ?? null, costing: costing.data ?? null };
