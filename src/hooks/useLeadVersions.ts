@@ -138,6 +138,15 @@ export const useDeleteLeadVersion = () => {
       if (version <= 0) throw new Error('A versão base (V0) não pode ser apagada.');
       const prev = version - 1;
 
+      // Proposta desta versão (+ anotações) desaparece com a versão.
+      const { data: propRow } = await supabase
+        .from('proposals').select('id').eq('lead_id', leadId).eq('version', version).maybeSingle();
+      if (propRow) {
+        await supabase.from('proposal_annotations').delete().eq('proposal_id', (propRow as any).id);
+        const { error: pdErr } = await supabase.from('proposals').delete().eq('id', (propRow as any).id);
+        if (pdErr) throw pdErr;
+      }
+
       const del = await Promise.all([
         supabase.from('lead_planner_data').delete().eq('lead_id', leadId).eq('version', version),
         supabase.from('lead_costing_data').delete().eq('lead_id', leadId).eq('version', version),
