@@ -890,6 +890,55 @@ const LeadCostingEditor = ({ costingDays, onChange, onSave, saving, plannerDays,
                     </table>
                   </div>
 
+                  {/* ✨ Opcionais — fora das somas do dia e do preço base */}
+                  {dayOptItems.length > 0 && (
+                    <div className="mt-4 rounded-lg border border-[hsl(var(--warning))]/40 bg-[hsl(var(--warning))]/10 p-3">
+                      <p className="text-[11px] font-bold text-[hsl(var(--warning))] mb-2 flex items-center gap-1">
+                        <Sparkles className="h-3.5 w-3.5" /> Opcionais
+                        <span className="font-normal text-muted-foreground">— não somam ao preço do programa</span>
+                      </p>
+                      <div className="overflow-x-auto">
+                        <table className="w-full text-[10px]">
+                          {tableHead}
+                          <Droppable droppableId={`cost-opt-${dayIdx}`}>
+                            {(dropProvided, dropSnapshot) => (
+                              <tbody
+                                ref={dropProvided.innerRef}
+                                {...dropProvided.droppableProps}
+                                className={cn(dropSnapshot.isDraggingOver && "bg-[hsl(var(--warning)/0.15)]")}
+                              >
+                                {dayOptItems.map(renderRow)}
+                                {dropProvided.placeholder}
+                              </tbody>
+                            )}
+                          </Droppable>
+                        </table>
+                      </div>
+                      {dayOptActive.length > 0 && (
+                        <div className="flex items-center justify-center gap-8 mt-2 text-xs pt-2 border-t border-[hsl(var(--warning))]/30">
+                          <div className="text-center">
+                            <p className="text-[10px] text-muted-foreground font-semibold">NET</p>
+                            <p className="font-bold">{dayOptNet.toFixed(2)}€</p>
+                          </div>
+                          <div className="text-center">
+                            <p className="text-[10px] text-muted-foreground font-semibold">Margem</p>
+                            <p className="font-bold">{dayOptMargin.toFixed(2)}%</p>
+                          </div>
+                          <div className="text-center">
+                            <p className="text-[10px] text-muted-foreground font-semibold">Lucro</p>
+                            <p className="font-bold text-[hsl(var(--success))]">{dayOptProfit.toFixed(2)}€</p>
+                          </div>
+                          <div className="text-center">
+                            <p className="text-[10px] text-muted-foreground font-semibold">PVP</p>
+                            <p className="font-bold text-[hsl(var(--warning))]">{dayOptPVP.toFixed(2)}€</p>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+
+
 
                   {/* Day Subtotals */}
                   {dayActiveItems.length > 0 && (
