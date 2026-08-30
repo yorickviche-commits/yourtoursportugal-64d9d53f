@@ -419,11 +419,15 @@ const LeadDetailPage = ({ mode = 'lead' }: { mode?: 'lead' | 'booking' } = {}) =
         };
       }));
     }
-  }, [savedPlannerDays]);
+  }, [savedPlannerDays, id, selectedVersion]);
 
   // Hydrate costing from DB
   useEffect(() => {
-    if (savedCostingDays && savedCostingDays.length > 0 && costingDays.length === 0) {
+    const key = `${id}:${selectedVersion}`;
+    if (!savedCostingDays || costingHydratedRef.current === key) return;
+    costingHydratedRef.current = key;
+    {
+
       costingUndo.reset(savedCostingDays.map((d: any) => ({
         day: d.day_number,
         title: d.title || `Dia ${d.day_number}`,
