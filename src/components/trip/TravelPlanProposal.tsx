@@ -183,6 +183,8 @@ const DEFAULT_CLOSING: ClosingTerms = {
   notIncluded: getHotelsDict('en').notIncludedDefault,
   nextSteps: getHotelsDict('en').nextStepsDefault,
   hotels: [],
+  showHotels: true,
+  showHotelDetails: true,
 };
 
 
