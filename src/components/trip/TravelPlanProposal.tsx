@@ -873,7 +873,7 @@ const TravelPlanProposal = ({
   const versionKey = `${leadId}:${version}`;
   useEffect(() => {
     hydratedRef.current = '';
-    setPlan(null);
+    planUndo.reset(null);
     setClosing(DEFAULT_CLOSING);
     setWetravelCheckoutUrl(null);
     setWetravelDepositEur(null);
