@@ -1141,7 +1141,7 @@ const LeadDetailPage = ({ mode = 'lead' }: { mode?: 'lead' | 'booking' } = {}) =
 
         {/* Operações — apenas para reservas confirmadas (status = won) */}
         {activeTab === 'operacoes' && lead && (
-          <OperacoesTab activeVersion={activeVersion} leadId={lead.id} leadCode={formState.ytId || (lead as any)?.yt_id || displayLeadCode(lead)} pvpTotal={costingTotalPVP} startDate={/^\d{4}-\d{2}-\d{2}$/.test(formState.travelDates || '') ? formState.travelDates : null} />
+          <OperacoesTab activeVersion={liveVersion} leadId={lead.id} leadCode={formState.ytId || (lead as any)?.yt_id || displayLeadCode(lead)} pvpTotal={costingTotalPVP} startDate={/^\d{4}-\d{2}-\d{2}$/.test(formState.travelDates || '') ? formState.travelDates : null} />
         )}
 
 
