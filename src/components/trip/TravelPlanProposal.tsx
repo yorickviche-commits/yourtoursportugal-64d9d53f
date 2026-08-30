@@ -1882,11 +1882,31 @@ const TravelPlanProposal = ({
         )}
 
         {/* HOTELS INCLUDED — only when the Costing accommodation block is active */}
-        {hasHotels && (
+        {hasHotels && (showHotels || viewMode === 'edit') && (
           <div className="border-b p-6 md:p-8 bg-white print:break-before-page">
-            <h2 className="text-lg font-serif font-bold text-slate-800 mb-4">{h.hotelsIncluded}</h2>
+            {showHotels && (
+              <h2 className="text-lg font-serif font-bold text-slate-800 mb-4">{h.hotelsIncluded}</h2>
+            )}
 
-            <div className="space-y-4">
+            {viewMode === 'edit' && (
+              <div className="mb-4 flex flex-wrap items-center gap-6 rounded-lg border bg-muted/30 px-3 py-2 print:hidden">
+                <label className="flex items-center gap-2 text-xs cursor-pointer">
+                  <Switch checked={showHotels} onCheckedChange={v => setClosing(c => ({ ...c, showHotels: v }))} />
+                  Ativar Hotéis no PDF e Itinerário
+                </label>
+                <label className="flex items-center gap-2 text-xs cursor-pointer">
+                  <Switch
+                    checked={showHotelDetails}
+                    disabled={!showHotels}
+                    onCheckedChange={v => setClosing(c => ({ ...c, showHotelDetails: v }))}
+                  />
+                  Ativar detalhado tarifa e nº noites
+                </label>
+              </div>
+            )}
+
+            <div className={cn('space-y-4', !showHotels && 'hidden')}>
+
               {hotels.map(hotel => (
                 <div key={hotel.name} className="text-sm">
                   <p className="font-semibold text-slate-800">
