@@ -734,14 +734,15 @@ const TravelPlanProposal = ({
 
 
 
-  // Load WeTravel checkout if already set on the proposal
+  // Load WeTravel checkout if already set on the proposal (desta versão)
   useQuery({
-    queryKey: ['proposal_wetravel', leadId],
+    queryKey: ['proposal_wetravel', leadId, version],
     queryFn: async () => {
       const { data } = await supabase
         .from('proposals')
         .select('wetravel_checkout_url, deposit_amount_eur')
         .eq('lead_id', leadId)
+        .eq('version', version)
         .maybeSingle();
       if (data?.wetravel_checkout_url) {
         setWetravelCheckoutUrl(data.wetravel_checkout_url);
