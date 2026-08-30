@@ -243,6 +243,7 @@ serve(async (req) => {
           .from('proposals')
           .select('wetravel_checkout_url, deposit_amount_eur, deposit_percent')
           .eq('lead_id', leadContext.id)
+          .eq('version', Number((leadContext as any)?.active_version ?? 0))
           .maybeSingle();
         if (proposalWT?.wetravel_checkout_url) {
           (leadContext as any).wetravel_checkout_url = proposalWT.wetravel_checkout_url;

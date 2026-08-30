@@ -65,8 +65,7 @@ serve(async (req) => {
             "id, title, client_name, date_range, participants, hero_image_url, brand_logo_url, public_token, days, total_value_eur, deposit_amount_eur, closing_terms, wetravel_checkout_url, language, status, sent_at, updated_at, created_at",
           )
           .eq("lead_id", leadId)
-          .order("updated_at", { ascending: false })
-          .limit(1)
+          .eq("version", Number((lead as any)?.active_version ?? 0))
           .maybeSingle()
       ).data;
       planner = (
