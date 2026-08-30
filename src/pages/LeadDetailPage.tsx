@@ -354,16 +354,16 @@ const LeadDetailPage = ({ mode = 'lead' }: { mode?: 'lead' | 'booking' } = {}) =
       }));
   }, [costingDays]);
 
-  // Load persisted costing data
+  // Load persisted costing data (da versão selecionada)
   const { data: savedCostingDays } = useQuery({
-    queryKey: ['lead_costing', id, lead?.active_version],
+    queryKey: ['lead_costing', id, selectedVersion],
     queryFn: async () => {
       if (!id) return [];
       const { data, error } = await supabase
         .from('lead_costing_data')
         .select('*')
         .eq('lead_id', id)
-        .eq('version', lead?.active_version ?? 0)
+        .eq('version', selectedVersion)
         .order('day_number', { ascending: true });
       if (error) throw error;
       return data || [];
@@ -371,9 +371,24 @@ const LeadDetailPage = ({ mode = 'lead' }: { mode?: 'lead' | 'booking' } = {}) =
     enabled: !!id && !!lead,
   });
 
+  // Ao trocar de versão, limpar o estado local para não contaminar a versão nova.
+  const plannerHydratedRef = useRef<string>('');
+  const costingHydratedRef = useRef<string>('');
+  useEffect(() => {
+    plannerHydratedRef.current = '';
+    costingHydratedRef.current = '';
+    setPlannerDays([]);
+    costingUndo.reset([]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id, selectedVersion]);
+
   // Hydrate planner from DB
   useEffect(() => {
-    if (savedPlannerDays && savedPlannerDays.length > 0 && plannerDays.length === 0) {
+    const key = `${id}:${selectedVersion}`;
+    if (!savedPlannerDays || plannerHydratedRef.current === key) return;
+    plannerHydratedRef.current = key;
+    {
+
       setPlannerDays(savedPlannerDays.map((d: any) => {
         // If saved with period structure
         if (d.activities && typeof d.activities === 'object' && !Array.isArray(d.activities) && d.activities.morning) {
