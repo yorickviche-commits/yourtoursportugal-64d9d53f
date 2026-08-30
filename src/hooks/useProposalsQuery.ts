@@ -37,6 +37,7 @@ export interface Proposal {
   days: ProposalDay[];
   map_stops: MapStop[];
   lead_id: string | null;
+  version: number;
   created_at: string;
   updated_at: string;
   sent_at: string | null;
