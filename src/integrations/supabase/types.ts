@@ -3075,6 +3075,7 @@ export type Database = {
           title: string
           total_value_eur: number | null
           updated_at: string
+          version: number
           wetravel_checkout_url: string | null
           wetravel_trip_url: string | null
           wetravel_trip_uuid: string | null
@@ -3106,6 +3107,7 @@ export type Database = {
           title?: string
           total_value_eur?: number | null
           updated_at?: string
+          version?: number
           wetravel_checkout_url?: string | null
           wetravel_trip_url?: string | null
           wetravel_trip_uuid?: string | null
@@ -3137,6 +3139,7 @@ export type Database = {
           title?: string
           total_value_eur?: number | null
           updated_at?: string
+          version?: number
           wetravel_checkout_url?: string | null
           wetravel_trip_url?: string | null
           wetravel_trip_uuid?: string | null
