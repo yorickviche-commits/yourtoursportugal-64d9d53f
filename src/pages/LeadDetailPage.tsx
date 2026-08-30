@@ -311,22 +311,35 @@ const LeadDetailPage = ({ mode = 'lead' }: { mode?: 'lead' | 'booking' } = {}) =
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  // Load persisted planner data
+  // ---- Versões da lead -------------------------------------------------
+  // `leads.active_version` é sempre a versão LIVE; `selectedVersion` é a
+  // versão que está a ser consultada nos submenus (estado partilhado).
+  const { data: leadVersions = [] } = useLeadVersionsQuery(id);
+  const [selectedVersionState, setSelectedVersionState] = useState<number | null>(null);
+  const [editingArchived, setEditingArchived] = useState(false);
+  const liveVersion = lead?.active_version ?? 0;
+  const selectedVersion = selectedVersionState ?? liveVersion;
+  const isArchivedVersion = selectedVersion !== liveVersion;
+  const locked = isArchivedVersion && !editingArchived;
+  const selectedVersionMeta = leadVersions.find(v => v.version === selectedVersion);
+
+  // Load persisted planner data (da versão selecionada)
   const { data: savedPlannerDays } = useQuery({
-    queryKey: ['lead_planner', id, lead?.active_version],
+    queryKey: ['lead_planner', id, selectedVersion],
     queryFn: async () => {
       if (!id) return [];
       const { data, error } = await supabase
         .from('lead_planner_data')
         .select('*')
         .eq('lead_id', id)
-        .eq('version', lead?.active_version ?? 0)
+        .eq('version', selectedVersion)
         .order('day_number', { ascending: true });
       if (error) throw error;
       return data || [];
     },
     enabled: !!id && !!lead,
   });
+
 
   // Accommodation block (Costing day 0) shown to the client when not hidden.
   const proposalAccommodation = useMemo(() => {
