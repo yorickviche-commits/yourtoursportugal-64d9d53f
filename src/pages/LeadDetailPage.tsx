@@ -788,6 +788,26 @@ const LeadDetailPage = ({ mode = 'lead' }: { mode?: 'lead' | 'booking' } = {}) =
 
   const currentStage = resolveStage({ nethunt_stage: (lead as any).nethunt_stage, status: leadStatus });
 
+  // Seletor de versões partilhado pelos 3 submenus (Dados Gerais / Travel Plan / Custos)
+  const versionBar = (
+    <LeadVersionBar
+      leadId={lead.id}
+      versions={leadVersions}
+      liveVersion={liveVersion}
+      selectedVersion={selectedVersion}
+      onSelect={setSelectedVersionState}
+      editingArchived={editingArchived}
+      onToggleEditArchived={setEditingArchived}
+      extraActions={
+        <Button variant="outline" size="sm" className="text-xs gap-1" onClick={handleDuplicate} disabled={createLeadMutation.isPending}>
+          <Copy className="h-3 w-3" /> Duplicar Lead
+        </Button>
+      }
+    />
+  );
+
+
+
   return (
     <AppLayout>
       <div className="space-y-4">
