@@ -2364,6 +2364,24 @@ const TravelPlanProposal = ({
             )}
           </div>
         )}
+        {viewMode === 'edit' && optionals.length > 0 && (
+          <div className="border-t border-slate-200 bg-white px-6 md:px-10 py-3 flex items-center gap-2 print:hidden">
+            <input
+              id="show-optionals-toggle"
+              type="checkbox"
+              checked={closing.showOptionals !== false}
+              onChange={e => setClosing(c => ({ ...c, showOptionals: e.target.checked }))}
+              className="h-4 w-4 accent-[hsl(var(--info))]"
+            />
+            <label htmlFor="show-optionals-toggle" className="text-xs font-medium text-slate-700 cursor-pointer select-none">
+              Mostrar opcionais na proposta e no PDF ({optionals.length})
+            </label>
+            {closing.showOptionals === false && (
+              <span className="text-[10px] text-amber-600 ml-2">— Opcionais ocultos no link e no PDF</span>
+            )}
+          </div>
+        )}
+
         {(viewMode === 'edit' || closing.showPricing !== false) && (
         <div className={`border-t-2 border-slate-200 bg-slate-50 p-6 md:p-10 space-y-6 print:break-before-page ${viewMode === 'edit' && closing.showPricing === false ? 'opacity-50' : ''}`}>
           {/* Price Header */}
