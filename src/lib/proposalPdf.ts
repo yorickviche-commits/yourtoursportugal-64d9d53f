@@ -560,7 +560,9 @@ export async function buildProposalPdfDoc(
         .join('\n\n');
 
       const blocks: Array<{ heading: string; text: string }> = [
+        ...(optionalsText ? [{ heading: hd.optionals, text: optionalsText }] : []),
         ...(hotelsText ? [{ heading: hd.hotelsIncluded, text: hotelsText }] : []),
+
         { heading: t.included, text: (closing.inclusionsOverride?.trim() || autoIncluded) },
         { heading: hd.notIncluded, text: resolveHotelsText('notIncludedDefault', closing.notIncluded, p.language) },
         { heading: t.paymentConditions, text: resolveClosingText('payment', closing.payment, p.language) },
