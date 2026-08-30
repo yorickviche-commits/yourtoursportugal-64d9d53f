@@ -502,7 +502,9 @@ export async function buildProposalPdfDoc(
       // Hotels Included block (from Costing + details edited in the planner)
       const hd = getHotelsDict(p.language);
       const acc: any[] = Array.isArray(closing.accommodation) ? closing.accommodation : [];
-      const hotels = mergeProposalHotels(acc, Array.isArray(closing.hotels) ? closing.hotels : []);
+      const showHotels = closing.showHotels !== false;
+      const showHotelDetails = closing.showHotelDetails !== false;
+      const hotels = showHotels ? mergeProposalHotels(acc, Array.isArray(closing.hotels) ? closing.hotels : []) : [];
       const hotelsNights = hotels.reduce((s, x) => s + (Number(x.nights) || 0), 0);
       const hotelsRooms = hotels.reduce((s, x) => Math.max(s, Number(x.rooms) || 0), 0);
       const hotelsTotal = Math.round(hotels.reduce((s, x) => s + (Number(x.value) || 0), 0));
@@ -532,11 +534,11 @@ export async function buildProposalPdfDoc(
         .map(hotel => {
           const parts = [`**${hotel.name}**${hotel.city ? ` — ${hotel.city}` : ''}`];
           const meta = [
-            hotel.checkIn ? `${hd.checkIn}: ${hotel.checkIn}` : '',
-            hotel.checkOut ? `${hd.checkOut}: ${hotel.checkOut}` : '',
-            hotel.nights ? `${hotel.nights} ${hd.nights.toLowerCase()}` : '',
-            hotel.rooms ? `${hotel.rooms} ${hd.rooms.toLowerCase()}` : '',
-            hotel.value ? eur(hotel.value) : '',
+            showHotelDetails && hotel.checkIn ? `${hd.checkIn}: ${hotel.checkIn}` : '',
+            showHotelDetails && hotel.checkOut ? `${hd.checkOut}: ${hotel.checkOut}` : '',
+            showHotelDetails && hotel.nights ? `${hotel.nights} ${hd.nights.toLowerCase()}` : '',
+            showHotelDetails && hotel.rooms ? `${hotel.rooms} ${hd.rooms.toLowerCase()}` : '',
+            showHotelDetails && hotel.value ? eur(hotel.value) : '',
           ].filter(Boolean).join('  ·  ');
           if (meta) parts.push(meta);
           if (hotel.description) parts.push(stripBoldMarkers(hotel.description));
