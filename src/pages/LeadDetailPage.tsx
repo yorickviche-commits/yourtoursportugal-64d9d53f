@@ -514,81 +514,101 @@ const LeadDetailPage = ({ mode = 'lead' }: { mode?: 'lead' | 'booking' } = {}) =
   }, [id, lead, selectedVersion, queryClient]);
 
 
-  // Sync form from DB lead
+  // Fonte dos Dados Gerais: a tabela `leads` na versão LIVE, o snapshot da
+  // versão em `lead_versions.general_data` quando se consulta uma versão antiga.
+  const generalSource = useMemo(() => {
+    if (!lead) return null;
+    if (isArchivedVersion) {
+      const g = selectedVersionMeta?.general_data;
+      if (g && Object.keys(g).length > 0) return g as any;
+    }
+    return lead as any;
+  }, [lead, isArchivedVersion, selectedVersionMeta]);
+
+  // Sync form from the selected version's general data
   useEffect(() => {
-    if (!lead) return;
+    if (!lead || !generalSource) return;
+    const g: any = generalSource;
     setFormState({
-      ytId: (lead as any).yt_id || '',
-      clientName: lead.client_name || '',
-      email: lead.email || '',
-      phone: lead.phone || '',
-      travelDates: lead.travel_dates || '',
-      travelEndDate: lead.travel_end_date || '',
-      numberOfDays: lead.number_of_days || 0,
-      datesType: (lead.dates_type as any) || 'estimated',
-      pax: lead.pax || 2,
-      paxChildren: lead.pax_children || 0,
-      paxInfants: lead.pax_infants || 0,
-      budgetLevel: lead.budget_level || '',
-      notes: lead.notes || '',
-      salesOwner: lead.sales_owner || '',
-      clientType: normalizeClientType((lead as any).client_type),
+      ytId: g.yt_id || '',
+      clientName: g.client_name || '',
+      email: g.email || '',
+      phone: g.phone || '',
+      travelDates: g.travel_dates || '',
+      travelEndDate: g.travel_end_date || '',
+      numberOfDays: g.number_of_days || 0,
+      datesType: (g.dates_type as any) || 'estimated',
+      pax: g.pax || 2,
+      paxChildren: g.pax_children || 0,
+      paxInfants: g.pax_infants || 0,
+      budgetLevel: g.budget_level || '',
+      notes: g.notes || '',
+      salesOwner: g.sales_owner || '',
+      clientType: normalizeClientType(g.client_type),
     });
-    setLeadStatus((lead.status as LeadStatus) || 'new');
-    setCategoria(lead.comfort_level ? [lead.comfort_level] : []);
-    setDestino(lead.destination ? lead.destination.split(', ').filter(Boolean) : []);
-    setOrigem(lead.source === 'ai_simulation' ? ['AI Simulation'] : lead.source ? [lead.source] : []);
-    setTravelStyles(Array.isArray(lead.travel_style) ? lead.travel_style : []);
-    setActiveVersion(lead.active_version || 0);
+    setLeadStatus((g.status as LeadStatus) || 'new');
+    setCategoria(g.comfort_level ? [g.comfort_level] : []);
+    setDestino(g.destination ? String(g.destination).split(', ').filter(Boolean) : []);
+    setOrigem(g.source === 'ai_simulation' ? ['AI Simulation'] : g.source ? [g.source] : []);
+    setTravelStyles(Array.isArray(g.travel_style) ? g.travel_style : []);
     const savedOverride = (lead as any).pvp_override;
     setPvpOverride(savedOverride != null ? Number(savedOverride) : null);
-  }, [lead]);
+  }, [lead, generalSource]);
 
   const updateFormField = (key: string, value: any) => {
     setFormState(prev => ({ ...prev, [key]: value }));
   };
 
+  const buildGeneralSnapshot = useCallback(() => ({
+    yt_id: formState.ytId || null,
+    client_name: formState.clientName,
+    email: formState.email,
+    phone: formState.phone,
+    client_type: formState.clientType,
+    destination: destino.join(', ') || 'A definir',
+    travel_dates: formState.travelDates,
+    travel_end_date: formState.travelEndDate,
+    number_of_days: formState.numberOfDays,
+    dates_type: formState.datesType,
+    pax: formState.pax,
+    pax_children: formState.paxChildren,
+    pax_infants: formState.paxInfants,
+    budget_level: formState.budgetLevel,
+    notes: formState.notes,
+    sales_owner: formState.salesOwner,
+    status: leadStatus,
+    comfort_level: categoria[0] || '',
+    travel_style: travelStyles,
+    source: (origem[0]?.toLowerCase().replace(/ /g, '_') || (lead as any)?.source) as any,
+  }), [formState, destino, leadStatus, categoria, travelStyles, origem, lead]);
+
   const handleSave = useCallback(async () => {
     if (!lead) return;
+    const general = buildGeneralSnapshot();
     try {
-      await updateLeadMutation.mutateAsync({
-        id: lead.id,
-        updates: {
-          client_name: formState.clientName,
-          yt_id: formState.ytId || null,
-          email: formState.email,
-          phone: formState.phone,
-          travel_dates: formState.travelDates,
-          travel_end_date: formState.travelEndDate,
-          number_of_days: formState.numberOfDays,
-          dates_type: formState.datesType,
-          pax: formState.pax,
-          pax_children: formState.paxChildren,
-          pax_infants: formState.paxInfants,
-          budget_level: formState.budgetLevel,
-          notes: formState.notes,
-          sales_owner: formState.salesOwner,
-          client_type: formState.clientType,
-          status: leadStatus,
-          destination: destino.join(', ') || 'A definir',
-          comfort_level: categoria[0] || '',
-          travel_style: travelStyles,
-          source: (origem[0]?.toLowerCase().replace(/ /g, '_') || lead.source) as any,
-          active_version: activeVersion,
-        },
-      });
+      if (isArchivedVersion) {
+        // Gravar SÓ na versão arquivada — nunca na tabela `leads` nem na live.
+        await saveVersionGeneralData(lead.id, selectedVersion, general);
+        queryClient.invalidateQueries({ queryKey: ['lead_versions', lead.id] });
+        toast({ title: 'Versão arquivada guardada', description: `${selectedVersionMeta?.name || `V${selectedVersion}`} atualizada (a versão LIVE não foi alterada).` });
+        return;
+      }
+      // `active_version` NUNCA é alterado ao gravar.
+      await updateLeadMutation.mutateAsync({ id: lead.id, updates: general as any });
+      await saveVersionGeneralData(lead.id, liveVersion, general);
+      queryClient.invalidateQueries({ queryKey: ['lead_versions', lead.id] });
       await logActivity('lead_updated', 'lead', lead.id, { client_name: formState.clientName });
       toast({ title: 'Simulação guardada!', description: `${formState.clientName} atualizado com sucesso.` });
       if (leadStatus === 'won') triggerCalendarSync(lead.id, 'update');
     } catch (err: any) {
       toast({ title: 'Erro ao guardar', description: err.message, variant: 'destructive' });
     }
-  }, [lead, formState, leadStatus, destino, categoria, travelStyles, origem, activeVersion, updateLeadMutation, toast]);
+  }, [lead, buildGeneralSnapshot, isArchivedVersion, selectedVersion, selectedVersionMeta, liveVersion, formState.clientName, leadStatus, updateLeadMutation, queryClient, toast]);
 
-  // Dirty tracking — deteta alterações por gravar no formulário / tags / versão
+  // Dirty tracking — compara com a fonte da versão selecionada
   const isDirty = useMemo(() => {
-    if (!lead) return false;
-    const l: any = lead;
+    if (!lead || !generalSource) return false;
+    const l: any = generalSource;
     if ((l.yt_id || '') !== formState.ytId) return true;
     if ((l.client_name || '') !== formState.clientName) return true;
     if ((l.email || '') !== formState.email) return true;
@@ -603,15 +623,15 @@ const LeadDetailPage = ({ mode = 'lead' }: { mode?: 'lead' | 'booking' } = {}) =
     if ((l.budget_level || '') !== formState.budgetLevel) return true;
     if ((l.notes || '') !== formState.notes) return true;
     if ((l.sales_owner || '') !== formState.salesOwner) return true;
-    if (normalizeClientType((l as any).client_type) !== formState.clientType) return true;
+    if (normalizeClientType(l.client_type) !== formState.clientType) return true;
     if ((l.comfort_level || '') !== (categoria[0] || '')) return true;
     const savedDest = (l.destination ? String(l.destination).split(', ').filter(Boolean) : []).join('|');
     if (savedDest !== destino.join('|')) return true;
     const savedStyles = Array.isArray(l.travel_style) ? l.travel_style.join('|') : '';
     if (savedStyles !== travelStyles.join('|')) return true;
-    if ((l.active_version || 0) !== activeVersion) return true;
     return false;
-  }, [lead, formState, categoria, destino, travelStyles, activeVersion]);
+  }, [lead, generalSource, formState, categoria, destino, travelStyles]);
+
 
   const guard = useUnsavedChangesGuard(isDirty, handleSave);
 
