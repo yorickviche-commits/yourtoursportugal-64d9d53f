@@ -1524,6 +1524,68 @@ export type Database = {
           },
         ]
       }
+      lead_versions: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          general_data: Json
+          id: string
+          lead_id: string
+          name: string
+          updated_at: string
+          version: number
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          general_data?: Json
+          id?: string
+          lead_id: string
+          name?: string
+          updated_at?: string
+          version?: number
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          general_data?: Json
+          id?: string
+          lead_id?: string
+          name?: string
+          updated_at?: string
+          version?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lead_versions_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lead_versions_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_task_queue"
+            referencedColumns: ["lead_id"]
+          },
+          {
+            foreignKeyName: "lead_versions_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "v_lead_economics"
+            referencedColumns: ["lead_id"]
+          },
+          {
+            foreignKeyName: "lead_versions_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "v_lead_outcomes"
+            referencedColumns: ["lead_id"]
+          },
+        ]
+      }
       leads: {
         Row: {
           active_version: number | null
@@ -3662,6 +3724,7 @@ export type Database = {
           status: string
           trip_title: string
           updated_at: string
+          version: number
         }
         Insert: {
           client_name?: string
@@ -3679,6 +3742,7 @@ export type Database = {
           status?: string
           trip_title?: string
           updated_at?: string
+          version?: number
         }
         Update: {
           client_name?: string
@@ -3696,6 +3760,7 @@ export type Database = {
           status?: string
           trip_title?: string
           updated_at?: string
+          version?: number
         }
         Relationships: [
           {
