@@ -20,6 +20,7 @@ import TravelPlanProposal from '@/components/trip/TravelPlanProposal';
 import LeadAgentsAssignment from '@/components/LeadAgentsAssignment';
 import { LeadContextAttachments } from '@/components/leads/LeadContextAttachments';
 import { useProposalsListQuery, useProposalAnnotations } from '@/hooks/useProposalsQuery';
+import { getLeadLiveVersion } from '@/lib/proposalVersion';
 import { toast as sonnerToast } from 'sonner';
 // ItineraryEditor removed — replaced by Propostas tab
 import EditableCostingTable, { CostingDayData, CostingItem } from '@/components/trip/EditableCostingTable';
