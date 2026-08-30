@@ -153,7 +153,10 @@ interface TravelPlanProposalProps {
   accommodation?: { name: string; nights: number; value?: number }[];
   /** B2B leads see "TOTAL NET PRICE" instead of "TOTAL PRICE". */
   netPricing?: boolean;
+  /** Version of the lead being edited/consulted (travel_plans + costing are versioned). */
+  version?: number;
 }
+
 
 interface ClosingTerms {
   showPricing?: boolean;
