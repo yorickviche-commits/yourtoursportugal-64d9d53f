@@ -530,6 +530,18 @@ export async function buildProposalPdfDoc(
         y += 12;
       }
 
+      // Optionals — extras outside the base programme price
+      const optionals: any[] = Array.isArray(closing.optionals) ? closing.optionals : [];
+      const optionalsText = (closing.showOptionals !== false && optionals.length)
+        ? optionals.map((o: any) => {
+            const label = `${Number(o.day) > 0 ? `${t.day} ${o.day} — ` : ''}${stripBoldMarkers(String(o.description || ''))}`;
+            const price = `${eur(o.pvp)}${o.perPerson ? ` (${eur(o.perPerson)} / ${hd.perPerson.toLowerCase()})` : ''}`;
+            return `• ${label}: ${price}`;
+          }).join('\n') + `\n${hd.optionalsNote}`
+        : '';
+
+
+
       const hotelsText = hotels
         .map(hotel => {
           const parts = [`**${hotel.name}**${hotel.city ? ` — ${hotel.city}` : ''}`];
