@@ -935,6 +935,7 @@ const PricingConditions = ({ proposal, lang }: { proposal: any; lang: string }) 
   const dict = getPdfDict(lang);
   const h = getHotelsDict(lang);
   const accommodation: any[] = Array.isArray(closing.accommodation) ? closing.accommodation : [];
+  const optionals: any[] = Array.isArray(closing.optionals) ? closing.optionals : [];
   const hotels = mergeProposalHotels(accommodation, Array.isArray(closing.hotels) ? closing.hotels : []);
   const showHotels = closing.showHotels !== false;
   const showHotelDetails = closing.showHotelDetails !== false;
@@ -1004,6 +1005,30 @@ const PricingConditions = ({ proposal, lang }: { proposal: any; lang: string }) 
                   </tr>
                 </tbody>
               </table>
+            </div>
+          )}
+          {optionals.length > 0 && closing.showOptionals !== false && (
+            <div>
+              <h3 className="text-sm font-serif font-bold text-slate-800 mb-2">{h.optionals}</h3>
+              <div className="rounded-lg border border-slate-200 overflow-hidden">
+                <table className="w-full text-sm">
+                  <tbody>
+                    {optionals.map((o: any, i: number) => (
+                      <tr key={`${o.day}-${i}`} className="border-b border-slate-100 last:border-0">
+                        <td className="px-3 py-2 text-slate-700">
+                          {Number(o.day) > 0 && <span className="text-slate-500">{dayLabel} {o.day} — </span>}
+                          {o.description}
+                        </td>
+                        <td className="px-3 py-2 text-right font-medium text-slate-800 whitespace-nowrap">
+                          {eur(o.pvp)}
+                          {o.perPerson ? <span className="block text-[10px] font-normal text-slate-500">{eur(o.perPerson)} / {h.perPerson.toLowerCase()}</span> : null}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              <p className="text-[11px] text-slate-500 mt-1.5">{h.optionalsNote}</p>
             </div>
           )}
           {hasHotels && (
