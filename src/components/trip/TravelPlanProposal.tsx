@@ -797,9 +797,8 @@ const TravelPlanProposal = ({
   const totalPVP = (() => {
     if (leadPvpOverride != null && leadPvpOverride > 0) return Math.round(leadPvpOverride);
     if (!costingDaysData || costingDaysData.length === 0) return 0;
-    // Use latest version only
-    const latestVersion = costingDaysData[0]?.version ?? 0;
-    const rows = costingDaysData.filter((d: any) => d.version === latestVersion);
+    const rows = costingDaysData;
+
     let total = 0;
     rows.forEach((d: any) => {
       const items = Array.isArray(d.items) ? d.items : [];
