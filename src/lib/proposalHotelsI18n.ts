@@ -20,6 +20,8 @@ export interface HotelsDict {
   hotelsPrice: (nights: number, rooms: number) => string;
   total: string;
   perPerson: string;
+  optionals: string;
+  optionalsNote: string;
   notIncluded: string;
   nextSteps: string;
   notIncludedDefault: string;
@@ -40,6 +42,8 @@ const en: HotelsDict = {
   hotelsPrice: (n, r) => `Hotels — ${n} night${n === 1 ? '' : 's'}${r ? `, ${r} room${r === 1 ? '' : 's'}` : ''}, breakfast included`,
   total: 'Total',
   perPerson: 'Per person',
+  optionals: 'Optionals',
+  optionalsNote: 'Optional experiences — not included in the total price.',
   notIncluded: "What's Not Included",
   nextSteps: 'Your next steps',
   notIncludedDefault: '• International flights and airport taxes.\n• Travel and medical insurance.\n• Meals and drinks not mentioned in the programme.\n• Personal expenses, tips and anything not explicitly listed as included.',
@@ -60,6 +64,8 @@ const pt: HotelsDict = {
   hotelsPrice: (n, r) => `Hotéis — ${n} noite${n === 1 ? '' : 's'}${r ? `, ${r} quarto${r === 1 ? '' : 's'}` : ''}, pequeno-almoço incluído`,
   total: 'Total',
   perPerson: 'Por pessoa',
+  optionals: 'Opcionais',
+  optionalsNote: 'Experiências opcionais — não incluídas no preço total.',
   notIncluded: 'O Que Não Está Incluído',
   nextSteps: 'Próximos passos',
   notIncludedDefault: '• Voos internacionais e taxas de aeroporto.\n• Seguro de viagem e de saúde.\n• Refeições e bebidas não mencionadas no programa.\n• Despesas pessoais, gratificações e tudo o que não esteja expressamente indicado como incluído.',
@@ -80,6 +86,8 @@ const es: HotelsDict = {
   hotelsPrice: (n, r) => `Hoteles — ${n} noche${n === 1 ? '' : 's'}${r ? `, ${r} habitación${r === 1 ? '' : 'es'}` : ''}, desayuno incluido`,
   total: 'Total',
   perPerson: 'Por persona',
+  optionals: 'Opcionales',
+  optionalsNote: 'Experiencias opcionales — no incluidas en el precio total.',
   notIncluded: 'Qué No Está Incluido',
   nextSteps: 'Próximos pasos',
   notIncludedDefault: '• Vuelos internacionales y tasas de aeropuerto.\n• Seguro de viaje y médico.\n• Comidas y bebidas no mencionadas en el programa.\n• Gastos personales, propinas y todo lo que no figure expresamente como incluido.',
@@ -100,6 +108,8 @@ const fr: HotelsDict = {
   hotelsPrice: (n, r) => `Hôtels — ${n} nuit${n === 1 ? '' : 's'}${r ? `, ${r} chambre${r === 1 ? '' : 's'}` : ''}, petit-déjeuner inclus`,
   total: 'Total',
   perPerson: 'Par personne',
+  optionals: 'Options',
+  optionalsNote: 'Expériences optionnelles — non incluses dans le prix total.',
   notIncluded: 'Ce Qui N’Est Pas Inclus',
   nextSteps: 'Prochaines étapes',
   notIncludedDefault: '• Vols internationaux et taxes d’aéroport.\n• Assurance voyage et santé.\n• Repas et boissons non mentionnés dans le programme.\n• Dépenses personnelles, pourboires et tout ce qui n’est pas expressément indiqué comme inclus.',
@@ -120,6 +130,8 @@ const it: HotelsDict = {
   hotelsPrice: (n, r) => `Hotel — ${n} nott${n === 1 ? 'e' : 'i'}${r ? `, ${r} camer${r === 1 ? 'a' : 'e'}` : ''}, colazione inclusa`,
   total: 'Totale',
   perPerson: 'Per persona',
+  optionals: 'Opzionali',
+  optionalsNote: 'Esperienze opzionali — non incluse nel prezzo totale.',
   notIncluded: 'Cosa Non È Incluso',
   nextSteps: 'Prossimi passi',
   notIncludedDefault: '• Voli internazionali e tasse aeroportuali.\n• Assicurazione di viaggio e sanitaria.\n• Pasti e bevande non menzionati nel programma.\n• Spese personali, mance e tutto ciò che non è espressamente indicato come incluso.',
@@ -140,6 +152,8 @@ const de: HotelsDict = {
   hotelsPrice: (n, r) => `Hotels — ${n} Nacht${n === 1 ? '' : 'e'}${r ? `, ${r} Zimmer` : ''}, Frühstück inklusive`,
   total: 'Gesamt',
   perPerson: 'Pro Person',
+  optionals: 'Optionen',
+  optionalsNote: 'Optionale Erlebnisse — nicht im Gesamtpreis enthalten.',
   notIncluded: 'Nicht Inkludiert',
   nextSteps: 'Ihre nächsten Schritte',
   notIncludedDefault: '• Internationale Flüge und Flughafensteuern.\n• Reise- und Krankenversicherung.\n• Mahlzeiten und Getränke, die nicht im Programm genannt sind.\n• Persönliche Ausgaben, Trinkgelder und alles, was nicht ausdrücklich als inkludiert aufgeführt ist.',
