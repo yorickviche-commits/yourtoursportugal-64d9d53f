@@ -1251,7 +1251,6 @@ const TravelPlanProposal = ({
 
 
       // Auto-create/update proposal from travel plan
-      const token = `ytp-${leadCode.toLowerCase().replace(/[^a-z0-9]/g, '-')}`;
       const dateRange = startDate && endDate ? `${startDate} — ${endDate}` : startDate || '';
       const dayLabelByLang: Record<string, string> = { en: 'Day', fr: 'Jour', es: 'Día', pt: 'Dia', it: 'Giorno', de: 'Tag' };
       const proposalDays = planToSave.days.map((d, i) => ({
