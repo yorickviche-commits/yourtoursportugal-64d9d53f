@@ -604,13 +604,59 @@ const LeadDetailPage = ({ mode = 'lead' }: { mode?: 'lead' | 'booking' } = {}) =
         magic_question: lead.magic_question,
         active_version: 0,
       });
+
+      const src: any = lead as any;
+      // 1) Campos extra dos Dados Gerais que a criação base não cobre
+      await supabase.from('leads').update({
+        client_type: src.client_type,
+        route_map_path: src.route_map_path,
+        route_map_url: src.route_map_url,
+        route_day_maps: src.route_day_maps ?? [],
+        exact_itinerary_pdf_path: src.exact_itinerary_pdf_path,
+        pvp_override: src.pvp_override,
+        trip_start: src.trip_start,
+        trip_finish: src.trip_finish,
+        assigned_agents: src.assigned_agents ?? [],
+      } as any).eq('id', newLead.id);
+
+      // 2) Travel plan (com imagens), planner, costing e operações
+      const [plans, planner, costing, ops] = await Promise.all([
+        supabase.from('travel_plans').select('*').eq('lead_id', lead.id),
+        supabase.from('lead_planner_data').select('*').eq('lead_id', lead.id),
+        supabase.from('lead_costing_data').select('*').eq('lead_id', lead.id),
+        supabase.from('lead_operations').select('*').eq('lead_id', lead.id),
+      ]);
+
+      const strip = (rows: any[] | null) =>
+        (rows || []).map(({ id: _id, created_at, updated_at, created_by, ...rest }: any) => ({
+          ...rest,
+          lead_id: newLead.id,
+        }));
+
+      const inserts: Promise<any>[] = [];
+      const planRows = strip(plans.data);
+      if (planRows.length) inserts.push(Promise.resolve(supabase.from('travel_plans').insert(planRows as any)));
+      const plannerRows = strip(planner.data);
+      if (plannerRows.length) inserts.push(Promise.resolve(supabase.from('lead_planner_data').insert(plannerRows as any)));
+      const costingRows = strip(costing.data);
+      if (costingRows.length) inserts.push(Promise.resolve(supabase.from('lead_costing_data').insert(costingRows as any)));
+      const opsRows = strip(ops.data);
+      if (opsRows.length) inserts.push(Promise.resolve(supabase.from('lead_operations').insert(opsRows as any)));
+      const results = await Promise.all(inserts);
+      const failed = results.find((r: any) => r?.error);
+      if (failed?.error) throw new Error(failed.error.message);
+
       await logActivity('lead_duplicated', 'lead', newLead.id, { source_lead: lead.id });
-      toast({ title: 'Lead duplicada!', description: `Nova simulação ${newLead.lead_code} criada.` });
+      toast({
+        title: 'Lead duplicada!',
+        description: `${newLead.lead_code} criada com travel plan, custos e operações.`,
+      });
       navigate(`/leads/${newLead.id}`);
     } catch (err: any) {
       toast({ title: 'Erro', description: err.message, variant: 'destructive' });
     }
   }, [lead, createLeadMutation, navigate, toast]);
+
 
   const handleNewVersion = useCallback(async () => {
     if (!lead) return;
