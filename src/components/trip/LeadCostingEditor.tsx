@@ -1056,6 +1056,47 @@ const LeadCostingEditor = ({ costingDays, onChange, onSave, saving, plannerDays,
         </div>
       )}
 
+      {/* ✨ Pricing Opcionais — extras fora do preço base */}
+      {optionalItems.length > 0 && (
+        <div className="bg-card rounded-lg border border-[hsl(var(--warning))]/40 p-4 space-y-3">
+          <p className="text-xs font-bold text-[hsl(var(--warning))] flex items-center gap-1">
+            <Sparkles className="h-3.5 w-3.5" /> Pricing Opcionais
+          </p>
+          <div className="space-y-2">
+            {costingDays.map(day => {
+              const opts = day.items.filter(i => i.status === 'opcionais');
+              if (opts.length === 0) return null;
+              return (
+                <div key={day.day}>
+                  <p className="text-[10px] uppercase font-semibold text-muted-foreground">
+                    {isAccommodationDay(day) ? 'Alojamentos' : `Dia ${day.day} — ${day.title || 'Sem título'}`}
+                  </p>
+                  {opts.map(item => (
+                    <div key={item.id} className="flex items-baseline justify-between gap-3 text-xs py-1 border-b border-border/30 last:border-0">
+                      <span className="text-foreground">{item.description || '—'}</span>
+                      <span className="shrink-0 font-semibold">
+                        €{item.pvpTotal.toFixed(2)}
+                        {item.pricingType === 'per_person' && (
+                          <span className="ml-1 text-[10px] font-normal text-muted-foreground">
+                            (€{(item.priceAdults * (1 + item.marginPercent / 100)).toFixed(2)} / pessoa)
+                          </span>
+                        )}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              );
+            })}
+          </div>
+          <div className="flex items-center justify-between gap-3 pt-2 border-t text-sm font-bold">
+            <span>Total programa + opcionais</span>
+            <span className="text-[hsl(var(--info))]">€{(grandPVP + optionalsPVP).toFixed(2)}</span>
+          </div>
+        </div>
+      )}
+
+
+
       {leadId && (
         <PaymentLinkDialog
           open={payLinkOpen}
