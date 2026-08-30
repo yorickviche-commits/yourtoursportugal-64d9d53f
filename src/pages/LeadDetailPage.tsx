@@ -880,20 +880,10 @@ const LeadDetailPage = ({ mode = 'lead' }: { mode?: 'lead' | 'booking' } = {}) =
         {/* Dados Gerais */}
         {activeTab === 'dados_gerais' && (
           <div className="space-y-6">
-            <div className="flex items-center gap-3">
-              <div className="flex items-center gap-1">
-                {Array.from({ length: activeVersion + 1 }, (_, i) => i).map(v => (
-                  <button key={v} onClick={() => setActiveVersion(v)} className={cn("px-2.5 py-1 text-xs rounded border transition-colors", activeVersion === v ? "bg-[hsl(var(--info))] text-white border-[hsl(var(--info))]" : "border-border text-muted-foreground hover:text-foreground")}>V{v}</button>
-                ))}
-              </div>
-              <span className="text-xs text-muted-foreground">🔒 Versão · V{activeVersion}</span>
-              <Button variant="outline" size="sm" className="text-xs gap-1" onClick={handleDuplicate} disabled={createLeadMutation.isPending}>
-                <Copy className="h-3 w-3" /> Duplicar
-              </Button>
-              <Button variant="outline" size="sm" className="text-xs gap-1" onClick={handleNewVersion}>
-                <Plus className="h-3 w-3" /> Nova Versão
-              </Button>
-            </div>
+            {versionBar}
+
+            <fieldset disabled={locked} className="space-y-6 disabled:opacity-95">
+
 
             <div>
               <h3 className="text-sm font-bold text-foreground mb-3">Informação geral</h3>
