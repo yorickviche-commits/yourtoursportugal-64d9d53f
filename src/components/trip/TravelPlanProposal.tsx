@@ -174,6 +174,8 @@ interface ClosingTerms {
   showHotels?: boolean;
   /** Switch for the detailed table (check-in/out, nights, rooms, rate). */
   showHotelDetails?: boolean;
+  /** Switch for the "Optionals" block (digital itinerary + PDF). */
+  showOptionals?: boolean;
 }
 
 const TERMS_URL = 'https://drive.google.com/file/d/12AkvW2Ob0LtcooaciWY4e-nEx7hlOnQC/view?usp=sharing';
@@ -817,6 +819,18 @@ const TravelPlanProposal = ({
     return out.filter(o => o.description || o.pvp > 0);
   })();
 
+  /**
+   * Payload de closing_terms partilhado pela proposta e pelo PDF (sem alterações
+   * de schema: os opcionais viajam dentro de closing_terms, como os hotéis).
+   */
+  const buildClosingTerms = () => ({
+    ...closing,
+    accommodation,
+    netPricing,
+    optionals,
+    showOptionals: closing.showOptionals !== false,
+  });
+
   const totalPVP = (() => {
     if (leadPvpOverride != null && leadPvpOverride > 0) return Math.round(leadPvpOverride);
     if (!costingDaysData || costingDaysData.length === 0) return 0;
@@ -872,7 +886,7 @@ const TravelPlanProposal = ({
           booking_ref: ytId || leadCode,
           hero_image_url: plan.cover_image?.url || null,
           wetravel_checkout_url: wetravelCheckoutUrl,
-          closing_terms: { ...closing, accommodation, netPricing } as any,
+          closing_terms: buildClosingTerms() as any,
           language: proposalLang,
           days,
         },
@@ -886,7 +900,7 @@ const TravelPlanProposal = ({
       setDownloadingPdf(false);
     }
   }, [plan, language, travelDates, travelEndDate, leadCode, leadId, clientName, pax, paxChildren,
-      totalPVP, ytId, wetravelCheckoutUrl, closing, accommodation, netPricing, buildPdfFilename, toast]);
+      totalPVP, ytId, wetravelCheckoutUrl, closing, accommodation, netPricing, optionals, buildPdfFilename, toast]);
 
   // Hidratação por (lead, versão): ao mudar de versão o estado local é
   // descartado para que editar/gravar a versão N nunca escreva o conteúdo
@@ -1322,7 +1336,7 @@ const TravelPlanProposal = ({
           days: proposalDays as any,
           language: proposalLang,
           total_value_eur: totalPVP || null,
-          closing_terms: { ...closing, accommodation, netPricing } as any,
+          closing_terms: buildClosingTerms() as any,
         }).eq('id', existingProposal.id);
       } else {
         const token = buildProposalToken(leadCode, version);
@@ -1342,7 +1356,7 @@ const TravelPlanProposal = ({
           language: proposalLang,
           status: 'draft',
           total_value_eur: totalPVP || null,
-          closing_terms: { ...closing, accommodation, netPricing } as any,
+          closing_terms: buildClosingTerms() as any,
         } as any);
         console.log(`[YTP] Proposal created (V${version}) — public URL: /proposal/${token}`);
       }
