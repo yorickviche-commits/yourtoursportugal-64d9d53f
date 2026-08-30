@@ -669,11 +669,18 @@ const LeadCostingEditor = ({ costingDays, onChange, onSave, saving, plannerDays,
       <div className="bg-card rounded-lg border overflow-hidden divide-y">
         {costingDays.map((day, dayIdx) => {
           const expanded = expandedDays.includes(day.day);
-          const dayActiveItems = day.items.filter(i => i.status !== 'eliminar');
+          const dayMainItems = day.items.filter(i => i.status !== 'opcionais');
+          const dayOptItems = day.items.filter(i => i.status === 'opcionais');
+          const dayActiveItems = dayMainItems.filter(i => i.status !== 'eliminar');
           const dayNet = dayActiveItems.reduce((s, i) => s + i.netTotal, 0);
           const dayPVP = dayActiveItems.reduce((s, i) => s + i.pvpTotal, 0);
           const dayProfit = dayPVP - dayNet;
           const dayMargin = dayNet > 0 ? (dayProfit / dayNet) * 100 : 0;
+          const dayOptActive = dayOptItems.filter(i => i.status !== 'eliminar');
+          const dayOptNet = dayOptActive.reduce((s, i) => s + i.netTotal, 0);
+          const dayOptPVP = dayOptActive.reduce((s, i) => s + i.pvpTotal, 0);
+          const dayOptProfit = dayOptPVP - dayOptNet;
+          const dayOptMargin = dayOptNet > 0 ? (dayOptProfit / dayOptNet) * 100 : 0;
           const isAcc = isAccommodationDay(day);
           const accVisible = day.date !== 'hidden';
 
@@ -726,24 +733,7 @@ const LeadCostingEditor = ({ costingDays, onChange, onSave, saving, plannerDays,
                   {/* Table Header */}
                   <div className="overflow-x-auto">
                     <table className="w-full text-[10px]">
-                      <thead>
-                        <tr className="bg-muted/30 text-muted-foreground uppercase">
-                          <th className="w-[18px]"></th>
-                          <th className="text-left px-1.5 py-1.5 font-medium w-[50px]">Camada</th>
-                          <th className="text-left px-1.5 py-1.5 font-medium min-w-[140px]">{isAcc ? 'Alojamento' : 'Atividade'}</th>
-                          <th className="text-left px-1.5 py-1.5 font-medium w-[110px]">Fornecedor</th>
-                          <th className="text-center px-1 py-1.5 font-medium w-[80px]">{isAcc ? 'Por Noite/Total' : 'Por Pessoa/Total'}</th>
-                          <th className="text-center px-1 py-1.5 font-medium w-[55px]">{isAcc ? 'Nº Noites' : 'Nº Adt'}</th>
-                          <th className="text-center px-1 py-1.5 font-medium w-[65px]">Preço Adt</th>
-                          <th className="text-center px-1 py-1.5 font-medium w-[55px]">Nº Cri</th>
-                          <th className="text-center px-1 py-1.5 font-medium w-[65px]">Preço Cri</th>
-                          <th className="text-center px-1 py-1.5 font-medium w-[75px]">NET Total</th>
-                          <th className="text-center px-1 py-1.5 font-medium w-[60px]">Margem %</th>
-                          <th className="text-center px-1 py-1.5 font-medium w-[75px]">PVP Total</th>
-                          <th className="text-center px-1 py-1.5 font-medium w-[60px]">Lucro €</th>
-                          <th className="w-[55px]"></th>
-                        </tr>
-                      </thead>
+                      {tableHead}
                       <Droppable droppableId={`cost-day-${dayIdx}`}>
                         {(dropProvided, dropSnapshot) => (
                           <tbody
