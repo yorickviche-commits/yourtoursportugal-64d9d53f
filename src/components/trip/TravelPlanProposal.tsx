@@ -1265,11 +1265,13 @@ const TravelPlanProposal = ({
         map_url: d.mapUrl || '',
       }));
 
-      // Check if proposal already exists for this lead
+      // Uma proposta por (lead, versão) — gravar a versão N nunca toca nos
+      // links das outras versões.
       const { data: existingProposal } = await supabase
         .from('proposals')
         .select('id')
         .eq('lead_id', leadId)
+        .eq('version', version)
         .maybeSingle();
 
       if (existingProposal) {
@@ -1287,9 +1289,11 @@ const TravelPlanProposal = ({
           closing_terms: { ...closing, accommodation, netPricing } as any,
         }).eq('id', existingProposal.id);
       } else {
+        const token = buildProposalToken(leadCode, version);
         await supabase.from('proposals').insert({
           public_token: token,
           lead_id: leadId,
+          version,
           title: planToSave.trip_title,
           client_name: clientName,
           date_range: dateRange,
@@ -1303,8 +1307,8 @@ const TravelPlanProposal = ({
           status: 'draft',
           total_value_eur: totalPVP || null,
           closing_terms: { ...closing, accommodation, netPricing } as any,
-        });
-        console.log(`[YTP] Proposal created — public URL: /proposal/${token}`);
+        } as any);
+        console.log(`[YTP] Proposal created (V${version}) — public URL: /proposal/${token}`);
       }
 
       queryClient.invalidateQueries({ queryKey: ['travel_plan', leadId] });
