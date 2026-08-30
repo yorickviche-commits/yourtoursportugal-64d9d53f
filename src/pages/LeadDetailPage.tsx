@@ -1148,7 +1148,7 @@ const LeadDetailPage = ({ mode = 'lead' }: { mode?: 'lead' | 'booking' } = {}) =
         )}
 
         {/* Propostas */}
-        {activeTab === 'propostas' && lead && <LeadProposalsTab leadId={lead.id} clientName={formState.clientName} />}
+        {activeTab === 'propostas' && lead && <LeadProposalsTab leadId={lead.id} clientName={formState.clientName} versions={leadVersions} liveVersion={liveVersion} />}
 
         {/* CRM — espelho bidirecional do record NetHunt */}
         {activeTab === 'crm' && lead && <LeadCrmTab leadId={lead.id} />}
