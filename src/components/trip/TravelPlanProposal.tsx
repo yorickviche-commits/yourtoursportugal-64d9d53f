@@ -165,6 +165,10 @@ interface ClosingTerms {
   nextSteps?: string;
   /** Hotel details edited here; name/nights/value come from Costing. */
   hotels?: ProposalHotel[];
+  /** Master switch for the "Hotels Included" section (PDF + digital itinerary). */
+  showHotels?: boolean;
+  /** Switch for the detailed table (check-in/out, nights, rooms, rate). */
+  showHotelDetails?: boolean;
 }
 
 const TERMS_URL = 'https://drive.google.com/file/d/12AkvW2Ob0LtcooaciWY4e-nEx7hlOnQC/view?usp=sharing';
