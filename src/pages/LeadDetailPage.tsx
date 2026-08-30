@@ -1082,16 +1082,21 @@ const LeadDetailPage = ({ mode = 'lead' }: { mode?: 'lead' | 'booking' } = {}) =
             exactItineraryPdfPath={(lead as any).exact_itinerary_pdf_path || undefined}
             accommodation={proposalAccommodation}
             netPricing={(lead as any).client_type === 'B2B'}
+            version={selectedVersion}
             onGoToCosting={() => setActiveTab('custos')}
           />
+            </fieldset>
+          </div>
         )}
 
         {/* Custos */}
         {activeTab === 'custos' && (
           <div className="space-y-4">
+            {versionBar}
             <div className="flex items-center justify-between">
               <h3 className="text-sm font-bold text-foreground">Orçamentação & Margens</h3>
             </div>
+
             <div className="bg-muted/50 rounded-lg border p-3 text-xs space-y-1">
               <p><span className="font-medium">Pax:</span> {formState.pax} adultos + {formState.paxChildren} crianças · <span className="font-medium">Destino:</span> {destino.join(', ') || 'A definir'}</p>
               <p><span className="font-medium">Planner:</span> {plannerDays.length} dias definidos</p>
