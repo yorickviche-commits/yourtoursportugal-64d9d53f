@@ -1037,13 +1037,13 @@ const LeadDetailPage = ({ mode = 'lead' }: { mode?: 'lead' | 'booking' } = {}) =
               numberOfDays={Number(formState.numberOfDays) || undefined}
               exactItineraryPdfPath={(lead as any).exact_itinerary_pdf_path}
             />
-
+            </fieldset>
 
             <div className="flex items-center justify-between border-t pt-4">
               <Button variant="destructive" size="sm" className="text-xs gap-1" onClick={handleRemove} disabled={deleteLeadMutation.isPending}>
                 <Trash2 className="h-3 w-3" /> Remover
               </Button>
-              <Button size="sm" className="text-xs gap-1" onClick={handleSave} disabled={updateLeadMutation.isPending}>
+              <Button size="sm" className="text-xs gap-1" onClick={handleSave} disabled={updateLeadMutation.isPending || locked}>
                 {updateLeadMutation.isPending ? <Loader2 className="h-3 w-3 animate-spin" /> : <Save className="h-3 w-3" />} Guardar
               </Button>
             </div>
@@ -1052,6 +1052,10 @@ const LeadDetailPage = ({ mode = 'lead' }: { mode?: 'lead' | 'booking' } = {}) =
 
         {/* Travel Planner */}
         {activeTab === 'travel_planner' && (
+          <div className="space-y-4">
+            {versionBar}
+            <fieldset disabled={locked} className="disabled:opacity-95">
+
           <TravelPlanProposal
             leadId={lead.id}
             leadCode={lead.lead_code}
