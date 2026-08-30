@@ -467,18 +467,38 @@ const LeadCostingEditor = ({ costingDays, onChange, onSave, saving, plannerDays,
     onChange(updated);
   };
 
+  /**
+   * Drag & drop across two sections per day: the main table
+   * (`cost-day-{idx}`) and the Optionals sub-section (`cost-opt-{idx}`).
+   * Indices are section-relative, so each day's items are rebuilt as
+   * [main..., optionals...] — the same order shown on screen.
+   */
   const onCostDragEnd = (result: DropResult) => {
     const { source, destination } = result;
     if (!destination) return;
     if (source.droppableId === destination.droppableId && source.index === destination.index) return;
-    const srcDay = parseInt(source.droppableId.replace('cost-day-', ''), 10);
-    const dstDay = parseInt(destination.droppableId.replace('cost-day-', ''), 10);
-    if (isNaN(srcDay) || isNaN(dstDay)) return;
-    const updated = costingDays.map(d => ({ ...d, items: [...d.items] }));
-    const [moved] = updated[srcDay].items.splice(source.index, 1);
-    updated[dstDay].items.splice(destination.index, 0, moved);
-    onChange(updated);
+    const parse = (id: string) => {
+      const opt = id.startsWith('cost-opt-');
+      const idx = parseInt(id.replace(opt ? 'cost-opt-' : 'cost-day-', ''), 10);
+      return { opt, idx };
+    };
+    const src = parse(source.droppableId);
+    const dst = parse(destination.droppableId);
+    if (isNaN(src.idx) || isNaN(dst.idx)) return;
+    if (src.opt !== dst.opt) return; // não mover entre secções por arrasto (usar o estado)
+
+    const split = (d: LeadCostingDay) => ({
+      main: d.items.filter(i => i.status !== 'opcionais'),
+      opt: d.items.filter(i => i.status === 'opcionais'),
+    });
+    const parts = costingDays.map(split);
+    const key = src.opt ? 'opt' : 'main';
+    const [moved] = parts[src.idx][key].splice(source.index, 1);
+    if (!moved) return;
+    parts[dst.idx][key].splice(destination.index, 0, moved);
+    onChange(costingDays.map((d, i) => ({ ...d, items: [...parts[i].main, ...parts[i].opt] })));
   };
+
 
   // Auto-Fulfill Budget via AI
   const autoFulfillBudget = async () => {
