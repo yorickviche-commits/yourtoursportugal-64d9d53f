@@ -174,6 +174,8 @@ interface ClosingTerms {
   showHotels?: boolean;
   /** Switch for the detailed table (check-in/out, nights, rooms, rate). */
   showHotelDetails?: boolean;
+  /** Switch for the "Optionals" block (digital itinerary + PDF). */
+  showOptionals?: boolean;
 }
 
 const TERMS_URL = 'https://drive.google.com/file/d/12AkvW2Ob0LtcooaciWY4e-nEx7hlOnQC/view?usp=sharing';
@@ -796,6 +798,39 @@ const TravelPlanProposal = ({
     enabled: !!leadId,
   });
 
+  /** Opcionais do costing — extras fora do preço base do programa. */
+  const optionals = (() => {
+    if (!costingDaysData || costingDaysData.length === 0) return [] as { day: number; description: string; pvp: number; perPerson?: number }[];
+    const out: { day: number; description: string; pvp: number; perPerson?: number }[] = [];
+    (costingDaysData as any[]).forEach((d: any) => {
+      const items = Array.isArray(d.items) ? d.items : [];
+      items.forEach((it: any) => {
+        if (it.status !== 'opcionais') return;
+        out.push({
+          day: Number(d.day_number) || 0,
+          description: String(it.description || '').trim(),
+          pvp: Math.round(Number(it.pvpTotal || 0) * 100) / 100,
+          perPerson: it.pricingType === 'per_person'
+            ? Math.round(Number(it.priceAdults || 0) * (1 + Number(it.marginPercent || 0) / 100) * 100) / 100
+            : undefined,
+        });
+      });
+    });
+    return out.filter(o => o.description || o.pvp > 0);
+  })();
+
+  /**
+   * Payload de closing_terms partilhado pela proposta e pelo PDF (sem alterações
+   * de schema: os opcionais viajam dentro de closing_terms, como os hotéis).
+   */
+  const buildClosingTerms = () => ({
+    ...closing,
+    accommodation,
+    netPricing,
+    optionals,
+    showOptionals: closing.showOptionals !== false,
+  });
+
   const totalPVP = (() => {
     if (leadPvpOverride != null && leadPvpOverride > 0) return Math.round(leadPvpOverride);
     if (!costingDaysData || costingDaysData.length === 0) return 0;
@@ -805,12 +840,13 @@ const TravelPlanProposal = ({
     rows.forEach((d: any) => {
       const items = Array.isArray(d.items) ? d.items : [];
       items.forEach((it: any) => {
-        if (it.status === 'inactive' || it.status === 'rejected' || it.status === 'eliminar') return;
+        if (it.status === 'inactive' || it.status === 'rejected' || it.status === 'eliminar' || it.status === 'opcionais') return;
         total += Number(it.pvpTotal || 0);
       });
     });
     return Math.round(total);
   })();
+
 
   /**
    * Canonical PDF: renders through the SAME builder used for the email
@@ -850,7 +886,7 @@ const TravelPlanProposal = ({
           booking_ref: ytId || leadCode,
           hero_image_url: plan.cover_image?.url || null,
           wetravel_checkout_url: wetravelCheckoutUrl,
-          closing_terms: { ...closing, accommodation, netPricing } as any,
+          closing_terms: buildClosingTerms() as any,
           language: proposalLang,
           days,
         },
@@ -864,7 +900,7 @@ const TravelPlanProposal = ({
       setDownloadingPdf(false);
     }
   }, [plan, language, travelDates, travelEndDate, leadCode, leadId, clientName, pax, paxChildren,
-      totalPVP, ytId, wetravelCheckoutUrl, closing, accommodation, netPricing, buildPdfFilename, toast]);
+      totalPVP, ytId, wetravelCheckoutUrl, closing, accommodation, netPricing, optionals, buildPdfFilename, toast]);
 
   // Hidratação por (lead, versão): ao mudar de versão o estado local é
   // descartado para que editar/gravar a versão N nunca escreva o conteúdo
@@ -1300,7 +1336,7 @@ const TravelPlanProposal = ({
           days: proposalDays as any,
           language: proposalLang,
           total_value_eur: totalPVP || null,
-          closing_terms: { ...closing, accommodation, netPricing } as any,
+          closing_terms: buildClosingTerms() as any,
         }).eq('id', existingProposal.id);
       } else {
         const token = buildProposalToken(leadCode, version);
@@ -1320,7 +1356,7 @@ const TravelPlanProposal = ({
           language: proposalLang,
           status: 'draft',
           total_value_eur: totalPVP || null,
-          closing_terms: { ...closing, accommodation, netPricing } as any,
+          closing_terms: buildClosingTerms() as any,
         } as any);
         console.log(`[YTP] Proposal created (V${version}) — public URL: /proposal/${token}`);
       }
@@ -2328,6 +2364,24 @@ const TravelPlanProposal = ({
             )}
           </div>
         )}
+        {viewMode === 'edit' && optionals.length > 0 && (
+          <div className="border-t border-slate-200 bg-white px-6 md:px-10 py-3 flex items-center gap-2 print:hidden">
+            <input
+              id="show-optionals-toggle"
+              type="checkbox"
+              checked={closing.showOptionals !== false}
+              onChange={e => setClosing(c => ({ ...c, showOptionals: e.target.checked }))}
+              className="h-4 w-4 accent-[hsl(var(--info))]"
+            />
+            <label htmlFor="show-optionals-toggle" className="text-xs font-medium text-slate-700 cursor-pointer select-none">
+              Mostrar opcionais na proposta e no PDF ({optionals.length})
+            </label>
+            {closing.showOptionals === false && (
+              <span className="text-[10px] text-amber-600 ml-2">— Opcionais ocultos no link e no PDF</span>
+            )}
+          </div>
+        )}
+
         {(viewMode === 'edit' || closing.showPricing !== false) && (
         <div className={`border-t-2 border-slate-200 bg-slate-50 p-6 md:p-10 space-y-6 print:break-before-page ${viewMode === 'edit' && closing.showPricing === false ? 'opacity-50' : ''}`}>
           {/* Price Header */}
@@ -2379,6 +2433,32 @@ const TravelPlanProposal = ({
                   </tr>
                 </tbody>
               </table>
+            </div>
+          )}
+
+          {/* Optionals — extras não incluídos no preço total */}
+          {optionals.length > 0 && closing.showOptionals !== false && (
+            <div>
+              <h3 className="text-base font-serif font-bold text-slate-800 mb-2">{h.optionals}</h3>
+              <div className="rounded-lg border border-slate-200 bg-white overflow-hidden" style={{ backgroundColor: '#ffffff', printColorAdjust: 'exact', WebkitPrintColorAdjust: 'exact' } as any}>
+                <table className="w-full text-xs">
+                  <tbody>
+                    {optionals.map((o, i) => (
+                      <tr key={`${o.day}-${i}`} className="border-b border-slate-100 last:border-0">
+                        <td className="px-3 py-2 text-slate-700">
+                          {o.day > 0 && <span className="text-slate-500">{d.day} {o.day} — </span>}
+                          {o.description}
+                        </td>
+                        <td className="px-3 py-2 text-right text-slate-800 font-medium whitespace-nowrap">
+                          {eur(o.pvp)}
+                          {o.perPerson ? <span className="block text-[10px] font-normal text-slate-500">{eur(o.perPerson)} / {h.perPerson.toLowerCase()}</span> : null}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              <p className="text-[10px] text-slate-500 mt-1.5">{h.optionalsNote}</p>
             </div>
           )}
 

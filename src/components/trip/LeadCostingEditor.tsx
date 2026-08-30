@@ -467,18 +467,38 @@ const LeadCostingEditor = ({ costingDays, onChange, onSave, saving, plannerDays,
     onChange(updated);
   };
 
+  /**
+   * Drag & drop across two sections per day: the main table
+   * (`cost-day-{idx}`) and the Optionals sub-section (`cost-opt-{idx}`).
+   * Indices are section-relative, so each day's items are rebuilt as
+   * [main..., optionals...] — the same order shown on screen.
+   */
   const onCostDragEnd = (result: DropResult) => {
     const { source, destination } = result;
     if (!destination) return;
     if (source.droppableId === destination.droppableId && source.index === destination.index) return;
-    const srcDay = parseInt(source.droppableId.replace('cost-day-', ''), 10);
-    const dstDay = parseInt(destination.droppableId.replace('cost-day-', ''), 10);
-    if (isNaN(srcDay) || isNaN(dstDay)) return;
-    const updated = costingDays.map(d => ({ ...d, items: [...d.items] }));
-    const [moved] = updated[srcDay].items.splice(source.index, 1);
-    updated[dstDay].items.splice(destination.index, 0, moved);
-    onChange(updated);
+    const parse = (id: string) => {
+      const opt = id.startsWith('cost-opt-');
+      const idx = parseInt(id.replace(opt ? 'cost-opt-' : 'cost-day-', ''), 10);
+      return { opt, idx };
+    };
+    const src = parse(source.droppableId);
+    const dst = parse(destination.droppableId);
+    if (isNaN(src.idx) || isNaN(dst.idx)) return;
+    if (src.opt !== dst.opt) return; // não mover entre secções por arrasto (usar o estado)
+
+    const split = (d: LeadCostingDay) => ({
+      main: d.items.filter(i => i.status !== 'opcionais'),
+      opt: d.items.filter(i => i.status === 'opcionais'),
+    });
+    const parts = costingDays.map(split);
+    const key = src.opt ? 'opt' : 'main';
+    const [moved] = parts[src.idx][key].splice(source.index, 1);
+    if (!moved) return;
+    parts[dst.idx][key].splice(destination.index, 0, moved);
+    onChange(costingDays.map((d, i) => ({ ...d, items: [...parts[i].main, ...parts[i].opt] })));
   };
+
 
   // Auto-Fulfill Budget via AI
   const autoFulfillBudget = async () => {
@@ -522,10 +542,15 @@ const LeadCostingEditor = ({ costingDays, onChange, onSave, saving, plannerDays,
     }
   };
 
-  // Grand totals (only 'aceite' and 'neutro' items)
-  const activeItems = costingDays.flatMap(d => d.items.filter(i => i.status !== 'eliminar'));
+  // Grand totals — os opcionais ficam sempre FORA do preço base do programa
+  const activeItems = costingDays.flatMap(d => d.items.filter(i => i.status !== 'eliminar' && i.status !== 'opcionais'));
+  const optionalItems = costingDays.flatMap(d =>
+    d.items.filter(i => i.status === 'opcionais').map(i => ({ item: i, day: d })),
+  );
+  const optionalsPVP = optionalItems.reduce((s, x) => s + x.item.pvpTotal, 0);
   const grandNet = activeItems.reduce((s, i) => s + i.netTotal, 0);
   const computedPVP = activeItems.reduce((s, i) => s + i.pvpTotal, 0);
+
   const totalPax = (pax || 0) + (paxChildren || 0);
 
   // Editable PVP override (drives margin & per-pax dynamically). NET is read-only.
@@ -644,63 +669,22 @@ const LeadCostingEditor = ({ costingDays, onChange, onSave, saving, plannerDays,
       <div className="bg-card rounded-lg border overflow-hidden divide-y">
         {costingDays.map((day, dayIdx) => {
           const expanded = expandedDays.includes(day.day);
-          const dayActiveItems = day.items.filter(i => i.status !== 'eliminar');
+          const dayMainItems = day.items.filter(i => i.status !== 'opcionais');
+          const dayOptItems = day.items.filter(i => i.status === 'opcionais');
+          const dayActiveItems = dayMainItems.filter(i => i.status !== 'eliminar');
           const dayNet = dayActiveItems.reduce((s, i) => s + i.netTotal, 0);
           const dayPVP = dayActiveItems.reduce((s, i) => s + i.pvpTotal, 0);
           const dayProfit = dayPVP - dayNet;
           const dayMargin = dayNet > 0 ? (dayProfit / dayNet) * 100 : 0;
+          const dayOptActive = dayOptItems.filter(i => i.status !== 'eliminar');
+          const dayOptNet = dayOptActive.reduce((s, i) => s + i.netTotal, 0);
+          const dayOptPVP = dayOptActive.reduce((s, i) => s + i.pvpTotal, 0);
+          const dayOptProfit = dayOptPVP - dayOptNet;
+          const dayOptMargin = dayOptNet > 0 ? (dayOptProfit / dayOptNet) * 100 : 0;
           const isAcc = isAccommodationDay(day);
           const accVisible = day.date !== 'hidden';
 
-          return (
-            <Collapsible key={day.day} open={expanded} onOpenChange={() => toggleDay(day.day)}>
-              <CollapsibleTrigger className="w-full flex items-center gap-3 p-4 hover:bg-muted/20 transition-colors text-left">
-                {expanded ? <ChevronDown className="h-4 w-4 text-muted-foreground" /> : <ChevronRight className="h-4 w-4 text-muted-foreground" />}
-                <div className="flex-1 min-w-0">
-                  {isAcc ? (
-                    <>
-                      <span className="text-xs text-purple-600 dark:text-purple-300 font-medium">🏨 Alojamentos</span>
-                      <p className="text-sm font-bold text-purple-700 dark:text-purple-300 truncate">
-                        Fora do day-by-day · preço por noite ou total
-                      </p>
-                    </>
-                  ) : (
-                    <>
-                      <span className="text-xs text-[hsl(var(--info))] font-medium">Dia {day.day}.</span>
-                      <p className="text-sm font-bold text-[hsl(var(--info))] truncate">{day.title || 'Sem título'}</p>
-                      {(formatDayLabelPT(startDate, day.day) || day.date) && (
-                        <span className="text-[10px] text-muted-foreground capitalize">{formatDayLabelPT(startDate, day.day) || day.date}</span>
-                      )}
-                    </>
-                  )}
-                </div>
-                <div className="text-right shrink-0">
-                  <span className="text-xs font-medium">NET {dayNet.toFixed(0)}€</span>
-                  <span className="text-[10px] text-muted-foreground ml-2">PVP {dayPVP.toFixed(0)}€</span>
-                </div>
-              </CollapsibleTrigger>
-
-              <CollapsibleContent>
-                <div className="px-4 pb-4">
-                  {isAcc && (
-                    <label className="flex items-center gap-2 mb-3 text-[11px] text-muted-foreground cursor-pointer">
-                      <input
-                        type="checkbox"
-                        className="h-3.5 w-3.5 accent-purple-600"
-                        checked={accVisible}
-                        onChange={e => setAccommodationVisible(dayIdx, e.target.checked)}
-                      />
-                      Mostrar alojamentos (nome + nº de noites) na proposta digital e no PDF
-                      {day.items.length === 0 && <span className="text-amber-600">— secção vazia, não aparece</span>}
-                    </label>
-                  )}
-                  <button onClick={() => addItem(dayIdx)} className="mb-3 p-1 rounded-full border border-dashed border-muted-foreground/30 hover:border-[hsl(var(--info))] hover:bg-muted/20 transition-colors">
-                    <Plus className="h-4 w-4 text-muted-foreground" />
-                  </button>
-
-                  {/* Table Header */}
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-[10px]">
+          const tableHead = (
                       <thead>
                         <tr className="bg-muted/30 text-muted-foreground uppercase">
                           <th className="w-[18px]"></th>
@@ -719,21 +703,17 @@ const LeadCostingEditor = ({ costingDays, onChange, onSave, saving, plannerDays,
                           <th className="w-[55px]"></th>
                         </tr>
                       </thead>
-                      <Droppable droppableId={`cost-day-${dayIdx}`}>
-                        {(dropProvided, dropSnapshot) => (
-                          <tbody
-                            ref={dropProvided.innerRef}
-                            {...dropProvided.droppableProps}
-                            className={cn(dropSnapshot.isDraggingOver && "bg-[hsl(var(--info)/0.05)]")}
-                          >
-                            {day.items.map((item, itemIdx) => {
+          );
+
+          const renderRow = (item: LeadCostItem, dragIdx: number) => {
+            const itemIdx = day.items.indexOf(item);
                               const statusCfg = STATUS_OPTIONS.find(s => s.value === item.status) || STATUS_OPTIONS[0];
                               const StatusIcon = statusCfg.icon;
                               const isDeleted = item.status === 'eliminar';
                               const layer = item.costLayer && LAYER_CONFIG[item.costLayer] ? LAYER_CONFIG[item.costLayer] : null;
 
                               return (
-                                <Draggable key={item.id} draggableId={item.id} index={itemIdx}>
+                                <Draggable key={item.id} draggableId={item.id} index={dragIdx}>
                                   {(dragProvided, dragSnapshot) => (
                                     <tr
                                       ref={dragProvided.innerRef}
@@ -843,13 +823,125 @@ const LeadCostingEditor = ({ costingDays, onChange, onSave, saving, plannerDays,
                                   )}
                                 </Draggable>
                               );
-                            })}
+          };
+
+          return (
+            <Collapsible key={day.day} open={expanded} onOpenChange={() => toggleDay(day.day)}>
+              <CollapsibleTrigger className="w-full flex items-center gap-3 p-4 hover:bg-muted/20 transition-colors text-left">
+                {expanded ? <ChevronDown className="h-4 w-4 text-muted-foreground" /> : <ChevronRight className="h-4 w-4 text-muted-foreground" />}
+                <div className="flex-1 min-w-0">
+                  {isAcc ? (
+                    <>
+                      <span className="text-xs text-purple-600 dark:text-purple-300 font-medium">🏨 Alojamentos</span>
+                      <p className="text-sm font-bold text-purple-700 dark:text-purple-300 truncate">
+                        Fora do day-by-day · preço por noite ou total
+                      </p>
+                    </>
+                  ) : (
+                    <>
+                      <span className="text-xs text-[hsl(var(--info))] font-medium">Dia {day.day}.</span>
+                      <p className="text-sm font-bold text-[hsl(var(--info))] truncate">{day.title || 'Sem título'}</p>
+                      {(formatDayLabelPT(startDate, day.day) || day.date) && (
+                        <span className="text-[10px] text-muted-foreground capitalize">{formatDayLabelPT(startDate, day.day) || day.date}</span>
+                      )}
+                    </>
+                  )}
+                </div>
+                <div className="text-right shrink-0">
+                  <span className="text-xs font-medium">NET {dayNet.toFixed(0)}€</span>
+                  <span className="text-[10px] text-muted-foreground ml-2">
+                    PVP {dayPVP.toFixed(0)}€
+                    {dayOptPVP > 0 && <span className="text-[hsl(var(--warning))] ml-1">(+{dayOptPVP.toFixed(0)}€ opc.)</span>}
+                  </span>
+                </div>
+
+              </CollapsibleTrigger>
+
+              <CollapsibleContent>
+                <div className="px-4 pb-4">
+                  {isAcc && (
+                    <label className="flex items-center gap-2 mb-3 text-[11px] text-muted-foreground cursor-pointer">
+                      <input
+                        type="checkbox"
+                        className="h-3.5 w-3.5 accent-purple-600"
+                        checked={accVisible}
+                        onChange={e => setAccommodationVisible(dayIdx, e.target.checked)}
+                      />
+                      Mostrar alojamentos (nome + nº de noites) na proposta digital e no PDF
+                      {day.items.length === 0 && <span className="text-amber-600">— secção vazia, não aparece</span>}
+                    </label>
+                  )}
+                  <button onClick={() => addItem(dayIdx)} className="mb-3 p-1 rounded-full border border-dashed border-muted-foreground/30 hover:border-[hsl(var(--info))] hover:bg-muted/20 transition-colors">
+                    <Plus className="h-4 w-4 text-muted-foreground" />
+                  </button>
+
+                  {/* Table Header */}
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-[10px]">
+                      {tableHead}
+                      <Droppable droppableId={`cost-day-${dayIdx}`}>
+                        {(dropProvided, dropSnapshot) => (
+                          <tbody
+                            ref={dropProvided.innerRef}
+                            {...dropProvided.droppableProps}
+                            className={cn(dropSnapshot.isDraggingOver && "bg-[hsl(var(--info)/0.05)]")}
+                          >
+                            {dayMainItems.map(renderRow)}
                             {dropProvided.placeholder}
                           </tbody>
                         )}
                       </Droppable>
                     </table>
                   </div>
+
+                  {/* ✨ Opcionais — fora das somas do dia e do preço base */}
+                  {dayOptItems.length > 0 && (
+                    <div className="mt-4 rounded-lg border border-[hsl(var(--warning))]/40 bg-[hsl(var(--warning))]/10 p-3">
+                      <p className="text-[11px] font-bold text-[hsl(var(--warning))] mb-2 flex items-center gap-1">
+                        <Sparkles className="h-3.5 w-3.5" /> Opcionais
+                        <span className="font-normal text-muted-foreground">— não somam ao preço do programa</span>
+                      </p>
+                      <div className="overflow-x-auto">
+                        <table className="w-full text-[10px]">
+                          {tableHead}
+                          <Droppable droppableId={`cost-opt-${dayIdx}`}>
+                            {(dropProvided, dropSnapshot) => (
+                              <tbody
+                                ref={dropProvided.innerRef}
+                                {...dropProvided.droppableProps}
+                                className={cn(dropSnapshot.isDraggingOver && "bg-[hsl(var(--warning)/0.15)]")}
+                              >
+                                {dayOptItems.map(renderRow)}
+                                {dropProvided.placeholder}
+                              </tbody>
+                            )}
+                          </Droppable>
+                        </table>
+                      </div>
+                      {dayOptActive.length > 0 && (
+                        <div className="flex items-center justify-center gap-8 mt-2 text-xs pt-2 border-t border-[hsl(var(--warning))]/30">
+                          <div className="text-center">
+                            <p className="text-[10px] text-muted-foreground font-semibold">NET</p>
+                            <p className="font-bold">{dayOptNet.toFixed(2)}€</p>
+                          </div>
+                          <div className="text-center">
+                            <p className="text-[10px] text-muted-foreground font-semibold">Margem</p>
+                            <p className="font-bold">{dayOptMargin.toFixed(2)}%</p>
+                          </div>
+                          <div className="text-center">
+                            <p className="text-[10px] text-muted-foreground font-semibold">Lucro</p>
+                            <p className="font-bold text-[hsl(var(--success))]">{dayOptProfit.toFixed(2)}€</p>
+                          </div>
+                          <div className="text-center">
+                            <p className="text-[10px] text-muted-foreground font-semibold">PVP</p>
+                            <p className="font-bold text-[hsl(var(--warning))]">{dayOptPVP.toFixed(2)}€</p>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+
 
 
                   {/* Day Subtotals */}
@@ -963,6 +1055,47 @@ const LeadCostingEditor = ({ costingDays, onChange, onSave, saving, plannerDays,
           )}
         </div>
       )}
+
+      {/* ✨ Pricing Opcionais — extras fora do preço base */}
+      {optionalItems.length > 0 && (
+        <div className="bg-card rounded-lg border border-[hsl(var(--warning))]/40 p-4 space-y-3">
+          <p className="text-xs font-bold text-[hsl(var(--warning))] flex items-center gap-1">
+            <Sparkles className="h-3.5 w-3.5" /> Pricing Opcionais
+          </p>
+          <div className="space-y-2">
+            {costingDays.map(day => {
+              const opts = day.items.filter(i => i.status === 'opcionais');
+              if (opts.length === 0) return null;
+              return (
+                <div key={day.day}>
+                  <p className="text-[10px] uppercase font-semibold text-muted-foreground">
+                    {isAccommodationDay(day) ? 'Alojamentos' : `Dia ${day.day} — ${day.title || 'Sem título'}`}
+                  </p>
+                  {opts.map(item => (
+                    <div key={item.id} className="flex items-baseline justify-between gap-3 text-xs py-1 border-b border-border/30 last:border-0">
+                      <span className="text-foreground">{item.description || '—'}</span>
+                      <span className="shrink-0 font-semibold">
+                        €{item.pvpTotal.toFixed(2)}
+                        {item.pricingType === 'per_person' && (
+                          <span className="ml-1 text-[10px] font-normal text-muted-foreground">
+                            (€{(item.priceAdults * (1 + item.marginPercent / 100)).toFixed(2)} / pessoa)
+                          </span>
+                        )}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              );
+            })}
+          </div>
+          <div className="flex items-center justify-between gap-3 pt-2 border-t text-sm font-bold">
+            <span>Total programa + opcionais</span>
+            <span className="text-[hsl(var(--info))]">€{(grandPVP + optionalsPVP).toFixed(2)}</span>
+          </div>
+        </div>
+      )}
+
+
 
       {leadId && (
         <PaymentLinkDialog
