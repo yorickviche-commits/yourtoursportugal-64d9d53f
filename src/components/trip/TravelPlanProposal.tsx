@@ -796,6 +796,27 @@ const TravelPlanProposal = ({
     enabled: !!leadId,
   });
 
+  /** Opcionais do costing — extras fora do preço base do programa. */
+  const optionals = (() => {
+    if (!costingDaysData || costingDaysData.length === 0) return [] as { day: number; description: string; pvp: number; perPerson?: number }[];
+    const out: { day: number; description: string; pvp: number; perPerson?: number }[] = [];
+    (costingDaysData as any[]).forEach((d: any) => {
+      const items = Array.isArray(d.items) ? d.items : [];
+      items.forEach((it: any) => {
+        if (it.status !== 'opcionais') return;
+        out.push({
+          day: Number(d.day_number) || 0,
+          description: String(it.description || '').trim(),
+          pvp: Math.round(Number(it.pvpTotal || 0) * 100) / 100,
+          perPerson: it.pricingType === 'per_person'
+            ? Math.round(Number(it.priceAdults || 0) * (1 + Number(it.marginPercent || 0) / 100) * 100) / 100
+            : undefined,
+        });
+      });
+    });
+    return out.filter(o => o.description || o.pvp > 0);
+  })();
+
   const totalPVP = (() => {
     if (leadPvpOverride != null && leadPvpOverride > 0) return Math.round(leadPvpOverride);
     if (!costingDaysData || costingDaysData.length === 0) return 0;
@@ -805,12 +826,13 @@ const TravelPlanProposal = ({
     rows.forEach((d: any) => {
       const items = Array.isArray(d.items) ? d.items : [];
       items.forEach((it: any) => {
-        if (it.status === 'inactive' || it.status === 'rejected' || it.status === 'eliminar') return;
+        if (it.status === 'inactive' || it.status === 'rejected' || it.status === 'eliminar' || it.status === 'opcionais') return;
         total += Number(it.pvpTotal || 0);
       });
     });
     return Math.round(total);
   })();
+
 
   /**
    * Canonical PDF: renders through the SAME builder used for the email
