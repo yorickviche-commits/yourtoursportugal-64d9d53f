@@ -750,12 +750,13 @@ const TravelPlanProposal = ({
     enabled: !!leadId,
   });
 
-  // Load saved plan from DB
+  // Load saved plan from DB (per version)
   const { data: savedPlan, isLoading: loadingSaved } = useQuery({
-    queryKey: ['travel_plan', leadId],
+    queryKey: ['travel_plan', leadId, version],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('travel_plans').select('*').eq('lead_id', leadId)
+        .eq('version', version)
         .order('created_at', { ascending: false }).limit(1).maybeSingle();
       if (error) throw error;
       return data;
@@ -763,20 +764,21 @@ const TravelPlanProposal = ({
     enabled: !!leadId,
   });
 
-  // Load costing data to compute total PVP for the proposal
+  // Load costing data (same version) to compute total PVP for the proposal
   const { data: costingDaysData } = useQuery({
-    queryKey: ['lead_costing_data_proposal', leadId],
+    queryKey: ['lead_costing_data_proposal', leadId, version],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('lead_costing_data').select('items, day_number, version')
         .eq('lead_id', leadId)
-        .order('version', { ascending: false })
+        .eq('version', version)
         .order('day_number', { ascending: true });
       if (error) throw error;
       return data || [];
     },
     enabled: !!leadId,
   });
+
 
   // Load lead-level PVP override (manual price adjustment)
   const { data: leadPvpOverride } = useQuery({
