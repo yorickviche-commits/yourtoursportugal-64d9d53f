@@ -450,7 +450,7 @@ const LeadDetailPage = ({ mode = 'lead' }: { mode?: 'lead' | 'booking' } = {}) =
         })) : [],
       })));
     }
-  }, [savedCostingDays]);
+  }, [savedCostingDays, id, selectedVersion]);
 
   const [formState, setFormState] = useState({
     ytId: '',
@@ -465,18 +465,17 @@ const LeadDetailPage = ({ mode = 'lead' }: { mode?: 'lead' | 'booking' } = {}) =
   const [idioma, setIdioma] = useState<string[]>(['EN']);
   const [origem, setOrigem] = useState<string[]>([]);
   const [travelStyles, setTravelStyles] = useState<string[]>([]);
-  const [activeVersion, setActiveVersion] = useState(0);
 
-  // Save planner data to DB
+  // Save planner data to DB (sempre na versão selecionada)
   const savePlannerData = useCallback(async (days: PlannerDay[]) => {
     if (!id || !lead) return;
     try {
-      await supabase.from('lead_planner_data').delete().eq('lead_id', id).eq('version', activeVersion);
+      await supabase.from('lead_planner_data').delete().eq('lead_id', id).eq('version', selectedVersion);
       if (days.length > 0) {
         await supabase.from('lead_planner_data').insert(
           days.map(d => ({
             lead_id: id,
-            version: activeVersion,
+            version: selectedVersion,
             day_number: d.day,
             title: d.title,
             description: d.date || '',
@@ -489,18 +488,18 @@ const LeadDetailPage = ({ mode = 'lead' }: { mode?: 'lead' | 'booking' } = {}) =
     } catch (e) {
       console.error('Failed to save planner data:', e);
     }
-  }, [id, lead, activeVersion, queryClient]);
+  }, [id, lead, selectedVersion, queryClient]);
 
-  // Save costing data to DB
+  // Save costing data to DB (sempre na versão selecionada)
   const saveCostingData = useCallback(async (days: LeadCostingDay[]) => {
     if (!id || !lead) return;
     try {
-      await supabase.from('lead_costing_data').delete().eq('lead_id', id).eq('version', activeVersion);
+      await supabase.from('lead_costing_data').delete().eq('lead_id', id).eq('version', selectedVersion);
       if (days.length > 0) {
         await supabase.from('lead_costing_data').insert(
           days.map(d => ({
             lead_id: id,
-            version: activeVersion,
+            version: selectedVersion,
             day_number: d.day,
             title: d.title,
             items: (d.items || []) as any,
@@ -508,10 +507,12 @@ const LeadDetailPage = ({ mode = 'lead' }: { mode?: 'lead' | 'booking' } = {}) =
         );
       }
       queryClient.invalidateQueries({ queryKey: ['lead_costing', id] });
+      queryClient.invalidateQueries({ queryKey: ['leads_costing_summary'] });
     } catch (e) {
       console.error('Failed to save costing data:', e);
     }
-  }, [id, lead, activeVersion, queryClient]);
+  }, [id, lead, selectedVersion, queryClient]);
+
 
   // Sync form from DB lead
   useEffect(() => {
