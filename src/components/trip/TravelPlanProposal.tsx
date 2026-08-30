@@ -1234,13 +1234,15 @@ const TravelPlanProposal = ({
       const metadata = JSON.stringify({ cover_image: planToSave.cover_image || null, brand_logo: planToSave.brand_logo || null, closing, language });
       const { data: existingPlanRow } = await supabase
         .from('travel_plans').select('id').eq('lead_id', leadId)
+        .eq('version', version)
         .order('updated_at', { ascending: false }).limit(1).maybeSingle();
       const planPayload = {
         lead_id: leadId, file_id: leadCode, trip_title: planToSave.trip_title,
         client_name: clientName, start_date: startDate, end_date: endDate,
         pax: paxStr, narrative: planToSave.narrative, days: planToSave.days as any,
-        extra_instructions: metadata, status: 'draft',
+        extra_instructions: metadata, status: 'draft', version,
       };
+
       const { error } = existingPlanRow
         ? await supabase.from('travel_plans').update(planPayload).eq('id', existingPlanRow.id)
         : await supabase.from('travel_plans').insert(planPayload);
