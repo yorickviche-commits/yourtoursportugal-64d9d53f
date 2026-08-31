@@ -1413,7 +1413,11 @@ const TravelPlanProposal = ({
     } finally {
       setSaving(false);
     }
-  }, [plan, closing, leadId, leadCode, clientName, pax, paxChildren, travelDates, travelEndDate, toast, queryClient]);
+    // NOTA: accommodation/netPricing/optionals/totalPVP/version/language têm de
+    // estar nas dependências — sem isso o closure ficava preso ao primeiro render
+    // e gravava closing_terms sem os opcionais (e com o PVP desatualizado).
+  }, [plan, closing, accommodation, netPricing, optionals, totalPVP, version, language,
+      leadId, leadCode, clientName, pax, paxChildren, travelDates, travelEndDate, toast, queryClient]);
 
 
   // Edit helpers
