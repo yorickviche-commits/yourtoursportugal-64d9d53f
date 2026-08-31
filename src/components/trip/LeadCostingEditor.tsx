@@ -399,6 +399,8 @@ const LeadCostingEditor = ({ costingDays, onChange, onSave, saving, plannerDays,
 
   // Experience picker (FSE catalogue) → fills the cost row
   const [expPicker, setExpPicker] = useState<{ dayIdx: number; itemIdx: number; supplier: string } | null>(null);
+  // Bump para forçar re-montagem dos inputs não-controlados da linha após preencher pelo FSE
+  const [rowRev, setRowRev] = useState<Record<string, number>>({});
 
   const applyExperience = useCallback((exp: PickedExperience) => {
     if (!expPicker) return;
@@ -414,8 +416,10 @@ const LeadCostingEditor = ({ costingDays, onChange, onSave, saving, plannerDays,
       priceChildren: exp.priceChild || 0,
       isProtocol: true,
     });
+    if (current?.id) setRowRev(prev => ({ ...prev, [current.id]: (prev[current.id] || 0) + 1 }));
     setExpPicker(null);
   }, [expPicker, costingDays, updateItem]);
+
 
 
   const hasAccommodationSection = costingDays.some(isAccommodationDay);
@@ -711,6 +715,7 @@ const LeadCostingEditor = ({ costingDays, onChange, onSave, saving, plannerDays,
                               const StatusIcon = statusCfg.icon;
                               const isDeleted = item.status === 'eliminar';
                               const layer = item.costLayer && LAYER_CONFIG[item.costLayer] ? LAYER_CONFIG[item.costLayer] : null;
+                              const rev = rowRev[item.id] || 0;
 
                               return (
                                 <Draggable key={item.id} draggableId={item.id} index={dragIdx}>
@@ -743,6 +748,7 @@ const LeadCostingEditor = ({ costingDays, onChange, onSave, saving, plannerDays,
                                         <div className="flex items-start gap-0.5">
                                           <Input
                                             className="h-auto min-h-7 text-xs border-0 bg-transparent shadow-none focus-visible:ring-1 px-1 py-1 whitespace-normal break-words leading-snug"
+                                            key={`desc-${item.id}-${rev}`}
                                             defaultValue={item.description}
                                             onBlur={e => updateItem(dayIdx, itemIdx, { description: e.target.value })}
                                             placeholder={isAcc ? 'Hotel / alojamento...' : 'Atividade...'}
@@ -765,7 +771,7 @@ const LeadCostingEditor = ({ costingDays, onChange, onSave, saving, plannerDays,
                                         />
                                       </td>
                                       <td className="px-1 py-1">
-                                        <Select defaultValue={item.pricingType} onValueChange={v => updateItem(dayIdx, itemIdx, { pricingType: v as any })}>
+                                        <Select key={`pt-${item.id}-${rev}`} defaultValue={item.pricingType} onValueChange={v => updateItem(dayIdx, itemIdx, { pricingType: v as any })}>
                                           <SelectTrigger className="h-7 text-[10px] border-0 bg-transparent shadow-none"><SelectValue /></SelectTrigger>
                                           <SelectContent>
                                             <SelectItem value="total" className="text-xs">TOTAL</SelectItem>
@@ -779,13 +785,13 @@ const LeadCostingEditor = ({ costingDays, onChange, onSave, saving, plannerDays,
                                         <Input className="h-7 text-xs text-center border-0 bg-muted/30 shadow-none focus-visible:ring-1 px-1" type="number" defaultValue={item.numAdults} onBlur={e => updateItem(dayIdx, itemIdx, { numAdults: Number(e.target.value) })} />
                                       </td>
                                       <td className="px-1 py-1">
-                                        <Input className="h-7 text-xs text-center border-0 bg-muted/30 shadow-none focus-visible:ring-1 px-1" type="number" defaultValue={item.priceAdults} onBlur={e => updateItem(dayIdx, itemIdx, { priceAdults: Number(e.target.value) })} />
+                                        <Input className="h-7 text-xs text-center border-0 bg-muted/30 shadow-none focus-visible:ring-1 px-1" type="number" key={`pa-${item.id}-${rev}`} defaultValue={item.priceAdults} onBlur={e => updateItem(dayIdx, itemIdx, { priceAdults: Number(e.target.value) })} />
                                       </td>
                                       <td className="px-1 py-1">
                                         <Input className="h-7 text-xs text-center border-0 bg-muted/30 shadow-none focus-visible:ring-1 px-1" type="number" defaultValue={item.numChildren} onBlur={e => updateItem(dayIdx, itemIdx, { numChildren: Number(e.target.value) })} />
                                       </td>
                                       <td className="px-1 py-1">
-                                        <Input className="h-7 text-xs text-center border-0 bg-muted/30 shadow-none focus-visible:ring-1 px-1" type="number" defaultValue={item.priceChildren} onBlur={e => updateItem(dayIdx, itemIdx, { priceChildren: Number(e.target.value) })} />
+                                        <Input className="h-7 text-xs text-center border-0 bg-muted/30 shadow-none focus-visible:ring-1 px-1" type="number" key={`pc-${item.id}-${rev}`} defaultValue={item.priceChildren} onBlur={e => updateItem(dayIdx, itemIdx, { priceChildren: Number(e.target.value) })} />
                                       </td>
                                       <td className="px-1 py-1 text-center text-xs font-semibold">{item.netTotal.toFixed(0)}€</td>
                                       <td className="px-1 py-1">
