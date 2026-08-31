@@ -399,6 +399,8 @@ const LeadCostingEditor = ({ costingDays, onChange, onSave, saving, plannerDays,
 
   // Experience picker (FSE catalogue) → fills the cost row
   const [expPicker, setExpPicker] = useState<{ dayIdx: number; itemIdx: number; supplier: string } | null>(null);
+  // Bump para forçar re-montagem dos inputs não-controlados da linha após preencher pelo FSE
+  const [rowRev, setRowRev] = useState<Record<string, number>>({});
 
   const applyExperience = useCallback((exp: PickedExperience) => {
     if (!expPicker) return;
@@ -414,8 +416,10 @@ const LeadCostingEditor = ({ costingDays, onChange, onSave, saving, plannerDays,
       priceChildren: exp.priceChild || 0,
       isProtocol: true,
     });
+    if (current?.id) setRowRev(prev => ({ ...prev, [current.id]: (prev[current.id] || 0) + 1 }));
     setExpPicker(null);
   }, [expPicker, costingDays, updateItem]);
+
 
 
   const hasAccommodationSection = costingDays.some(isAccommodationDay);
