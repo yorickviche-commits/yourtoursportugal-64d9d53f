@@ -690,7 +690,9 @@ const LeadDetailPage = ({ mode = 'lead' }: { mode?: 'lead' | 'booking' } = {}) =
         assigned_agents: src.assigned_agents ?? [],
       } as any).eq('id', newLead.id);
 
-      // 2) Travel plan (com imagens), planner, costing e operações
+      // 2) Travel plan (com imagens), planner, costing e operações — apenas a versão LIVE
+      //    da lead de origem, remapeada para a V0 da nova lead.
+      const srcVersion = Number(src.active_version ?? 0);
       const [plans, planner, costing, ops] = await Promise.all([
         supabase.from('travel_plans').select('*').eq('lead_id', lead.id),
         supabase.from('lead_planner_data').select('*').eq('lead_id', lead.id),
@@ -698,11 +700,15 @@ const LeadDetailPage = ({ mode = 'lead' }: { mode?: 'lead' | 'booking' } = {}) =
         supabase.from('lead_operations').select('*').eq('lead_id', lead.id),
       ]);
 
-      const strip = (rows: any[] | null) =>
-        (rows || []).map(({ id: _id, created_at, updated_at, created_by, ...rest }: any) => ({
-          ...rest,
-          lead_id: newLead.id,
-        }));
+      const strip = (rows: any[] | null, versioned = true) =>
+        (rows || [])
+          .filter((r: any) => (versioned && 'version' in r ? Number(r.version ?? 0) === srcVersion : true))
+          .map(({ id: _id, created_at, updated_at, created_by, ...rest }: any) => ({
+            ...rest,
+            lead_id: newLead.id,
+            ...('version' in rest ? { version: 0 } : {}),
+          }));
+
 
       const inserts: Promise<any>[] = [];
       const planRows = strip(plans.data);
