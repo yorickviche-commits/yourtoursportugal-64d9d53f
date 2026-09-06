@@ -49,10 +49,22 @@ import LeadVersionBar from '@/components/leads/LeadVersionBar';
 import { useLeadVersionsQuery, pickGeneralData, saveVersionGeneralData } from '@/hooks/useLeadVersions';
 import { triggerCalendarSync } from '@/hooks/useCalendarSync';
 import CalendarSyncBadge from '@/components/CalendarSyncBadge';
+import { usePublishFeedbackHint } from '@/components/feedback/FeedbackProvider';
+import type { FeedbackModule } from '@/lib/feedbackContext';
 
 import {
   AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter,
 } from '@/components/ui/alert-dialog';
+
+const LEAD_TAB_MODULES: Record<string, FeedbackModule> = {
+  dados_gerais: 'leads',
+  travel_planner: 'travel_plan',
+  custos: 'costing',
+  propostas: 'proposals',
+  operacoes: 'operations',
+  comunicacoes: 'crm',
+  crm: 'crm',
+};
 
 type DetailTab = 'dados_gerais' | 'travel_planner' | 'custos' | 'propostas' | 'operacoes' | 'comunicacoes' | 'crm';
 
