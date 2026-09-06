@@ -304,6 +304,7 @@ const LeadDetailPage = ({ mode = 'lead' }: { mode?: 'lead' | 'booking' } = {}) =
   const createLeadMutation = useCreateLead();
   const deleteLeadMutation = useDeleteLead();
   const [activeTab, setActiveTab] = useState<DetailTab>('dados_gerais');
+  usePublishFeedbackHint(LEAD_TAB_MODULES[activeTab], leadFeedbackRef);
   const [aiLoading, setAiLoading] = useState<string | null>(null);
   const [aiResults, setAiResults] = useState<Record<string, any>>({});
   const [plannerDays, setPlannerDays] = useState<PlannerDay[]>([]);

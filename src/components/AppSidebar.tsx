@@ -62,6 +62,7 @@ const DesktopSidebar = () => {
   const [adminOpen, setAdminOpen] = useState(false);
   const unreadCount = useUnreadNotificationCount();
   const { data: actions = [] } = useAgentPendingActions();
+  const newFeedback = useNewFeedbackCount();
   const pendingActions = actions.filter(a => a.status === 'pending').length;
   const totalBadge = unreadCount + pendingActions;
   const expanded = hovered;
@@ -82,6 +83,7 @@ const DesktopSidebar = () => {
 
   const renderNavItem = (item: NavItem) => {
     const active = isActive(item.to);
+    const badge = item.pageKey === 'admin_feedback' ? newFeedback : 0;
     return (
       <NavLink key={item.to} to={item.to} title={item.label}
         className={cn(
@@ -93,6 +95,12 @@ const DesktopSidebar = () => {
       >
         <item.icon className="h-4 w-4 shrink-0" />
         {expanded && <span className="truncate text-xs">{item.label}</span>}
+        {badge > 0 && (
+          <span className={cn(
+            'text-[9px] font-bold bg-red-500 text-white rounded-full flex items-center justify-center',
+            expanded ? 'ml-auto px-1.5 py-0.5' : 'absolute top-1 right-1 h-3.5 w-3.5'
+          )}>{badge > 9 ? '9+' : badge}</span>
+        )}
       </NavLink>
     );
   };
