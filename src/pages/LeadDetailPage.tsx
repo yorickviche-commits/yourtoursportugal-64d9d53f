@@ -799,6 +799,13 @@ const LeadDetailPage = ({ mode = 'lead' }: { mode?: 'lead' | 'booking' } = {}) =
     }
   };
 
+  // Publica o módulo ativo e a referência YT para o pop-up de reportes.
+  usePublishFeedbackHint(
+    LEAD_TAB_MODULES[activeTab],
+    formState.ytId || (lead as any)?.yt_id || lead?.lead_code || null,
+  );
+
+
   if (isLoading) {
     return <AppLayout><div className="flex items-center justify-center py-20"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /><span className="ml-2 text-sm text-muted-foreground">A carregar...</span></div></AppLayout>;
   }
