@@ -59,12 +59,19 @@ const FeedbackDialog = ({ open, onOpenChange }: Props) => {
   const dirty = !!(draft.title.trim() || draft.description.trim() || files.length || draft.videoUrl.trim());
 
   useEffect(() => {
-    if (!open) return;
+    if (!open) {
+      setAskDiscard(false);
+      setAskRestore(false);
+      return;
+    }
     setCtx(captureContext(hint.leadRef));
     const stored = sessionStorage.getItem(DRAFT_STORAGE_KEY);
-    if (stored) setAskRestore(true);
-    else setDraft(emptyDraft(autoModule));
+    setDraft(emptyDraft(autoModule));
+    setAskRestore(!!stored);
+    setAskDiscard(false);
     setFiles([]);
+    // garante que nenhum modal anterior deixou a página sem cliques
+    document.body.style.pointerEvents = '';
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
 
