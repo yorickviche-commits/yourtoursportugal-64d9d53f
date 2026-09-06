@@ -55,6 +55,9 @@ import CatalogPage from "./pages/CatalogPage";
 import ProductsPage from "./pages/ProductsPage";
 import ProductDetailPage from "./pages/ProductDetailPage";
 import MapasPage from "./pages/MapasPage";
+import MyFeedbackPage from "./pages/MyFeedbackPage";
+import AdminFeedbackPage from "./pages/AdminFeedbackPage";
+import { FeedbackHintProvider } from "@/components/feedback/FeedbackProvider";
 import { BoldShortcutProvider } from "@/lib/richText";
 
 const queryClient = new QueryClient();
@@ -68,6 +71,7 @@ const App = () => (
         <BoldShortcutProvider />
         <BrowserRouter>
           <TourProvider>
+          <FeedbackHintProvider>
           <Routes>
             <Route path="/login" element={<LoginPage />} />
             {/* onboarding */}
@@ -117,6 +121,8 @@ const App = () => (
             <Route path="/products" element={<ProtectedRoute><ProductsPage /></ProtectedRoute>} />
             <Route path="/products/:magpieId" element={<ProtectedRoute><ProductDetailPage /></ProtectedRoute>} />
             <Route path="/mapas" element={<ProtectedRoute><MapasPage /></ProtectedRoute>} />
+            <Route path="/my-feedback" element={<ProtectedRoute><MyFeedbackPage /></ProtectedRoute>} />
+            <Route path="/admin/feedback" element={<ProtectedRoute adminOnly><AdminFeedbackPage /></ProtectedRoute>} />
             <Route path="/admin/users" element={<ProtectedRoute><AdminUsersPage /></ProtectedRoute>} />
             <Route path="/admin/permissions" element={<ProtectedRoute><AdminPermissionsPage /></ProtectedRoute>} />
             <Route path="/admin/settings" element={<ProtectedRoute><AdminSettingsPage /></ProtectedRoute>} />
@@ -128,6 +134,7 @@ const App = () => (
 
             <Route path="*" element={<NotFound />} />
           </Routes>
+          </FeedbackHintProvider>
           </TourProvider>
         </BrowserRouter>
       </TooltipProvider>

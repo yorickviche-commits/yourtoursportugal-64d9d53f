@@ -5,6 +5,7 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import BrandLogo from './BrandLogo';
 import TourLauncher from './tour/TourLauncher';
 import AssistantLauncher from './assistant/AssistantLauncher';
+import FeedbackLauncher from './feedback/FeedbackLauncher';
 
 const AppLayout = ({ children }: { children: ReactNode }) => {
   const [newLeadOpen, setNewLeadOpen] = useState(false);
@@ -26,6 +27,7 @@ const AppLayout = ({ children }: { children: ReactNode }) => {
       <NewLeadFAB onClick={() => setNewLeadOpen(true)} />
       <TourLauncher />
       <AssistantLauncher />
+      <FeedbackLauncher />
       <NewLeadDialog open={newLeadOpen} onOpenChange={setNewLeadOpen} />
     </div>
   );

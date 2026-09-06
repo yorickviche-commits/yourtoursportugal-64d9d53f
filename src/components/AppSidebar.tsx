@@ -2,7 +2,7 @@ import { NavLink, useLocation } from 'react-router-dom';
 import {
   Map, MapPin, Users, CreditCard, Sparkles, LayoutDashboard,
   FileText, Handshake, Grid3x3, Truck, Settings, Shield, Plug, ScrollText,
-  Inbox, PackageSearch, Boxes, Brain, Radar,
+  Inbox, PackageSearch, Boxes, Brain, Radar, Bug, MessageSquareWarning,
   LogOut, ChevronDown, ChevronRight, Menu, X,
 } from 'lucide-react';
 import { useState } from 'react';
@@ -10,6 +10,7 @@ import { cn } from '@/lib/utils';
 import { useAuth } from '@/hooks/useAuth';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useUnreadNotificationCount } from '@/hooks/useAgentNotifications';
+import { useNewFeedbackCount } from '@/hooks/useFeedbackQuery';
 import { useAgentPendingActions } from '@/hooks/useAgentPendingActions';
 import { usePagePermissions } from '@/hooks/usePagePermissions';
 import { PageKey } from '@/lib/pagePermissions';
@@ -20,6 +21,7 @@ interface NavItem { to: string; icon: any; label: string; pageKey: PageKey; }
 const overviewItems: NavItem[] = [
   { to: '/dashboard', icon: LayoutDashboard, label: 'Dashboard', pageKey: 'dashboard' },
   { to: '/profile/me', icon: Users, label: 'O Meu Perfil', pageKey: 'profile' },
+  { to: '/my-feedback', icon: Bug, label: 'Os Meus Reportes', pageKey: 'my_feedback' },
 ];
 
 const reservasItems: NavItem[] = [
@@ -46,6 +48,7 @@ const adminItems: NavItem[] = [
   { to: '/admin/settings', icon: Settings, label: 'Configurações', pageKey: 'admin_settings' },
   { to: '/admin/integrations', icon: Plug, label: 'Integrações', pageKey: 'admin_integrations' },
   { to: '/admin/logs', icon: ScrollText, label: 'Logs', pageKey: 'admin_logs' },
+  { to: '/admin/feedback', icon: MessageSquareWarning, label: 'Feedback da Plataforma', pageKey: 'admin_feedback' },
 ];
 
 const DesktopSidebar = () => {
