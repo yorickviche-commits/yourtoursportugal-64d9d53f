@@ -9,11 +9,12 @@
  *   supabase.functions.invoke('geocode-map-locations', { body: { limit: 200 } })
  *   body opcional: { limit?: number; source?: 'fse'|'experiencia'|'produto'; force?: boolean }
  *
- * Secrets necessários:
- *   GOOGLE_MAPS_SERVER_KEY  — chave de servidor (SEM restrição de referrer,
- *                             COM restrição de IP e limitada à Geocoding API).
- *                             Não reutilizar a chave do browser.
- *   SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY — injetados pela plataforma.
+ * Secrets necessários (todos já injetados pela plataforma):
+ *   LOVABLE_API_KEY + GOOGLE_MAPS_API_KEY — conector Google Maps Platform.
+ *     A chamada Geocoding vai pelo gateway do conector; a chave do browser
+ *     tem restrição de referrer e devolveria REQUEST_DENIED.
+ *   GOOGLE_MAPS_SERVER_KEY — opcional: se existir, é usada em chamada direta.
+ *   SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY.
  */
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
@@ -64,10 +65,17 @@ function districtFrom(components: Component[]) {
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: CORS });
 
-  const apiKey = Deno.env.get('GOOGLE_MAPS_SERVER_KEY');
-  if (!apiKey) {
+  const serverKey = Deno.env.get('GOOGLE_MAPS_SERVER_KEY');
+  const lovableKey = Deno.env.get('LOVABLE_API_KEY');
+  const connectorKey = Deno.env.get('GOOGLE_MAPS_API_KEY');
+  const useGateway = !serverKey;
+
+  if (useGateway && !(lovableKey && connectorKey)) {
     return new Response(
-      JSON.stringify({ error: 'GOOGLE_MAPS_SERVER_KEY não configurada' }),
+      JSON.stringify({
+        error:
+          'Sem credenciais Google Maps: liga o conector Google Maps Platform ou define GOOGLE_MAPS_SERVER_KEY.',
+      }),
       { status: 500, headers: { ...CORS, 'Content-Type': 'application/json' } },
     );
   }
@@ -100,14 +108,37 @@ Deno.serve(async (req) => {
 
   for (const row of rows) {
     try {
-      const url = new URL('https://maps.googleapis.com/maps/api/geocode/json');
+      const base = useGateway
+        ? 'https://connector-gateway.lovable.dev/google_maps/maps/api/geocode/json'
+        : 'https://maps.googleapis.com/maps/api/geocode/json';
+      const url = new URL(base);
       url.searchParams.set('address', row.query);
       url.searchParams.set('region', 'pt');
       url.searchParams.set('language', 'pt-PT');
       url.searchParams.set('components', 'country:PT');
-      url.searchParams.set('key', apiKey);
+      // o gateway injeta a chave; em modo direto usamos a chave de servidor
+      if (!useGateway) url.searchParams.set('key', serverKey!);
 
-      const res = await fetch(url);
+      const res = await fetch(url, {
+        headers: useGateway
+          ? {
+              Authorization: `Bearer ${lovableKey}`,
+              'X-Connection-Api-Key': connectorKey!,
+            }
+          : {},
+      });
+
+      if (!res.ok) {
+        const detail = await res.text();
+        failed++;
+        if (errors.length < 10) {
+          errors.push(`${row.source_id}: HTTP ${res.status} ${detail.slice(0, 200)}`);
+        }
+        if (res.status === 401 || res.status === 403) break;
+        await sleep(BATCH_DELAY_MS);
+        continue;
+      }
+
       const json = await res.json();
 
       if (json.status === 'OK' && json.results?.[0]) {

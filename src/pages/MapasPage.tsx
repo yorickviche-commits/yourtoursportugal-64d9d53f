@@ -10,7 +10,8 @@ import type { MapItem, MapKey, Section } from '@/features/mapas/core';
 import { useMapsData, usePendingGeocode, useMapsFilters, useRoute } from '@/features/mapas/hooks';
 import '@/features/mapas/mapas.css';
 
-const API_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY as string | undefined;
+const API_KEY = (import.meta.env.VITE_GOOGLE_MAPS_API_KEY
+  || import.meta.env.VITE_LOVABLE_CONNECTOR_GOOGLE_MAPS_BROWSER_KEY) as string | undefined;
 const MAP_ID = (import.meta.env.VITE_GOOGLE_MAPS_MAP_ID as string) || 'DEMO_MAP_ID';
 
 const HOVER_CLOSE_MS = 160;
@@ -184,10 +185,12 @@ const MapasPage = () => {
       <AppLayout>
         <div className="p-6 text-sm text-muted-foreground">
           <strong className="text-foreground">
-            VITE_GOOGLE_MAPS_API_KEY não está definida.
+            Nenhuma chave Google Maps disponível (VITE_GOOGLE_MAPS_API_KEY ou
+            VITE_LOVABLE_CONNECTOR_GOOGLE_MAPS_BROWSER_KEY).
           </strong>
           <p className="mt-1">
-            Adiciona a chave nos secrets do projeto para carregar os mapas.
+            Liga o conector Google Maps Platform ou adiciona a chave nos secrets do
+            projeto para carregar os mapas.
           </p>
         </div>
       </AppLayout>
