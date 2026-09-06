@@ -10,7 +10,8 @@ import type { MapItem, MapKey, Section } from '@/features/mapas/core';
 import { useMapsData, usePendingGeocode, useMapsFilters, useRoute } from '@/features/mapas/hooks';
 import '@/features/mapas/mapas.css';
 
-const API_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY as string | undefined;
+const API_KEY = (import.meta.env.VITE_GOOGLE_MAPS_API_KEY
+  || import.meta.env.VITE_LOVABLE_CONNECTOR_GOOGLE_MAPS_BROWSER_KEY) as string | undefined;
 const MAP_ID = (import.meta.env.VITE_GOOGLE_MAPS_MAP_ID as string) || 'DEMO_MAP_ID';
 
 const HOVER_CLOSE_MS = 160;
