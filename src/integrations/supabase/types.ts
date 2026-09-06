@@ -94,6 +94,57 @@ export type Database = {
           },
         ]
       }
+      agent_notifications: {
+        Row: {
+          agent_name: string
+          body: string
+          created_at: string
+          dismissed_at: string | null
+          entity_id: string | null
+          entity_ref: string | null
+          entity_type: string | null
+          id: string
+          metadata: Json
+          priority: string
+          read_at: string | null
+          title: string
+          type: string
+          user_id: string | null
+        }
+        Insert: {
+          agent_name?: string
+          body: string
+          created_at?: string
+          dismissed_at?: string | null
+          entity_id?: string | null
+          entity_ref?: string | null
+          entity_type?: string | null
+          id?: string
+          metadata?: Json
+          priority?: string
+          read_at?: string | null
+          title: string
+          type: string
+          user_id?: string | null
+        }
+        Update: {
+          agent_name?: string
+          body?: string
+          created_at?: string
+          dismissed_at?: string | null
+          entity_id?: string | null
+          entity_ref?: string | null
+          entity_type?: string | null
+          id?: string
+          metadata?: Json
+          priority?: string
+          read_at?: string | null
+          title?: string
+          type?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       agent_status: {
         Row: {
           agent_id: string
@@ -2675,6 +2726,318 @@ export type Database = {
         }
         Relationships: []
       }
+      platform_feedback: {
+        Row: {
+          app_version: string | null
+          assignee_id: string | null
+          browser: string | null
+          created_at: string
+          description: string
+          duplicate_of: string | null
+          effort: string | null
+          id: string
+          lead_ref: string | null
+          locale: string | null
+          module: string
+          os: string | null
+          page_route: string
+          page_title: string | null
+          page_url: string
+          priority: Database["public"]["Enums"]["feedback_priority"] | null
+          ref: string | null
+          reported_by: string | null
+          reporter_email: string | null
+          reporter_name: string | null
+          reporter_roles: string[] | null
+          resolution_note: string | null
+          resolved_at: string | null
+          screen: string | null
+          severity: Database["public"]["Enums"]["feedback_severity"] | null
+          status: Database["public"]["Enums"]["feedback_status"]
+          tags: string[]
+          target_release: string | null
+          timezone: string | null
+          title: string
+          triaged_at: string | null
+          type: Database["public"]["Enums"]["feedback_type"]
+          updated_at: string
+          user_agent: string | null
+          video_url: string | null
+          viewport: string | null
+        }
+        Insert: {
+          app_version?: string | null
+          assignee_id?: string | null
+          browser?: string | null
+          created_at?: string
+          description: string
+          duplicate_of?: string | null
+          effort?: string | null
+          id?: string
+          lead_ref?: string | null
+          locale?: string | null
+          module: string
+          os?: string | null
+          page_route: string
+          page_title?: string | null
+          page_url: string
+          priority?: Database["public"]["Enums"]["feedback_priority"] | null
+          ref?: string | null
+          reported_by?: string | null
+          reporter_email?: string | null
+          reporter_name?: string | null
+          reporter_roles?: string[] | null
+          resolution_note?: string | null
+          resolved_at?: string | null
+          screen?: string | null
+          severity?: Database["public"]["Enums"]["feedback_severity"] | null
+          status?: Database["public"]["Enums"]["feedback_status"]
+          tags?: string[]
+          target_release?: string | null
+          timezone?: string | null
+          title: string
+          triaged_at?: string | null
+          type: Database["public"]["Enums"]["feedback_type"]
+          updated_at?: string
+          user_agent?: string | null
+          video_url?: string | null
+          viewport?: string | null
+        }
+        Update: {
+          app_version?: string | null
+          assignee_id?: string | null
+          browser?: string | null
+          created_at?: string
+          description?: string
+          duplicate_of?: string | null
+          effort?: string | null
+          id?: string
+          lead_ref?: string | null
+          locale?: string | null
+          module?: string
+          os?: string | null
+          page_route?: string
+          page_title?: string | null
+          page_url?: string
+          priority?: Database["public"]["Enums"]["feedback_priority"] | null
+          ref?: string | null
+          reported_by?: string | null
+          reporter_email?: string | null
+          reporter_name?: string | null
+          reporter_roles?: string[] | null
+          resolution_note?: string | null
+          resolved_at?: string | null
+          screen?: string | null
+          severity?: Database["public"]["Enums"]["feedback_severity"] | null
+          status?: Database["public"]["Enums"]["feedback_status"]
+          tags?: string[]
+          target_release?: string | null
+          timezone?: string | null
+          title?: string
+          triaged_at?: string | null
+          type?: Database["public"]["Enums"]["feedback_type"]
+          updated_at?: string
+          user_agent?: string | null
+          video_url?: string | null
+          viewport?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "platform_feedback_duplicate_of_fkey"
+            columns: ["duplicate_of"]
+            isOneToOne: false
+            referencedRelation: "platform_feedback"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "platform_feedback_duplicate_of_fkey"
+            columns: ["duplicate_of"]
+            isOneToOne: false
+            referencedRelation: "platform_feedback_overview"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      platform_feedback_attachments: {
+        Row: {
+          created_at: string
+          feedback_id: string
+          file_name: string
+          height: number | null
+          id: string
+          mime_type: string
+          size_bytes: number
+          storage_path: string
+          uploaded_by: string | null
+          width: number | null
+        }
+        Insert: {
+          created_at?: string
+          feedback_id: string
+          file_name: string
+          height?: number | null
+          id?: string
+          mime_type: string
+          size_bytes: number
+          storage_path: string
+          uploaded_by?: string | null
+          width?: number | null
+        }
+        Update: {
+          created_at?: string
+          feedback_id?: string
+          file_name?: string
+          height?: number | null
+          id?: string
+          mime_type?: string
+          size_bytes?: number
+          storage_path?: string
+          uploaded_by?: string | null
+          width?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "platform_feedback_attachments_feedback_id_fkey"
+            columns: ["feedback_id"]
+            isOneToOne: false
+            referencedRelation: "platform_feedback"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "platform_feedback_attachments_feedback_id_fkey"
+            columns: ["feedback_id"]
+            isOneToOne: false
+            referencedRelation: "platform_feedback_overview"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      platform_feedback_comments: {
+        Row: {
+          author_id: string | null
+          author_name: string | null
+          body: string
+          created_at: string
+          feedback_id: string
+          id: string
+          is_internal: boolean
+        }
+        Insert: {
+          author_id?: string | null
+          author_name?: string | null
+          body: string
+          created_at?: string
+          feedback_id: string
+          id?: string
+          is_internal?: boolean
+        }
+        Update: {
+          author_id?: string | null
+          author_name?: string | null
+          body?: string
+          created_at?: string
+          feedback_id?: string
+          id?: string
+          is_internal?: boolean
+        }
+        Relationships: [
+          {
+            foreignKeyName: "platform_feedback_comments_feedback_id_fkey"
+            columns: ["feedback_id"]
+            isOneToOne: false
+            referencedRelation: "platform_feedback"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "platform_feedback_comments_feedback_id_fkey"
+            columns: ["feedback_id"]
+            isOneToOne: false
+            referencedRelation: "platform_feedback_overview"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      platform_feedback_events: {
+        Row: {
+          actor_id: string | null
+          actor_name: string | null
+          created_at: string
+          event_type: string
+          feedback_id: string
+          from_value: string | null
+          id: string
+          to_value: string | null
+        }
+        Insert: {
+          actor_id?: string | null
+          actor_name?: string | null
+          created_at?: string
+          event_type: string
+          feedback_id: string
+          from_value?: string | null
+          id?: string
+          to_value?: string | null
+        }
+        Update: {
+          actor_id?: string | null
+          actor_name?: string | null
+          created_at?: string
+          event_type?: string
+          feedback_id?: string
+          from_value?: string | null
+          id?: string
+          to_value?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "platform_feedback_events_feedback_id_fkey"
+            columns: ["feedback_id"]
+            isOneToOne: false
+            referencedRelation: "platform_feedback"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "platform_feedback_events_feedback_id_fkey"
+            columns: ["feedback_id"]
+            isOneToOne: false
+            referencedRelation: "platform_feedback_overview"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      platform_feedback_votes: {
+        Row: {
+          created_at: string
+          feedback_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          feedback_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          feedback_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "platform_feedback_votes_feedback_id_fkey"
+            columns: ["feedback_id"]
+            isOneToOne: false
+            referencedRelation: "platform_feedback"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "platform_feedback_votes_feedback_id_fkey"
+            columns: ["feedback_id"]
+            isOneToOne: false
+            referencedRelation: "platform_feedback_overview"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       pricing_patterns: {
         Row: {
           active: boolean | null
@@ -4529,6 +4892,66 @@ export type Database = {
       }
     }
     Views: {
+      platform_feedback_overview: {
+        Row: {
+          app_version: string | null
+          assignee_id: string | null
+          assignee_name: string | null
+          attachments_count: number | null
+          browser: string | null
+          comments_count: number | null
+          created_at: string | null
+          description: string | null
+          duplicate_of: string | null
+          effort: string | null
+          id: string | null
+          lead_ref: string | null
+          locale: string | null
+          module: string | null
+          os: string | null
+          page_route: string | null
+          page_title: string | null
+          page_url: string | null
+          priority: Database["public"]["Enums"]["feedback_priority"] | null
+          ref: string | null
+          reported_by: string | null
+          reporter_email: string | null
+          reporter_name: string | null
+          reporter_roles: string[] | null
+          resolution_note: string | null
+          resolved_at: string | null
+          screen: string | null
+          severity: Database["public"]["Enums"]["feedback_severity"] | null
+          status: Database["public"]["Enums"]["feedback_status"] | null
+          tags: string[] | null
+          target_release: string | null
+          timezone: string | null
+          title: string | null
+          triaged_at: string | null
+          type: Database["public"]["Enums"]["feedback_type"] | null
+          updated_at: string | null
+          user_agent: string | null
+          video_url: string | null
+          viewport: string | null
+          votes: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "platform_feedback_duplicate_of_fkey"
+            columns: ["duplicate_of"]
+            isOneToOne: false
+            referencedRelation: "platform_feedback"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "platform_feedback_duplicate_of_fkey"
+            columns: ["duplicate_of"]
+            isOneToOne: false
+            referencedRelation: "platform_feedback_overview"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       v_agent_task_queue: {
         Row: {
           action_label: string | null
@@ -4708,6 +5131,7 @@ export type Database = {
       }
     }
     Functions: {
+      can_view_feedback: { Args: { _feedback_id: string }; Returns: boolean }
       delete_email: {
         Args: { message_id: number; queue_name: string }
         Returns: boolean
@@ -4717,6 +5141,7 @@ export type Database = {
         Args: { payload: Json; queue_name: string }
         Returns: number
       }
+      feedback_is_new: { Args: { _feedback_id: string }; Returns: boolean }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -4726,6 +5151,21 @@ export type Database = {
       }
       is_admin: { Args: { _user_id: string }; Returns: boolean }
       is_internal_user: { Args: { _user_id: string }; Returns: boolean }
+      list_public_feedback: {
+        Args: never
+        Returns: {
+          created_at: string
+          id: string
+          module: string
+          ref: string
+          reported_by: string
+          severity: Database["public"]["Enums"]["feedback_severity"]
+          status: Database["public"]["Enums"]["feedback_status"]
+          title: string
+          type: Database["public"]["Enums"]["feedback_type"]
+          votes: number
+        }[]
+      }
       map_destino: { Args: { region: string }; Returns: string }
       map_destino_from_district: { Args: { district: string }; Returns: string }
       map_destino_resolved: {
@@ -4777,6 +5217,17 @@ export type Database = {
         | "finance"
         | "b2b_manager"
         | "viewer"
+      feedback_priority: "p0" | "p1" | "p2" | "p3"
+      feedback_severity: "blocker" | "high" | "medium" | "low"
+      feedback_status:
+        | "new"
+        | "triaged"
+        | "in_progress"
+        | "in_review"
+        | "done"
+        | "wont_fix"
+        | "duplicate"
+      feedback_type: "bug" | "improvement" | "suggestion"
       map_source: "fse" | "experiencia" | "produto"
     }
     CompositeTypes: {
@@ -4914,6 +5365,18 @@ export const Constants = {
         "b2b_manager",
         "viewer",
       ],
+      feedback_priority: ["p0", "p1", "p2", "p3"],
+      feedback_severity: ["blocker", "high", "medium", "low"],
+      feedback_status: [
+        "new",
+        "triaged",
+        "in_progress",
+        "in_review",
+        "done",
+        "wont_fix",
+        "duplicate",
+      ],
+      feedback_type: ["bug", "improvement", "suggestion"],
       map_source: ["fse", "experiencia", "produto"],
     },
   },
