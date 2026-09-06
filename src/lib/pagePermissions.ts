@@ -22,6 +22,8 @@ export type PageKey =
   | 'admin_integrations'
   | 'admin_logs'
   | 'agents'
+  | 'my_feedback'
+  | 'admin_feedback'
   | 'yt_brain';
 
 
@@ -47,6 +49,8 @@ export const PAGES: PageDef[] = [
   { key: 'mapas',               label: 'Mapas',                path: '/mapas',                group: 'Comercial' },
   { key: 'partners',            label: 'Parceiros B2B',        path: '/partners',             group: 'Comercial' },
   { key: 'profile',             label: 'O Meu Perfil',         path: '/profile',              group: 'Visão Geral' },
+  { key: 'my_feedback',         label: 'Os Meus Reportes',     path: '/my-feedback',          group: 'Visão Geral' },
+  { key: 'admin_feedback',      label: 'Feedback da Plataforma', path: '/admin/feedback',     group: 'Administração' },
   { key: 'admin_users',         label: 'Utilizadores',         path: '/admin/users',          group: 'Administração' },
   { key: 'admin_permissions',   label: 'Permissões',           path: '/admin/permissions',    group: 'Administração' },
   { key: 'admin_settings',      label: 'Configurações',        path: '/admin/settings',       group: 'Administração' },
