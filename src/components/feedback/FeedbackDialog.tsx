@@ -3,7 +3,7 @@ import { useLocation } from 'react-router-dom';
 import { toast } from 'sonner';
 import { ArrowLeft, Loader2, Video } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
+
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -59,12 +59,19 @@ const FeedbackDialog = ({ open, onOpenChange }: Props) => {
   const dirty = !!(draft.title.trim() || draft.description.trim() || files.length || draft.videoUrl.trim());
 
   useEffect(() => {
-    if (!open) return;
+    if (!open) {
+      setAskDiscard(false);
+      setAskRestore(false);
+      return;
+    }
     setCtx(captureContext(hint.leadRef));
     const stored = sessionStorage.getItem(DRAFT_STORAGE_KEY);
-    if (stored) setAskRestore(true);
-    else setDraft(emptyDraft(autoModule));
+    setDraft(emptyDraft(autoModule));
+    setAskRestore(!!stored);
+    setAskDiscard(false);
     setFiles([]);
+    // garante que nenhum modal anterior deixou a página sem cliques
+    document.body.style.pointerEvents = '';
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
 
@@ -145,6 +152,31 @@ const FeedbackDialog = ({ open, onOpenChange }: Props) => {
                 : 'Escolhe o tipo de reporte para continuar.'}
             </DialogDescription>
           </DialogHeader>
+
+          {askRestore && (
+            <div className="rounded-md border bg-muted/40 p-3 text-xs">
+              <p className="font-medium">Tens um rascunho não enviado. Queres recuperá-lo?</p>
+              <div className="mt-2 flex justify-end gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => { sessionStorage.removeItem(DRAFT_STORAGE_KEY); setDraft(emptyDraft(autoModule)); setAskRestore(false); }}
+                >
+                  Começar de novo
+                </Button>
+                <Button
+                  size="sm"
+                  onClick={() => {
+                    const stored = sessionStorage.getItem(DRAFT_STORAGE_KEY);
+                    if (stored) { try { setDraft({ ...emptyDraft(autoModule), ...JSON.parse(stored) }); } catch { /* ignora */ } }
+                    setAskRestore(false);
+                  }}
+                >
+                  Recuperar
+                </Button>
+              </div>
+            </div>
+          )}
 
           {!draft.type ? (
             <FeedbackTypeCards onSelect={t => setDraft(d => ({ ...d, type: t }))} />
@@ -239,50 +271,32 @@ const FeedbackDialog = ({ open, onOpenChange }: Props) => {
 
               {ctx && <ContextBar ctx={ctx} reporterName={reporterName} roles={roleCodes} />}
 
-              <div className="flex justify-end gap-2 pt-1">
-                <Button variant="outline" size="sm" onClick={() => close()}>Cancelar</Button>
-                <Button size="sm" disabled={!valid || create.isPending} onClick={submit}>
-                  {create.isPending && <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />}
-                  Enviar reporte
-                </Button>
-              </div>
+              {askDiscard ? (
+                <div className="rounded-md border border-amber-300 bg-amber-50 p-3 text-xs">
+                  <p className="font-medium">Fechar sem enviar? O rascunho fica guardado nesta sessão.</p>
+                  <div className="mt-2 flex justify-end gap-2">
+                    <Button variant="outline" size="sm" onClick={() => setAskDiscard(false)}>Continuar a escrever</Button>
+                    <Button size="sm" variant="destructive" onClick={() => { setAskDiscard(false); onOpenChange(false); }}>Fechar</Button>
+                  </div>
+                </div>
+              ) : (
+                <div className="flex flex-wrap items-center justify-end gap-2 pt-1">
+                  {!valid && (
+                    <span className="mr-auto text-[11px] text-muted-foreground">
+                      Título com 3+ caracteres e descrição com 10+ caracteres.
+                    </span>
+                  )}
+                  <Button variant="outline" size="sm" onClick={() => close()}>Cancelar</Button>
+                  <Button size="sm" disabled={!valid || create.isPending} onClick={submit}>
+                    {create.isPending && <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />}
+                    Enviar reporte
+                  </Button>
+                </div>
+              )}
             </div>
           )}
         </DialogContent>
       </Dialog>
-
-      <AlertDialog open={askRestore} onOpenChange={setAskRestore}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Recuperar rascunho?</AlertDialogTitle>
-            <AlertDialogDescription>Encontrámos um reporte que começaste e não enviaste.</AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel onClick={() => { sessionStorage.removeItem(DRAFT_STORAGE_KEY); setDraft(emptyDraft(autoModule)); }}>
-              Começar de novo
-            </AlertDialogCancel>
-            <AlertDialogAction onClick={() => {
-              const stored = sessionStorage.getItem(DRAFT_STORAGE_KEY);
-              if (stored) { try { setDraft({ ...emptyDraft(autoModule), ...JSON.parse(stored) }); } catch { /* ignora */ } }
-            }}>
-              Recuperar
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-
-      <AlertDialog open={askDiscard} onOpenChange={setAskDiscard}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Fechar sem enviar?</AlertDialogTitle>
-            <AlertDialogDescription>O rascunho fica guardado nesta sessão.</AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Continuar a escrever</AlertDialogCancel>
-            <AlertDialogAction onClick={() => { setAskDiscard(false); onOpenChange(false); }}>Fechar</AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
     </>
   );
 };
