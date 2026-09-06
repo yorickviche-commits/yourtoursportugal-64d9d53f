@@ -49,10 +49,22 @@ import LeadVersionBar from '@/components/leads/LeadVersionBar';
 import { useLeadVersionsQuery, pickGeneralData, saveVersionGeneralData } from '@/hooks/useLeadVersions';
 import { triggerCalendarSync } from '@/hooks/useCalendarSync';
 import CalendarSyncBadge from '@/components/CalendarSyncBadge';
+import { usePublishFeedbackHint } from '@/components/feedback/FeedbackProvider';
+import type { FeedbackModule } from '@/lib/feedbackContext';
 
 import {
   AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter,
 } from '@/components/ui/alert-dialog';
+
+const LEAD_TAB_MODULES: Record<string, FeedbackModule> = {
+  dados_gerais: 'leads',
+  travel_planner: 'travel_plan',
+  custos: 'costing',
+  propostas: 'proposals',
+  operacoes: 'operations',
+  comunicacoes: 'crm',
+  crm: 'crm',
+};
 
 type DetailTab = 'dados_gerais' | 'travel_planner' | 'custos' | 'propostas' | 'operacoes' | 'comunicacoes' | 'crm';
 
@@ -798,6 +810,13 @@ const LeadDetailPage = ({ mode = 'lead' }: { mode?: 'lead' | 'booking' } = {}) =
       setAiLoading(null);
     }
   };
+
+  // Publica o módulo ativo e a referência YT para o pop-up de reportes.
+  usePublishFeedbackHint(
+    LEAD_TAB_MODULES[activeTab],
+    formState.ytId || (lead as any)?.yt_id || lead?.lead_code || null,
+  );
+
 
   if (isLoading) {
     return <AppLayout><div className="flex items-center justify-center py-20"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /><span className="ml-2 text-sm text-muted-foreground">A carregar...</span></div></AppLayout>;

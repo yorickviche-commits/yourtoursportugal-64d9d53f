@@ -2,7 +2,7 @@ import { NavLink, useLocation } from 'react-router-dom';
 import {
   Map, MapPin, Users, CreditCard, Sparkles, LayoutDashboard,
   FileText, Handshake, Grid3x3, Truck, Settings, Shield, Plug, ScrollText,
-  Inbox, PackageSearch, Boxes, Brain, Radar,
+  Inbox, PackageSearch, Boxes, Brain, Radar, Bug, MessageSquareWarning,
   LogOut, ChevronDown, ChevronRight, Menu, X,
 } from 'lucide-react';
 import { useState } from 'react';
@@ -10,6 +10,7 @@ import { cn } from '@/lib/utils';
 import { useAuth } from '@/hooks/useAuth';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useUnreadNotificationCount } from '@/hooks/useAgentNotifications';
+import { useNewFeedbackCount } from '@/hooks/useFeedbackQuery';
 import { useAgentPendingActions } from '@/hooks/useAgentPendingActions';
 import { usePagePermissions } from '@/hooks/usePagePermissions';
 import { PageKey } from '@/lib/pagePermissions';
@@ -20,6 +21,7 @@ interface NavItem { to: string; icon: any; label: string; pageKey: PageKey; }
 const overviewItems: NavItem[] = [
   { to: '/dashboard', icon: LayoutDashboard, label: 'Dashboard', pageKey: 'dashboard' },
   { to: '/profile/me', icon: Users, label: 'O Meu Perfil', pageKey: 'profile' },
+  { to: '/my-feedback', icon: Bug, label: 'Os Meus Reportes', pageKey: 'my_feedback' },
 ];
 
 const reservasItems: NavItem[] = [
@@ -46,6 +48,7 @@ const adminItems: NavItem[] = [
   { to: '/admin/settings', icon: Settings, label: 'Configurações', pageKey: 'admin_settings' },
   { to: '/admin/integrations', icon: Plug, label: 'Integrações', pageKey: 'admin_integrations' },
   { to: '/admin/logs', icon: ScrollText, label: 'Logs', pageKey: 'admin_logs' },
+  { to: '/admin/feedback', icon: MessageSquareWarning, label: 'Feedback da Plataforma', pageKey: 'admin_feedback' },
 ];
 
 const DesktopSidebar = () => {
@@ -59,6 +62,7 @@ const DesktopSidebar = () => {
   const [adminOpen, setAdminOpen] = useState(false);
   const unreadCount = useUnreadNotificationCount();
   const { data: actions = [] } = useAgentPendingActions();
+  const newFeedback = useNewFeedbackCount();
   const pendingActions = actions.filter(a => a.status === 'pending').length;
   const totalBadge = unreadCount + pendingActions;
   const expanded = hovered;
@@ -79,6 +83,7 @@ const DesktopSidebar = () => {
 
   const renderNavItem = (item: NavItem) => {
     const active = isActive(item.to);
+    const badge = item.pageKey === 'admin_feedback' ? newFeedback : 0;
     return (
       <NavLink key={item.to} to={item.to} title={item.label}
         className={cn(
@@ -90,6 +95,12 @@ const DesktopSidebar = () => {
       >
         <item.icon className="h-4 w-4 shrink-0" />
         {expanded && <span className="truncate text-xs">{item.label}</span>}
+        {badge > 0 && (
+          <span className={cn(
+            'text-[9px] font-bold bg-red-500 text-white rounded-full flex items-center justify-center',
+            expanded ? 'ml-auto px-1.5 py-0.5' : 'absolute top-1 right-1 h-3.5 w-3.5'
+          )}>{badge > 9 ? '9+' : badge}</span>
+        )}
       </NavLink>
     );
   };

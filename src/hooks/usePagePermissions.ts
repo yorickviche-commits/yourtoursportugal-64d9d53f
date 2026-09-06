@@ -28,6 +28,9 @@ export function usePagePermissions() {
 
   const canAccess = (page: PageKey): boolean => {
     if (authLoading) return false;
+    // Reportar problemas está sempre disponível a qualquer utilizador interno.
+    if (page === 'my_feedback') return !!user;
+    if (page === 'admin_feedback') return isAdmin;
     if (isAdmin) return true;
     if (!query.data) return false;
     const key = permKey(page);
