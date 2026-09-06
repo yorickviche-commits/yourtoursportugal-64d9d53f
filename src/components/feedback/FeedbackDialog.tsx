@@ -153,6 +153,31 @@ const FeedbackDialog = ({ open, onOpenChange }: Props) => {
             </DialogDescription>
           </DialogHeader>
 
+          {askRestore && (
+            <div className="rounded-md border bg-muted/40 p-3 text-xs">
+              <p className="font-medium">Tens um rascunho não enviado. Queres recuperá-lo?</p>
+              <div className="mt-2 flex justify-end gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => { sessionStorage.removeItem(DRAFT_STORAGE_KEY); setDraft(emptyDraft(autoModule)); setAskRestore(false); }}
+                >
+                  Começar de novo
+                </Button>
+                <Button
+                  size="sm"
+                  onClick={() => {
+                    const stored = sessionStorage.getItem(DRAFT_STORAGE_KEY);
+                    if (stored) { try { setDraft({ ...emptyDraft(autoModule), ...JSON.parse(stored) }); } catch { /* ignora */ } }
+                    setAskRestore(false);
+                  }}
+                >
+                  Recuperar
+                </Button>
+              </div>
+            </div>
+          )}
+
           {!draft.type ? (
             <FeedbackTypeCards onSelect={t => setDraft(d => ({ ...d, type: t }))} />
           ) : (
