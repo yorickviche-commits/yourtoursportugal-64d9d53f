@@ -459,14 +459,36 @@ function FilterEditor({
 
       {needsValues && (
         <div>
-          <label className="text-[10px] uppercase text-muted-foreground">Valores</label>
-          {freeText ? (
+          <label className="text-[10px] uppercase text-muted-foreground">
+            {isMulti ? 'Valores (separados por vírgula)' : 'Valor'}
+          </label>
+          {local.op === 'contains' ? (
             <Input
               className="h-7 text-xs mt-1"
-              type={isNumeric ? 'number' : isDate ? 'date' : 'text'}
-              value={(local.values?.[0] as any) ?? ''}
-              onChange={e => setLocal({ ...local, values: [isNumeric ? Number(e.target.value) : e.target.value] })}
+              placeholder="Texto a procurar"
+              value={String(local.values?.[0] ?? '')}
+              onChange={e => setLocal({ ...local, values: e.target.value ? [e.target.value] : [] })}
             />
+          ) : freeText ? (
+            isMulti ? (
+              <Input
+                className="h-7 text-xs mt-1"
+                placeholder="valor1, valor2"
+                value={(local.values || []).join(', ')}
+                onChange={e => setLocal({
+                  ...local,
+                  values: e.target.value.split(',').map(s => s.trim()).filter(Boolean)
+                    .map(s => (isNumeric ? Number(s) : s)),
+                })}
+              />
+            ) : (
+              <Input
+                className="h-7 text-xs mt-1"
+                type={isNumeric ? 'number' : isDate ? 'date' : 'text'}
+                value={String(local.values?.[0] ?? '')}
+                onChange={e => setLocal({ ...local, values: [isNumeric ? Number(e.target.value) : e.target.value] })}
+              />
+            )
           ) : (
             <>
               <Input className="h-7 text-xs mt-1" placeholder="Pesquisar valor" value={valueSearch} onChange={e => setValueSearch(e.target.value)} />
