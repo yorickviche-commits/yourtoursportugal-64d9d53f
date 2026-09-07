@@ -6,3 +6,6 @@
 - [ ] Passo 4 — QA dos 10 relatórios de fábrica, responsivo, notas de conhecimento
 
 Decisões: sem @tanstack/react-table; dnd = @hello-pangea/dnd; campos da File em sub-componente isolado.
+
+## Estado final
+Steps 1-4 concluidos e validados: 10 relatorios x 3 periodos sem erros, totais confirmados por SQL, drag & drop, comparacao homologa, drill-down e CSV a funcionar.
