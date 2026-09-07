@@ -24,6 +24,7 @@ export type PageKey =
   | 'agents'
   | 'my_feedback'
   | 'admin_feedback'
+  | 'reports'
   | 'yt_brain';
 
 
