@@ -1,17 +1,17 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { ChevronDown, ChevronRight, Download, ExternalLink, Info, Search } from 'lucide-react';
+import { ChevronDown, ChevronRight, Download, ExternalLink, Info, Loader2, Search } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import {
-  formatDelta, formatGroupKey, formatValue, rawValue, downloadCsv,
+  formatDelta, formatGroupKey, formatIsoDate, formatValue, rawValue, downloadCsv,
 } from '@/lib/reports/format';
-import { runReport } from '@/lib/reports/runReport';
+import { runReport, isAbortError } from '@/lib/reports/runReport';
 import type {
   DetailResult, ReportDefinition, RunReportResult, SummaryResult, SummaryRow,
 } from '@/types/reports';
@@ -22,12 +22,15 @@ interface Props {
   running: boolean;
   definition: ReportDefinition;
   reportName: string;
-  onDrillDown?: (def: ReportDefinition) => void;
+  onPageChange?: (page: number) => void;
 }
 
 const keyOf = (keys: (string | null)[], level: number) => keys.slice(0, level).map(k => k ?? '∅').join('||');
 
-export default function ReportResults({ result, error, running, definition, reportName }: Props) {
+const periodLabel = (from: string | null, to: string | null) =>
+  from && to ? `${formatIsoDate(from)} → ${formatIsoDate(to)}` : 'Sem limite de datas';
+
+export default function ReportResults({ result, error, running, definition, reportName, onPageChange }: Props) {
   if (running) {
     return (
       <div className="space-y-2">
@@ -57,7 +60,7 @@ export default function ReportResults({ result, error, running, definition, repo
 
   return result.mode === 'summary'
     ? <SummaryView result={result} definition={definition} reportName={reportName} />
-    : <DetailView result={result} reportName={reportName} />;
+    : <DetailView result={result} definition={definition} reportName={reportName} onPageChange={onPageChange} />;
 }
 
 /* ------------------------------------------------------------------ Resumo */
@@ -130,8 +133,17 @@ function SummaryView({ result, definition, reportName }: { result: SummaryResult
       const gk = groupKeys[i];
       if (!gk) return;
       if (gk.bucket) {
+        if (gk.bucket === 'dow') {
+          // Dia da semana não é um intervalo: filtra o próprio eixo.
+          if (val !== null) filters.push({ field: gk.key, op: 'eq', values: [val] });
+          return;
+        }
         const r = bucketRange(String(val ?? ''), gk.bucket);
-        if (r) { from = r.from; to = r.to; }
+        if (r) {
+          // Interseção: o bucket mais profundo restringe o período.
+          from = from && r.from < from ? from : r.from;
+          to = to && r.to > to ? to : r.to;
+        }
         return;
       }
       if (val === null) filters.push({ field: gk.key, op: 'is_null' });
@@ -188,24 +200,24 @@ function SummaryView({ result, definition, reportName }: { result: SummaryResult
       <Notices result={result} />
       <div className="flex items-center justify-between">
         <p className="text-[10px] text-muted-foreground">
-          {result.row_count} linhas · {result.period.from || '—'} → {result.period.to || '—'}
+          {result.row_count} linhas · {periodLabel(result.period.from, result.period.to)}
         </p>
         <Button variant="outline" size="sm" className="h-7 text-xs" onClick={exportCsv}>
           <Download className="h-3 w-3 mr-1" /> CSV
         </Button>
       </div>
 
-      <div className="border border-border rounded-lg overflow-x-auto bg-card">
+      <div className="border border-border rounded-lg overflow-auto max-h-[70vh] bg-card">
         <Table className="text-xs tabular-nums">
           <TableHeader>
             <TableRow>
               {groupKeys.map(g => (
-                <TableHead key={g.key} className="text-[10px] uppercase whitespace-nowrap">{g.label}</TableHead>
+                <TableHead key={g.key} className="text-[10px] uppercase whitespace-nowrap sticky top-0 z-10 bg-card">{g.label}</TableHead>
               ))}
               {columns.map(c => (
                 <TableHead
                   key={c.key}
-                  className="text-[10px] uppercase text-right whitespace-nowrap cursor-pointer select-none"
+                  className="text-[10px] uppercase text-right whitespace-nowrap cursor-pointer select-none sticky top-0 z-10 bg-card"
                   onClick={() => sortBy(c.key)}
                   title={c.group}
                 >
@@ -213,11 +225,11 @@ function SummaryView({ result, definition, reportName }: { result: SummaryResult
                 </TableHead>
               ))}
               {compare && columns.map(c => (
-                <TableHead key={`p-${c.key}`} className="text-[10px] uppercase text-right whitespace-nowrap">
+                <TableHead key={`p-${c.key}`} className="text-[10px] uppercase text-right whitespace-nowrap sticky top-0 z-10 bg-card">
                   {c.label} · ano anterior
                 </TableHead>
               ))}
-              <TableHead />
+              <TableHead className="sticky top-0 z-10 bg-card" />
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -237,7 +249,7 @@ function SummaryView({ result, definition, reportName }: { result: SummaryResult
                               {collapsed.has(id) ? <ChevronRight className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
                             </button>
                           ) : <span className="w-3" />}
-                          {formatGroupKey(r.keys[i])}
+                          {formatGroupKey(r.keys[i], groupKeys[i]?.bucket)}
                         </span>
                       ) : null}
                     </TableCell>
@@ -261,7 +273,7 @@ function SummaryView({ result, definition, reportName }: { result: SummaryResult
                       <button
                         className="text-[10px] text-primary inline-flex items-center gap-1"
                         onClick={() => setDrill({
-                          title: r.keys.slice(0, r.level).map(k => formatGroupKey(k)).join(' · '),
+                          title: r.keys.slice(0, r.level).map((k, i) => formatGroupKey(k, groupKeys[i]?.bucket)).join(' · '),
                           def: buildDetailDefinition(r),
                         })}
                       >
@@ -273,22 +285,22 @@ function SummaryView({ result, definition, reportName }: { result: SummaryResult
               );
             })}
             <TableRow className="bg-muted font-semibold sticky bottom-0">
-              <TableCell className="whitespace-nowrap" colSpan={Math.max(1, groupKeys.length)}>
+              <TableCell className="whitespace-nowrap bg-muted" colSpan={Math.max(1, groupKeys.length)}>
                 Totais · {result.row_count} itens
               </TableCell>
               {columns.map(c => (
-                <TableCell key={c.key} className="text-right whitespace-nowrap">{formatValue(result.total[c.key], c.format)}</TableCell>
+                <TableCell key={c.key} className="text-right whitespace-nowrap bg-muted">{formatValue(result.total[c.key], c.format)}</TableCell>
               ))}
               {compare && columns.map(c => {
                 const d = formatDelta(result.total[c.key], result.prior_total?.[c.key]);
                 return (
-                  <TableCell key={`pt-${c.key}`} className="text-right whitespace-nowrap">
+                  <TableCell key={`pt-${c.key}`} className="text-right whitespace-nowrap bg-muted">
                     {formatValue(result.prior_total?.[c.key] ?? null, c.format)}
                     <span className={cn('ml-1', d.tone === 'up' && 'text-[hsl(var(--success))]', d.tone === 'down' && 'text-destructive')}>{d.text}</span>
                   </TableCell>
                 );
               })}
-              <TableCell />
+              <TableCell className="bg-muted" />
             </TableRow>
           </TableBody>
         </Table>
@@ -332,15 +344,47 @@ function bucketRange(value: string, bucket: string): { from: string; to: string 
 
 /* ----------------------------------------------------------------- Detalhe */
 
-function DetailView({ result, reportName }: { result: DetailResult; reportName: string }) {
-  const columns = result.columns || [];
+/** Descarrega todas as páginas do detalhe (page_size 500) para exportar tudo. */
+async function fetchAllDetailRows(definition: ReportDefinition, rowCount: number) {
+  const pageSize = 500;
+  const rows: Record<string, any>[] = [];
+  let columns: DetailResult['columns'] = [];
+  for (let page = 1; page <= Math.ceil(Math.max(rowCount, 1) / pageSize) + 1; page++) {
+    const res = await runReport({ ...definition, mode: 'detail', page, page_size: pageSize }) as DetailResult;
+    columns = res.columns || columns;
+    rows.push(...(res.rows || []));
+    if (!res.rows?.length || rows.length >= (res.row_count ?? rowCount)) break;
+  }
+  return { rows, columns };
+}
 
-  const exportCsv = () => {
-    downloadCsv(
-      `${slug(reportName)}_${result.period.from || 'inicio'}_${result.period.to || 'fim'}.csv`,
-      columns.map(c => c.label),
-      (result.rows || []).map(r => columns.map(c => rawValue(r[c.key], c.format)))
-    );
+function DetailView({
+  result, definition, reportName, onPageChange,
+}: {
+  result: DetailResult;
+  definition: ReportDefinition;
+  reportName: string;
+  onPageChange?: (page: number) => void;
+}) {
+  const columns = result.columns || [];
+  const [exporting, setExporting] = useState(false);
+  const pageSize = result.page_size || definition.page_size || 100;
+  const totalPages = Math.max(1, Math.ceil((result.row_count || 0) / pageSize));
+  const page = result.page || 1;
+
+  const exportCsv = async () => {
+    setExporting(true);
+    try {
+      const all = await fetchAllDetailRows(definition, result.row_count || 0);
+      const cols = all.columns.length ? all.columns : columns;
+      downloadCsv(
+        `${slug(reportName)}_${result.period.from || 'inicio'}_${result.period.to || 'fim'}.csv`,
+        cols.map(c => c.label),
+        all.rows.map(r => cols.map(c => rawValue(r[c.key], c.format)))
+      );
+    } finally {
+      setExporting(false);
+    }
   };
 
   if (!result.rows?.length) {
@@ -357,27 +401,42 @@ function DetailView({ result, reportName }: { result: DetailResult; reportName: 
   return (
     <div className="space-y-2">
       <Notices result={result} />
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between gap-2">
         <p className="text-[10px] text-muted-foreground">
-          {result.row_count} linhas · página {result.page}
+          {result.row_count} linhas · {periodLabel(result.period.from, result.period.to)}
         </p>
-        <Button variant="outline" size="sm" className="h-7 text-xs" onClick={exportCsv}>
-          <Download className="h-3 w-3 mr-1" /> CSV
+        <Button variant="outline" size="sm" className="h-7 text-xs" onClick={exportCsv} disabled={exporting}>
+          {exporting ? <Loader2 className="h-3 w-3 mr-1 animate-spin" /> : <Download className="h-3 w-3 mr-1" />} CSV
         </Button>
       </div>
       <DetailTable columns={columns} rows={result.rows} />
+      {onPageChange && (
+        <div className="flex items-center justify-between">
+          <Button variant="outline" size="sm" className="h-7 text-xs" disabled={page <= 1} onClick={() => onPageChange(page - 1)}>
+            Anterior
+          </Button>
+          <span className="text-[10px] text-muted-foreground">página {page} de {totalPages}</span>
+          <Button variant="outline" size="sm" className="h-7 text-xs" disabled={page >= totalPages} onClick={() => onPageChange(page + 1)}>
+            Seguinte
+          </Button>
+        </div>
+      )}
     </div>
   );
 }
 
 function DetailTable({ columns, rows }: { columns: DetailResult['columns']; rows: Record<string, any>[] }) {
   return (
-    <div className="border border-border rounded-lg overflow-x-auto bg-card">
+    <div className="border border-border rounded-lg overflow-auto max-h-[70vh] bg-card">
       <Table className="text-xs tabular-nums">
         <TableHeader>
           <TableRow>
             {columns.map(c => (
-              <TableHead key={c.key} className={cn('text-[10px] uppercase whitespace-nowrap', c.kind === 'metric' && 'text-right')} title={c.group}>
+              <TableHead
+                key={c.key}
+                className={cn('text-[10px] uppercase whitespace-nowrap sticky top-0 z-10 bg-card', c.kind === 'metric' && 'text-right')}
+                title={c.group}
+              >
                 {c.label}
               </TableHead>
             ))}
@@ -435,30 +494,30 @@ function DrillSheet({ drill, onClose, reportName }: { drill: { title: string; de
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [page, setPage] = useState(1);
-  const [loadedFor, setLoadedFor] = useState<string | null>(null);
-
-  const load = async (p: number) => {
-    if (!drill) return;
-    setLoading(true); setError(null);
-    try {
-      const res = await runReport({ ...drill.def, page: p });
-      setData(res as DetailResult);
-      setPage(p);
-    } catch (e: any) {
-      setError(e?.message || 'Erro ao gerar o detalhe');
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const sig = drill ? JSON.stringify(drill.def) : null;
-  if (drill && sig !== loadedFor) {
-    setLoadedFor(sig);
-    void load(1);
-  }
+
+  // Uma única busca por assinatura do drill (também na página escolhida).
+  useEffect(() => {
+    if (!drill) { setData(null); setError(null); setPage(1); return; }
+    let active = true;
+    setLoading(true); setError(null);
+    runReport({ ...drill.def, page })
+      .then(res => { if (active) setData(res as DetailResult); })
+      .catch(e => { if (active && !isAbortError(e)) setError(e?.message || 'Erro ao gerar o detalhe'); })
+      .finally(() => { if (active) setLoading(false); });
+    return () => { active = false; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sig, page]);
+
+  // Nova linha → voltar à primeira página.
+  useEffect(() => { setPage(1); }, [sig]);
+
+  const pageSize = data?.page_size || 100;
+  const totalPages = Math.max(1, Math.ceil((data?.row_count || 0) / pageSize));
 
   return (
-    <Sheet open={!!drill} onOpenChange={o => { if (!o) { onClose(); setData(null); setLoadedFor(null); } }}>
+    <Sheet open={!!drill} onOpenChange={o => { if (!o) { onClose(); setData(null); } }}>
       <SheetContent side="right" className="w-full sm:max-w-3xl overflow-y-auto">
         <SheetHeader><SheetTitle className="text-sm">Detalhe · {drill?.title}</SheetTitle></SheetHeader>
         <div className="mt-3 space-y-2">
@@ -469,23 +528,27 @@ function DrillSheet({ drill, onClose, reportName }: { drill: { title: string; de
               <p className="text-[10px] text-muted-foreground">{data.row_count} linhas</p>
               <DetailTable columns={data.columns} rows={data.rows} />
               <div className="flex items-center justify-between">
-                <Button variant="outline" size="sm" className="h-7 text-xs" disabled={page <= 1} onClick={() => load(page - 1)}>Anterior</Button>
-                <span className="text-[10px] text-muted-foreground">Página {page}</span>
+                <Button variant="outline" size="sm" className="h-7 text-xs" disabled={page <= 1} onClick={() => setPage(p => p - 1)}>Anterior</Button>
+                <span className="text-[10px] text-muted-foreground">página {page} de {totalPages}</span>
                 <Button
                   variant="outline" size="sm" className="h-7 text-xs"
-                  disabled={(data.rows?.length || 0) < (data.page_size || 100)}
-                  onClick={() => load(page + 1)}
+                  disabled={page >= totalPages}
+                  onClick={() => setPage(p => p + 1)}
                 >
                   Seguinte
                 </Button>
               </div>
               <Button
                 variant="outline" size="sm" className="h-7 text-xs"
-                onClick={() => downloadCsv(
-                  `${slug(reportName)}_detalhe.csv`,
-                  data.columns.map(c => c.label),
-                  data.rows.map(r => data.columns.map(c => rawValue(r[c.key], c.format)))
-                )}
+                onClick={async () => {
+                  const all = await fetchAllDetailRows(drill!.def, data.row_count || 0);
+                  const cols = all.columns.length ? all.columns : data.columns;
+                  downloadCsv(
+                    `${slug(reportName)}_detalhe.csv`,
+                    cols.map(c => c.label),
+                    all.rows.map(r => cols.map(c => rawValue(r[c.key], c.format)))
+                  );
+                }}
               >
                 <Download className="h-3 w-3 mr-1" /> CSV
               </Button>

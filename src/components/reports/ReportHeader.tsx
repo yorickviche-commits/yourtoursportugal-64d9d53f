@@ -8,6 +8,10 @@ import {
   DropdownMenuSeparator, DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
 import { DragDropContext, Draggable, Droppable, type DropResult } from '@hello-pangea/dnd';
@@ -28,7 +32,6 @@ interface Props {
   definition: ReportDefinition;
   ranAt: Date | null;
   running: boolean;
-  builderOpen: boolean;
   onToggleBuilder: () => void;
   onGenerate: () => void;
   onCancel: () => void;
@@ -47,7 +50,7 @@ function relativeTime(d: Date): string {
 }
 
 export default function ReportHeader({
-  selected, definition, ranAt, running, builderOpen,
+  selected, definition, ranAt, running,
   onToggleBuilder, onGenerate, onCancel, onSelect, onNew,
 }: Props) {
   const { user, isAdmin } = useAuth();
@@ -55,6 +58,7 @@ export default function ReportHeader({
   const { create, update, remove, reorder } = useSavedReportMutations('files');
 
   const [dialog, setDialog] = useState<null | 'new' | 'edit' | 'reorder'>(null);
+  const [confirmDelete, setConfirmDelete] = useState(false);
   const [name, setName] = useState('');
   const [note, setNote] = useState('');
   const [category, setCategory] = useState<SavedReportCategory>('Performance');
@@ -129,6 +133,7 @@ export default function ReportHeader({
     try {
       await remove.mutateAsync(selected.id);
       toast.success('Relatório apagado');
+      setConfirmDelete(false);
       onNew();
     } catch (e: any) {
       toast.error(e?.message || 'Não foi possível apagar');
@@ -204,7 +209,7 @@ export default function ReportHeader({
                   <DropdownMenuItem className="text-xs" onClick={openEdit}>
                     <Pencil className="h-3 w-3 mr-2" /> Editar
                   </DropdownMenuItem>
-                  <DropdownMenuItem className="text-xs text-destructive" onClick={submitDelete}>
+                  <DropdownMenuItem className="text-xs text-destructive" onClick={() => setConfirmDelete(true)}>
                     <Trash2 className="h-3 w-3 mr-2" /> Apagar
                   </DropdownMenuItem>
                 </>
@@ -324,6 +329,27 @@ export default function ReportHeader({
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <AlertDialog open={confirmDelete} onOpenChange={setConfirmDelete}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-sm">Apagar relatório «{selected?.name}»?</AlertDialogTitle>
+            <AlertDialogDescription className="text-xs">
+              Esta ação não pode ser revertida. O relatório guardado será removido.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="h-7 text-xs">Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              className="h-7 text-xs bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={e => { e.preventDefault(); void submitDelete(); }}
+              disabled={remove.isPending}
+            >
+              Apagar
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

@@ -10,6 +10,7 @@ import { DragDropContext, Draggable, Droppable, type DropResult } from '@hello-p
 import { GripVertical, Pencil, Plus, Search, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useFieldOptions } from '@/hooks/useReportFields';
+import { formatIsoDate } from '@/lib/reports/format';
 import {
   BUCKET_LABELS, DATE_PRESET_LABELS, DATE_PRESET_ORDER, FILTER_OP_LABELS,
   type DateBucket, type DatePreset, type FilterOp, type ReportDefinition, type ReportField, type ReportFilter,
@@ -21,6 +22,8 @@ interface Props {
   onChange: (d: ReportDefinition) => void;
   canSeeFinancial: boolean;
 }
+
+type ColTab = 'summary' | 'detail' | 'all';
 
 const TEXT_OPS: FilterOp[] = ['in', 'not_in', 'is_null', 'not_null', 'contains'];
 const NUM_OPS: FilterOp[] = ['eq', 'neq', 'lt', 'lte', 'gt', 'gte', 'in'];
@@ -101,7 +104,7 @@ export default function ReportBuilder({ fields, definition, onChange, canSeeFina
 
   // ---- Colunas
   const mode = definition.mode;
-  const [colTab, setColTab] = useState<'summary' | 'detail' | 'all'>('summary');
+  const [colTab, setColTab] = useState<ColTab>('summary');
   const [colSearch, setColSearch] = useState('');
   const selectedCols = definition.columns[mode] || [];
   const setCols = (keys: string[]) => patch({ columns: { ...definition.columns, [mode]: keys } });
@@ -193,7 +196,7 @@ export default function ReportBuilder({ fields, definition, onChange, canSeeFina
           />
         </div>
         <p className="text-[10px] text-muted-foreground">
-          {range.from && range.to ? `${range.from} → ${range.to}` : 'Sem limite de datas'}
+          {range.from && range.to ? `${formatIsoDate(range.from)} → ${formatIsoDate(range.to)}` : 'Sem limite de datas'}
         </p>
         <div>
           <label className="text-[10px] uppercase text-muted-foreground">Relatório em:</label>
@@ -225,24 +228,15 @@ export default function ReportBuilder({ fields, definition, onChange, canSeeFina
       {/* 2 — Filtros */}
       <Column title="Filtrar reservas">
         <div className="space-y-1">
-          {definition.filters.map((f, i) => {
-            const fld = byKey.get(f.field);
-            return (
-              <div key={`${f.field}-${i}`} className="flex items-center gap-1 border border-border rounded px-2 py-1 text-[11px]">
-                <span className="truncate min-w-0">
-                  <span className="font-medium">{fld?.label_pt || f.field}</span>
-                  {' · '}{FILTER_OP_LABELS[f.op]}
-                  {f.values?.length ? ` · ${f.values.join(', ')}` : ''}
-                </span>
-                <button className="ml-auto text-muted-foreground hover:text-foreground" onClick={() => setFilterEdit({ index: i, draft: { ...f } })}>
-                  <Pencil className="h-3 w-3" />
-                </button>
-                <button className="text-muted-foreground hover:text-destructive" onClick={() => patch({ filters: definition.filters.filter((_, j) => j !== i) })}>
-                  <X className="h-3 w-3" />
-                </button>
-              </div>
-            );
-          })}
+          {definition.filters.map((f, i) => (
+            <FilterChip
+              key={`${f.field}-${i}`}
+              filter={f}
+              field={byKey.get(f.field)}
+              onEdit={() => setFilterEdit({ index: i, draft: { ...f } })}
+              onRemove={() => patch({ filters: definition.filters.filter((_, j) => j !== i) })}
+            />
+          ))}
           {!definition.filters.length && <p className="text-[10px] text-muted-foreground">Sem filtros</p>}
         </div>
 
@@ -348,7 +342,7 @@ export default function ReportBuilder({ fields, definition, onChange, canSeeFina
           <label className="flex items-center gap-2 text-xs"><RadioGroupItem value="detail" /> Relatório detalhado</label>
         </RadioGroup>
 
-        <Tabs value={colTab} onValueChange={v => setColTab(v as any)}>
+        <Tabs value={colTab} onValueChange={v => setColTab(v as ColTab)}>
           <TabsList className="h-7">
             <TabsTrigger value="summary" className="text-[10px] h-5">Resumo</TabsTrigger>
             <TabsTrigger value="detail" className="text-[10px] h-5">Detalhe</TabsTrigger>
@@ -431,6 +425,7 @@ function FilterEditor({
   const ops = isNumeric || isDate ? NUM_OPS : TEXT_OPS;
   const needsValues = !['is_null', 'not_null'].includes(local.op);
   const freeText = (field?.options_source as any)?.type === 'free' || isNumeric || isDate;
+  const isMulti = local.op === 'in' || local.op === 'not_in';
 
   const toggleValue = (v: string) => {
     const cur = (local.values || []).map(String);
@@ -465,14 +460,36 @@ function FilterEditor({
 
       {needsValues && (
         <div>
-          <label className="text-[10px] uppercase text-muted-foreground">Valores</label>
-          {freeText ? (
+          <label className="text-[10px] uppercase text-muted-foreground">
+            {isMulti ? 'Valores (separados por vírgula)' : 'Valor'}
+          </label>
+          {local.op === 'contains' ? (
             <Input
               className="h-7 text-xs mt-1"
-              type={isNumeric ? 'number' : isDate ? 'date' : 'text'}
-              value={(local.values?.[0] as any) ?? ''}
-              onChange={e => setLocal({ ...local, values: [isNumeric ? Number(e.target.value) : e.target.value] })}
+              placeholder="Texto a procurar"
+              value={String(local.values?.[0] ?? '')}
+              onChange={e => setLocal({ ...local, values: e.target.value ? [e.target.value] : [] })}
             />
+          ) : freeText ? (
+            isMulti ? (
+              <Input
+                className="h-7 text-xs mt-1"
+                placeholder="valor1, valor2"
+                value={(local.values || []).join(', ')}
+                onChange={e => setLocal({
+                  ...local,
+                  values: e.target.value.split(',').map(s => s.trim()).filter(Boolean)
+                    .map(s => (isNumeric ? Number(s) : s)),
+                })}
+              />
+            ) : (
+              <Input
+                className="h-7 text-xs mt-1"
+                type={isNumeric ? 'number' : isDate ? 'date' : 'text'}
+                value={String(local.values?.[0] ?? '')}
+                onChange={e => setLocal({ ...local, values: [isNumeric ? Number(e.target.value) : e.target.value] })}
+              />
+            )
           ) : (
             <>
               <Input className="h-7 text-xs mt-1" placeholder="Pesquisar valor" value={valueSearch} onChange={e => setValueSearch(e.target.value)} />
@@ -501,6 +518,37 @@ function FilterEditor({
         <Button variant="outline" size="sm" className="h-6 text-[11px]" onClick={onCancel}>Cancelar</Button>
         <Button size="sm" className="h-6 text-[11px]" onClick={() => onSave(local)} disabled={!local.field}>Guardar</Button>
       </div>
+    </div>
+  );
+}
+
+/** Chip de filtro: mostra a etiqueta legível das opções (nunca UUIDs). */
+function FilterChip({
+  filter, field, onEdit, onRemove,
+}: {
+  filter: ReportFilter;
+  field?: ReportField;
+  onEdit: () => void;
+  onRemove: () => void;
+}) {
+  const { data: options } = useFieldOptions(field);
+  const labelFor = (v: string | number | boolean) => {
+    const s = String(v);
+    return options?.find(o => o.value === s)?.label || s;
+  };
+  return (
+    <div className="flex items-center gap-1 border border-border rounded px-2 py-1 text-[11px]">
+      <span className="truncate min-w-0">
+        <span className="font-medium">{field?.label_pt || filter.field}</span>
+        {' · '}{FILTER_OP_LABELS[filter.op]}
+        {filter.values?.length ? ` · ${filter.values.map(labelFor).join(', ')}` : ''}
+      </span>
+      <button className="ml-auto text-muted-foreground hover:text-foreground" onClick={onEdit}>
+        <Pencil className="h-3 w-3" />
+      </button>
+      <button className="text-muted-foreground hover:text-destructive" onClick={onRemove}>
+        <X className="h-3 w-3" />
+      </button>
     </div>
   );
 }

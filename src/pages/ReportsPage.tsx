@@ -7,7 +7,7 @@ import { cn } from '@/lib/utils';
 import { BarChart3, Loader2, Lock, Play, Plus, Search, X } from 'lucide-react';
 import { useSavedReports } from '@/hooks/useSavedReports';
 import { useFinancialAccess, useReportFields } from '@/hooks/useReportFields';
-import { runReport, decodeDefinition } from '@/lib/reports/runReport';
+import { runReport, decodeDefinition, isAbortError } from '@/lib/reports/runReport';
 import { emptyDefinition, type ReportDefinition, type RunReportResult, type SavedReport } from '@/types/reports';
 import ReportBuilder from '@/components/reports/ReportBuilder';
 import ReportHeader from '@/components/reports/ReportHeader';
@@ -54,6 +54,10 @@ export default function ReportsPage() {
   }, [saved]);
 
   const load = (r: SavedReport) => {
+    // Limpar o #d= para que um refresh não restaure um link antigo.
+    if (window.location.hash.includes('d=')) {
+      window.history.replaceState(null, '', window.location.pathname + window.location.search);
+    }
     setSelected(r);
     setDefinition({ ...emptyDefinition(), ...r.definition });
     setResult(null);
@@ -71,17 +75,19 @@ export default function ReportsPage() {
 
   const generate = async (defOverride?: ReportDefinition) => {
     const def = defOverride || definition;
+    abortRef.current?.abort();
     const controller = new AbortController();
     abortRef.current = controller;
     setRunning(true);
     setError(null);
     try {
-      const data = await runReport(def);
+      const data = await runReport(def, controller.signal);
       if (controller.signal.aborted) return;
+      if (defOverride) setDefinition(def);
       setResult(data);
       setRanAt(new Date());
     } catch (e: any) {
-      if (controller.signal.aborted) return;
+      if (controller.signal.aborted || isAbortError(e)) return;
       setError(e?.message || 'Erro ao gerar o relatório');
       setResult(null);
     } finally {
@@ -172,7 +178,6 @@ export default function ReportsPage() {
             definition={definition}
             ranAt={ranAt}
             running={running}
-            builderOpen={builderOpen}
             onToggleBuilder={() => setBuilderOpen(o => !o)}
             onGenerate={() => generate()}
             onCancel={cancel}
@@ -195,7 +200,7 @@ export default function ReportsPage() {
             running={running}
             definition={definition}
             reportName={selected?.name || 'relatorio'}
-            onDrillDown={def => generate(def)}
+            onPageChange={p => generate({ ...definition, mode: 'detail', page: p })}
           />
         </section>
       </div>

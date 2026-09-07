@@ -60,9 +60,43 @@ export function rawValue(value: unknown, format: FieldFormat): string {
   return String(value);
 }
 
-export function formatGroupKey(value: string | null): string {
+export function formatGroupKey(value: string | null, bucket?: string | null): string {
   if (value === null || value === undefined || value === '') return NO_VALUE;
+  if (bucket) return formatBucketKey(value, bucket);
   return value;
+}
+
+const MONTHS_PT = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'];
+const DOW_PT = ['domingo', 'segunda', 'terça', 'quarta', 'quinta', 'sexta', 'sábado'];
+
+/** Etiqueta pt-PT de uma chave de agrupamento por data. A chave crua mantém-se para CSV/drill-down. */
+export function formatBucketKey(value: string, bucket: string): string {
+  const v = String(value);
+  if (bucket === 'dow') {
+    const n = Number(v);
+    if (isFinite(n) && n >= 0 && n <= 6) return DOW_PT[n];
+    return v;
+  }
+  if (bucket === 'year') return v.slice(0, 4);
+  const dm = v.match(/^(\d{4})-(\d{2})/);
+  if (bucket === 'month' && dm) return `${MONTHS_PT[Number(dm[2]) - 1]} ${dm[1]}`;
+  if (bucket === 'quarter') {
+    const q = v.match(/^(\d{4})-?Q?(\d)/i);
+    if (q) return `T${q[2]} ${q[1]}`;
+    if (dm) return `T${Math.floor((Number(dm[2]) - 1) / 3) + 1} ${dm[1]}`;
+  }
+  if ((bucket === 'day' || bucket === 'week') && /^\d{4}-\d{2}-\d{2}/.test(v)) {
+    return formatIsoDate(v);
+  }
+  return v;
+}
+
+/** ISO (yyyy-mm-dd) → dd/mm/yyyy */
+export function formatIsoDate(value?: string | null): string {
+  if (!value) return '—';
+  const m = String(value).slice(0, 10).match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!m) return String(value);
+  return `${m[3]}/${m[2]}/${m[1]}`;
 }
 
 export function formatDelta(current: unknown, prior: unknown): { text: string; tone: 'up' | 'down' | 'flat' } {
