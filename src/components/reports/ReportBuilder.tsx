@@ -425,6 +425,7 @@ function FilterEditor({
   const ops = isNumeric || isDate ? NUM_OPS : TEXT_OPS;
   const needsValues = !['is_null', 'not_null'].includes(local.op);
   const freeText = (field?.options_source as any)?.type === 'free' || isNumeric || isDate;
+  const isMulti = local.op === 'in' || local.op === 'not_in';
 
   const toggleValue = (v: string) => {
     const cur = (local.values || []).map(String);
