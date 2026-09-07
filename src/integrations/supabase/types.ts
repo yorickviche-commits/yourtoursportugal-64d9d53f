@@ -293,6 +293,13 @@ export type Database = {
             foreignKeyName: "agent_task_drafts_lead_id_fkey"
             columns: ["lead_id"]
             isOneToOne: false
+            referencedRelation: "rpt_files"
+            referencedColumns: ["lead_id"]
+          },
+          {
+            foreignKeyName: "agent_task_drafts_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
             referencedRelation: "v_agent_task_queue"
             referencedColumns: ["lead_id"]
           },
@@ -449,6 +456,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "leads"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "approvals_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "rpt_files"
+            referencedColumns: ["lead_id"]
           },
           {
             foreignKeyName: "approvals_lead_id_fkey"
@@ -619,6 +633,13 @@ export type Database = {
             foreignKeyName: "calendar_events_lead_id_fkey"
             columns: ["lead_id"]
             isOneToOne: false
+            referencedRelation: "rpt_files"
+            referencedColumns: ["lead_id"]
+          },
+          {
+            foreignKeyName: "calendar_events_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
             referencedRelation: "v_agent_task_queue"
             referencedColumns: ["lead_id"]
           },
@@ -741,6 +762,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "leads"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contacts_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "rpt_files"
+            referencedColumns: ["lead_id"]
           },
           {
             foreignKeyName: "contacts_lead_id_fkey"
@@ -1316,6 +1344,13 @@ export type Database = {
             foreignKeyName: "lead_costing_data_lead_id_fkey"
             columns: ["lead_id"]
             isOneToOne: false
+            referencedRelation: "rpt_files"
+            referencedColumns: ["lead_id"]
+          },
+          {
+            foreignKeyName: "lead_costing_data_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
             referencedRelation: "v_agent_task_queue"
             referencedColumns: ["lead_id"]
           },
@@ -1411,6 +1446,13 @@ export type Database = {
             foreignKeyName: "lead_operations_lead_id_fkey"
             columns: ["lead_id"]
             isOneToOne: false
+            referencedRelation: "rpt_files"
+            referencedColumns: ["lead_id"]
+          },
+          {
+            foreignKeyName: "lead_operations_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
             referencedRelation: "v_agent_task_queue"
             referencedColumns: ["lead_id"]
           },
@@ -1488,6 +1530,13 @@ export type Database = {
             foreignKeyName: "lead_payments_lead_id_fkey"
             columns: ["lead_id"]
             isOneToOne: false
+            referencedRelation: "rpt_files"
+            referencedColumns: ["lead_id"]
+          },
+          {
+            foreignKeyName: "lead_payments_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
             referencedRelation: "v_agent_task_queue"
             referencedColumns: ["lead_id"]
           },
@@ -1556,6 +1605,13 @@ export type Database = {
             foreignKeyName: "lead_planner_data_lead_id_fkey"
             columns: ["lead_id"]
             isOneToOne: false
+            referencedRelation: "rpt_files"
+            referencedColumns: ["lead_id"]
+          },
+          {
+            foreignKeyName: "lead_planner_data_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
             referencedRelation: "v_agent_task_queue"
             referencedColumns: ["lead_id"]
           },
@@ -1568,6 +1624,133 @@ export type Database = {
           },
           {
             foreignKeyName: "lead_planner_data_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "v_lead_outcomes"
+            referencedColumns: ["lead_id"]
+          },
+        ]
+      }
+      lead_regions: {
+        Row: {
+          created_at: string
+          lead_id: string
+          region_id: string
+        }
+        Insert: {
+          created_at?: string
+          lead_id: string
+          region_id: string
+        }
+        Update: {
+          created_at?: string
+          lead_id?: string
+          region_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lead_regions_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lead_regions_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "rpt_files"
+            referencedColumns: ["lead_id"]
+          },
+          {
+            foreignKeyName: "lead_regions_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_task_queue"
+            referencedColumns: ["lead_id"]
+          },
+          {
+            foreignKeyName: "lead_regions_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "v_lead_economics"
+            referencedColumns: ["lead_id"]
+          },
+          {
+            foreignKeyName: "lead_regions_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "v_lead_outcomes"
+            referencedColumns: ["lead_id"]
+          },
+          {
+            foreignKeyName: "lead_regions_region_id_fkey"
+            columns: ["region_id"]
+            isOneToOne: false
+            referencedRelation: "regions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      lead_stage_history: {
+        Row: {
+          created_at: string
+          entered_at: string
+          id: string
+          lead_id: string
+          source: string
+          stage_code: string | null
+          stage_label: string | null
+        }
+        Insert: {
+          created_at?: string
+          entered_at?: string
+          id?: string
+          lead_id: string
+          source?: string
+          stage_code?: string | null
+          stage_label?: string | null
+        }
+        Update: {
+          created_at?: string
+          entered_at?: string
+          id?: string
+          lead_id?: string
+          source?: string
+          stage_code?: string | null
+          stage_label?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lead_stage_history_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lead_stage_history_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "rpt_files"
+            referencedColumns: ["lead_id"]
+          },
+          {
+            foreignKeyName: "lead_stage_history_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_task_queue"
+            referencedColumns: ["lead_id"]
+          },
+          {
+            foreignKeyName: "lead_stage_history_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "v_lead_economics"
+            referencedColumns: ["lead_id"]
+          },
+          {
+            foreignKeyName: "lead_stage_history_lead_id_fkey"
             columns: ["lead_id"]
             isOneToOne: false
             referencedRelation: "v_lead_outcomes"
@@ -1618,6 +1801,13 @@ export type Database = {
             foreignKeyName: "lead_versions_lead_id_fkey"
             columns: ["lead_id"]
             isOneToOne: false
+            referencedRelation: "rpt_files"
+            referencedColumns: ["lead_id"]
+          },
+          {
+            foreignKeyName: "lead_versions_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
             referencedRelation: "v_agent_task_queue"
             referencedColumns: ["lead_id"]
           },
@@ -1642,10 +1832,12 @@ export type Database = {
           active_version: number | null
           assigned_agents: string[]
           budget_level: string | null
+          budget_tier: string | null
           client_name: string
           client_type: string
           close_date: string | null
           comfort_level: string | null
+          comfort_tier: string | null
           created_at: string
           created_by: string | null
           dates_type: string | null
@@ -1661,10 +1853,13 @@ export type Database = {
           nethunt_updated_at: string | null
           notes: string | null
           number_of_days: number | null
+          owner_id: string | null
+          partner_id: string | null
           pax: number | null
           pax_children: number | null
           pax_infants: number | null
           phone: string | null
+          product_type_id: string | null
           pvp_override: number | null
           route_day_maps: Json
           route_map_path: string | null
@@ -1684,10 +1879,12 @@ export type Database = {
           active_version?: number | null
           assigned_agents?: string[]
           budget_level?: string | null
+          budget_tier?: string | null
           client_name?: string
           client_type?: string
           close_date?: string | null
           comfort_level?: string | null
+          comfort_tier?: string | null
           created_at?: string
           created_by?: string | null
           dates_type?: string | null
@@ -1703,10 +1900,13 @@ export type Database = {
           nethunt_updated_at?: string | null
           notes?: string | null
           number_of_days?: number | null
+          owner_id?: string | null
+          partner_id?: string | null
           pax?: number | null
           pax_children?: number | null
           pax_infants?: number | null
           phone?: string | null
+          product_type_id?: string | null
           pvp_override?: number | null
           route_day_maps?: Json
           route_map_path?: string | null
@@ -1726,10 +1926,12 @@ export type Database = {
           active_version?: number | null
           assigned_agents?: string[]
           budget_level?: string | null
+          budget_tier?: string | null
           client_name?: string
           client_type?: string
           close_date?: string | null
           comfort_level?: string | null
+          comfort_tier?: string | null
           created_at?: string
           created_by?: string | null
           dates_type?: string | null
@@ -1745,10 +1947,13 @@ export type Database = {
           nethunt_updated_at?: string | null
           notes?: string | null
           number_of_days?: number | null
+          owner_id?: string | null
+          partner_id?: string | null
           pax?: number | null
           pax_children?: number | null
           pax_infants?: number | null
           phone?: string | null
+          product_type_id?: string | null
           pvp_override?: number | null
           route_day_maps?: Json
           route_map_path?: string | null
@@ -1770,6 +1975,27 @@ export type Database = {
             columns: ["created_by"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "leads_owner_id_fkey"
+            columns: ["owner_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "leads_partner_id_fkey"
+            columns: ["partner_id"]
+            isOneToOne: false
+            referencedRelation: "partners"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "leads_product_type_id_fkey"
+            columns: ["product_type_id"]
+            isOneToOne: false
+            referencedRelation: "product_types"
             referencedColumns: ["id"]
           },
         ]
@@ -2199,6 +2425,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "leads"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "nethunt_timeline_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "rpt_files"
+            referencedColumns: ["lead_id"]
           },
           {
             foreignKeyName: "nethunt_timeline_lead_id_fkey"
@@ -2673,6 +2906,13 @@ export type Database = {
             foreignKeyName: "payment_links_lead_id_fkey"
             columns: ["lead_id"]
             isOneToOne: false
+            referencedRelation: "rpt_files"
+            referencedColumns: ["lead_id"]
+          },
+          {
+            foreignKeyName: "payment_links_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
             referencedRelation: "v_agent_task_queue"
             referencedColumns: ["lead_id"]
           },
@@ -3121,6 +3361,33 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      product_types: {
+        Row: {
+          code: string
+          created_at: string
+          id: string
+          is_active: boolean
+          name: string
+          sort_order: number
+        }
+        Insert: {
+          code: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          name: string
+          sort_order?: number
+        }
+        Update: {
+          code?: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          name?: string
+          sort_order?: number
+        }
+        Relationships: []
       }
       products: {
         Row: {
@@ -3577,6 +3844,155 @@ export type Database = {
           yt_id?: string | null
         }
         Relationships: []
+      }
+      regions: {
+        Row: {
+          code: string
+          created_at: string
+          id: string
+          is_active: boolean
+          name: string
+          sort_order: number
+        }
+        Insert: {
+          code: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          name: string
+          sort_order?: number
+        }
+        Update: {
+          code?: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          name?: string
+          sort_order?: number
+        }
+        Relationships: []
+      }
+      report_fields: {
+        Row: {
+          agg_expr: string | null
+          data_type: string
+          detail_default: boolean
+          field_group: string
+          filterable: boolean
+          format: string
+          groupable: boolean
+          id: string
+          is_active: boolean
+          is_financial: boolean
+          key: string
+          kind: string
+          label_en: string
+          label_pt: string
+          options_source: Json | null
+          report_type: string
+          sort_order: number
+          sortable: boolean
+          sql_expr: string | null
+          summary_default: boolean
+        }
+        Insert: {
+          agg_expr?: string | null
+          data_type: string
+          detail_default?: boolean
+          field_group: string
+          filterable?: boolean
+          format?: string
+          groupable?: boolean
+          id?: string
+          is_active?: boolean
+          is_financial?: boolean
+          key: string
+          kind: string
+          label_en: string
+          label_pt: string
+          options_source?: Json | null
+          report_type: string
+          sort_order?: number
+          sortable?: boolean
+          sql_expr?: string | null
+          summary_default?: boolean
+        }
+        Update: {
+          agg_expr?: string | null
+          data_type?: string
+          detail_default?: boolean
+          field_group?: string
+          filterable?: boolean
+          format?: string
+          groupable?: boolean
+          id?: string
+          is_active?: boolean
+          is_financial?: boolean
+          key?: string
+          kind?: string
+          label_en?: string
+          label_pt?: string
+          options_source?: Json | null
+          report_type?: string
+          sort_order?: number
+          sortable?: boolean
+          sql_expr?: string | null
+          summary_default?: boolean
+        }
+        Relationships: []
+      }
+      saved_reports: {
+        Row: {
+          category: string
+          created_at: string
+          definition: Json
+          id: string
+          is_suggested: boolean
+          name: string
+          note: string | null
+          owner_id: string | null
+          report_type: string
+          sort_order: number
+          updated_at: string
+          visibility: string
+        }
+        Insert: {
+          category?: string
+          created_at?: string
+          definition: Json
+          id?: string
+          is_suggested?: boolean
+          name: string
+          note?: string | null
+          owner_id?: string | null
+          report_type: string
+          sort_order?: number
+          updated_at?: string
+          visibility?: string
+        }
+        Update: {
+          category?: string
+          created_at?: string
+          definition?: Json
+          id?: string
+          is_suggested?: boolean
+          name?: string
+          note?: string | null
+          owner_id?: string | null
+          report_type?: string
+          sort_order?: number
+          updated_at?: string
+          visibility?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "saved_reports_owner_id_fkey"
+            columns: ["owner_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       signature_elements: {
         Row: {
@@ -4047,6 +4463,13 @@ export type Database = {
             foreignKeyName: "tasks_lead_id_fkey"
             columns: ["lead_id"]
             isOneToOne: false
+            referencedRelation: "rpt_files"
+            referencedColumns: ["lead_id"]
+          },
+          {
+            foreignKeyName: "tasks_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
             referencedRelation: "v_agent_task_queue"
             referencedColumns: ["lead_id"]
           },
@@ -4135,6 +4558,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "leads"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "travel_plans_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "rpt_files"
+            referencedColumns: ["lead_id"]
           },
           {
             foreignKeyName: "travel_plans_lead_id_fkey"
@@ -4373,6 +4803,13 @@ export type Database = {
             foreignKeyName: "trips_lead_id_fkey"
             columns: ["lead_id"]
             isOneToOne: false
+            referencedRelation: "rpt_files"
+            referencedColumns: ["lead_id"]
+          },
+          {
+            foreignKeyName: "trips_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
             referencedRelation: "v_agent_task_queue"
             referencedColumns: ["lead_id"]
           },
@@ -4427,6 +4864,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "leads"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "used_photos_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "rpt_files"
+            referencedColumns: ["lead_id"]
           },
           {
             foreignKeyName: "used_photos_lead_id_fkey"
@@ -4952,6 +5396,90 @@ export type Database = {
           },
         ]
       }
+      rpt_files: {
+        Row: {
+          amount_due: number | null
+          below_min_margin: boolean | null
+          budget_tier: string | null
+          client_email: string | null
+          client_name: string | null
+          client_type: string | null
+          close_date: string | null
+          comfort_tier: string | null
+          costed_items: number | null
+          created_at: string | null
+          created_date: string | null
+          dates_type: string | null
+          days_in_stage: number | null
+          days_to_decision: number | null
+          first_paid_at: string | null
+          first_sent_at: string | null
+          is_costed: boolean | null
+          last_paid_at: string | null
+          lead_code: string | null
+          lead_id: string | null
+          lead_time_days: number | null
+          lost: boolean | null
+          margin_pct: number | null
+          net_total: number | null
+          nethunt_stage: string | null
+          number_of_days: number | null
+          owner_id: string | null
+          owner_name: string | null
+          paid_status: string | null
+          paid_total: number | null
+          partner_id: string | null
+          partner_name: string | null
+          pax_adults: number | null
+          pax_children: number | null
+          pax_infants: number | null
+          pax_total: number | null
+          payments_count: number | null
+          product_type: string | null
+          product_type_id: string | null
+          profit_total: number | null
+          proposals_sent: number | null
+          proposals_total: number | null
+          pvp_total: number | null
+          refund_total: number | null
+          region_codes: string[] | null
+          regions: string | null
+          source: string | null
+          stage_code: string | null
+          stage_entered_at: string | null
+          stage_group: string | null
+          stage_label: string | null
+          status: string | null
+          trip_finish: string | null
+          trip_start: string | null
+          updated_at: string | null
+          won: boolean | null
+          yt_id: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "leads_owner_id_fkey"
+            columns: ["owner_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "leads_partner_id_fkey"
+            columns: ["partner_id"]
+            isOneToOne: false
+            referencedRelation: "partners"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "leads_product_type_id_fkey"
+            columns: ["product_type_id"]
+            isOneToOne: false
+            referencedRelation: "product_types"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       v_agent_task_queue: {
         Row: {
           action_label: string | null
@@ -5190,6 +5718,40 @@ export type Database = {
           read_ct: number
         }[]
       }
+      report_bucket_expr: {
+        Args: { bucket: string; col: string }
+        Returns: string
+      }
+      report_can_view: { Args: { _user_id: string }; Returns: boolean }
+      report_exec_summary: {
+        Args: {
+          v_group_exprs: string[]
+          v_limit: number
+          v_sel: string[]
+          v_view: string
+          v_where_sql: string
+        }
+        Returns: Json
+      }
+      report_has_financial_access: {
+        Args: { _user_id: string }
+        Returns: boolean
+      }
+      report_period: {
+        Args: { p_from: string; p_preset: string; p_to: string }
+        Returns: Record<string, unknown>
+      }
+      report_popcount_expr: { Args: { g: string; n: number }; Returns: string }
+      report_where_sql: {
+        Args: {
+          v_axis_expr: string
+          v_from: string
+          v_to: string
+          v_where: string[]
+        }
+        Returns: string
+      }
+      run_report: { Args: { definition: Json }; Returns: Json }
       show_limit: { Args: never; Returns: number }
       show_trgm: { Args: { "": string }; Returns: string[] }
       ytb_can_edit: { Args: { _user_id: string }; Returns: boolean }
