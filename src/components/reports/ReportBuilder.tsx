@@ -340,7 +340,7 @@ export default function ReportBuilder({ fields, definition, onChange, canSeeFina
           <label className="flex items-center gap-2 text-xs"><RadioGroupItem value="detail" /> Relatório detalhado</label>
         </RadioGroup>
 
-        <Tabs value={colTab} onValueChange={v => setColTab(v as any)}>
+        <Tabs value={colTab} onValueChange={v => setColTab(v as ColTab)}>
           <TabsList className="h-7">
             <TabsTrigger value="summary" className="text-[10px] h-5">Resumo</TabsTrigger>
             <TabsTrigger value="detail" className="text-[10px] h-5">Detalhe</TabsTrigger>
