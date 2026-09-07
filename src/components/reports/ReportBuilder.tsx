@@ -226,24 +226,15 @@ export default function ReportBuilder({ fields, definition, onChange, canSeeFina
       {/* 2 — Filtros */}
       <Column title="Filtrar reservas">
         <div className="space-y-1">
-          {definition.filters.map((f, i) => {
-            const fld = byKey.get(f.field);
-            return (
-              <div key={`${f.field}-${i}`} className="flex items-center gap-1 border border-border rounded px-2 py-1 text-[11px]">
-                <span className="truncate min-w-0">
-                  <span className="font-medium">{fld?.label_pt || f.field}</span>
-                  {' · '}{FILTER_OP_LABELS[f.op]}
-                  {f.values?.length ? ` · ${f.values.join(', ')}` : ''}
-                </span>
-                <button className="ml-auto text-muted-foreground hover:text-foreground" onClick={() => setFilterEdit({ index: i, draft: { ...f } })}>
-                  <Pencil className="h-3 w-3" />
-                </button>
-                <button className="text-muted-foreground hover:text-destructive" onClick={() => patch({ filters: definition.filters.filter((_, j) => j !== i) })}>
-                  <X className="h-3 w-3" />
-                </button>
-              </div>
-            );
-          })}
+          {definition.filters.map((f, i) => (
+            <FilterChip
+              key={`${f.field}-${i}`}
+              filter={f}
+              field={byKey.get(f.field)}
+              onEdit={() => setFilterEdit({ index: i, draft: { ...f } })}
+              onRemove={() => patch({ filters: definition.filters.filter((_, j) => j !== i) })}
+            />
+          ))}
           {!definition.filters.length && <p className="text-[10px] text-muted-foreground">Sem filtros</p>}
         </div>
 
