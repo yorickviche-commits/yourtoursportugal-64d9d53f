@@ -23,6 +23,8 @@ interface Props {
   canSeeFinancial: boolean;
 }
 
+type ColTab = 'summary' | 'detail' | 'all';
+
 const TEXT_OPS: FilterOp[] = ['in', 'not_in', 'is_null', 'not_null', 'contains'];
 const NUM_OPS: FilterOp[] = ['eq', 'neq', 'lt', 'lte', 'gt', 'gte', 'in'];
 
