@@ -54,6 +54,7 @@ export default function ReportHeader({
   const { create, update, remove, reorder } = useSavedReportMutations('files');
 
   const [dialog, setDialog] = useState<null | 'new' | 'edit' | 'reorder'>(null);
+  const [confirmDelete, setConfirmDelete] = useState(false);
   const [name, setName] = useState('');
   const [note, setNote] = useState('');
   const [category, setCategory] = useState<SavedReportCategory>('Performance');
@@ -128,6 +129,7 @@ export default function ReportHeader({
     try {
       await remove.mutateAsync(selected.id);
       toast.success('Relatório apagado');
+      setConfirmDelete(false);
       onNew();
     } catch (e: any) {
       toast.error(e?.message || 'Não foi possível apagar');
@@ -203,7 +205,7 @@ export default function ReportHeader({
                   <DropdownMenuItem className="text-xs" onClick={openEdit}>
                     <Pencil className="h-3 w-3 mr-2" /> Editar
                   </DropdownMenuItem>
-                  <DropdownMenuItem className="text-xs text-destructive" onClick={submitDelete}>
+                  <DropdownMenuItem className="text-xs text-destructive" onClick={() => setConfirmDelete(true)}>
                     <Trash2 className="h-3 w-3 mr-2" /> Apagar
                   </DropdownMenuItem>
                 </>
