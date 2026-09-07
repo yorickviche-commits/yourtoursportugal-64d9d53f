@@ -7,7 +7,7 @@ import { cn } from '@/lib/utils';
 import { BarChart3, Loader2, Lock, Play, Plus, Search, X } from 'lucide-react';
 import { useSavedReports } from '@/hooks/useSavedReports';
 import { useFinancialAccess, useReportFields } from '@/hooks/useReportFields';
-import { runReport, decodeDefinition } from '@/lib/reports/runReport';
+import { runReport, decodeDefinition, isAbortError } from '@/lib/reports/runReport';
 import { emptyDefinition, type ReportDefinition, type RunReportResult, type SavedReport } from '@/types/reports';
 import ReportBuilder from '@/components/reports/ReportBuilder';
 import ReportHeader from '@/components/reports/ReportHeader';
