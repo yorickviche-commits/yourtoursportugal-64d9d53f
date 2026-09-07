@@ -178,7 +178,6 @@ export default function ReportsPage() {
             definition={definition}
             ranAt={ranAt}
             running={running}
-            builderOpen={builderOpen}
             onToggleBuilder={() => setBuilderOpen(o => !o)}
             onGenerate={() => generate()}
             onCancel={cancel}
@@ -201,7 +200,7 @@ export default function ReportsPage() {
             running={running}
             definition={definition}
             reportName={selected?.name || 'relatorio'}
-            onDrillDown={def => generate(def)}
+            onPageChange={p => generate({ ...definition, mode: 'detail', page: p })}
           />
         </section>
       </div>

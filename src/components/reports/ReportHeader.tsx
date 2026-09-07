@@ -28,7 +28,6 @@ interface Props {
   definition: ReportDefinition;
   ranAt: Date | null;
   running: boolean;
-  builderOpen: boolean;
   onToggleBuilder: () => void;
   onGenerate: () => void;
   onCancel: () => void;
