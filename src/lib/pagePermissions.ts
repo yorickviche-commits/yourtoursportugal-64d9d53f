@@ -24,6 +24,7 @@ export type PageKey =
   | 'agents'
   | 'my_feedback'
   | 'admin_feedback'
+  | 'reports'
   | 'yt_brain';
 
 
@@ -36,6 +37,7 @@ export interface PageDef {
 
 export const PAGES: PageDef[] = [
   { key: 'dashboard',           label: 'Dashboard',            path: '/dashboard',            group: 'Visão Geral' },
+  { key: 'reports',             label: 'Relatórios',           path: '/reports',              group: 'Visão Geral' },
   { key: 'leads',               label: 'Leads & Files',        path: '/leads',                group: 'Dep. Reservas' },
   { key: 'trips',               label: 'Bookings & Reservas',  path: '/trips',                group: 'Dep. Reservas' },
   { key: 'ops',                 label: 'Ops Wizard',           path: '/ops',                  group: 'Dep. Reservas' },

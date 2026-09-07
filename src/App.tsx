@@ -56,6 +56,7 @@ import ProductsPage from "./pages/ProductsPage";
 import ProductDetailPage from "./pages/ProductDetailPage";
 import MapasPage from "./pages/MapasPage";
 import MyFeedbackPage from "./pages/MyFeedbackPage";
+import ReportsPage from "./pages/ReportsPage";
 import AdminFeedbackPage from "./pages/AdminFeedbackPage";
 import { FeedbackHintProvider } from "@/components/feedback/FeedbackProvider";
 import { BoldShortcutProvider } from "@/lib/richText";
@@ -121,6 +122,7 @@ const App = () => (
             <Route path="/products" element={<ProtectedRoute><ProductsPage /></ProtectedRoute>} />
             <Route path="/products/:magpieId" element={<ProtectedRoute><ProductDetailPage /></ProtectedRoute>} />
             <Route path="/mapas" element={<ProtectedRoute><MapasPage /></ProtectedRoute>} />
+            <Route path="/reports" element={<ProtectedRoute><ReportsPage /></ProtectedRoute>} />
             <Route path="/my-feedback" element={<ProtectedRoute><MyFeedbackPage /></ProtectedRoute>} />
             <Route path="/admin/feedback" element={<ProtectedRoute adminOnly><AdminFeedbackPage /></ProtectedRoute>} />
             <Route path="/admin/users" element={<ProtectedRoute><AdminUsersPage /></ProtectedRoute>} />

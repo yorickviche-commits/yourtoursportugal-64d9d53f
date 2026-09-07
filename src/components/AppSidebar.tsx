@@ -2,7 +2,7 @@ import { NavLink, useLocation } from 'react-router-dom';
 import {
   Map, MapPin, Users, CreditCard, Sparkles, LayoutDashboard,
   FileText, Handshake, Grid3x3, Truck, Settings, Shield, Plug, ScrollText,
-  Inbox, PackageSearch, Boxes, Brain, Radar, Bug, MessageSquareWarning,
+  Inbox, PackageSearch, Boxes, Brain, Radar, Bug, MessageSquareWarning, BarChart3,
   LogOut, ChevronDown, ChevronRight, Menu, X,
 } from 'lucide-react';
 import { useState } from 'react';
@@ -20,6 +20,7 @@ interface NavItem { to: string; icon: any; label: string; pageKey: PageKey; }
 
 const overviewItems: NavItem[] = [
   { to: '/dashboard', icon: LayoutDashboard, label: 'Dashboard', pageKey: 'dashboard' },
+  { to: '/reports', icon: BarChart3, label: 'Relatórios', pageKey: 'reports' },
   { to: '/profile/me', icon: Users, label: 'O Meu Perfil', pageKey: 'profile' },
   { to: '/my-feedback', icon: Bug, label: 'Os Meus Reportes', pageKey: 'my_feedback' },
 ];

@@ -9,6 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import TagSelect from '@/components/TagSelect';
+import LeadClassificationPanel from '@/components/leads/LeadClassificationPanel';
 import { normalizeClientType } from '@/components/ClientTypeBadge';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
@@ -1057,6 +1058,16 @@ const LeadDetailPage = ({ mode = 'lead' }: { mode?: 'lead' | 'booking' } = {}) =
                 <div><label className="text-[10px] text-muted-foreground uppercase">Desconto</label><Input className="h-8 text-xs mt-1" defaultValue="" /></div>
               </div>
             </div>
+
+            <LeadClassificationPanel
+              leadId={lead.id}
+              legacy={{
+                destination: lead.destination,
+                sales_owner: lead.sales_owner,
+                budget_level: lead.budget_level,
+                comfort_level: lead.comfort_level,
+              }}
+            />
 
             <TagSelect label="Estilos de viagem" value={travelStyles} options={['Food & Wine', 'Culture & History', 'Nature & Adventure', 'Beach & Relax', 'City Break', 'Road Trip', 'Wellness', 'Photography']} onChange={setTravelStyles} multiple />
 
