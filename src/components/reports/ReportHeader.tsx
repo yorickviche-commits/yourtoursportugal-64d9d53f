@@ -46,7 +46,7 @@ function relativeTime(d: Date): string {
 }
 
 export default function ReportHeader({
-  selected, definition, ranAt, running, builderOpen,
+  selected, definition, ranAt, running,
   onToggleBuilder, onGenerate, onCancel, onSelect, onNew,
 }: Props) {
   const { user, isAdmin } = useAuth();
