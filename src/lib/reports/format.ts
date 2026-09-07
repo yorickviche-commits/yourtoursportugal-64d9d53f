@@ -1,7 +1,8 @@
 import type { FieldFormat } from '@/types/reports';
 
+// pt-PT com separador de milhares em ponto e decimal em vírgula (€ 1.705,00).
 const nf = (min: number, max: number) =>
-  new Intl.NumberFormat('pt-PT', { minimumFractionDigits: min, maximumFractionDigits: max });
+  new Intl.NumberFormat('de-DE', { minimumFractionDigits: min, maximumFractionDigits: max, useGrouping: true });
 
 const int = nf(0, 0);
 const dec2 = nf(2, 2);
