@@ -54,6 +54,10 @@ export default function ReportsPage() {
   }, [saved]);
 
   const load = (r: SavedReport) => {
+    // Limpar o #d= para que um refresh não restaure um link antigo.
+    if (window.location.hash.includes('d=')) {
+      window.history.replaceState(null, '', window.location.pathname + window.location.search);
+    }
     setSelected(r);
     setDefinition({ ...emptyDefinition(), ...r.definition });
     setResult(null);
