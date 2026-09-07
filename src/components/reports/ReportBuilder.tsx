@@ -10,6 +10,7 @@ import { DragDropContext, Draggable, Droppable, type DropResult } from '@hello-p
 import { GripVertical, Pencil, Plus, Search, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useFieldOptions } from '@/hooks/useReportFields';
+import { formatIsoDate } from '@/lib/reports/format';
 import {
   BUCKET_LABELS, DATE_PRESET_LABELS, DATE_PRESET_ORDER, FILTER_OP_LABELS,
   type DateBucket, type DatePreset, type FilterOp, type ReportDefinition, type ReportField, type ReportFilter,
@@ -193,7 +194,7 @@ export default function ReportBuilder({ fields, definition, onChange, canSeeFina
           />
         </div>
         <p className="text-[10px] text-muted-foreground">
-          {range.from && range.to ? `${range.from} → ${range.to}` : 'Sem limite de datas'}
+          {range.from && range.to ? `${formatIsoDate(range.from)} → ${formatIsoDate(range.to)}` : 'Sem limite de datas'}
         </p>
         <div>
           <label className="text-[10px] uppercase text-muted-foreground">Relatório em:</label>
