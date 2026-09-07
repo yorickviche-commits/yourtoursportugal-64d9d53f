@@ -104,7 +104,7 @@ export default function ReportBuilder({ fields, definition, onChange, canSeeFina
 
   // ---- Colunas
   const mode = definition.mode;
-  const [colTab, setColTab] = useState<'summary' | 'detail' | 'all'>('summary');
+  const [colTab, setColTab] = useState<ColTab>('summary');
   const [colSearch, setColSearch] = useState('');
   const selectedCols = definition.columns[mode] || [];
   const setCols = (keys: string[]) => patch({ columns: { ...definition.columns, [mode]: keys } });
