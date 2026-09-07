@@ -329,6 +329,27 @@ export default function ReportHeader({
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <AlertDialog open={confirmDelete} onOpenChange={setConfirmDelete}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-sm">Apagar relatório «{selected?.name}»?</AlertDialogTitle>
+            <AlertDialogDescription className="text-xs">
+              Esta ação não pode ser revertida. O relatório guardado será removido.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="h-7 text-xs">Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              className="h-7 text-xs bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={e => { e.preventDefault(); void submitDelete(); }}
+              disabled={remove.isPending}
+            >
+              Apagar
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
