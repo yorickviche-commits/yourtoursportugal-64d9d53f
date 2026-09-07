@@ -521,3 +521,34 @@ function FilterEditor({
     </div>
   );
 }
+
+/** Chip de filtro: mostra a etiqueta legível das opções (nunca UUIDs). */
+function FilterChip({
+  filter, field, onEdit, onRemove,
+}: {
+  filter: ReportFilter;
+  field?: ReportField;
+  onEdit: () => void;
+  onRemove: () => void;
+}) {
+  const { data: options } = useFieldOptions(field);
+  const labelFor = (v: string | number | boolean) => {
+    const s = String(v);
+    return options?.find(o => o.value === s)?.label || s;
+  };
+  return (
+    <div className="flex items-center gap-1 border border-border rounded px-2 py-1 text-[11px]">
+      <span className="truncate min-w-0">
+        <span className="font-medium">{field?.label_pt || filter.field}</span>
+        {' · '}{FILTER_OP_LABELS[filter.op]}
+        {filter.values?.length ? ` · ${filter.values.map(labelFor).join(', ')}` : ''}
+      </span>
+      <button className="ml-auto text-muted-foreground hover:text-foreground" onClick={onEdit}>
+        <Pencil className="h-3 w-3" />
+      </button>
+      <button className="text-muted-foreground hover:text-destructive" onClick={onRemove}>
+        <X className="h-3 w-3" />
+      </button>
+    </div>
+  );
+}
