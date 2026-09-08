@@ -1,3 +1,4 @@
+import { eur as fmtEurBase } from '@/lib/money';
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Plus, Users, Wrench, DollarSign, Handshake, TrendingUp, Clock, CheckCircle, AlertTriangle, FileText, HelpCircle, BarChart3 } from 'lucide-react';
@@ -17,7 +18,6 @@ import AdminKPIFilters from '@/components/kpi/AdminKPIFilters';
 import KPICards from '@/components/kpi/KPICards';
 import { useUserKPIs } from '@/hooks/useUserKPIs';
 import {
-import { eur as fmtEurBase } from '@/lib/money';
   KPIFilterState, KPIValue, useSalesKPIs, useOperationsKPIs, useFinanceKPIs, useB2BKPIs,
 } from '@/hooks/useAdminKPIs';
 

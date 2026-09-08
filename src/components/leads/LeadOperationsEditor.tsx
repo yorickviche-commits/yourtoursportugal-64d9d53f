@@ -1,3 +1,4 @@
+import { eur } from '@/lib/money';
 import { useState, useMemo, useCallback, useRef, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { ChevronDown, ChevronRight, Upload, Clock, FileText, Loader2, Save, Plus, Trash2, FileDown } from 'lucide-react';
@@ -28,7 +29,6 @@ import GuidePlanningDialog from '@/components/leads/GuidePlanningDialog';
 
 
 import {
-import { eur } from '@/lib/money';
   BOOKING_OPTIONS, PAYMENT_OPTIONS, INVOICE_OPTIONS,
   normalizeBookingStatus, normalizePaymentStatus, normalizeInvoiceStatus,
   type OpsRow,

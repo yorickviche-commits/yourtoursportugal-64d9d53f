@@ -1,3 +1,4 @@
+import { eur as fmtEur } from '@/lib/money';
 import { useState, useCallback, useEffect, useRef, useMemo } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Save, Trash2, FileText, ClipboardList, Eye, FileIcon, Mail, Clock, Loader2, ChevronDown, ChevronRight, Plus, Copy, Upload, ExternalLink } from 'lucide-react';
@@ -54,7 +55,6 @@ import { usePublishFeedbackHint } from '@/components/feedback/FeedbackProvider';
 import type { FeedbackModule } from '@/lib/feedbackContext';
 
 import {
-import { eur as fmtEur } from '@/lib/money';
   AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter,
 } from '@/components/ui/alert-dialog';
 
