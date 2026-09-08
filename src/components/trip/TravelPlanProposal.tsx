@@ -179,6 +179,10 @@ interface ClosingTerms {
   showOptionals?: boolean;
   /** Switch for the last page: founders photo + our contacts (hide for B2B). */
   showAbout?: boolean;
+  /** Switch for the Terms & Conditions block (payment, cancellation, notes, next steps). */
+  showTerms?: boolean;
+  /** Switch for the reviews block (banner + testimonials + CTA). */
+  showReviews?: boolean;
 }
 
 const TERMS_URL = 'https://drive.google.com/file/d/12AkvW2Ob0LtcooaciWY4e-nEx7hlOnQC/view?usp=sharing';
