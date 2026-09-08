@@ -513,7 +513,7 @@ export async function buildProposalPdfDoc(
       const programmeTotal = Math.max(0, total - hotelsTotal);
       const eur = (n: number) => fmtEur(n);
 
-      if (total > 0) {
+      if (showPricing && total > 0) {
         const rows: Array<[string, string]> = [[hd.programmePrice, eur(programmeTotal)]];
         if (hotels.length && hotelsTotal > 0) rows.push([hd.hotelsPrice(hotelsNights, hotelsRooms), eur(hotelsTotal)]);
         rows.push([closing.netPricing ? t.totalPriceNet : hd.total, eur(total)]);
