@@ -2696,6 +2696,7 @@ const TravelPlanProposal = ({
 
 
         </div>
+        )}
       </div>
 
 
