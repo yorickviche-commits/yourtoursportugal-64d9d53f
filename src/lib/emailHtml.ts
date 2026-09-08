@@ -1,3 +1,4 @@
+import { money as fmtMoney } from './money';
 /**
  * "Casa YT" email HTML builder.
  *
@@ -125,8 +126,7 @@ function splitTime(item: string): { text: string; time: string } {
 
 const divider = `<div style="border-top:1px dashed #9db6d1;margin:22px 0"></div>`;
 
-const money = (v: number, currency = 'EUR') =>
-  `${v.toLocaleString('pt-PT', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${currency}`;
+const money = (v: number, currency = 'EUR') => fmtMoney(v, currency);
 
 /* ─── program block ───────────────────────────────────────────────────── */
 
