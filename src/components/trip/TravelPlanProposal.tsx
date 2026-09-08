@@ -177,6 +177,8 @@ interface ClosingTerms {
   showHotelDetails?: boolean;
   /** Switch for the "Optionals" block (digital itinerary + PDF). */
   showOptionals?: boolean;
+  /** Switch for the last page: founders photo + our contacts (hide for B2B). */
+  showAbout?: boolean;
 }
 
 const TERMS_URL = 'https://drive.google.com/file/d/12AkvW2Ob0LtcooaciWY4e-nEx7hlOnQC/view?usp=sharing';
@@ -830,6 +832,7 @@ const TravelPlanProposal = ({
     netPricing,
     optionals,
     showOptionals: closing.showOptionals !== false,
+    showAbout: closing.showAbout !== false,
   });
 
   const totalPVP = (() => {
