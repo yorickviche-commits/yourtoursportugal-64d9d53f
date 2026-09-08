@@ -964,7 +964,7 @@ const PricingConditions = ({ proposal, lang }: { proposal: any; lang: string }) 
   return (
     <section id="pricing" className="scroll-mt-16">
       <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm">
-        {(total > 0 || proposal.wetravel_checkout_url) && (
+        {showPrice && (total > 0 || proposal.wetravel_checkout_url) && (
           <div className="px-6 py-6 border-b border-slate-100 bg-slate-50 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div className="text-left">
               {total > 0 && (
@@ -992,7 +992,7 @@ const PricingConditions = ({ proposal, lang }: { proposal: any; lang: string }) 
           </div>
         )}
         <div className="p-6 space-y-5">
-          {total > 0 && (
+          {showPrice && total > 0 && (
             <div className="rounded-lg border border-slate-200 overflow-hidden">
               <table className="w-full text-sm">
                 <tbody>
@@ -1014,7 +1014,7 @@ const PricingConditions = ({ proposal, lang }: { proposal: any; lang: string }) 
               </table>
             </div>
           )}
-          {optionals.length > 0 && closing.showOptionals !== false && (
+          {showPrice && optionals.length > 0 && closing.showOptionals !== false && (
             <div>
               <h3 className="text-sm font-serif font-bold text-slate-800 mb-2">{h.optionals}</h3>
               <div className="rounded-lg border border-slate-200 overflow-hidden">
