@@ -547,6 +547,7 @@ const PublicProposalPage = () => {
         </section>
 
         {/* ─── ABOUT US ─── */}
+        {(proposal as any).closing_terms?.showAbout !== false && (
         <section id="about" className="pb-32">
           <h2 className="text-2xl font-serif text-slate-800 mb-4">{dict.aboutUs}</h2>
           <div className="bg-white rounded-2xl border border-slate-200 p-6">
