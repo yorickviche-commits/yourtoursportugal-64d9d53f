@@ -2445,8 +2445,10 @@ const TravelPlanProposal = ({
 
 
 
-        {(viewMode === 'edit' || closing.showPricing !== false) && (
-        <div className={`border-t-2 border-slate-200 bg-slate-50 p-6 md:p-10 space-y-6 print:break-before-page ${viewMode === 'edit' && closing.showPricing === false ? 'opacity-50' : ''}`}>
+        {(viewMode === 'edit' || closing.showPricing !== false || closing.showTerms !== false) && (
+        <div className="border-t-2 border-slate-200 bg-slate-50 p-6 md:p-10 space-y-6 print:break-before-page">
+          {(viewMode === 'edit' || closing.showPricing !== false) && (
+          <div className={cn('space-y-6', closing.showPricing === false && 'opacity-50 print:hidden')}>
           {/* Price Header */}
           <div className={`pb-4 border-b border-slate-200 flex flex-col sm:flex-row items-center gap-4 ${wetravelCheckoutUrl ? 'sm:justify-between text-center sm:text-left' : 'justify-center text-center'}`}>
             <div>
