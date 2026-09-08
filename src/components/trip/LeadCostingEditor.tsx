@@ -16,7 +16,7 @@ import SupplierSearchDropdown from './SupplierSearchDropdown';
 import SupplierExperiencePicker, { type PickedExperience } from './SupplierExperiencePicker';
 import CostingSmartImportDialog, { type ImportedCostRow } from './CostingSmartImportDialog';
 import type { PlannerDay, PeriodKey } from './TravelPlannerEditor';
-import { eur } from '@/lib/money';
+import { eur, num2 } from '@/lib/money';
 
 // ─── Types ───────────────────────────────────────────
 export type CostLayer = 'transport' | 'guide' | 'experience' | 'accommodation' | 'meal' | 'operational';
@@ -798,8 +798,8 @@ const LeadCostingEditor = ({ costingDays, onChange, onSave, saving, plannerDays,
                                       <td className="px-1 py-1">
                                         <Input className="h-7 text-xs text-center border-0 bg-transparent shadow-none focus-visible:ring-1 px-1" type="number" defaultValue={item.marginPercent} onBlur={e => updateItem(dayIdx, itemIdx, { marginPercent: Number(e.target.value) })} />
                                       </td>
-                                      <td className="px-1 py-1 text-center text-xs font-medium">{item.pvpTotal.toFixed(1)}</td>
-                                      <td className="px-1 py-1 text-center text-xs font-medium text-[hsl(var(--success))]">{item.profit.toFixed(1)}</td>
+                                      <td className="px-1 py-1 text-center text-xs font-medium">{num2(item.pvpTotal)}</td>
+                                      <td className="px-1 py-1 text-center text-xs font-medium text-[hsl(var(--success))]">{num2(item.profit)}</td>
                                       <td className="px-1 py-1">
                                         <div className="flex items-center gap-0.5">
                                           <Select defaultValue={item.status} onValueChange={v => updateItem(dayIdx, itemIdx, { status: v as any })}>

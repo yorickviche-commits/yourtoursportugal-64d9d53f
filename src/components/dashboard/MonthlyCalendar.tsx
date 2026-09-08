@@ -19,7 +19,7 @@ import { pt } from 'date-fns/locale';
 import { ChevronLeft, ChevronRight, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Link } from 'react-router-dom';
-import { eur } from '@/lib/money';
+import { eur, num2 } from '@/lib/money';
 
 type CalendarView = 'month' | 'week' | 'day';
 
@@ -249,7 +249,7 @@ const MonthlyCalendar = ({ events }: { events: CalendarEvent[] }) => {
             {selectedEvent.pax && <p><span className="font-medium text-foreground">Pax:</span> {selectedEvent.pax}</p>}
             {selectedEvent.status && <p><span className="font-medium text-foreground">Status:</span> {selectedEvent.status}</p>}
             {selectedEvent.salesOwner && <p><span className="font-medium text-foreground">Owner:</span> {selectedEvent.salesOwner}</p>}
-            {selectedEvent.totalValue && <p><span className="font-medium text-foreground">Valor:</span> {selectedEvent.totalValue.toLocaleString()}€</p>}
+            {selectedEvent.totalValue && <p><span className="font-medium text-foreground">Valor:</span> {eur(selectedEvent.totalValue)}</p>}
             <p>
               <span className="font-medium text-foreground">Período:</span>{' '}
               {format(parseISO(selectedEvent.startDate), 'd MMM', { locale: pt })} → {format(parseISO(selectedEvent.endDate), 'd MMM', { locale: pt })}

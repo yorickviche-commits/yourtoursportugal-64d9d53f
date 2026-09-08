@@ -7,7 +7,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/component
 import { cn } from '@/lib/utils';
 import { DbCostItem } from '@/hooks/useCostItemsQuery';
 import ItemNotesDialog from './ItemNotesDialog';
-import { eur } from '@/lib/money';
+import { eur, num2 } from '@/lib/money';
 
 // Legacy types for LeadDetailPage backward compatibility
 export interface CostingItem {
@@ -206,8 +206,8 @@ function TripCostingTable({ items, tripId, onAddItem, onUpdateItem, onDeleteItem
                               <td className="px-1 py-1">
                                 <Input className="h-7 text-xs text-center border-0 bg-transparent shadow-none focus-visible:ring-1 px-1" type="number" defaultValue={marginPct} onBlur={e => handleFieldChange(item.id, 'margin_percent', Number(e.target.value))} />
                               </td>
-                              <td className="px-1 py-1 text-center text-xs font-medium">{pvpTotal.toFixed(1)}</td>
-                              <td className="px-1 py-1 text-center text-xs font-medium text-[hsl(var(--success))]">{profit.toFixed(1)}</td>
+                              <td className="px-1 py-1 text-center text-xs font-medium">{num2(pvpTotal)}</td>
+                              <td className="px-1 py-1 text-center text-xs font-medium text-[hsl(var(--success))]">{num2(profit)}</td>
                               <td className="px-1 py-1">
                                 <div className="flex items-center gap-0.5">
                                   <Select defaultValue={status} onValueChange={v => handleFieldChange(item.id, 'status', v)}>
