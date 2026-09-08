@@ -1,3 +1,4 @@
+import { eur } from '@/lib/money';
 import { useRef, useState } from 'react';
 import { Mail, Loader2, Send, Bold, Underline, Link as LinkIcon, Paperclip, Image as ImageIcon, X, Sparkles } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from '@/components/ui/dialog';
@@ -74,7 +75,7 @@ Serviço: ${activityName}
 Data: ${activityDate || '[data a confirmar]'}
 Hora: ${scheduleTime || '[hora a confirmar]'}
 Nº de pessoas: ${pax}
-Valor acordado: €${netValue.toFixed(2)}
+Valor acordado: ${eur(netValue)}
 Referência: ${tripCode}
 
 Agradecemos a confirmação de disponibilidade e o envio da confirmação de reserva.
@@ -113,7 +114,7 @@ reservas@yourtours.pt`;
         `Data: ${activityDate || 'a confirmar'}`,
         `Hora: ${scheduleTime || 'a confirmar'}`,
         `Pax: ${pax}`,
-        `Valor net acordado: €${netValue.toFixed(2)}`,
+        `Valor net acordado: ${eur(netValue)}`,
       ].join('\n');
       const prompt = `Escreve um email operacional em PORTUGUÊS DE PORTUGAL para um fornecedor (FSE) da Your Tours Portugal.
 Objetivo: ${instruction}
