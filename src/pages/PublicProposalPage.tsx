@@ -1086,6 +1086,7 @@ const PricingConditions = ({ proposal, lang }: { proposal: any; lang: string }) 
             </div>
           )}
 
+          {showTerms && (<>
           {includedText && (
             <div>
               <h3 className="text-sm font-serif font-bold text-slate-800 mb-2">{L.included}</h3>
@@ -1116,6 +1117,7 @@ const PricingConditions = ({ proposal, lang }: { proposal: any; lang: string }) 
               <RichText as="div" className="text-sm text-slate-700 whitespace-pre-wrap leading-relaxed" value={nextStepsText} preserveNewlines />
             </div>
           )}
+          </>)}
         </div>
 
       </div>
