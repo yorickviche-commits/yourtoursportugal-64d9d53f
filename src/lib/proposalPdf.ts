@@ -628,6 +628,8 @@ export async function buildProposalPdfDoc(
     });
 
   try {
+    const closingFlags: any = (p as any).closing_terms || {};
+    if (closingFlags.showReviews !== false) {
     doc.addPage();
     const reviewsImg = await loadImg(reviewsCoverUrl);
 
