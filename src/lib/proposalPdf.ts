@@ -453,7 +453,7 @@ export async function buildProposalPdfDoc(
       doc.line(margin, y, pageW - margin, y);
       y += 20;
 
-      if (total > 0 || p.wetravel_checkout_url) {
+      if (showPricing && (total > 0 || p.wetravel_checkout_url)) {
         ensureSpace(80);
         const boxH = 64;
         doc.setFillColor(245, 247, 250);
