@@ -675,6 +675,7 @@ export async function buildProposalPdfDoc(
     doc.link(btnX, btnY, btnW, btnH, { url: ALL_REVIEWS_URL });
 
     // ─── About Your Tours Portugal (own page, with founders photo) ───
+    if (((p as any).closing_terms || {}).showAbout !== false) {
     doc.addPage();
     const foundersImg = await loadImg(foundersAsset.url);
 
@@ -735,6 +736,8 @@ export async function buildProposalPdfDoc(
       bx += w + gap;
     });
     doc.setTextColor(0, 0, 0);
+    }
+
 
   } catch (e) {
     console.warn('reviews page failed', e);

@@ -240,7 +240,9 @@ const PublicProposalPage = () => {
               </a>
             ))}
             <a href="#reviews" className="shrink-0 px-3 py-1.5 rounded-full hover:bg-sky-50 text-slate-600">{dict.reviews}</a>
-            <a href="#about" className="shrink-0 px-3 py-1.5 rounded-full hover:bg-sky-50 text-slate-600">{dict.about}</a>
+            {(proposal as any).closing_terms?.showAbout !== false && (
+              <a href="#about" className="shrink-0 px-3 py-1.5 rounded-full hover:bg-sky-50 text-slate-600">{dict.about}</a>
+            )}
           </div>
         </div>
 
@@ -545,6 +547,7 @@ const PublicProposalPage = () => {
         </section>
 
         {/* ─── ABOUT US ─── */}
+        {(proposal as any).closing_terms?.showAbout !== false && (
         <section id="about" className="pb-32">
           <h2 className="text-2xl font-serif text-slate-800 mb-4">{dict.aboutUs}</h2>
           <div className="bg-white rounded-2xl border border-slate-200 p-6">
@@ -585,6 +588,7 @@ const PublicProposalPage = () => {
 
           </div>
         </section>
+        )}
 
       </div>
 
