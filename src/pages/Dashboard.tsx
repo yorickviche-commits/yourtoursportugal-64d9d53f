@@ -17,12 +17,13 @@ import AdminKPIFilters from '@/components/kpi/AdminKPIFilters';
 import KPICards from '@/components/kpi/KPICards';
 import { useUserKPIs } from '@/hooks/useUserKPIs';
 import {
+import { eur as fmtEurBase } from '@/lib/money';
   KPIFilterState, KPIValue, useSalesKPIs, useOperationsKPIs, useFinanceKPIs, useB2BKPIs,
 } from '@/hooks/useAdminKPIs';
 
 type DashboardSubPage = 'overview' | 'calendar_reservas' | 'calendar_tasks';
 
-const fmtEur = (n: number) => new Intl.NumberFormat('pt-PT', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(n);
+const fmtEur = (n: number) => fmtEurBase(n);
 const fmtPct = (n: number) => `${n.toFixed(1)}%`;
 
 const KPICard = ({ icon: Icon, label, value, variant = 'default', unavailableNote }: {

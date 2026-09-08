@@ -16,7 +16,7 @@ export function formatValue(value: unknown, format: FieldFormat): string {
     case 'eur': {
       const n = Number(value);
       if (!isFinite(n)) return '—';
-      return `€ ${dec2.format(n)}`;
+      return `${dec2.format(n)}€`;
     }
     case 'pct': {
       const n = Number(value);

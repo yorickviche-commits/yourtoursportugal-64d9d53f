@@ -13,10 +13,11 @@ import KPICards from '@/components/kpi/KPICards';
 import { exportPDF, exportExcel } from '@/lib/kpiExport';
 import { User as UserIcon, Camera, FileDown } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { eur as fmtEurBase } from '@/lib/money';
 
 type Tab = 'info' | 'logs' | 'leads' | 'kpis';
 
-const fmtEur = (n: number) => new Intl.NumberFormat('pt-PT', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(n);
+const fmtEur = (n: number) => fmtEurBase(n);
 
 export default function ProfilePage() {
   const params = useParams();

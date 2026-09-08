@@ -14,6 +14,7 @@ import { cn } from '@/lib/utils';
 import { usePaymentLinks, usePublishPaymentLink } from '@/hooks/usePaymentLinksQuery';
 import { toast } from 'sonner';
 import { Link2, Copy } from 'lucide-react';
+import { money as fmtMoney } from '@/lib/money';
 
 interface WeTravelTrip {
   id: number | string;
@@ -56,7 +57,7 @@ const wtTransactionUrl = (tx: WeTravelTransaction) =>
 const parseAmount = (a: any) => (typeof a === 'number' ? a : parseFloat(a) || 0);
 
 const fmt = (n: number, ccy = 'EUR') =>
-  new Intl.NumberFormat('pt-PT', { style: 'currency', currency: ccy }).format(n);
+  fmtMoney(n, ccy);
 
 const classifyStatus = (s?: string) => {
   if (!s) return 'unknown';

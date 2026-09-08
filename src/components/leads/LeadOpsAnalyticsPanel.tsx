@@ -8,9 +8,10 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/component
 import { cn } from '@/lib/utils';
 import { BUSINESS_CONFIG } from '@/lib/businessConfig';
 import type { OpsRow } from '@/components/leads/opsConstants';
+import { eur as fmtEur } from '@/lib/money';
 
 const eur = (n: number) =>
-  new Intl.NumberFormat('pt-PT', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(n || 0);
+  fmtEur(n || 0);
 
 interface Props {
   rows: OpsRow[];

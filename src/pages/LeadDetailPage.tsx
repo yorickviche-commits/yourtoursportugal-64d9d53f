@@ -54,6 +54,7 @@ import { usePublishFeedbackHint } from '@/components/feedback/FeedbackProvider';
 import type { FeedbackModule } from '@/lib/feedbackContext';
 
 import {
+import { eur as fmtEur } from '@/lib/money';
   AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter,
 } from '@/components/ui/alert-dialog';
 
@@ -1278,7 +1279,7 @@ function PaymentSummaryBar({ leadId, totalPVP }: { leadId: string; totalPVP: num
   const deposit = Number(prop?.deposit_amount_eur ?? 0);
   const paid = Math.max(0, Number(pay?.net ?? 0));
   const outstanding = Math.max(0, total - paid);
-  const fmt = (n: number) => `${n.toLocaleString('pt-PT', { maximumFractionDigits: 0 })}€`;
+  const fmt = (n: number) => fmtEur(n);
 
   const fullyPaid = total > 0 && paid >= total;
   const depositMet = deposit > 0 && paid >= deposit;

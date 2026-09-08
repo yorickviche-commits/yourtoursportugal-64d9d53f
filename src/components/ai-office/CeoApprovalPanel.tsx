@@ -9,6 +9,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Loader2 } from 'lucide-react';
 import { useState } from 'react';
 import type { ApprovalItem } from '@/hooks/useAIOffice';
+import { eur as fmtEur } from '@/lib/money';
 
 interface Props {
   open: boolean;
@@ -70,7 +71,7 @@ export default function CeoApprovalPanel({ open, onClose, approvals, onDecide }:
                     </div>
                     {item.amount_eur && (
                       <span className="text-sm font-bold text-foreground whitespace-nowrap">
-                        € {item.amount_eur.toLocaleString('pt-PT')}
+                        {fmtEur(item.amount_eur)}
                       </span>
                     )}
                   </div>
