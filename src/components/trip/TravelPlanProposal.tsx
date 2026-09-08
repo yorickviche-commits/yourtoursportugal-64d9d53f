@@ -2656,8 +2656,12 @@ const TravelPlanProposal = ({
             </div>
           </div>
 
+          {(viewMode === 'edit' || closing.showAbout !== false) && (
           <div
-            className="rounded-xl border border-slate-200 bg-slate-50 p-4 md:p-5"
+            className={cn(
+              'rounded-xl border border-slate-200 bg-slate-50 p-4 md:p-5',
+              closing.showAbout === false && 'opacity-50 print:hidden',
+            )}
             style={{ backgroundColor: '#f8fafc', printColorAdjust: 'exact', WebkitPrintColorAdjust: 'exact' } as any}
           >
             <h3 className="text-base font-serif font-bold text-slate-800 mb-2">{d.aboutUs}</h3>
