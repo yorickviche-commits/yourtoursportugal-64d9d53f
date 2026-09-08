@@ -7,6 +7,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/component
 import { cn } from '@/lib/utils';
 import { DbCostItem } from '@/hooks/useCostItemsQuery';
 import ItemNotesDialog from './ItemNotesDialog';
+import { eur } from '@/lib/money';
 
 // Legacy types for LeadDetailPage backward compatibility
 export interface CostingItem {
@@ -239,7 +240,7 @@ function TripCostingTable({ items, tripId, onAddItem, onUpdateItem, onDeleteItem
                     <div className="flex items-center justify-center gap-8 mt-3 text-xs pt-2 border-t">
                       <div className="text-center">
                         <p className="text-[10px] text-muted-foreground font-semibold">NET</p>
-                        <p className="font-bold">{dayNet.toFixed(2)}€</p>
+                        <p className="font-bold">{eur(dayNet)}</p>
                       </div>
                       <div className="text-center">
                         <p className="text-[10px] text-muted-foreground font-semibold">Margem</p>
@@ -247,11 +248,11 @@ function TripCostingTable({ items, tripId, onAddItem, onUpdateItem, onDeleteItem
                       </div>
                       <div className="text-center">
                         <p className="text-[10px] text-muted-foreground font-semibold">Lucro</p>
-                        <p className="font-bold text-[hsl(var(--success))]">{dayProfit.toFixed(2)}€</p>
+                        <p className="font-bold text-[hsl(var(--success))]">{eur(dayProfit)}</p>
                       </div>
                       <div className="text-center">
                         <p className="text-[10px] text-muted-foreground font-semibold">TOTAL</p>
-                        <p className="font-bold">{dayPVP.toFixed(2)}€</p>
+                        <p className="font-bold">{eur(dayPVP)}</p>
                       </div>
                     </div>
                   )}
@@ -268,7 +269,7 @@ function TripCostingTable({ items, tripId, onAddItem, onUpdateItem, onDeleteItem
           <div className="grid grid-cols-4 gap-6 text-center">
             <div>
               <p className="text-[10px] text-muted-foreground uppercase font-semibold">Total NET</p>
-              <p className="text-lg font-bold">€{grandNet.toFixed(2)}</p>
+              <p className="text-lg font-bold">{eur(grandNet)}</p>
             </div>
             <div>
               <p className="text-[10px] text-muted-foreground uppercase font-semibold">Margem Média</p>
@@ -276,11 +277,11 @@ function TripCostingTable({ items, tripId, onAddItem, onUpdateItem, onDeleteItem
             </div>
             <div>
               <p className="text-[10px] text-muted-foreground uppercase font-semibold">Lucro</p>
-              <p className="text-lg font-bold text-[hsl(var(--success))]">€{grandProfit.toFixed(2)}</p>
+              <p className="text-lg font-bold text-[hsl(var(--success))]">{eur(grandProfit)}</p>
             </div>
             <div>
               <p className="text-[10px] text-muted-foreground uppercase font-semibold">TOTAL PVP</p>
-              <p className="text-lg font-bold text-[hsl(var(--info))]">€{grandPVP.toFixed(2)}</p>
+              <p className="text-lg font-bold text-[hsl(var(--info))]">{eur(grandPVP)}</p>
             </div>
           </div>
         </div>
@@ -352,7 +353,7 @@ function LegacyCostingTable({ days, onChange, finalPrice, onFinalPriceChange }: 
                     <span className="text-xs text-[hsl(var(--info))] font-medium">Dia {day.day}</span>
                     <p className="text-sm font-semibold text-[hsl(var(--info))]">{day.title || 'Sem título'}</p>
                   </div>
-                  <span className="text-xs font-medium">€{dayTotal.toFixed(0)}</span>
+                  <span className="text-xs font-medium">{eur(dayTotal)}</span>
                 </CollapsibleTrigger>
                 <CollapsibleContent>
                   <div className="px-4 pb-4">
@@ -377,8 +378,8 @@ function LegacyCostingTable({ days, onChange, finalPrice, onFinalPriceChange }: 
                             <td className="px-2 py-1.5"><Input className="h-7 text-xs w-16 mx-auto text-center" type="number" value={item.nrPeople} onChange={e => updateItem(dayIndex, itemIndex, 'nrPeople', Number(e.target.value))} /></td>
                             <td className="px-2 py-1.5"><Input className="h-7 text-xs w-20 ml-auto text-right" type="number" value={item.netCost} onChange={e => updateItem(dayIndex, itemIndex, 'netCost', Number(e.target.value))} /></td>
                             <td className="px-2 py-1.5"><Input className="h-7 text-xs w-16 ml-auto text-right" type="number" value={item.marginPercent} onChange={e => updateItem(dayIndex, itemIndex, 'marginPercent', Number(e.target.value))} /></td>
-                            <td className="px-2 py-1.5 text-right font-medium">€{item.pvp.toFixed(2)}</td>
-                            <td className="px-2 py-1.5 text-right font-bold">€{item.totalPrice.toFixed(2)}</td>
+                            <td className="px-2 py-1.5 text-right font-medium">{eur(item.pvp)}</td>
+                            <td className="px-2 py-1.5 text-right font-bold">{eur(item.totalPrice)}</td>
                             <td className="px-2 py-1.5">
                               <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={() => removeItem(dayIndex, itemIndex)}>
                                 <span className="h-3 w-3 text-destructive">✕</span>
@@ -401,9 +402,9 @@ function LegacyCostingTable({ days, onChange, finalPrice, onFinalPriceChange }: 
 
       <div className="bg-card rounded-lg border p-4">
         <div className="grid grid-cols-5 gap-4 text-center">
-          <div><p className="text-[10px] text-muted-foreground uppercase">Total NET</p><p className="text-lg font-bold">€{grandNet.toFixed(0)}</p></div>
-          <div><p className="text-[10px] text-muted-foreground uppercase">Total PVP</p><p className="text-lg font-bold text-[hsl(var(--info))]">€{grandPVP.toFixed(0)}</p></div>
-          <div><p className="text-[10px] text-muted-foreground uppercase">Lucro</p><p className="text-lg font-bold text-[hsl(var(--success))]">€{grandProfit.toFixed(0)}</p></div>
+          <div><p className="text-[10px] text-muted-foreground uppercase">Total NET</p><p className="text-lg font-bold">{eur(grandNet)}</p></div>
+          <div><p className="text-[10px] text-muted-foreground uppercase">Total PVP</p><p className="text-lg font-bold text-[hsl(var(--info))]">{eur(grandPVP)}</p></div>
+          <div><p className="text-[10px] text-muted-foreground uppercase">Lucro</p><p className="text-lg font-bold text-[hsl(var(--success))]">{eur(grandProfit)}</p></div>
           <div><p className="text-[10px] text-muted-foreground uppercase">Margem</p><p className="text-lg font-bold">{grandMargin.toFixed(1)}%</p></div>
           <div>
             <p className="text-[10px] text-muted-foreground uppercase">Preço Final</p>

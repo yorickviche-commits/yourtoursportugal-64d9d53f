@@ -12,6 +12,7 @@ import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { addDays, format, parseISO } from 'date-fns';
 import { pt } from 'date-fns/locale';
+import { eur } from '@/lib/money';
 
 interface FlatCostItem {
   id: string;
@@ -165,7 +166,7 @@ Service: ${item.description}
 Date: ${activityDate || '[Date]'}
 Time: ${item.scheduleTime || '[Time TBD]'}
 Number of people: ${item.pax}
-Total value: €${item.netValue.toFixed(2)}
+Total value: ${eur(item.netValue)}
 Booking reference: ${code}
 
 Please confirm availability and send us the confirmation.
@@ -183,7 +184,7 @@ reservas@yourtours.pt`;
         bodyHtml,
         recipientLabel: item.supplier,
         serviceLabel: item.description,
-        contextNote: `Dia ${item.dayNumber}${item.scheduleTime ? ' · ' + item.scheduleTime : ''} · ${item.pax} pax · €${item.netValue.toFixed(0)}`,
+        contextNote: `Dia ${item.dayNumber}${item.scheduleTime ? ' · ' + item.scheduleTime : ''} · ${item.pax} pax · ${eur(item.netValue)}`,
       };
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -350,7 +351,7 @@ reservas@yourtours.pt`;
                         <span className="font-medium truncate" title={it.description}>{it.description}</span>
                         <span className="text-muted-foreground truncate" title={it.supplier}>{it.supplier}</span>
                         <span className="text-center">{it.pax}p</span>
-                        <span className="text-right font-semibold">€{it.netValue.toFixed(0)}</span>
+                        <span className="text-right font-semibold">{eur(it.netValue)}</span>
                         <span className={cn(
                           'text-[10px] px-2 py-0.5 rounded text-center truncate',
                           resolvedEmails[it.supplier]

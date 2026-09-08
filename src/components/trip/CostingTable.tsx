@@ -1,5 +1,6 @@
 import { ChevronDown, ChevronRight, Plus } from 'lucide-react';
 import { useState } from 'react';
+import { eur } from '@/lib/money';
 
 export interface CostingActivity {
   id: string;
@@ -99,8 +100,8 @@ const CostingTable = ({ days }: CostingTableProps) => {
                         <div className="col-span-1 text-right">{act.numYouth}</div>
                         <div className="col-span-1 text-right font-medium">€{act.netTotal}</div>
                         <div className="col-span-1 text-right">{act.marginPercent}%</div>
-                        <div className="col-span-1 text-right font-medium">€{act.pvpTotal.toFixed(1)}</div>
-                        <div className="col-span-1 text-right text-success font-medium">€{act.profit.toFixed(1)}</div>
+                        <div className="col-span-1 text-right font-medium">{eur(act.pvpTotal)}</div>
+                        <div className="col-span-1 text-right text-success font-medium">{eur(act.profit)}</div>
                       </div>
                     ))}
                   </div>

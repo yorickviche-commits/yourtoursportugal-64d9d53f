@@ -16,6 +16,7 @@ import SupplierSearchDropdown from './SupplierSearchDropdown';
 import SupplierExperiencePicker, { type PickedExperience } from './SupplierExperiencePicker';
 import CostingSmartImportDialog, { type ImportedCostRow } from './CostingSmartImportDialog';
 import type { PlannerDay, PeriodKey } from './TravelPlannerEditor';
+import { eur } from '@/lib/money';
 
 // ─── Types ───────────────────────────────────────────
 export type CostLayer = 'transport' | 'guide' | 'experience' | 'accommodation' | 'meal' | 'operational';
@@ -793,7 +794,7 @@ const LeadCostingEditor = ({ costingDays, onChange, onSave, saving, plannerDays,
                                       <td className="px-1 py-1">
                                         <Input className="h-7 text-xs text-center border-0 bg-muted/30 shadow-none focus-visible:ring-1 px-1" type="number" key={`pc-${item.id}-${rev}`} defaultValue={item.priceChildren} onBlur={e => updateItem(dayIdx, itemIdx, { priceChildren: Number(e.target.value) })} />
                                       </td>
-                                      <td className="px-1 py-1 text-center text-xs font-semibold">{item.netTotal.toFixed(0)}€</td>
+                                      <td className="px-1 py-1 text-center text-xs font-semibold">{eur(item.netTotal)}</td>
                                       <td className="px-1 py-1">
                                         <Input className="h-7 text-xs text-center border-0 bg-transparent shadow-none focus-visible:ring-1 px-1" type="number" defaultValue={item.marginPercent} onBlur={e => updateItem(dayIdx, itemIdx, { marginPercent: Number(e.target.value) })} />
                                       </td>
@@ -854,10 +855,10 @@ const LeadCostingEditor = ({ costingDays, onChange, onSave, saving, plannerDays,
                   )}
                 </div>
                 <div className="text-right shrink-0">
-                  <span className="text-xs font-medium">NET {dayNet.toFixed(0)}€</span>
+                  <span className="text-xs font-medium">NET {eur(dayNet)}</span>
                   <span className="text-[10px] text-muted-foreground ml-2">
-                    PVP {dayPVP.toFixed(0)}€
-                    {dayOptPVP > 0 && <span className="text-[hsl(var(--warning))] ml-1">(+{dayOptPVP.toFixed(0)}€ opc.)</span>}
+                    PVP {eur(dayPVP)}
+                    {dayOptPVP > 0 && <span className="text-[hsl(var(--warning))] ml-1">(+{eur(dayOptPVP)} opc.)</span>}
                   </span>
                 </div>
 
@@ -928,7 +929,7 @@ const LeadCostingEditor = ({ costingDays, onChange, onSave, saving, plannerDays,
                         <div className="flex items-center justify-center gap-8 mt-2 text-xs pt-2 border-t border-[hsl(var(--warning))]/30">
                           <div className="text-center">
                             <p className="text-[10px] text-muted-foreground font-semibold">NET</p>
-                            <p className="font-bold">{dayOptNet.toFixed(2)}€</p>
+                            <p className="font-bold">{eur(dayOptNet)}</p>
                           </div>
                           <div className="text-center">
                             <p className="text-[10px] text-muted-foreground font-semibold">Margem</p>
@@ -936,11 +937,11 @@ const LeadCostingEditor = ({ costingDays, onChange, onSave, saving, plannerDays,
                           </div>
                           <div className="text-center">
                             <p className="text-[10px] text-muted-foreground font-semibold">Lucro</p>
-                            <p className="font-bold text-[hsl(var(--success))]">{dayOptProfit.toFixed(2)}€</p>
+                            <p className="font-bold text-[hsl(var(--success))]">{eur(dayOptProfit)}</p>
                           </div>
                           <div className="text-center">
                             <p className="text-[10px] text-muted-foreground font-semibold">PVP</p>
-                            <p className="font-bold text-[hsl(var(--warning))]">{dayOptPVP.toFixed(2)}€</p>
+                            <p className="font-bold text-[hsl(var(--warning))]">{eur(dayOptPVP)}</p>
                           </div>
                         </div>
                       )}
@@ -955,7 +956,7 @@ const LeadCostingEditor = ({ costingDays, onChange, onSave, saving, plannerDays,
                     <div className="flex items-center justify-center gap-8 mt-3 text-xs pt-2 border-t">
                       <div className="text-center">
                         <p className="text-[10px] text-muted-foreground font-semibold">NET</p>
-                        <p className="font-bold">{dayNet.toFixed(2)}€</p>
+                        <p className="font-bold">{eur(dayNet)}</p>
                       </div>
                       <div className="text-center">
                         <p className="text-[10px] text-muted-foreground font-semibold">Margem</p>
@@ -963,11 +964,11 @@ const LeadCostingEditor = ({ costingDays, onChange, onSave, saving, plannerDays,
                       </div>
                       <div className="text-center">
                         <p className="text-[10px] text-muted-foreground font-semibold">Lucro</p>
-                        <p className="font-bold text-[hsl(var(--success))]">{dayProfit.toFixed(2)}€</p>
+                        <p className="font-bold text-[hsl(var(--success))]">{eur(dayProfit)}</p>
                       </div>
                       <div className="text-center">
                         <p className="text-[10px] text-muted-foreground font-semibold">TOTAL</p>
-                        <p className="font-bold">{dayPVP.toFixed(2)}€</p>
+                        <p className="font-bold">{eur(dayPVP)}</p>
                       </div>
                     </div>
                   )}
@@ -987,7 +988,7 @@ const LeadCostingEditor = ({ costingDays, onChange, onSave, saving, plannerDays,
           <div className="grid grid-cols-2 md:grid-cols-5 gap-6 text-center items-end">
             <div>
               <p className="text-[10px] text-muted-foreground uppercase font-semibold">Total NET</p>
-              <p className="text-lg font-bold">€{grandNet.toFixed(2)}</p>
+              <p className="text-lg font-bold">{eur(grandNet)}</p>
               <p className="text-[9px] text-muted-foreground">somatório custos</p>
             </div>
             <div>
@@ -1007,7 +1008,7 @@ const LeadCostingEditor = ({ costingDays, onChange, onSave, saving, plannerDays,
             </div>
             <div>
               <p className="text-[10px] text-muted-foreground uppercase font-semibold">Lucro</p>
-              <p className="text-lg font-bold text-[hsl(var(--success))]">€{grandProfit.toFixed(2)}</p>
+              <p className="text-lg font-bold text-[hsl(var(--success))]">{eur(grandProfit)}</p>
               <p className="text-[9px] text-muted-foreground">PVP − NET</p>
             </div>
             <div>
@@ -1042,7 +1043,7 @@ const LeadCostingEditor = ({ costingDays, onChange, onSave, saving, plannerDays,
           </div>
           {pvpOverride != null && (
             <div className="flex items-center justify-end gap-2 mt-3 pt-2 border-t text-[10px] text-muted-foreground">
-              <span>PVP ajustado manualmente (€{computedPVP.toFixed(2)} calculado)</span>
+              <span>PVP ajustado manualmente ({eur(computedPVP)} calculado)</span>
               <button onClick={resetOverride} className="text-[hsl(var(--info))] hover:underline font-medium">Repor cálculo</button>
             </div>
           )}
@@ -1050,7 +1051,7 @@ const LeadCostingEditor = ({ costingDays, onChange, onSave, saving, plannerDays,
             <>
               <div className="flex items-center justify-between gap-2 mt-3 pt-3 border-t flex-wrap">
                 <p className="text-[10px] text-muted-foreground">
-                  Gera o link de pagamento WeTravel com base no PVP total (€{grandPVP.toFixed(2)}).
+                  Gera o link de pagamento WeTravel com base no PVP total ({eur(grandPVP)}).
                 </p>
                 <Button size="sm" variant="outline" className="text-xs gap-1" onClick={() => setPayLinkOpen(true)} disabled={grandPVP <= 0}>
                   <Link2 className="h-3 w-3" /> Criar link de pagamento
@@ -1081,10 +1082,10 @@ const LeadCostingEditor = ({ costingDays, onChange, onSave, saving, plannerDays,
                     <div key={item.id} className="flex items-baseline justify-between gap-3 text-xs py-1 border-b border-border/30 last:border-0">
                       <span className="text-foreground">{item.description || '—'}</span>
                       <span className="shrink-0 font-semibold">
-                        €{item.pvpTotal.toFixed(2)}
+                        {eur(item.pvpTotal)}
                         {item.pricingType === 'per_person' && (
                           <span className="ml-1 text-[10px] font-normal text-muted-foreground">
-                            (€{(item.priceAdults * (1 + item.marginPercent / 100)).toFixed(2)} / pessoa)
+                            ({eur((item.priceAdults * (1 + item.marginPercent / 100)))} / pessoa)
                           </span>
                         )}
                       </span>
@@ -1096,7 +1097,7 @@ const LeadCostingEditor = ({ costingDays, onChange, onSave, saving, plannerDays,
           </div>
           <div className="flex items-center justify-between gap-3 pt-2 border-t text-sm font-bold">
             <span>Total programa + opcionais</span>
-            <span className="text-[hsl(var(--info))]">€{(grandPVP + optionalsPVP).toFixed(2)}</span>
+            <span className="text-[hsl(var(--info))]">{eur((grandPVP + optionalsPVP))}</span>
           </div>
         </div>
       )}

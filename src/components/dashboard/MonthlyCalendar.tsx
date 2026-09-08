@@ -19,6 +19,7 @@ import { pt } from 'date-fns/locale';
 import { ChevronLeft, ChevronRight, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Link } from 'react-router-dom';
+import { eur } from '@/lib/money';
 
 type CalendarView = 'month' | 'week' | 'day';
 

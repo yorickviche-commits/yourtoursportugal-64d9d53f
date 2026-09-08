@@ -26,6 +26,7 @@ import OperationsTable from '@/components/trip/OperationsTable';
 import CommunicationsTab from '@/components/communications/CommunicationsTab';
 import { formatDistanceToNow } from 'date-fns';
 import { pt } from 'date-fns/locale';
+import { eur } from '@/lib/money';
 
 type TripTab = 'details' | 'itinerary' | 'costing' | 'operations' | 'communications' | 'contacts' | 'activity' | 'documents';
 
@@ -224,19 +225,19 @@ const TripDetailPage = () => {
               <CreditCard className="h-4 w-4 text-muted-foreground" />
               <div>
                 <p className="text-[10px] text-muted-foreground uppercase">Total da Viagem</p>
-                <p className="text-lg font-bold">€{totalValue.toLocaleString()}</p>
+                <p className="text-lg font-bold">{eur(totalValue)}</p>
               </div>
             </div>
             <div className="h-8 w-px bg-border" />
             <div>
               <p className="text-[10px] text-muted-foreground uppercase">Custos Operacionais</p>
-              <p className="text-sm font-semibold text-[hsl(var(--warning))]">€{costSubtotal.toLocaleString()}</p>
+              <p className="text-sm font-semibold text-[hsl(var(--warning))]">{eur(costSubtotal)}</p>
             </div>
             <div className="h-8 w-px bg-border" />
             <div>
               <p className="text-[10px] text-muted-foreground uppercase">Margem</p>
               <p className={cn("text-sm font-semibold", profit > 0 ? "text-[hsl(var(--success))]" : "text-destructive")}>
-                €{profit.toLocaleString()} ({totalValue > 0 ? Math.round((profit / totalValue) * 100) : 0}%)
+                {eur(profit)} ({totalValue > 0 ? Math.round((profit / totalValue) * 100) : 0}%)
               </p>
             </div>
           </div>
