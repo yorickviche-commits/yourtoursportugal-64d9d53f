@@ -837,6 +837,9 @@ const TravelPlanProposal = ({
     optionals,
     showOptionals: closing.showOptionals !== false,
     showAbout: closing.showAbout !== false,
+    showTerms: closing.showTerms !== false,
+    showReviews: closing.showReviews !== false,
+    showPricing: closing.showPricing !== false,
   });
 
   const totalPVP = (() => {
