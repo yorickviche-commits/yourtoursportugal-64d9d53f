@@ -179,6 +179,10 @@ interface ClosingTerms {
   showOptionals?: boolean;
   /** Switch for the last page: founders photo + our contacts (hide for B2B). */
   showAbout?: boolean;
+  /** Switch for the Terms & Conditions block (payment, cancellation, notes, next steps). */
+  showTerms?: boolean;
+  /** Switch for the reviews block (banner + testimonials + CTA). */
+  showReviews?: boolean;
 }
 
 const TERMS_URL = 'https://drive.google.com/file/d/12AkvW2Ob0LtcooaciWY4e-nEx7hlOnQC/view?usp=sharing';
@@ -833,6 +837,9 @@ const TravelPlanProposal = ({
     optionals,
     showOptionals: closing.showOptionals !== false,
     showAbout: closing.showAbout !== false,
+    showTerms: closing.showTerms !== false,
+    showReviews: closing.showReviews !== false,
+    showPricing: closing.showPricing !== false,
   });
 
   const totalPVP = (() => {
@@ -2356,20 +2363,52 @@ const TravelPlanProposal = ({
 
         {/* PRICING & CONDITIONS — Client-facing closing section (toggleable) */}
         {viewMode === 'edit' && (
-          <div className="border-t border-slate-200 bg-white px-6 md:px-10 py-3 flex items-center gap-2 print:hidden">
-            <input
-              id="show-pricing-toggle"
-              type="checkbox"
-              checked={closing.showPricing !== false}
-              onChange={e => setClosing(c => ({ ...c, showPricing: e.target.checked }))}
-              className="h-4 w-4 accent-[hsl(var(--info))]"
-            />
-            <label htmlFor="show-pricing-toggle" className="text-xs font-medium text-slate-700 cursor-pointer select-none">
-              Incluir secção de Preço e Termos & Condições na proposta
-            </label>
-            {closing.showPricing === false && (
-              <span className="text-[10px] text-amber-600 ml-2">— Secção oculta no link e no PDF</span>
-            )}
+          <div className="border-t border-slate-200 bg-white px-6 md:px-10 py-3 flex flex-wrap items-center gap-x-6 gap-y-2 print:hidden">
+            <div className="flex items-center gap-2">
+              <input
+                id="show-pricing-toggle"
+                type="checkbox"
+                checked={closing.showPricing !== false}
+                onChange={e => setClosing(c => ({ ...c, showPricing: e.target.checked }))}
+                className="h-4 w-4 accent-[hsl(var(--info))]"
+              />
+              <label htmlFor="show-pricing-toggle" className="text-xs font-medium text-slate-700 cursor-pointer select-none">
+                Incluir Preço na proposta
+              </label>
+              {closing.showPricing === false && (
+                <span className="text-[10px] text-amber-600">— oculto</span>
+              )}
+            </div>
+            <div className="flex items-center gap-2">
+              <input
+                id="show-terms-toggle"
+                type="checkbox"
+                checked={closing.showTerms !== false}
+                onChange={e => setClosing(c => ({ ...c, showTerms: e.target.checked }))}
+                className="h-4 w-4 accent-[hsl(var(--info))]"
+              />
+              <label htmlFor="show-terms-toggle" className="text-xs font-medium text-slate-700 cursor-pointer select-none">
+                Incluir Termos &amp; Condições
+              </label>
+              {closing.showTerms === false && (
+                <span className="text-[10px] text-amber-600">— oculto</span>
+              )}
+            </div>
+            <div className="flex items-center gap-2">
+              <input
+                id="show-reviews-toggle"
+                type="checkbox"
+                checked={closing.showReviews !== false}
+                onChange={e => setClosing(c => ({ ...c, showReviews: e.target.checked }))}
+                className="h-4 w-4 accent-[hsl(var(--info))]"
+              />
+              <label htmlFor="show-reviews-toggle" className="text-xs font-medium text-slate-700 cursor-pointer select-none">
+                Incluir Reviews
+              </label>
+              {closing.showReviews === false && (
+                <span className="text-[10px] text-amber-600">— oculto</span>
+              )}
+            </div>
           </div>
         )}
         {viewMode === 'edit' && optionals.length > 0 && (
@@ -2409,8 +2448,10 @@ const TravelPlanProposal = ({
 
 
 
-        {(viewMode === 'edit' || closing.showPricing !== false) && (
-        <div className={`border-t-2 border-slate-200 bg-slate-50 p-6 md:p-10 space-y-6 print:break-before-page ${viewMode === 'edit' && closing.showPricing === false ? 'opacity-50' : ''}`}>
+        {(viewMode === 'edit' || closing.showPricing !== false || closing.showTerms !== false) && (
+        <div className="border-t-2 border-slate-200 bg-slate-50 p-6 md:p-10 space-y-6 print:break-before-page">
+          {(viewMode === 'edit' || closing.showPricing !== false) && (
+          <div className={cn('space-y-6', closing.showPricing === false && 'opacity-50 print:hidden')}>
           {/* Price Header */}
           <div className={`pb-4 border-b border-slate-200 flex flex-col sm:flex-row items-center gap-4 ${wetravelCheckoutUrl ? 'sm:justify-between text-center sm:text-left' : 'justify-center text-center'}`}>
             <div>
@@ -2488,8 +2529,12 @@ const TravelPlanProposal = ({
               <p className="text-[10px] text-slate-500 mt-1.5">{h.optionalsNote}</p>
             </div>
           )}
+          </div>
+          )}
 
 
+          {(viewMode === 'edit' || closing.showTerms !== false) && (
+          <div className={cn('space-y-6', closing.showTerms === false && 'opacity-50 print:hidden')}>
           {/* What's Included — Day by Day Summary or override */}
           <div>
             <div className="flex items-center justify-between mb-2">
@@ -2614,11 +2659,16 @@ const TravelPlanProposal = ({
             <p className="italic text-slate-500">{t.noReservationNote}</p>
             <p className="font-serif font-semibold text-slate-800 pt-2 whitespace-pre-line">{t.bestRegards}</p>
           </div>
+          </div>
+          )}
         </div>
         )}
 
         {/* ─── REVIEWS & ABOUT US (last page) ─── */}
+        {(viewMode === 'edit' || closing.showReviews !== false || closing.showAbout !== false) && (
         <div className="border-t-2 border-slate-200 bg-white p-6 md:p-10 space-y-8 print:break-before-page">
+          {(viewMode === 'edit' || closing.showReviews !== false) && (
+          <div className={cn('space-y-8', closing.showReviews === false && 'opacity-50 print:hidden')}>
           <a
             href={ALL_REVIEWS_URL}
             target="_blank"
@@ -2655,6 +2705,9 @@ const TravelPlanProposal = ({
               </a>
             </div>
           </div>
+          </div>
+          )}
+
 
           {(viewMode === 'edit' || closing.showAbout !== false) && (
           <div
@@ -2696,6 +2749,7 @@ const TravelPlanProposal = ({
 
 
         </div>
+        )}
       </div>
 
 

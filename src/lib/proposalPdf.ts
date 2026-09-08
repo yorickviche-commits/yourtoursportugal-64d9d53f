@@ -444,15 +444,16 @@ export async function buildProposalPdfDoc(
   {
     const closing: any = (p as any).closing_terms || {};
     const showPricing = closing.showPricing !== false;
+    const showTerms = closing.showTerms !== false;
     const total = Number(p.total_value_eur) || 0;
 
-    if (showPricing) {
+    if (showPricing || showTerms) {
       ensureSpace(40);
       doc.setDrawColor(220, 220, 220);
       doc.line(margin, y, pageW - margin, y);
       y += 20;
 
-      if (total > 0 || p.wetravel_checkout_url) {
+      if (showPricing && (total > 0 || p.wetravel_checkout_url)) {
         ensureSpace(80);
         const boxH = 64;
         doc.setFillColor(245, 247, 250);
@@ -512,7 +513,7 @@ export async function buildProposalPdfDoc(
       const programmeTotal = Math.max(0, total - hotelsTotal);
       const eur = (n: number) => fmtEur(n);
 
-      if (total > 0) {
+      if (showPricing && total > 0) {
         const rows: Array<[string, string]> = [[hd.programmePrice, eur(programmeTotal)]];
         if (hotels.length && hotelsTotal > 0) rows.push([hd.hotelsPrice(hotelsNights, hotelsRooms), eur(hotelsTotal)]);
         rows.push([closing.netPricing ? t.totalPriceNet : hd.total, eur(total)]);
@@ -533,7 +534,7 @@ export async function buildProposalPdfDoc(
 
       // Optionals — extras outside the base programme price
       const optionals: any[] = Array.isArray(closing.optionals) ? closing.optionals : [];
-      const optionalsText = (closing.showOptionals !== false && optionals.length)
+      const optionalsText = (showPricing && closing.showOptionals !== false && optionals.length)
         ? optionals.map((o: any) => {
             const label = `${Number(o.day) > 0 ? `${t.day} ${o.day} — ` : ''}${stripBoldMarkers(String(o.description || ''))}`;
             const price = `${eur(o.pvp)}${o.perPerson ? ` (${eur(o.perPerson)} / ${hd.perPerson.toLowerCase()})` : ''}`;
@@ -564,12 +565,14 @@ export async function buildProposalPdfDoc(
         ...(optionalsText ? [{ heading: hd.optionals, text: optionalsText }] : []),
         ...(hotelsText ? [{ heading: hd.hotelsIncluded, text: hotelsText }] : []),
 
-        { heading: t.included, text: (closing.inclusionsOverride?.trim() || autoIncluded) },
-        { heading: hd.notIncluded, text: resolveHotelsText('notIncludedDefault', closing.notIncluded, p.language) },
-        { heading: t.paymentConditions, text: resolveClosingText('payment', closing.payment, p.language) },
-        { heading: t.cancellationConditions, text: resolveClosingText('cancellation', closing.cancellation, p.language) },
-        { heading: t.importantNotes, text: resolveClosingText('importantNotes', closing.importantNotes, p.language) },
-        { heading: hd.nextSteps, text: resolveHotelsText('nextStepsDefault', closing.nextSteps, p.language) },
+        ...(showTerms ? [
+          { heading: t.included, text: (closing.inclusionsOverride?.trim() || autoIncluded) },
+          { heading: hd.notIncluded, text: resolveHotelsText('notIncludedDefault', closing.notIncluded, p.language) },
+          { heading: t.paymentConditions, text: resolveClosingText('payment', closing.payment, p.language) },
+          { heading: t.cancellationConditions, text: resolveClosingText('cancellation', closing.cancellation, p.language) },
+          { heading: t.importantNotes, text: resolveClosingText('importantNotes', closing.importantNotes, p.language) },
+          { heading: hd.nextSteps, text: resolveHotelsText('nextStepsDefault', closing.nextSteps, p.language) },
+        ] : []),
       ];
 
 
@@ -625,6 +628,8 @@ export async function buildProposalPdfDoc(
     });
 
   try {
+    const closingFlags: any = (p as any).closing_terms || {};
+    if (closingFlags.showReviews !== false) {
     doc.addPage();
     const reviewsImg = await loadImg(reviewsCoverUrl);
 
@@ -673,6 +678,7 @@ export async function buildProposalPdfDoc(
       url: ALL_REVIEWS_URL,
     });
     doc.link(btnX, btnY, btnW, btnH, { url: ALL_REVIEWS_URL });
+    }
 
     // ─── About Your Tours Portugal (own page, with founders photo) ───
     if (((p as any).closing_terms || {}).showAbout !== false) {

@@ -239,7 +239,9 @@ const PublicProposalPage = () => {
                 {dict.day} {d.day_number}
               </a>
             ))}
-            <a href="#reviews" className="shrink-0 px-3 py-1.5 rounded-full hover:bg-sky-50 text-slate-600">{dict.reviews}</a>
+            {(proposal as any).closing_terms?.showReviews !== false && (
+              <a href="#reviews" className="shrink-0 px-3 py-1.5 rounded-full hover:bg-sky-50 text-slate-600">{dict.reviews}</a>
+            )}
             {(proposal as any).closing_terms?.showAbout !== false && (
               <a href="#about" className="shrink-0 px-3 py-1.5 rounded-full hover:bg-sky-50 text-slate-600">{dict.about}</a>
             )}
@@ -489,9 +491,7 @@ const PublicProposalPage = () => {
         ))}
 
         {/* ─── PRICING & CONDITIONS ─── */}
-        {(proposal as any).closing_terms?.showPricing !== false && (
-          <PricingConditions proposal={proposal} lang={effectiveLang} />
-        )}
+        <PricingConditions proposal={proposal} lang={effectiveLang} />
 
 
 
@@ -510,6 +510,7 @@ const PublicProposalPage = () => {
         )}
 
         {/* ─── REVIEWS ─── */}
+        {(proposal as any).closing_terms?.showReviews !== false && (
         <section id="reviews">
           {/* Banner image above reviews */}
           <a
@@ -545,6 +546,7 @@ const PublicProposalPage = () => {
             </div>
           </div>
         </section>
+        )}
 
         {/* ─── ABOUT US ─── */}
         {(proposal as any).closing_terms?.showAbout !== false && (
@@ -955,14 +957,16 @@ const PricingConditions = ({ proposal, lang }: { proposal: any; lang: string }) 
   const notesText: string = resolveClosingText('importantNotes', closing.importantNotes, lang);
   const notIncludedText: string = resolveHotelsText('notIncludedDefault', closing.notIncluded, lang);
   const nextStepsText: string = resolveHotelsText('nextStepsDefault', closing.nextSteps, lang);
+  const showPrice = closing.showPricing !== false;
+  const showTerms = closing.showTerms !== false;
   const hasAny = total > 0 || includedText || paymentText || cancellationText || notesText;
-  if (!hasAny) return null;
+  if (!hasAny || (!showPrice && !showTerms)) return null;
 
 
   return (
     <section id="pricing" className="scroll-mt-16">
       <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm">
-        {(total > 0 || proposal.wetravel_checkout_url) && (
+        {showPrice && (total > 0 || proposal.wetravel_checkout_url) && (
           <div className="px-6 py-6 border-b border-slate-100 bg-slate-50 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div className="text-left">
               {total > 0 && (
@@ -990,7 +994,7 @@ const PricingConditions = ({ proposal, lang }: { proposal: any; lang: string }) 
           </div>
         )}
         <div className="p-6 space-y-5">
-          {total > 0 && (
+          {showPrice && total > 0 && (
             <div className="rounded-lg border border-slate-200 overflow-hidden">
               <table className="w-full text-sm">
                 <tbody>
@@ -1012,7 +1016,7 @@ const PricingConditions = ({ proposal, lang }: { proposal: any; lang: string }) 
               </table>
             </div>
           )}
-          {optionals.length > 0 && closing.showOptionals !== false && (
+          {showPrice && optionals.length > 0 && closing.showOptionals !== false && (
             <div>
               <h3 className="text-sm font-serif font-bold text-slate-800 mb-2">{h.optionals}</h3>
               <div className="rounded-lg border border-slate-200 overflow-hidden">
@@ -1086,6 +1090,7 @@ const PricingConditions = ({ proposal, lang }: { proposal: any; lang: string }) 
             </div>
           )}
 
+          {showTerms && (<>
           {includedText && (
             <div>
               <h3 className="text-sm font-serif font-bold text-slate-800 mb-2">{L.included}</h3>
@@ -1116,6 +1121,7 @@ const PricingConditions = ({ proposal, lang }: { proposal: any; lang: string }) 
               <RichText as="div" className="text-sm text-slate-700 whitespace-pre-wrap leading-relaxed" value={nextStepsText} preserveNewlines />
             </div>
           )}
+          </>)}
         </div>
 
       </div>
