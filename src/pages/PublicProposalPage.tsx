@@ -955,8 +955,10 @@ const PricingConditions = ({ proposal, lang }: { proposal: any; lang: string }) 
   const notesText: string = resolveClosingText('importantNotes', closing.importantNotes, lang);
   const notIncludedText: string = resolveHotelsText('notIncludedDefault', closing.notIncluded, lang);
   const nextStepsText: string = resolveHotelsText('nextStepsDefault', closing.nextSteps, lang);
+  const showPrice = closing.showPricing !== false;
+  const showTerms = closing.showTerms !== false;
   const hasAny = total > 0 || includedText || paymentText || cancellationText || notesText;
-  if (!hasAny) return null;
+  if (!hasAny || (!showPrice && !showTerms)) return null;
 
 
   return (
