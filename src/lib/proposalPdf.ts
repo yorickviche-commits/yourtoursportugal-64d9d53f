@@ -444,9 +444,10 @@ export async function buildProposalPdfDoc(
   {
     const closing: any = (p as any).closing_terms || {};
     const showPricing = closing.showPricing !== false;
+    const showTerms = closing.showTerms !== false;
     const total = Number(p.total_value_eur) || 0;
 
-    if (showPricing) {
+    if (showPricing || showTerms) {
       ensureSpace(40);
       doc.setDrawColor(220, 220, 220);
       doc.line(margin, y, pageW - margin, y);
