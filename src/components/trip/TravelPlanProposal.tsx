@@ -2526,6 +2526,8 @@ const TravelPlanProposal = ({
           )}
 
 
+          {(viewMode === 'edit' || closing.showTerms !== false) && (
+          <div className={cn('space-y-6', closing.showTerms === false && 'opacity-50 print:hidden')}>
           {/* What's Included — Day by Day Summary or override */}
           <div>
             <div className="flex items-center justify-between mb-2">
