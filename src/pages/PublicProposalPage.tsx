@@ -239,7 +239,9 @@ const PublicProposalPage = () => {
                 {dict.day} {d.day_number}
               </a>
             ))}
-            <a href="#reviews" className="shrink-0 px-3 py-1.5 rounded-full hover:bg-sky-50 text-slate-600">{dict.reviews}</a>
+            {(proposal as any).closing_terms?.showReviews !== false && (
+              <a href="#reviews" className="shrink-0 px-3 py-1.5 rounded-full hover:bg-sky-50 text-slate-600">{dict.reviews}</a>
+            )}
             {(proposal as any).closing_terms?.showAbout !== false && (
               <a href="#about" className="shrink-0 px-3 py-1.5 rounded-full hover:bg-sky-50 text-slate-600">{dict.about}</a>
             )}
@@ -489,9 +491,7 @@ const PublicProposalPage = () => {
         ))}
 
         {/* ─── PRICING & CONDITIONS ─── */}
-        {(proposal as any).closing_terms?.showPricing !== false && (
-          <PricingConditions proposal={proposal} lang={effectiveLang} />
-        )}
+        <PricingConditions proposal={proposal} lang={effectiveLang} />
 
 
 
@@ -510,6 +510,7 @@ const PublicProposalPage = () => {
         )}
 
         {/* ─── REVIEWS ─── */}
+        {(proposal as any).closing_terms?.showReviews !== false && (
         <section id="reviews">
           {/* Banner image above reviews */}
           <a
@@ -545,6 +546,7 @@ const PublicProposalPage = () => {
             </div>
           </div>
         </section>
+        )}
 
         {/* ─── ABOUT US ─── */}
         {(proposal as any).closing_terms?.showAbout !== false && (
