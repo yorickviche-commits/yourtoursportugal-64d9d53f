@@ -2618,7 +2618,10 @@ const TravelPlanProposal = ({
         )}
 
         {/* ─── REVIEWS & ABOUT US (last page) ─── */}
+        {(viewMode === 'edit' || closing.showReviews !== false || closing.showAbout !== false) && (
         <div className="border-t-2 border-slate-200 bg-white p-6 md:p-10 space-y-8 print:break-before-page">
+          {(viewMode === 'edit' || closing.showReviews !== false) && (
+          <div className={cn('space-y-8', closing.showReviews === false && 'opacity-50 print:hidden')}>
           <a
             href={ALL_REVIEWS_URL}
             target="_blank"
@@ -2655,6 +2658,9 @@ const TravelPlanProposal = ({
               </a>
             </div>
           </div>
+          </div>
+          )}
+
 
           {(viewMode === 'edit' || closing.showAbout !== false) && (
           <div
