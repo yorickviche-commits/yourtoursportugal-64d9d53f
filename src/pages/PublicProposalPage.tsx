@@ -588,6 +588,7 @@ const PublicProposalPage = () => {
 
           </div>
         </section>
+        )}
 
       </div>
 
