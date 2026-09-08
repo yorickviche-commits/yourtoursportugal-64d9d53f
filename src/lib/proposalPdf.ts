@@ -676,6 +676,7 @@ export async function buildProposalPdfDoc(
       url: ALL_REVIEWS_URL,
     });
     doc.link(btnX, btnY, btnW, btnH, { url: ALL_REVIEWS_URL });
+    }
 
     // ─── About Your Tours Portugal (own page, with founders photo) ───
     if (((p as any).closing_terms || {}).showAbout !== false) {
