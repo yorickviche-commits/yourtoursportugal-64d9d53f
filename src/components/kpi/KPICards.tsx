@@ -1,7 +1,8 @@
 import { Card } from '@/components/ui/card';
 import { UserKPIs } from '@/hooks/useUserKPIs';
+import { eur as fmtEur } from '@/lib/money';
 
-const fmt = (n: number) => new Intl.NumberFormat('pt-PT', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(n);
+const fmt = (n: number) => fmtEur(n);
 
 export default function KPICards({ k }: { k: UserKPIs }) {
   const cards = [

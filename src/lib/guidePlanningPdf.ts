@@ -1,6 +1,7 @@
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { parseGoogleMapsUrl } from '@/lib/mapEmbed';
+import { eur as fmtEur } from './money';
 
 export interface GuidePlanRow {
   time: string;
@@ -49,7 +50,7 @@ const GREY = [110, 118, 128] as const;
 const M = 12;
 
 const eur = (n: number) =>
-  new Intl.NumberFormat('pt-PT', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(n || 0);
+  fmtEur(n || 0);
 
 function link(doc: jsPDF, label: string, url: string, x: number, y: number, size = 8.5) {
   doc.setFontSize(size);

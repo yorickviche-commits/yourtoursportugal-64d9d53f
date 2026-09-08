@@ -7,6 +7,7 @@ import { drawRichTextPdf, stripBoldMarkers } from '@/lib/richText';
 import { getPdfDict } from '@/lib/proposalPdfI18n';
 import { resolveClosingText } from '@/lib/closingTermsI18n';
 import { getHotelsDict, resolveHotelsText, mergeProposalHotels } from '@/lib/proposalHotelsI18n';
+import { eur as fmtEur } from './money';
 
 const ALL_REVIEWS_URL = 'https://yourtoursportugal.com/our-reviews/';
 
@@ -465,7 +466,7 @@ export async function buildProposalPdfDoc(
           doc.setTextColor(10, 37, 64);
           doc.setFont('helvetica', 'bold');
           doc.setFontSize(18);
-          doc.text(`€ ${total.toLocaleString('en-US')}`, margin + 14, y + 40);
+          doc.text(fmtEur(total), margin + 14, y + 40);
           const sub = [p.participants, p.date_range].filter(Boolean).join('  ·  ');
           if (sub) {
             doc.setFont('helvetica', 'normal');
@@ -509,7 +510,7 @@ export async function buildProposalPdfDoc(
       const hotelsRooms = hotels.reduce((s, x) => Math.max(s, Number(x.rooms) || 0), 0);
       const hotelsTotal = Math.round(hotels.reduce((s, x) => s + (Number(x.value) || 0), 0));
       const programmeTotal = Math.max(0, total - hotelsTotal);
-      const eur = (n: number) => `€ ${Number(n || 0).toLocaleString('en-US')}`;
+      const eur = (n: number) => fmtEur(n);
 
       if (total > 0) {
         const rows: Array<[string, string]> = [[hd.programmePrice, eur(programmeTotal)]];

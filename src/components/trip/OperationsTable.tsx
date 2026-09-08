@@ -15,6 +15,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { openSupplierFileByUrl } from '@/lib/supplierFileUrl';
 import { format, addDays, parseISO } from 'date-fns';
 import { pt } from 'date-fns/locale';
+import { eur } from '@/lib/money';
 
 const BOOKING_OPTIONS = [
   { value: 'neutral', label: 'Neutro', className: 'bg-muted text-muted-foreground' },
@@ -324,7 +325,7 @@ const OperationsTable = ({ costItems, tripId, tripCode, startDate }: OperationsT
 
                           {/* NET Value (read-only from costs) */}
                           <div className="text-center text-xs font-semibold">
-                            €{netValue.toFixed(0)}
+                            {eur(netValue)}
                           </div>
 
                           {/* Booking Status */}

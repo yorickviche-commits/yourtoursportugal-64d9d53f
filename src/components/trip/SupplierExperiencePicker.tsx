@@ -1,3 +1,4 @@
+import { num2 } from '@/lib/money';
 import { useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Search, Loader2, ImageIcon, Users, Clock, Euro, Sparkles } from 'lucide-react';
@@ -205,11 +206,11 @@ export default function SupplierExperiencePicker({ open, onOpenChange, supplierN
                     </p>
                     <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 mt-0.5 text-[10px] text-muted-foreground">
                       <span className="flex items-center gap-0.5">
-                        <Euro className="h-3 w-3" />{Number(s.price || 0).toFixed(2)}
+                        <Euro className="h-3 w-3" />{num2(s.price || 0)}
                       </span>
                       {Number(s.price_child || 0) > 0 && (
                         <span className="flex items-center gap-0.5">
-                          <Users className="h-3 w-3" />criança {Number(s.price_child).toFixed(2)}
+                          <Users className="h-3 w-3" />criança {num2(s.price_child)}
                         </span>
                       )}
                       <span>{s.price_unit === 'per_person' ? 'por pessoa' : s.price_unit === 'per_night' ? 'por noite' : 'total'}</span>

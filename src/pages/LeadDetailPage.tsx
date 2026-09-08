@@ -1,3 +1,4 @@
+import { eur as fmtEur } from '@/lib/money';
 import { useState, useCallback, useEffect, useRef, useMemo } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Save, Trash2, FileText, ClipboardList, Eye, FileIcon, Mail, Clock, Loader2, ChevronDown, ChevronRight, Plus, Copy, Upload, ExternalLink } from 'lucide-react';
@@ -1278,7 +1279,7 @@ function PaymentSummaryBar({ leadId, totalPVP }: { leadId: string; totalPVP: num
   const deposit = Number(prop?.deposit_amount_eur ?? 0);
   const paid = Math.max(0, Number(pay?.net ?? 0));
   const outstanding = Math.max(0, total - paid);
-  const fmt = (n: number) => `${n.toLocaleString('pt-PT', { maximumFractionDigits: 0 })}€`;
+  const fmt = (n: number) => fmtEur(n);
 
   const fullyPaid = total > 0 && paid >= total;
   const depositMet = deposit > 0 && paid >= deposit;

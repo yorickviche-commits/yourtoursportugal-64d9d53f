@@ -1,3 +1,4 @@
+import { eur } from '@/lib/money';
 import { useState, useMemo, useCallback, useRef, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { ChevronDown, ChevronRight, Upload, Clock, FileText, Loader2, Save, Plus, Trash2, FileDown } from 'lucide-react';
@@ -466,7 +467,7 @@ const LeadOperationsEditor = ({ activeVersion, leadId, leadCode, pvpTotal = 0, s
                     )}
                   </div>
                   <span className="text-[10px] text-muted-foreground mr-3">
-                    NET €{dayNet.toFixed(0)} · Real €{dayReal.toFixed(0)}
+                    NET {eur(dayNet)} · Real {eur(dayReal)}
                   </span>
                   <span className="text-[10px] text-muted-foreground mr-3">{dayItems.length} rubricas</span>
                   <span className="text-[10px] text-muted-foreground">{dayConfirmed}/{dayItems.length} confirmados</span>
@@ -546,7 +547,7 @@ const LeadOperationsEditor = ({ activeVersion, leadId, leadCode, pvpTotal = 0, s
 
                             {/* NET (fixo do costing) */}
                             <div className="text-center text-xs font-semibold pt-2 text-muted-foreground" title="Valor NET do Costing (fixo)">
-                              €{Number(row.netValue || 0).toFixed(0)}
+                              {eur(Number(row.netValue || 0))}
                             </div>
 
                             {/* Custo real */}

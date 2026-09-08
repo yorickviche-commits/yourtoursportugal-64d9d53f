@@ -11,6 +11,7 @@ import { RichText, stripBoldMarkers } from '@/lib/richText';
 import { resolveClosingText } from '@/lib/closingTermsI18n';
 import { getHotelsDict, resolveHotelsText, mergeProposalHotels } from '@/lib/proposalHotelsI18n';
 import { getPdfDict } from '@/lib/proposalPdfI18n';
+import { eur as fmtEur } from '@/lib/money';
 
 const TERMS_URL = 'https://drive.google.com/file/d/12AkvW2Ob0LtcooaciWY4e-nEx7hlOnQC/view?usp=sharing';
 
@@ -215,7 +216,7 @@ const PublicProposalPage = () => {
                 </a>
                 <p className="mt-2 text-[10px] leading-snug text-white/70">
                   {(proposal as any).deposit_amount_eur
-                    ? dict.depositSuffix(String((proposal as any).deposit_amount_eur), (proposal as any).deposit_percent ?? 50)
+                    ? dict.depositSuffix(fmtEur((proposal as any).deposit_amount_eur), (proposal as any).deposit_percent ?? 50)
                     : dict.defaultDepositNote}{' '}
                   <a href={TERMS_URL} target="_blank" rel="noopener noreferrer" className="underline">
                     see terms and conditions
@@ -749,7 +750,7 @@ const PublicProposalPage = () => {
             rel="noopener noreferrer"
             className="block w-full text-center bg-green-600 hover:bg-green-700 text-white font-semibold py-3 rounded-lg"
           >
-            {dict.bookNow} — €{(proposal as any).deposit_amount_eur ?? '—'}
+            {dict.bookNow} — {(proposal as any).deposit_amount_eur != null ? fmtEur((proposal as any).deposit_amount_eur) : '—'}
           </a>
           <p className="mt-1 text-[10px] text-center text-slate-500">{dict.defaultDepositNote}</p>
         </div>
@@ -944,7 +945,7 @@ const PricingConditions = ({ proposal, lang }: { proposal: any; lang: string }) 
   const hotelsRooms = hotels.reduce((s, x) => Math.max(s, Number(x.rooms) || 0), 0);
   const hotelsTotal = Math.round(hotels.reduce((s, x) => s + (Number(x.value) || 0), 0));
   const programmeTotal = Math.max(0, total - hotelsTotal);
-  const eur = (n: number) => `€ ${Number(n || 0).toLocaleString('en-US')}`;
+  const eur = (n: number) => fmtEur(n);
   const paymentText: string = resolveClosingText('payment', closing.payment, lang);
   const cancellationText: string = resolveClosingText('cancellation', closing.cancellation, lang);
   const notesText: string = resolveClosingText('importantNotes', closing.importantNotes, lang);
@@ -965,7 +966,7 @@ const PricingConditions = ({ proposal, lang }: { proposal: any; lang: string }) 
                   <p className="text-[10px] uppercase tracking-widest text-slate-500 mb-1">
                     {closing.netPricing ? dict.totalPriceNet : L.total}
                   </p>
-                  <p className="text-4xl font-serif font-bold text-[#0a2540]">€ {total.toLocaleString('en-US')}</p>
+                  <p className="text-4xl font-serif font-bold text-[#0a2540]">{fmtEur(total)}</p>
                 </>
               )}
               {proposal.participants && (

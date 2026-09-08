@@ -1,3 +1,4 @@
+import { eur as fmtEurBase } from '@/lib/money';
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Plus, Users, Wrench, DollarSign, Handshake, TrendingUp, Clock, CheckCircle, AlertTriangle, FileText, HelpCircle, BarChart3 } from 'lucide-react';
@@ -22,7 +23,7 @@ import {
 
 type DashboardSubPage = 'overview' | 'calendar_reservas' | 'calendar_tasks';
 
-const fmtEur = (n: number) => new Intl.NumberFormat('pt-PT', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(n);
+const fmtEur = (n: number) => fmtEurBase(n);
 const fmtPct = (n: number) => `${n.toFixed(1)}%`;
 
 const KPICard = ({ icon: Icon, label, value, variant = 'default', unavailableNote }: {

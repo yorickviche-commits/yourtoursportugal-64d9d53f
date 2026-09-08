@@ -21,6 +21,7 @@ import { displayLeadCode } from '@/lib/leadCode';
 import LeadAgentsCell from '@/components/LeadAgentsCell';
 
 import { resolveStage, normStage } from '@/lib/leadStages';
+import { eur as fmtEur } from '@/lib/money';
 
 const fmtDate = (v?: string | null) => {
   if (!v) return null;
@@ -53,7 +54,7 @@ const LeadDates = ({ lead }: { lead: any }) => {
 };
 
 const fmtMoney = (n: number) =>
-  n.toLocaleString('pt-PT', { maximumFractionDigits: 0 }) + '€';
+  fmtEur(n);
 
 type SortKey = 'id' | 'name' | 'type' | 'destination' | 'days' | 'dates' | 'pax' | 'pvp' | 'margin' | 'created' | 'stage';
 type SortDir = 'asc' | 'desc';

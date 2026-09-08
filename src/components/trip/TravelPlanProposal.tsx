@@ -75,6 +75,7 @@ import { Calendar } from '@/components/ui/calendar';
 import { CalendarIcon } from 'lucide-react';
 import { format, parse, isValid } from 'date-fns';
 import { buildProposalToken } from '@/lib/proposalVersion';
+import { eur as fmtEur } from '@/lib/money';
 
 export { toMapEmbedSrc };
 
@@ -1401,7 +1402,7 @@ const TravelPlanProposal = ({
             setWetravelDepositEur((wt as any).deposit_amount_eur ?? null);
             toast({
               title: '💳 Book Now link criado',
-              description: `Depósito de €${(wt as any).deposit_amount_eur} · 100% reembolsável`,
+              description: `Depósito de ${fmtEur((wt as any).deposit_amount_eur)} · 100% reembolsável`,
             });
           }
         } catch (err) {
@@ -1683,7 +1684,7 @@ const TravelPlanProposal = ({
   const hotelsTotal = Math.round(hotels.reduce((s, x) => s + (Number(x.value) || 0), 0));
   const programmeTotal = Math.max(0, totalPVP - hotelsTotal);
   const perPerson = pax + (paxChildren || 0) > 0 ? Math.round(totalPVP / (pax + (paxChildren || 0))) : 0;
-  const eur = (n: number) => `€ ${Number(n || 0).toLocaleString('en-US')}`;
+  const eur = (n: number) => fmtEur(n);
   const updateHotel = (name: string, patch: Partial<ProposalHotel>) =>
     setClosing(c => {
       const list = [...(c.hotels || [])];
@@ -2393,7 +2394,7 @@ const TravelPlanProposal = ({
             <div>
               <p className="text-[10px] uppercase tracking-widest text-slate-500 mb-2">{netPricing ? getPdfDict(language).totalPriceNet : t.totalPrice}</p>
               <p className="text-4xl font-serif font-bold text-slate-900">
-                {totalPVP > 0 ? `€ ${totalPVP.toLocaleString('en-US')}` : '— € —'}
+                {totalPVP > 0 ? fmtEur(totalPVP) : '— € —'}
               </p>
               <div className={`flex items-center gap-3 mt-3 text-xs text-slate-600 ${wetravelCheckoutUrl ? 'justify-center sm:justify-start' : 'justify-center'}`}>
                 <span>{t.adult(pax)}{paxChildren ? ` + ${t.child(paxChildren)}` : ''}{paxInfants ? ` + ${t.infant(paxInfants)}` : ''}</span>

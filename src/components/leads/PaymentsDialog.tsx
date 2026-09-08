@@ -9,6 +9,7 @@ import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { Trash2, Plus } from "lucide-react";
+import { eur } from '@/lib/money';
 
 type Method = "wetravel" | "bank" | "cash" | "other";
 type Kind = "payment" | "refund";
@@ -113,9 +114,9 @@ export function PaymentsDialog({ leadId, children }: { leadId: string; children:
         </DialogHeader>
 
         <div className="grid grid-cols-3 gap-2 text-xs">
-          <div className="rounded border p-2"><div className="text-muted-foreground">Pago</div><div className="text-lg font-bold text-green-600">{totalPaid.toFixed(2)}€</div></div>
-          <div className="rounded border p-2"><div className="text-muted-foreground">Reembolsos</div><div className="text-lg font-bold text-orange-600">{totalRefund.toFixed(2)}€</div></div>
-          <div className="rounded border p-2"><div className="text-muted-foreground">Líquido</div><div className="text-lg font-bold">{net.toFixed(2)}€</div></div>
+          <div className="rounded border p-2"><div className="text-muted-foreground">Pago</div><div className="text-lg font-bold text-green-600">{eur(totalPaid)}</div></div>
+          <div className="rounded border p-2"><div className="text-muted-foreground">Reembolsos</div><div className="text-lg font-bold text-orange-600">{eur(totalRefund)}</div></div>
+          <div className="rounded border p-2"><div className="text-muted-foreground">Líquido</div><div className="text-lg font-bold">{eur(net)}</div></div>
         </div>
 
         <div className="rounded border p-3 space-y-2 bg-muted/30">
@@ -182,7 +183,7 @@ export function PaymentsDialog({ leadId, children }: { leadId: string; children:
                   <div className={`w-1 h-8 rounded ${p.kind === "payment" ? "bg-green-500" : "bg-orange-500"}`}/>
                   <div className="flex-1">
                     <div className="font-medium">
-                      {p.kind === "payment" ? "+" : "−"}{Number(p.amount).toFixed(2)}€ · {methodLabel[p.method]}{p.method === "other" && p.method_other ? ` (${p.method_other})` : ""}
+                      {p.kind === "payment" ? "+" : "−"}{eur(Number(p.amount))} · {methodLabel[p.method]}{p.method === "other" && p.method_other ? ` (${p.method_other})` : ""}
                     </div>
                     <div className="text-muted-foreground text-[10px]">
                       {p.paid_at}{p.reference ? ` · ${p.reference}` : ""}{p.notes ? ` · ${p.notes}` : ""}

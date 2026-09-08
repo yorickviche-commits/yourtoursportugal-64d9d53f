@@ -7,8 +7,9 @@ import { useTeamKPIs, KPIFilters } from '@/hooks/useUserKPIs';
 import KPIFiltersBar from '@/components/kpi/KPIFilters';
 import { exportPDF, exportExcel } from '@/lib/kpiExport';
 import { FileDown, ArrowUpDown } from 'lucide-react';
+import { eur as fmtEurBase } from '@/lib/money';
 
-const fmtEur = (n: number) => new Intl.NumberFormat('pt-PT', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(n);
+const fmtEur = (n: number) => fmtEurBase(n);
 
 type SortKey = 'name' | 'sent' | 'won' | 'lost' | 'pending' | 'total' | 'confirmed' | 'margin' | 'conv';
 

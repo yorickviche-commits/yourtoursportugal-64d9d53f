@@ -1,3 +1,4 @@
+import { eur } from '@/lib/money';
 import { useState, useRef, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
@@ -554,8 +555,8 @@ function ReviewForm({
                     <p className="text-xs font-medium">{svc.name || 'Sem nome'}</p>
                     {svc.description && <p className="text-[10px] text-muted-foreground line-clamp-1">{svc.description}</p>}
                     <div className="flex gap-3 mt-0.5 text-[10px]">
-                      <span className="font-medium">👤 {svc.price > 0 ? `${svc.price}€` : '—'}</span>
-                      <span>👶 {svc.price_child > 0 ? `${svc.price_child}€` : '—'}</span>
+                      <span className="font-medium">👤 {svc.price > 0 ? eur(svc.price) : '—'}</span>
+                      <span>👶 {svc.price_child > 0 ? eur(svc.price_child) : '—'}</span>
                       {svc.duration && <span className="text-muted-foreground">⏱ {svc.duration}</span>}
                     </div>
                   </div>
