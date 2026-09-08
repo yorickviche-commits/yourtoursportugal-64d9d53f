@@ -736,6 +736,8 @@ export async function buildProposalPdfDoc(
       bx += w + gap;
     });
     doc.setTextColor(0, 0, 0);
+    }
+
 
   } catch (e) {
     console.warn('reviews page failed', e);
