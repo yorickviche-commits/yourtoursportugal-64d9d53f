@@ -565,12 +565,14 @@ export async function buildProposalPdfDoc(
         ...(optionalsText ? [{ heading: hd.optionals, text: optionalsText }] : []),
         ...(hotelsText ? [{ heading: hd.hotelsIncluded, text: hotelsText }] : []),
 
-        { heading: t.included, text: (closing.inclusionsOverride?.trim() || autoIncluded) },
-        { heading: hd.notIncluded, text: resolveHotelsText('notIncludedDefault', closing.notIncluded, p.language) },
-        { heading: t.paymentConditions, text: resolveClosingText('payment', closing.payment, p.language) },
-        { heading: t.cancellationConditions, text: resolveClosingText('cancellation', closing.cancellation, p.language) },
-        { heading: t.importantNotes, text: resolveClosingText('importantNotes', closing.importantNotes, p.language) },
-        { heading: hd.nextSteps, text: resolveHotelsText('nextStepsDefault', closing.nextSteps, p.language) },
+        ...(showTerms ? [
+          { heading: t.included, text: (closing.inclusionsOverride?.trim() || autoIncluded) },
+          { heading: hd.notIncluded, text: resolveHotelsText('notIncludedDefault', closing.notIncluded, p.language) },
+          { heading: t.paymentConditions, text: resolveClosingText('payment', closing.payment, p.language) },
+          { heading: t.cancellationConditions, text: resolveClosingText('cancellation', closing.cancellation, p.language) },
+          { heading: t.importantNotes, text: resolveClosingText('importantNotes', closing.importantNotes, p.language) },
+          { heading: hd.nextSteps, text: resolveHotelsText('nextStepsDefault', closing.nextSteps, p.language) },
+        ] : []),
       ];
 
 
