@@ -2389,6 +2389,25 @@ const TravelPlanProposal = ({
             )}
           </div>
         )}
+        {viewMode === 'edit' && (
+          <div className="border-t border-slate-200 bg-white px-6 md:px-10 py-3 flex items-center gap-2 print:hidden">
+            <input
+              id="show-about-toggle"
+              type="checkbox"
+              checked={closing.showAbout !== false}
+              onChange={e => setClosing(c => ({ ...c, showAbout: e.target.checked }))}
+              className="h-4 w-4 accent-[hsl(var(--info))]"
+            />
+            <label htmlFor="show-about-toggle" className="text-xs font-medium text-slate-700 cursor-pointer select-none">
+              Incluir última página “Sobre nós” (foto dos fundadores + contactos)
+            </label>
+            {closing.showAbout === false && (
+              <span className="text-[10px] text-amber-600 ml-2">— Oculto no link e no PDF (modo B2B)</span>
+            )}
+          </div>
+        )}
+
+
 
         {(viewMode === 'edit' || closing.showPricing !== false) && (
         <div className={`border-t-2 border-slate-200 bg-slate-50 p-6 md:p-10 space-y-6 print:break-before-page ${viewMode === 'edit' && closing.showPricing === false ? 'opacity-50' : ''}`}>
