@@ -219,6 +219,21 @@ serve(async (req) => {
         const message = quotaFailure
           ? `A geração AI falhou por quota/billing em ${quotaFailure.provider}: ${quotaFailure.message}`
           : 'Não foi possível gerar imagem com os fornecedores configurados.';
+
+        // Fallback: serve real stock photos so the user still gets usable images.
+        const fallback = await searchUnsplash(query, Math.max(1, Math.min(Number(count) || 6, 12)), 1, []);
+        if (fallback.length) {
+          return new Response(
+            JSON.stringify({
+              images: fallback,
+              fallback: 'unsplash',
+              warning: `${message} Mostrámos fotografias de banco de imagens em alternativa.`,
+              failures: result.failures,
+            }),
+            { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
         return new Response(
           JSON.stringify({ error: message, images: [], failures: result.failures }),
           { status: 502, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
