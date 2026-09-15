@@ -253,11 +253,24 @@ export default function ProposalImagePicker({
             <TabsContent value="upload" className="flex-1 flex flex-col items-center justify-center py-8">
               <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={handleFileUpload} />
               <div
-                className="border-2 border-dashed border-slate-300 rounded-lg p-12 text-center cursor-pointer hover:border-[hsl(var(--info))] transition-colors w-full"
+                className={`border-2 border-dashed rounded-lg p-12 text-center cursor-pointer transition-colors w-full ${
+                  dragOver ? 'border-[hsl(var(--info))] bg-muted' : 'border-slate-300 hover:border-[hsl(var(--info))]'
+                }`}
                 onClick={() => fileRef.current?.click()}
+                onDragEnter={e => { e.preventDefault(); e.stopPropagation(); setDragOver(true); }}
+                onDragOver={e => { e.preventDefault(); e.stopPropagation(); setDragOver(true); }}
+                onDragLeave={e => { e.preventDefault(); e.stopPropagation(); setDragOver(false); }}
+                onDrop={e => {
+                  e.preventDefault(); e.stopPropagation(); setDragOver(false);
+                  const file = Array.from(e.dataTransfer.files || []).find(f => f.type.startsWith('image/'));
+                  if (file) uploadFile(file);
+                  else toast({ title: 'Ficheiro inválido', description: 'Arrasta uma imagem.', variant: 'destructive' });
+                }}
               >
-                <Upload className="h-8 w-8 mx-auto mb-2 text-muted-foreground" />
-                <p className="text-sm font-medium">Select Files to Upload</p>
+                {uploading
+                  ? <Loader2 className="h-8 w-8 mx-auto mb-2 animate-spin text-muted-foreground" />
+                  : <Upload className="h-8 w-8 mx-auto mb-2 text-muted-foreground" />}
+                <p className="text-sm font-medium">{uploading ? 'A carregar imagem…' : 'Select Files to Upload'}</p>
                 <p className="text-xs text-muted-foreground mt-1">or Drag and Drop, Copy and Paste Files</p>
               </div>
             </TabsContent>
