@@ -49,6 +49,7 @@ import { useUnsavedChangesGuard } from '@/hooks/useUnsavedChangesGuard';
 import LeadCrmTab from '@/components/crm/LeadCrmTab';
 import LeadVersionBar from '@/components/leads/LeadVersionBar';
 import { useLeadVersionsQuery, pickGeneralData, saveVersionGeneralData } from '@/hooks/useLeadVersions';
+import { syncGeneralToProposal } from '@/lib/syncGeneralToProposal';
 import { triggerCalendarSync } from '@/hooks/useCalendarSync';
 import CalendarSyncBadge from '@/components/CalendarSyncBadge';
 import { usePublishFeedbackHint } from '@/components/feedback/FeedbackProvider';
