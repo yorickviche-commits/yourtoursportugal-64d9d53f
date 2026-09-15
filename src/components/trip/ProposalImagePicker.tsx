@@ -156,20 +156,46 @@ export default function ProposalImagePicker({
     }
   };
 
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+  const uploadFile = useCallback((file: File) => {
+    if (!file.type.startsWith('image/')) {
+      toast({ title: 'Ficheiro inválido', description: 'Só são aceites imagens.', variant: 'destructive' });
+      return;
+    }
+    setUploading(true);
     const reader = new FileReader();
     reader.onload = async (ev) => {
-      const dataUrl = ev.target?.result as string;
-      const url = await uploadDataUrlImage(dataUrl, 'uploads');
-      onSelect(url);
-      setOpen(false);
-      toast({ title: '📷 Imagem carregada!' });
+      try {
+        const dataUrl = ev.target?.result as string;
+        const url = await uploadDataUrlImage(dataUrl, 'uploads');
+        onSelect(url);
+        setOpen(false);
+        toast({ title: '📷 Imagem carregada!' });
+      } finally {
+        setUploading(false);
+      }
     };
+    reader.onerror = () => setUploading(false);
     reader.readAsDataURL(file);
+  }, [onSelect, toast]);
+
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) uploadFile(file);
     e.target.value = '';
   };
+
+  // Colar (Ctrl+V) uma imagem enquanto o diálogo está aberto no separador Upload.
+  useEffect(() => {
+    if (!open || tab !== 'upload') return;
+    const onPaste = (e: ClipboardEvent) => {
+      const item = Array.from(e.clipboardData?.items ?? [])
+        .find(i => i.kind === 'file' && i.type.startsWith('image/'));
+      const file = item?.getAsFile();
+      if (file) { e.preventDefault(); uploadFile(file); }
+    };
+    document.addEventListener('paste', onPaste);
+    return () => document.removeEventListener('paste', onPaste);
+  }, [open, tab, uploadFile]);
 
 
   const arCls = aspectRatio === 'landscape' ? 'aspect-[16/9]' : 'aspect-square';
