@@ -205,8 +205,18 @@ export default function ProposalImagePicker({
   return (
     <>
       <div
-        className={`relative group cursor-pointer rounded-lg overflow-hidden border border-dashed border-slate-300 hover:border-[hsl(var(--info))] transition-colors ${arCls} ${className}`}
+        className={`relative group cursor-pointer rounded-lg overflow-hidden border border-dashed transition-colors ${
+          dragOver ? 'border-[hsl(var(--info))] ring-2 ring-[hsl(var(--info))]' : 'border-slate-300 hover:border-[hsl(var(--info))]'
+        } ${arCls} ${className}`}
         onClick={() => setOpen(true)}
+        onDragEnter={e => { e.preventDefault(); e.stopPropagation(); setDragOver(true); }}
+        onDragOver={e => { e.preventDefault(); e.stopPropagation(); setDragOver(true); }}
+        onDragLeave={e => { e.preventDefault(); e.stopPropagation(); setDragOver(false); }}
+        onDrop={e => {
+          e.preventDefault(); e.stopPropagation(); setDragOver(false);
+          const file = Array.from(e.dataTransfer.files || []).find(f => f.type.startsWith('image/'));
+          if (file) uploadFile(file);
+        }}
       >
         {currentUrl ? (
           <>
