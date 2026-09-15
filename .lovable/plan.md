@@ -1,50 +1,52 @@
-# Módulo "Relatórios" (report builder tipo FareHarbor)
+# Dados Gerais sempre refletidos na proposta + drag & drop de fotos
 
-## 1. O que encontrei no código atual
+## Problema 1 — nº de pax / crianças / datas ficam congelados
 
-- **Camada de dados já existe e está visível nos tipos**: `report_fields` (47 linhas activas para `files`), `rpt_files`, `saved_reports` (10 relatórios de fábrica), `run_report(definition jsonb)` já aparecem em `src/integrations/supabase/types.ts`. Ou seja, a regeneração de tipos já está feita — não é preciso tocar no schema nem em SQL.
-- **Permissões**: existem 10 linhas em `permissions` para `page:reports` / `access_financial_reports`. O acesso a páginas passa por `src/lib/pagePermissions.ts` (`PAGES`, `PageKey`, `permKey`) + `usePagePermissions()`; falta acrescentar a chave `reports`. `access_financial_reports` não é uma página, por isso será lida com um hook próprio sobre a mesma tabela `permissions` (mesma lógica de `roleCodes`), e o servidor continua a ser a verdade (o `run_report` já esconde as colunas).
-- **Layout/rotas**: `App.tsx` com rotas dentro de `ProtectedRoute`, sidebar em `AppSidebar.tsx` alimentada por `PAGES`. A nova página entra no grupo "Visão Geral".
-- **Drag & drop**: está instalado `@hello-pangea/dnd` (usado no Travel Planner e no kanban de feedback). Vou usar esse, **não** `dnd-kit` — evita uma dependência nova e mantém consistência.
-- **Tabelas**: `@tanstack/react-table` **não** está instalado. Ver secção Riscos.
-- **Formulário "Dados Gerais"**: vive dentro de `src/pages/LeadDetailPage.tsx` (1300 linhas), com estado local `formState`, `categoria`, `destino` e escrita directa nos campos legado (`destination`, `budget_level`, `sales_owner`, `comfort_level`). Os campos novos (`product_type_id`, `owner_id`, `partner_id`, `budget_tier`, `comfort_tier`, `lead_regions`) serão acrescentados num sub-componente novo para não engrossar mais esta página.
-- Gráficos: `recharts` existe, mas não é preciso nesta fase (fora de âmbito).
+Verificado no código: a linha de participantes ("2 adults + 1 child") e o intervalo de datas são
+escritos na proposta apenas quando se grava o **Travel Planner**. Ao gravar os **Dados Gerais**
+(`Guardar` na ficha da lead) só se atualiza a lead e o snapshot da versão — a proposta digital e o
+travel plan dessa versão continuam com os valores antigos, e o PDF lê exatamente esses valores.
+Por isso o itinerário digital mostra sempre o pax do primeiro save.
 
-## 2. Árvore de componentes e modelo de estado
+### Correção
+Ao gravar os Dados Gerais da versão LIVE, sincronizar em seguida, para essa mesma versão:
+- `travel_plans.pax`, `start_date`, `end_date`
+- `proposals.participants`, `date_range`
 
-```text
-/reports  → ReportsPage
-  ReportsSidebar        lista saved_reports por categoria + pesquisa + "Novo relatório"
-  ReportHeader          nome, nota, menu "Relatórios guardados", Copiar link, Gerar/Cancelar
-  ReportBuilder ("Avançado")
-    DatesPanel          preset, from/to, eixo de datas, comparar, âmbito B2C/B2B
-    FiltersPanel        lista de filtros + popover Adicionar/Editar filtro
-    GroupByPanel        checkbox list + lista ordenável (handle ⋮⋮) + bucket
-    ColumnsPanel        modo Resumo/Detalhe, tabs, links todos/nenhum/padrão, lista ordenável
-  ReportResults
-    SummaryTable (árvore + linha Totais fixa)   DetailTable (paginada)
-    DetailSheet (drill-down)   CsvExportButton
-```
+A linha de participantes é gerada com a mesma função de idioma já usada no Travel Planner
+(adult/adulto/adulte…), extraída para um helper partilhado para não duplicar lógica.
+As datas seguem a mesma regra atual: usam as datas dos dias do plano se existirem, caso contrário
+as datas de viagem dos Dados Gerais.
 
-Estado: **um único objecto `ReportDefinition`** em `ReportsPage` (`useState` + reducer leve). Cada painel recebe `definition` e `patch()`. Nada corre automaticamente; `Gerar` chama `runReport` (mutation com `AbortController`). O drag & drop reordena os arrays `group_by` e `columns[mode]`. O drill-down constrói uma definição nova em `mode: "detail"` com filtros `eq` nas chaves do grupo (e `from`/`to` personalizados para chaves de data com bucket). "Copiar link" serializa a definição em base64 no hash e a página restaura-a no arranque.
+Para versões arquivadas (consulta) o comportamento mantém-se: grava só o snapshot da versão, e a
+proposta dessa versão é sincronizada da mesma forma (cada versão tem a sua proposta, os links das
+outras versões nunca são tocados).
 
-## 3. Cliente tipado
+Assim, gravar nos Dados Gerais passa a atualizar imediatamente o link do cliente e o PDF.
 
-`src/types/reports.ts` (ReportDefinition, ReportField, RunReportSummary/Detail), `src/lib/reports/runReport.ts` (`supabase.rpc('run_report', { definition })`, erros do Postgres mostrados literalmente), `src/lib/reports/format.ts` (pt-PT: eur, pct, int, days, date, datetime, bool, text), hooks `useReportFields`, `useSavedReports` (+ mutações), `useFieldOptions` (enum estático / tabela / distinct sobre `rpt_files` / texto livre), `useFinancialAccess`.
+## Problema 2 — arrastar uma foto abre-a em vez de a carregar
 
-## 4. Passos
+Verificado: a caixa de upload diz "or Drag and Drop, Copy and Paste Files" mas não tem qualquer
+tratamento de drop nem de colar — o browser assume o comportamento predefinido e abre a imagem.
 
-- **Passo 1** — tipos e cliente, campos novos em "Dados Gerais" (Produto, Regiões multi em `lead_regions`, Vendedor, Parceiro só em B2B, Nível de orçamento, Nível de conforto; legado em bloco "Legado" só de leitura), rota `/reports` + item de menu "Relatórios", shell com lista de relatórios guardados e `Gerar` a mostrar JSON.
-- **Passo 2** — builder de 4 colunas com drag & drop, gestão de relatórios guardados (novo/editar/apagar/reordenar, cópia dos de fábrica), cabeçalho, Copiar link.
-- **Passo 3** — tabela de resultados (resumo em árvore com subtotais e Totais, detalhe paginado, drill-down em painel lateral, bandas de cabeçalho, comparação ano anterior com Δ %, estados de carregamento/vazio/erro/truncado, exportação CSV).
-- **Passo 4** — QA dos 10 relatórios de fábrica em três períodos, verificação por SQL, perfis sales_agent/viewer, responsivo, notas no conhecimento do projecto.
+### Correção
+Adicionar drop e colar (Ctrl+V) às caixas de upload de imagem, com o mesmo comportamento do
+seletor de ficheiros já existente (validação de tipo imagem, destaque visual ao arrastar):
+- seletor de imagens do Travel Planner (capa e imagens de cada dia)
+- caixa de upload dentro do editor de itinerário
 
-Cada passo é validado por mim (browser + SQL) antes de avançar.
+## Ficheiros
 
-## 5. Riscos e pressupostos
+- `src/pages/LeadDetailPage.tsx` — após gravar, sincronizar `travel_plans` e `proposals` da versão.
+- `src/components/trip/TravelPlanProposal.tsx` — extrair o helper de linha de participantes/datas.
+- `src/lib/proposalVersion.ts` (ou novo `src/lib/participantsLabel.ts`) — helper partilhado.
+- `src/components/trip/ProposalImagePicker.tsx` — drag & drop + paste.
+- `src/components/itinerary/ItineraryEditor.tsx` — drag & drop + paste.
 
-- **TanStack Table não está instalado.** Pressuposto: instalo `@tanstack/react-table` no Passo 3 (uma dependência, ~40 kB). Se preferires zero dependências novas, faço a tabela à mão com os componentes `ui/table` já existentes — a árvore com subtotais e ROLLUP é, na prática, mais simples assim. Diz-me se queres a versão sem dependência.
-- Drag & drop com `@hello-pangea/dnd` em vez de `dnd-kit` (evita dependência nova).
-- `LeadDetailPage.tsx` é grande e sensível (versões, guarda de alterações): os campos novos entram num componente isolado, sem alterar a lógica de gravação existente dos campos legado.
-- Ordenação de métricas "entre irmãos" em ROLLUP é a parte mais delicada do Passo 3; se derrapar, corto primeiro a ordenação por clique no cabeçalho do resumo e depois a comparação com ano anterior.
-- Nunca escrevo SQL do frontend nem altero os objectos SQL existentes.
+Sem alterações de base de dados e sem novas dependências.
+
+## Verificação
+
+- Alterar pax e datas nos Dados Gerais, gravar, abrir o link público e o PDF: valores novos.
+- Repetir numa segunda versão e confirmar que a versão anterior mantém os seus valores.
+- Arrastar e colar uma imagem: carrega na proposta sem abrir noutro separador.
