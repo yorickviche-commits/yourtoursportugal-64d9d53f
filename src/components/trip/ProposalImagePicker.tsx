@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import { Image, Upload, Search, Sparkles, X, Loader2, Monitor } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -46,6 +46,8 @@ export default function ProposalImagePicker({
   const [generating, setGenerating] = useState(false);
   const [excludePhotoIds, setExcludePhotoIds] = useState<string[]>([]);
   const fileRef = useRef<HTMLInputElement>(null);
+  const [uploading, setUploading] = useState(false);
+  const [dragOver, setDragOver] = useState(false);
   const { toast } = useToast();
 
   const defaultPrompt = basePrompt
