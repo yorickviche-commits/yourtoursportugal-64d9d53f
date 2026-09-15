@@ -76,6 +76,7 @@ import { CalendarIcon } from 'lucide-react';
 import { format, parse, isValid } from 'date-fns';
 import { buildProposalToken } from '@/lib/proposalVersion';
 import { eur as fmtEur } from '@/lib/money';
+import { buildParticipantsLabel } from '@/lib/participantsLabel';
 
 export { toMapEmbedSrc };
 
