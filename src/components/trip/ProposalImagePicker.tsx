@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import { Image, Upload, Search, Sparkles, X, Loader2, Monitor } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -46,6 +46,8 @@ export default function ProposalImagePicker({
   const [generating, setGenerating] = useState(false);
   const [excludePhotoIds, setExcludePhotoIds] = useState<string[]>([]);
   const fileRef = useRef<HTMLInputElement>(null);
+  const [uploading, setUploading] = useState(false);
+  const [dragOver, setDragOver] = useState(false);
   const { toast } = useToast();
 
   const defaultPrompt = basePrompt
@@ -156,20 +158,46 @@ export default function ProposalImagePicker({
     }
   };
 
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+  const uploadFile = useCallback((file: File) => {
+    if (!file.type.startsWith('image/')) {
+      toast({ title: 'Ficheiro inválido', description: 'Só são aceites imagens.', variant: 'destructive' });
+      return;
+    }
+    setUploading(true);
     const reader = new FileReader();
     reader.onload = async (ev) => {
-      const dataUrl = ev.target?.result as string;
-      const url = await uploadDataUrlImage(dataUrl, 'uploads');
-      onSelect(url);
-      setOpen(false);
-      toast({ title: '📷 Imagem carregada!' });
+      try {
+        const dataUrl = ev.target?.result as string;
+        const url = await uploadDataUrlImage(dataUrl, 'uploads');
+        onSelect(url);
+        setOpen(false);
+        toast({ title: '📷 Imagem carregada!' });
+      } finally {
+        setUploading(false);
+      }
     };
+    reader.onerror = () => setUploading(false);
     reader.readAsDataURL(file);
+  }, [onSelect, toast]);
+
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) uploadFile(file);
     e.target.value = '';
   };
+
+  // Colar (Ctrl+V) uma imagem enquanto o diálogo está aberto no separador Upload.
+  useEffect(() => {
+    if (!open || tab !== 'upload') return;
+    const onPaste = (e: ClipboardEvent) => {
+      const item = Array.from(e.clipboardData?.items ?? [])
+        .find(i => i.kind === 'file' && i.type.startsWith('image/'));
+      const file = item?.getAsFile();
+      if (file) { e.preventDefault(); uploadFile(file); }
+    };
+    document.addEventListener('paste', onPaste);
+    return () => document.removeEventListener('paste', onPaste);
+  }, [open, tab, uploadFile]);
 
 
   const arCls = aspectRatio === 'landscape' ? 'aspect-[16/9]' : 'aspect-square';
@@ -177,8 +205,18 @@ export default function ProposalImagePicker({
   return (
     <>
       <div
-        className={`relative group cursor-pointer rounded-lg overflow-hidden border border-dashed border-slate-300 hover:border-[hsl(var(--info))] transition-colors ${arCls} ${className}`}
+        className={`relative group cursor-pointer rounded-lg overflow-hidden border border-dashed transition-colors ${
+          dragOver ? 'border-[hsl(var(--info))] ring-2 ring-[hsl(var(--info))]' : 'border-slate-300 hover:border-[hsl(var(--info))]'
+        } ${arCls} ${className}`}
         onClick={() => setOpen(true)}
+        onDragEnter={e => { e.preventDefault(); e.stopPropagation(); setDragOver(true); }}
+        onDragOver={e => { e.preventDefault(); e.stopPropagation(); setDragOver(true); }}
+        onDragLeave={e => { e.preventDefault(); e.stopPropagation(); setDragOver(false); }}
+        onDrop={e => {
+          e.preventDefault(); e.stopPropagation(); setDragOver(false);
+          const file = Array.from(e.dataTransfer.files || []).find(f => f.type.startsWith('image/'));
+          if (file) uploadFile(file);
+        }}
       >
         {currentUrl ? (
           <>
@@ -225,11 +263,24 @@ export default function ProposalImagePicker({
             <TabsContent value="upload" className="flex-1 flex flex-col items-center justify-center py-8">
               <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={handleFileUpload} />
               <div
-                className="border-2 border-dashed border-slate-300 rounded-lg p-12 text-center cursor-pointer hover:border-[hsl(var(--info))] transition-colors w-full"
+                className={`border-2 border-dashed rounded-lg p-12 text-center cursor-pointer transition-colors w-full ${
+                  dragOver ? 'border-[hsl(var(--info))] bg-muted' : 'border-slate-300 hover:border-[hsl(var(--info))]'
+                }`}
                 onClick={() => fileRef.current?.click()}
+                onDragEnter={e => { e.preventDefault(); e.stopPropagation(); setDragOver(true); }}
+                onDragOver={e => { e.preventDefault(); e.stopPropagation(); setDragOver(true); }}
+                onDragLeave={e => { e.preventDefault(); e.stopPropagation(); setDragOver(false); }}
+                onDrop={e => {
+                  e.preventDefault(); e.stopPropagation(); setDragOver(false);
+                  const file = Array.from(e.dataTransfer.files || []).find(f => f.type.startsWith('image/'));
+                  if (file) uploadFile(file);
+                  else toast({ title: 'Ficheiro inválido', description: 'Arrasta uma imagem.', variant: 'destructive' });
+                }}
               >
-                <Upload className="h-8 w-8 mx-auto mb-2 text-muted-foreground" />
-                <p className="text-sm font-medium">Select Files to Upload</p>
+                {uploading
+                  ? <Loader2 className="h-8 w-8 mx-auto mb-2 animate-spin text-muted-foreground" />
+                  : <Upload className="h-8 w-8 mx-auto mb-2 text-muted-foreground" />}
+                <p className="text-sm font-medium">{uploading ? 'A carregar imagem…' : 'Select Files to Upload'}</p>
                 <p className="text-xs text-muted-foreground mt-1">or Drag and Drop, Copy and Paste Files</p>
               </div>
             </TabsContent>

@@ -76,6 +76,7 @@ import { CalendarIcon } from 'lucide-react';
 import { format, parse, isValid } from 'date-fns';
 import { buildProposalToken } from '@/lib/proposalVersion';
 import { eur as fmtEur } from '@/lib/money';
+import { buildParticipantsLabel } from '@/lib/participantsLabel';
 
 export { toMapEmbedSrc };
 
@@ -1282,16 +1283,7 @@ const TravelPlanProposal = ({
       const startDate = planToSave.days[0]?.date || travelDates || null;
       const endDate = planToSave.days[planToSave.days.length - 1]?.date || travelEndDate || null;
       const proposalLang = (language || 'EN').toLowerCase().slice(0, 2);
-      const participantLabels: Record<string, { adult: string; adults: string; child: string; children: string }> = {
-        en: { adult: 'adult', adults: 'adults', child: 'child', children: 'children' },
-        fr: { adult: 'adulte', adults: 'adultes', child: 'enfant', children: 'enfants' },
-        es: { adult: 'adulto', adults: 'adultos', child: 'niño', children: 'niños' },
-        pt: { adult: 'adulto', adults: 'adultos', child: 'criança', children: 'crianças' },
-        it: { adult: 'adulto', adults: 'adulti', child: 'bambino', children: 'bambini' },
-        de: { adult: 'Erwachsener', adults: 'Erwachsene', child: 'Kind', children: 'Kinder' },
-      };
-      const participantLabel = participantLabels[proposalLang] || participantLabels.en;
-      const paxStr = `${pax} ${pax === 1 ? participantLabel.adult : participantLabel.adults}${paxChildren ? ` + ${paxChildren} ${paxChildren === 1 ? participantLabel.child : participantLabel.children}` : ''}`;
+      const paxStr = buildParticipantsLabel(pax, paxChildren, proposalLang);
       // Store cover_image in extra_instructions as JSON metadata
       const metadata = JSON.stringify({ cover_image: planToSave.cover_image || null, brand_logo: planToSave.brand_logo || null, closing, language });
       const { data: existingPlanRow } = await supabase

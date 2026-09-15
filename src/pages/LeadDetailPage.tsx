@@ -49,6 +49,7 @@ import { useUnsavedChangesGuard } from '@/hooks/useUnsavedChangesGuard';
 import LeadCrmTab from '@/components/crm/LeadCrmTab';
 import LeadVersionBar from '@/components/leads/LeadVersionBar';
 import { useLeadVersionsQuery, pickGeneralData, saveVersionGeneralData } from '@/hooks/useLeadVersions';
+import { syncGeneralToProposal } from '@/lib/syncGeneralToProposal';
 import { triggerCalendarSync } from '@/hooks/useCalendarSync';
 import CalendarSyncBadge from '@/components/CalendarSyncBadge';
 import { usePublishFeedbackHint } from '@/components/feedback/FeedbackProvider';
@@ -614,25 +615,41 @@ const LeadDetailPage = ({ mode = 'lead' }: { mode?: 'lead' | 'booking' } = {}) =
   const handleSave = useCallback(async () => {
     if (!lead) return;
     const general = buildGeneralSnapshot();
+    const syncArgs = {
+      leadId: lead.id,
+      pax: formState.pax,
+      paxChildren: formState.paxChildren,
+      travelDates: formState.travelDates,
+      travelEndDate: formState.travelEndDate,
+    };
     try {
       if (isArchivedVersion) {
         // Gravar SÓ na versão arquivada — nunca na tabela `leads` nem na live.
         await saveVersionGeneralData(lead.id, selectedVersion, general);
+        await syncGeneralToProposal({ ...syncArgs, version: selectedVersion });
         queryClient.invalidateQueries({ queryKey: ['lead_versions', lead.id] });
+        queryClient.invalidateQueries({ queryKey: ['proposals'] });
+        queryClient.invalidateQueries({ queryKey: ['travel_plan', lead.id] });
         toast({ title: 'Versão arquivada guardada', description: `${selectedVersionMeta?.name || `V${selectedVersion}`} atualizada (a versão LIVE não foi alterada).` });
         return;
       }
       // `active_version` NUNCA é alterado ao gravar.
       await updateLeadMutation.mutateAsync({ id: lead.id, updates: general as any });
       await saveVersionGeneralData(lead.id, liveVersion, general);
+      await syncGeneralToProposal({ ...syncArgs, version: liveVersion });
       queryClient.invalidateQueries({ queryKey: ['lead_versions', lead.id] });
+      queryClient.invalidateQueries({ queryKey: ['proposals'] });
+      queryClient.invalidateQueries({ queryKey: ['proposals_list'] });
+      queryClient.invalidateQueries({ queryKey: ['travel_plan', lead.id] });
       await logActivity('lead_updated', 'lead', lead.id, { client_name: formState.clientName });
       toast({ title: 'Simulação guardada!', description: `${formState.clientName} atualizado com sucesso.` });
       if (leadStatus === 'won') triggerCalendarSync(lead.id, 'update');
     } catch (err: any) {
       toast({ title: 'Erro ao guardar', description: err.message, variant: 'destructive' });
     }
-  }, [lead, buildGeneralSnapshot, isArchivedVersion, selectedVersion, selectedVersionMeta, liveVersion, formState.clientName, leadStatus, updateLeadMutation, queryClient, toast]);
+  }, [lead, buildGeneralSnapshot, isArchivedVersion, selectedVersion, selectedVersionMeta, liveVersion,
+    formState.clientName, formState.pax, formState.paxChildren, formState.travelDates, formState.travelEndDate,
+    leadStatus, updateLeadMutation, queryClient, toast]);
 
   // Dirty tracking — compara com a fonte da versão selecionada
   const isDirty = useMemo(() => {
