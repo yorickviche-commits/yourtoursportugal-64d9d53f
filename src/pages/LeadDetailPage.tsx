@@ -647,7 +647,9 @@ const LeadDetailPage = ({ mode = 'lead' }: { mode?: 'lead' | 'booking' } = {}) =
     } catch (err: any) {
       toast({ title: 'Erro ao guardar', description: err.message, variant: 'destructive' });
     }
-  }, [lead, buildGeneralSnapshot, isArchivedVersion, selectedVersion, selectedVersionMeta, liveVersion, formState.clientName, leadStatus, updateLeadMutation, queryClient, toast]);
+  }, [lead, buildGeneralSnapshot, isArchivedVersion, selectedVersion, selectedVersionMeta, liveVersion,
+    formState.clientName, formState.pax, formState.paxChildren, formState.travelDates, formState.travelEndDate,
+    leadStatus, updateLeadMutation, queryClient, toast]);
 
   // Dirty tracking — compara com a fonte da versão selecionada
   const isDirty = useMemo(() => {
