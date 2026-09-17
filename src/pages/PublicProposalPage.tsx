@@ -188,8 +188,8 @@ const PublicProposalPage = () => {
           )}
         </div>
         <div className="bg-gradient-to-br from-[#0a2540] via-slate-800 to-slate-700 text-white px-6 py-8 md:px-12 md:py-12">
-          <div className="max-w-4xl mx-auto flex flex-col md:flex-row md:items-end gap-6">
-            <div className="flex-1 min-w-0">
+          <div className="max-w-4xl mx-auto">
+            <div className="min-w-0">
               {statusBadge && <div className="mb-3">{statusBadge}</div>}
               <RichText as="h1" className="text-3xl md:text-4xl font-serif font-bold leading-tight" value={proposal.title} />
               <p className="text-lg text-white/80 mt-2">{proposal.client_name}</p>
@@ -205,19 +205,17 @@ const PublicProposalPage = () => {
               )}
             </div>
             {(proposal as any).wetravel_checkout_url && (
-              <div className="shrink-0 w-full md:w-[240px] text-left md:text-right">
+              <div className="hidden md:block mt-8 w-full md:w-[280px] md:ml-auto text-left md:text-right">
                 <a
                   href={(proposal as any).wetravel_checkout_url}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="inline-block w-full text-center px-6 py-3 rounded-md bg-green-600 hover:bg-green-700 text-white text-sm font-extrabold tracking-wide shadow-lg transition"
                 >
-                  {dict.bookNow}
+                  Book Now
                 </a>
                 <p className="mt-2 text-[10px] leading-snug text-white/70">
-                  {(proposal as any).deposit_amount_eur
-                    ? dict.depositSuffix(fmtEur((proposal as any).deposit_amount_eur), (proposal as any).deposit_percent ?? 50)
-                    : dict.defaultDepositNote}{' '}
+                  Refundable Deposit if plans change* ·{' '}
                   <a href={TERMS_URL} target="_blank" rel="noopener noreferrer" className="underline">
                     see terms and conditions
                   </a>
@@ -756,9 +754,14 @@ const PublicProposalPage = () => {
             rel="noopener noreferrer"
             className="block w-full text-center bg-green-600 hover:bg-green-700 text-white font-semibold py-3 rounded-lg"
           >
-            {dict.bookNow} — {(proposal as any).deposit_amount_eur != null ? fmtEur((proposal as any).deposit_amount_eur) : '—'}
+            Book Now
           </a>
-          <p className="mt-1 text-[10px] text-center text-slate-500">{dict.defaultDepositNote}</p>
+          <p className="mt-1 text-[10px] text-center text-slate-500">
+            Refundable Deposit if plans change* ·{' '}
+            <a href={TERMS_URL} target="_blank" rel="noopener noreferrer" className="underline">
+              see terms and conditions
+            </a>
+          </p>
         </div>
       )}
 
@@ -988,7 +991,7 @@ const PricingConditions = ({ proposal, lang }: { proposal: any; lang: string }) 
                 rel="noopener noreferrer"
                 className="inline-flex items-center justify-center gap-2 bg-[#0a2540] hover:bg-[#123a63] text-white px-8 py-4 rounded-lg font-extrabold uppercase tracking-wide text-base shadow-lg transition shrink-0"
               >
-                {getPdfDict(lang).bookNow}
+                Book Now
               </a>
             )}
           </div>
