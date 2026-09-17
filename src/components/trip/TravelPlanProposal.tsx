@@ -1897,7 +1897,7 @@ const TravelPlanProposal = ({
                   <RichText as="p" className="text-sm text-white/80 mt-4 leading-relaxed" value={displayPlan.narrative} preserveNewlines />
                 </div>
                 {wetravelCheckoutUrl && (
-                  <div className="mt-8 w-full md:w-[280px] md:ml-auto text-left md:text-right">
+                  <div className="hidden md:block mt-8 w-full md:w-[280px] md:ml-auto text-left md:text-right">
                     <a
                       href={wetravelCheckoutUrl}
                       target="_blank"

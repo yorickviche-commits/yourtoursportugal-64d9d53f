@@ -205,7 +205,7 @@ const PublicProposalPage = () => {
               )}
             </div>
             {(proposal as any).wetravel_checkout_url && (
-              <div className="mt-8 w-full md:w-[280px] md:ml-auto text-left md:text-right">
+              <div className="hidden md:block mt-8 w-full md:w-[280px] md:ml-auto text-left md:text-right">
                 <a
                   href={(proposal as any).wetravel_checkout_url}
                   target="_blank"
