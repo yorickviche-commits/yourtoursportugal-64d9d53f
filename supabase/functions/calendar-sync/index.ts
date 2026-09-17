@@ -10,6 +10,7 @@ const SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
 const GOOGLE_CALENDAR_API_KEY = Deno.env.get('GOOGLE_CALENDAR_API_KEY');
 const GATEWAY_URL = 'https://connector-gateway.lovable.dev/google_calendar/calendar/v3';
+const APP_ORIGIN = 'https://yourtoursportugal.lovable.app';
 
 interface SyncRequest {
   lead_id: string;
@@ -148,7 +149,7 @@ function fmtDate(iso: string | null | undefined, short = true): string {
   return short ? `${String(d.getUTCDate()).padStart(2,'0')}/${String(d.getUTCMonth()+1).padStart(2,'0')}` : d.toISOString().slice(0,10);
 }
 
-function buildDescription(lead: any, day: DayPayload, dayIndex: number, totalDays: number): string {
+function buildDescription(lead: any, day: DayPayload, dayIndex: number, totalDays: number, proposalUrl?: string): string {
   const bookingId = lead.yt_id || lead.lead_code || '';
   const notes = (lead.notes || '').trim();
   const pax = `${lead.pax || 0} pessoas (${lead.pax || 0} adultos${lead.pax_children ? ` + ${lead.pax_children} jovens` : ''}${lead.pax_infants ? ` + ${lead.pax_infants} bebés` : ''})`;
@@ -156,6 +157,7 @@ function buildDescription(lead: any, day: DayPayload, dayIndex: number, totalDay
   const pickup = firstItem?.schedule_time ? `${fmtTime(firstItem.schedule_time)}` : 'a definir';
 
   const header = [
+    proposalUrl ? `Programa comercial cliente: ${proposalUrl}\n` : '',
     notes ? `NOTAS PARA BACKOFFICE:\n${notes}\n` : '',
     `────────────────────────`,
     `Tour: ${lead.destination || ''}`,
@@ -255,14 +257,25 @@ Deno.serve(async (req) => {
     }
 
     // Load costing + operations + emails
-    const [{ data: costingRows }, { data: ops }, { data: emails }, { data: agents }] = await Promise.all([
+    const [{ data: costingRows }, { data: ops }, { data: emails }, { data: agents }, { data: proposals }] = await Promise.all([
       supabase.from('lead_costing_data').select('day_number, items, version').eq('lead_id', body.lead_id).eq('version', lead.active_version || 0),
       supabase.from('lead_operations').select('*').eq('lead_id', body.lead_id),
       supabase.from('booking_emails_log').select('lead_operation_id, sent_at').eq('lead_id', body.lead_id).order('sent_at', { ascending: false }),
       lead.assigned_agents && lead.assigned_agents.length
         ? supabase.from('profiles').select('id, full_name, email').in('id', lead.assigned_agents)
         : Promise.resolve({ data: [] as any[] }),
+      supabase.from('proposals')
+        .select('public_token, version, created_at')
+        .eq('lead_id', body.lead_id)
+        .order('version', { ascending: false })
+        .order('created_at', { ascending: false }),
     ]);
+
+    const activeVersion = Number(lead.active_version || 0);
+    const proposal = (proposals || []).find((p: any) => Number(p.version) === activeVersion) || proposals?.[0];
+    const proposalUrl = proposal?.public_token
+      ? `${APP_ORIGIN}/proposal/${encodeURIComponent(proposal.public_token)}`
+      : undefined;
 
     const opByKey = new Map<string, OperationRow>((ops || []).map((o: any) => [`${o.day_number}:${o.item_key}`, o]));
     const emailByOpId = new Map<string, string>();
@@ -321,7 +334,7 @@ Deno.serve(async (req) => {
       activeDates.add(day.day_date);
       const summary = summarizeDayStatus(day.items);
       const title = buildTitle(lead, day, agentName);
-      const description = buildDescription(lead, day, i, totalDays);
+      const description = buildDescription(lead, day, i, totalDays, proposalUrl);
       const eventPayload: any = {
         summary: title,
         description,

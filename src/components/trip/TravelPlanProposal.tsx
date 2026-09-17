@@ -1885,8 +1885,8 @@ const TravelPlanProposal = ({
                   value={displayPlan.narrative} onChange={v => setPlan(p => p ? { ...p, narrative: v } : p)} />
               </div>
             ) : (
-              <div className="flex flex-col md:flex-row md:items-end gap-6">
-                <div className="flex-1 min-w-0 pr-28 md:pr-0">
+              <div>
+                <div className="min-w-0 pr-28 md:pr-0">
                   <RichText as="h1" className="text-2xl md:text-3xl font-serif font-bold tracking-tight" value={displayPlan.trip_title} />
                   <p className="text-lg text-white/80 mt-1">{clientName}</p>
                   <div className="flex items-center gap-3 mt-4 text-sm text-white/60">
@@ -1897,7 +1897,7 @@ const TravelPlanProposal = ({
                   <RichText as="p" className="text-sm text-white/80 mt-4 leading-relaxed" value={displayPlan.narrative} preserveNewlines />
                 </div>
                 {wetravelCheckoutUrl && (
-                  <div className="shrink-0 w-full md:w-[220px] text-left md:text-right">
+                  <div className="mt-8 w-full md:w-[280px] md:ml-auto text-left md:text-right">
                     <a
                       href={wetravelCheckoutUrl}
                       target="_blank"
@@ -1907,7 +1907,7 @@ const TravelPlanProposal = ({
                       BOOK NOW
                     </a>
                     <p className="text-[9px] leading-snug text-white/70 mt-2">
-                      Book with deposit · 100% refundable if plans change / cancel* —{' '}
+                      Refundable Deposit if plans change* ·{' '}
                       <a href={TERMS_URL} target="_blank" rel="noopener noreferrer" className="underline">
                         see terms and conditions
                       </a>

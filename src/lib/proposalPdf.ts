@@ -481,17 +481,26 @@ export async function buildProposalPdfDoc(
           const btnW = 150;
           const btnH = 34;
           const btnX = pageW - margin - 14 - btnW;
-          const btnY = y + (boxH - btnH) / 2;
+          const btnY = y + (boxH - btnH) / 2 - 7;
           doc.setFillColor(10, 37, 64);
           doc.roundedRect(btnX, btnY, btnW, btnH, 6, 6, 'F');
           doc.setTextColor(255, 255, 255);
           doc.setFont('helvetica', 'bold');
           doc.setFontSize(13);
-          doc.textWithLink(t.bookNow, btnX + btnW / 2, btnY + 22, {
+          doc.textWithLink('BOOK NOW', btnX + btnW / 2, btnY + 22, {
             align: 'center',
             url: p.wetravel_checkout_url,
           });
           doc.link(btnX, btnY, btnW, btnH, { url: p.wetravel_checkout_url });
+          doc.setFont('helvetica', 'normal');
+          doc.setFontSize(7);
+          doc.setTextColor(90, 90, 90);
+          doc.text('Refundable Deposit if plans change*', btnX + btnW / 2, btnY + btnH + 10, { align: 'center' });
+          doc.setTextColor(0, 102, 204);
+          doc.textWithLink('see terms and conditions', btnX + btnW / 2, btnY + btnH + 19, {
+            align: 'center',
+            url: 'https://drive.google.com/file/d/12AkvW2Ob0LtcooaciWY4e-nEx7hlOnQC/view?usp=sharing',
+          });
         }
 
         y += boxH + 18;
