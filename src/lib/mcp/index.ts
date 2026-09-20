@@ -4,6 +4,7 @@ import getLeadTool from "./tools/get-lead";
 import listUpcomingTripsTool from "./tools/list-upcoming-trips";
 import listTasksTool from "./tools/list-tasks";
 import createTaskTool from "./tools/create-task";
+import updateTaskTool from "./tools/update-task";
 
 // Issuer must be the direct Supabase host, built from the project ref literal.
 const projectRef = import.meta.env.VITE_SUPABASE_PROJECT_ID ?? "project-ref-unset";
