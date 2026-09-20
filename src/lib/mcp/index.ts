@@ -14,7 +14,7 @@ export default defineMcp({
   title: "Your Travel 2.0",
   version: "0.1.0",
   instructions:
-    "Operations tools for Your Tours Portugal. Use `list_leads` and `get_lead` for the sales pipeline, `list_upcoming_trips` for departures needing attention, and `list_tasks` / `create_task` for operational follow-up. All data is scoped to the signed-in user's access.",
+    "Operations tools for Your Tours Portugal. Use `list_leads` and `get_lead` for the sales pipeline, `list_upcoming_trips` for departures needing attention, and `list_tasks` / `create_task` / `update_task` for operational follow-up. All data is scoped to the signed-in user's access.",
   auth: auth.oauth.issuer({
     issuer: `https://${projectRef}.supabase.co/auth/v1`,
     acceptedAudiences: "authenticated",
