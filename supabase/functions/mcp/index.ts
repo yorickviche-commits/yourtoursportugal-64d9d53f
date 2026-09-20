@@ -223,6 +223,48 @@ var create_task_default = defineTool5({
   }
 });
 
+// src/lib/mcp/tools/update-task.ts
+import { defineTool as defineTool6, ToolError as ToolError6 } from "npm:@lovable.dev/mcp-js@0.26.1";
+import { z as z6 } from "npm:zod@^3.25.76";
+var update_task_default = defineTool6({
+  name: "update_task",
+  title: "Update task",
+  description: "Update an existing task. Provide task_id plus only the fields to change, e.g. set status to done.",
+  inputSchema: {
+    task_id: z6.string().describe("Task uuid to update."),
+    status: z6.enum(["todo", "in_progress", "blocked", "done"]).optional().describe("New status: todo, in_progress, blocked or done."),
+    title: z6.string().optional().describe("New short actionable title."),
+    description: z6.string().optional().describe("New details."),
+    due_date: z6.string().optional().describe("Due date as YYYY-MM-DD."),
+    priority: z6.string().optional().describe("Priority, e.g. low, medium, high, urgent."),
+    team: z6.string().optional().describe("Team, e.g. sales or ops."),
+    assigned_to: z6.string().optional().describe("Assignee name or identifier.")
+  },
+  annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false },
+  handler: async ({ task_id, status, title, description, due_date, priority, team, assigned_to }, ctx) => {
+    if (!ctx.isAuthenticated()) throw new ToolError6("Not authenticated");
+    if (!task_id?.trim()) throw new ToolError6("task_id is required");
+    const supabase = supabaseForUser(ctx);
+    const updates = {};
+    if (status !== void 0) updates.status = status;
+    if (title !== void 0) updates.title = title.trim();
+    if (description !== void 0) updates.description = description;
+    if (due_date !== void 0) updates.due_date = due_date;
+    if (priority !== void 0) updates.priority = priority;
+    if (team !== void 0) updates.team = team;
+    if (assigned_to !== void 0) updates.assigned_to = assigned_to;
+    if (Object.keys(updates).length === 0) throw new ToolError6("Provide at least one field to update");
+    updates.updated_at = (/* @__PURE__ */ new Date()).toISOString();
+    const { data, error } = await supabase.from("tasks").update(updates).eq("id", task_id.trim()).select().single();
+    if (error) throw new ToolError6(error.message);
+    if (!data) throw new ToolError6("Task not found or not accessible");
+    return {
+      content: [{ type: "text", text: JSON.stringify({ updated: true, task: data }, null, 2) }],
+      structuredContent: { task: data }
+    };
+  }
+});
+
 // src/lib/mcp/index.ts
 var projectRef = "jufqscczzmioauzkqztj";
 var mcp_default = defineMcp({
@@ -234,7 +276,7 @@ var mcp_default = defineMcp({
     issuer: `https://${projectRef}.supabase.co/auth/v1`,
     acceptedAudiences: "authenticated"
   }),
-  tools: [list_leads_default, get_lead_default, list_upcoming_trips_default, list_tasks_default, create_task_default]
+  tools: [list_leads_default, get_lead_default, list_upcoming_trips_default, list_tasks_default, create_task_default, update_task_default]
 });
 
 // lovable-mcp-supabase-entry.ts
