@@ -181,6 +181,66 @@
           "$schema": "http://json-schema.org/draft-07/schema#"
         },
         "outputSchema": null
+      },
+      {
+        "name": "update_task",
+        "title": "Update task",
+        "description": "Update an existing task. Provide task_id plus only the fields to change, e.g. set status to done.",
+        "annotations": {
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "task_id": {
+              "type": "string",
+              "description": "Task uuid to update."
+            },
+            "status": {
+              "type": "string",
+              "enum": [
+                "todo",
+                "in_progress",
+                "blocked",
+                "done"
+              ],
+              "description": "New status: todo, in_progress, blocked or done."
+            },
+            "title": {
+              "type": "string",
+              "description": "New short actionable title."
+            },
+            "description": {
+              "type": "string",
+              "description": "New details."
+            },
+            "due_date": {
+              "type": "string",
+              "description": "Due date as YYYY-MM-DD."
+            },
+            "priority": {
+              "type": "string",
+              "description": "Priority, e.g. low, medium, high, urgent."
+            },
+            "team": {
+              "type": "string",
+              "description": "Team, e.g. sales or ops."
+            },
+            "assigned_to": {
+              "type": "string",
+              "description": "Assignee name or identifier."
+            }
+          },
+          "required": [
+            "task_id"
+          ],
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
       }
     ]
   }
