@@ -1,0 +1,2 @@
+ALTER TABLE public.leads ADD COLUMN IF NOT EXISTS trip_briefing jsonb;
+COMMENT ON COLUMN public.leads.trip_briefing IS 'Operational trip briefing (pickup hotel, flights, on-site contacts, special requests) kept by the operations team and AI agents.';

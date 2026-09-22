@@ -1969,6 +1969,7 @@ export type Database = {
           travel_dates: string | null
           travel_end_date: string | null
           travel_style: Json | null
+          trip_briefing: Json | null
           trip_finish: string | null
           trip_start: string | null
           updated_at: string
@@ -2016,6 +2017,7 @@ export type Database = {
           travel_dates?: string | null
           travel_end_date?: string | null
           travel_style?: Json | null
+          trip_briefing?: Json | null
           trip_finish?: string | null
           trip_start?: string | null
           updated_at?: string
@@ -2063,6 +2065,7 @@ export type Database = {
           travel_dates?: string | null
           travel_end_date?: string | null
           travel_style?: Json | null
+          trip_briefing?: Json | null
           trip_finish?: string | null
           trip_start?: string | null
           updated_at?: string
