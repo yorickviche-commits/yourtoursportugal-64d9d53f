@@ -50,7 +50,14 @@ export default defineTool({
     }
     if (span !== null && span <= 0) inconsistencies.push("End date is not after the start date");
 
-    const { plan, proposal } = await loadPlan(supabase, lead, ver);
+    const { plan } = await loadPlan(supabase, lead, ver);
+    const { data: proposalRow } = await supabase
+      .from("proposals")
+      .select("public_token, language, brand_logo_url")
+      .eq("lead_id", lead.id)
+      .eq("version", ver)
+      .maybeSingle();
+    const proposal = proposalRow as { public_token?: string | null; language?: string | null; brand_logo_url?: string | null } | null;
     const planDays = plan.days.length;
     if (!planDays) missing.push("travel plan (no days yet)");
     if (planDays && span !== null && planDays !== span) {
@@ -74,7 +81,7 @@ export default defineTool({
 
     if (String(l.client_type || "").toUpperCase() === "B2B") {
       if (!l.partner_id) missing.push("B2B partner");
-      if (!proposal?.brand_logo) missing.push("B2B logo on the proposal");
+      if (!proposal?.brand_logo_url) missing.push("B2B logo on the proposal");
     }
 
     const deposited = await paymentsSummary(supabase, lead);
