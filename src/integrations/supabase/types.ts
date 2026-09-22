@@ -1473,6 +1473,7 @@ export type Database = {
         Row: {
           activity_title: string | null
           booking_status: string
+          confirmation_number: string | null
           created_at: string
           day_number: number
           id: string
@@ -1482,6 +1483,7 @@ export type Database = {
           item_key: string
           lead_id: string
           net_value: number | null
+          notes: string | null
           pax: number | null
           payment_status: string
           real_cost: number | null
@@ -1494,6 +1496,7 @@ export type Database = {
         Insert: {
           activity_title?: string | null
           booking_status?: string
+          confirmation_number?: string | null
           created_at?: string
           day_number?: number
           id?: string
@@ -1503,6 +1506,7 @@ export type Database = {
           item_key: string
           lead_id: string
           net_value?: number | null
+          notes?: string | null
           pax?: number | null
           payment_status?: string
           real_cost?: number | null
@@ -1515,6 +1519,7 @@ export type Database = {
         Update: {
           activity_title?: string | null
           booking_status?: string
+          confirmation_number?: string | null
           created_at?: string
           day_number?: number
           id?: string
@@ -1524,6 +1529,7 @@ export type Database = {
           item_key?: string
           lead_id?: string
           net_value?: number | null
+          notes?: string | null
           pax?: number | null
           payment_status?: string
           real_cost?: number | null
