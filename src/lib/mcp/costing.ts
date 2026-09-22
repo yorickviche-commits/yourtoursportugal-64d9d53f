@@ -170,7 +170,7 @@ export function assertMinimumMargin(totals: CostingTotals) {
 }
 
 export async function paymentsSummary(supabase: SupabaseClient, lead: LeadRow) {
-  const { data } = await supabase.from("lead_payments").select("amount_eur").eq("lead_id", lead.id);
-  const deposited = ((data ?? []) as any[]).reduce((s, p) => s + Number(p.amount_eur || 0), 0);
+  const { data } = await supabase.from("lead_payments").select("amount").eq("lead_id", lead.id);
+  const deposited = ((data ?? []) as any[]).reduce((s, p) => s + Number(p.amount || 0), 0);
   return Math.round(deposited * 100) / 100;
 }
