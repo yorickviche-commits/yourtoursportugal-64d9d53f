@@ -12,14 +12,14 @@
   "mcp": {
     "server": {
       "name": "your-travel-2-0",
-      "version": "0.1.0",
+      "version": "0.2.0",
       "title": "Your Travel 2.0"
     },
     "tools": [
       {
         "name": "list_leads",
         "title": "List leads",
-        "description": "List leads (sales pipeline) for the signed-in user, newest activity first. Optionally filter by status or destination.",
+        "description": "List leads (sales pipeline) for the signed-in user, most recently updated first. Filter by stage, status, destination, agent, free-text search, trip start range or last update. Each row includes totals, deposit and the TCC lead URL.",
         "annotations": {
           "readOnlyHint": true,
           "idempotentHint": true,
@@ -28,13 +28,37 @@
         "inputSchema": {
           "type": "object",
           "properties": {
+            "stage": {
+              "type": "string",
+              "description": "Pipeline stage code or label — see list_lead_stages."
+            },
             "status": {
               "type": "string",
-              "description": "Filter by lead status, e.g. novo, proposta, ganho."
+              "description": "Internal status: new, proposal_sent, negotiation, won, lost."
+            },
+            "search": {
+              "type": "string",
+              "description": "Free text: lead code, client name or email."
+            },
+            "agent": {
+              "type": "string",
+              "description": "Assigned agent full name or email."
             },
             "destination": {
               "type": "string",
               "description": "Case-insensitive partial match on destination."
+            },
+            "trip_start_from": {
+              "type": "string",
+              "description": "Trip starts on or after this date (YYYY-MM-DD)."
+            },
+            "trip_start_to": {
+              "type": "string",
+              "description": "Trip starts on or before this date (YYYY-MM-DD)."
+            },
+            "updated_since": {
+              "type": "string",
+              "description": "Only leads updated after this ISO date/time."
             },
             "limit": {
               "type": "integer",
@@ -49,7 +73,7 @@
       {
         "name": "get_lead",
         "title": "Get lead detail",
-        "description": "Get a single lead with its planner and costing data. Look it up by lead id (uuid) or by lead code such as YT-2026-0001.",
+        "description": "Get a single lead with its planner and costing data. Look it up by lead id (uuid) or by lead code — 'YT5130', 'YT-5130' and the internal 'YT-2026-5130' all work.",
         "annotations": {
           "readOnlyHint": true,
           "idempotentHint": true,
@@ -64,7 +88,289 @@
             },
             "lead_code": {
               "type": "string",
-              "description": "Lead code, e.g. YT-2026-0001."
+              "description": "Lead code, e.g. YT5130."
+            }
+          },
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "list_lead_stages",
+        "title": "List lead stages",
+        "description": "List the exact pipeline stages a lead can be set to (code + label + group). Call this before update_lead_stage or before filtering list_leads by stage, so stage strings are never guessed.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "type": "object",
+          "properties": {}
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "update_lead_stage",
+        "title": "Update lead stage",
+        "description": "Move a lead to another pipeline stage, exactly like the stage dropdown in the lead header. Mirrors the stage to NetHunt when the lead is linked and records the change in the lead history. Use list_lead_stages for valid values.",
+        "annotations": {
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "lead_id": {
+              "type": "string",
+              "description": "Lead uuid."
+            },
+            "lead_code": {
+              "type": "string",
+              "description": "Lead code such as YT5130."
+            },
+            "stage": {
+              "type": "string",
+              "description": "Target stage code or label, e.g. 'SALES · Final Negotiation & Ready to Book'."
+            },
+            "note": {
+              "type": "string",
+              "description": "Optional reason stored with the history entry."
+            }
+          },
+          "required": [
+            "stage"
+          ],
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "assign_lead_agents",
+        "title": "Assign lead agents",
+        "description": "Assign up to two TCC users as the agents of a lead, exactly like the 'Atribuir até 2 agentes' popup. Accepts a full name or an email; pass null to clear a slot.",
+        "annotations": {
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "lead_id": {
+              "type": "string",
+              "description": "Lead uuid."
+            },
+            "lead_code": {
+              "type": "string",
+              "description": "Lead code such as YT5130."
+            },
+            "agent_1": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "description": "First agent: full name or email. null clears it."
+            },
+            "agent_2": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "description": "Second agent: full name or email. null clears it."
+            }
+          },
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "update_lead_general_data",
+        "title": "Update lead general data",
+        "description": "Update the general data of the LIVE version of a lead (dates, participants, language, client type, phone, category, destination), exactly like saving Dados Gerais in the TCC. Participants and dates are propagated to the travel plan and digital proposal. No financial fields.",
+        "annotations": {
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "lead_id": {
+              "type": "string",
+              "description": "Lead uuid."
+            },
+            "lead_code": {
+              "type": "string",
+              "description": "Lead code such as YT5130."
+            },
+            "data_inicio": {
+              "type": "string",
+              "description": "Trip start date, YYYY-MM-DD."
+            },
+            "data_fim": {
+              "type": "string",
+              "description": "Trip end date, YYYY-MM-DD."
+            },
+            "n_adultos": {
+              "type": "integer",
+              "minimum": 1,
+              "description": "Number of adults."
+            },
+            "n_jovens": {
+              "type": "integer",
+              "minimum": 0,
+              "description": "Number of children/teens."
+            },
+            "n_criancas": {
+              "type": "integer",
+              "minimum": 0,
+              "description": "Alias of n_jovens (children)."
+            },
+            "n_bebes": {
+              "type": "integer",
+              "minimum": 0,
+              "description": "Number of infants."
+            },
+            "idioma": {
+              "type": "string",
+              "description": "Programme language: en, pt, es, fr, it, de."
+            },
+            "tipo_cliente": {
+              "type": "string",
+              "enum": [
+                "B2C",
+                "B2B"
+              ],
+              "description": "Client type."
+            },
+            "telefone": {
+              "type": "string",
+              "description": "Client phone."
+            },
+            "categoria": {
+              "type": "string",
+              "description": "Comfort/category level."
+            },
+            "destino": {
+              "type": "string",
+              "description": "Destination(s), comma separated."
+            }
+          },
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "add_lead_note",
+        "title": "Add internal lead note",
+        "description": "Add an internal note to a lead. The note shows in the lead history/timeline and is replicated as a NetHunt comment when the lead is linked. Notes are internal — nothing is sent to the client.",
+        "annotations": {
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "idempotentHint": false,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "lead_id": {
+              "type": "string",
+              "description": "Lead uuid."
+            },
+            "lead_code": {
+              "type": "string",
+              "description": "Lead code such as YT5130."
+            },
+            "text": {
+              "type": "string",
+              "minLength": 1,
+              "description": "Note body."
+            },
+            "pin": {
+              "type": "boolean",
+              "description": "Pin the note at the top of the lead notes."
+            }
+          },
+          "required": [
+            "text"
+          ],
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "get_travel_plan",
+        "title": "Get travel plan",
+        "description": "Read the commercial programme of a lead: title, summary, day-by-day (date, title, tagline, included items, night at), hotels and the public link of the digital itinerary. Use this to write client emails without opening the TCC.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "lead_id": {
+              "type": "string",
+              "description": "Lead uuid."
+            },
+            "lead_code": {
+              "type": "string",
+              "description": "Lead code such as YT5104."
+            },
+            "version": {
+              "type": "integer",
+              "description": "Version to read (default: LIVE version)."
+            }
+          },
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "export_travel_plan_pdf",
+        "title": "Export travel plan PDF",
+        "description": "Generate the client-facing Travel Plan PDF of a lead server-side (cover, day-by-day with images and route maps, hotels, pricing, terms, reviews, B2B logo when set), store it privately and return a signed download link valid for 7 days plus warnings about days missing maps or images.",
+        "annotations": {
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "lead_id": {
+              "type": "string",
+              "description": "Lead uuid."
+            },
+            "lead_code": {
+              "type": "string",
+              "description": "Lead code such as YT5104."
+            },
+            "language": {
+              "type": "string",
+              "description": "Override the programme language (en, pt, es, fr, it, de)."
+            },
+            "version": {
+              "type": "integer",
+              "description": "Version to export (default: LIVE version)."
+            },
+            "hide_optionals": {
+              "type": "boolean",
+              "description": "Hide optional experiences from the pricing block."
             }
           },
           "additionalProperties": false,

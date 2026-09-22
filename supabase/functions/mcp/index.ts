@@ -6,7 +6,7 @@
 import { auth, defineMcp } from "npm:@lovable.dev/mcp-js@0.26.1";
 
 // src/lib/mcp/tools/list-leads.ts
-import { defineTool, ToolError } from "npm:@lovable.dev/mcp-js@0.26.1";
+import { defineTool, ToolError as ToolError2 } from "npm:@lovable.dev/mcp-js@0.26.1";
 import { z } from "npm:zod@^3.25.76";
 
 // src/lib/mcp/supabase.ts
@@ -58,61 +58,239 @@ function supabaseForUser(ctx) {
   });
 }
 
+// src/lib/mcp/lead.ts
+import { ToolError } from "npm:@lovable.dev/mcp-js@0.26.1";
+var APP_ORIGIN = "https://yourtoursportugal.lovable.app";
+var STAGES = [
+  { code: "SALES - New Lead", label: "SALES \xB7 New Lead", group: "SALES", status: "new" },
+  { code: "SALES - - Budgeting & Fine-Tuning", label: "SALES \xB7 Budgeting & Fine-Tuning", group: "SALES", status: "proposal_sent" },
+  { code: "SALES - Final Negotiation & Ready to Book", label: "SALES \xB7 Final Negotiation & Ready to Book", group: "SALES", status: "negotiation" },
+  { code: "SALES - Archive", label: "SALES \xB7 Archive", group: "SALES", status: "lost" },
+  { code: "OPERATIONS - Deposit/Payment Received", label: "OPERATIONS \xB7 Deposit/Payment Received", group: "OPERATIONS", status: "won" },
+  { code: "OPERATIONS - Suppliers Bookings & Confirmations", label: "OPERATIONS \xB7 Suppliers Bookings & Confirmations", group: "OPERATIONS", status: "won" },
+  { code: "OPERATIONS - Technical Briefing (Internal & Suppliers Final Validations)", label: "OPERATIONS \xB7 Technical Briefing", group: "OPERATIONS", status: "won" },
+  { code: "OPERATIONS - Trip Ready / In Execution", label: "OPERATIONS \xB7 Trip Ready / In Execution", group: "OPERATIONS", status: "won" },
+  { code: "OPERATIONS - Post-Trip Loop / Feedback", label: "OPERATIONS \xB7 Post-Trip Loop / Feedback", group: "OPERATIONS", status: "won" },
+  { code: "OPERATIONS - Deferred / Postponed Trip", label: "OPERATIONS \xB7 Deferred / Postponed Trip", group: "OPERATIONS", status: "won" },
+  { code: "OPERATIONS - Archive", label: "OPERATIONS \xB7 Archive", group: "OPERATIONS", status: "lost" }
+];
+var normalize = (s) => s.replace(/[\s·-]+/g, " ").trim().toLowerCase();
+function resolveStage(input) {
+  const key = normalize(input);
+  const hit = STAGES.find((s) => normalize(s.code) === key) ?? STAGES.find((s) => normalize(s.label) === key) ?? STAGES.find((s) => normalize(s.code).endsWith(key) || normalize(s.label).endsWith(key));
+  if (!hit) {
+    throw new ToolError(
+      `Invalid stage "${input}". Valid stages: ${STAGES.map((s) => s.label).join(" | ")}`
+    );
+  }
+  return hit;
+}
+var UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+async function resolveLead(supabase, args, select = "*") {
+  const id = args.lead_id?.trim();
+  const code = args.lead_code?.trim();
+  if (!id && !code) throw new ToolError("Provide lead_id or lead_code");
+  const run = async (build) => {
+    const { data, error } = await build(supabase.from("leads").select(select).limit(1));
+    if (error) throw new ToolError(error.message);
+    return Array.isArray(data) ? data[0] : data;
+  };
+  if (id) {
+    if (!UUID.test(id)) throw new ToolError("lead_id must be a uuid \u2014 use lead_code for codes like YT5130");
+    const row2 = await run((q) => q.eq("id", id));
+    if (!row2) throw new ToolError(`Lead ${id} not found or not accessible`);
+    return row2;
+  }
+  const upper = code.toUpperCase().replace(/\s+/g, "");
+  const digits = upper.replace(/^YT-?/, "").replace(/^\d{4}-/, "");
+  let row = await run((q) => q.eq("yt_id", upper)) ?? await run((q) => q.eq("lead_code", upper)) ?? await run((q) => q.ilike("yt_id", upper));
+  if (!row && /^\d+$/.test(digits)) {
+    row = await run((q) => q.eq("yt_id", `YT${digits}`)) ?? await run((q) => q.ilike("lead_code", `%-${digits}`)) ?? await run((q) => q.ilike("lead_code", `%${digits}`));
+  }
+  if (!row) throw new ToolError(`Lead "${code}" not found or not accessible (tried YT id and lead code)`);
+  return row;
+}
+var leadLabel = (lead) => lead.yt_id || lead.lead_code || lead.id;
+var leadUrl = (lead) => `${APP_ORIGIN}/leads/${lead.id}`;
+async function auditLead(supabase, ctx, lead, actionType, changes, extra) {
+  const { error } = await supabase.from("activity_logs").insert({
+    action_type: actionType,
+    entity_type: "lead",
+    entity_id: lead.id,
+    user_id: ctx.getUserId() ?? null,
+    details: {
+      actor: "AI agent (MCP)",
+      actor_user_id: ctx.getUserId() ?? null,
+      actor_email: ctx.getUserEmail() ?? null,
+      lead_code: leadLabel(lead),
+      changes,
+      ...extra ?? {}
+    }
+  });
+  if (error) console.warn("audit insert failed", error.message);
+}
+async function pushNetHunt(supabase, entity, leadId, changes, linked) {
+  if (!linked) return { status: "not_linked", message: "Lead has no NetHunt record" };
+  try {
+    const { data, error } = await supabase.functions.invoke("nethunt-push", {
+      body: { entity, id: leadId, changes }
+    });
+    if (error) return { status: "error", message: error.message };
+    const res = data;
+    if (res?.error) return { status: "error", message: res.error };
+    return { status: "ok" };
+  } catch (e) {
+    return { status: "error", message: e.message };
+  }
+}
+var liveVersion = (lead) => Number(lead.active_version ?? 0);
+
 // src/lib/mcp/tools/list-leads.ts
 var list_leads_default = defineTool({
   name: "list_leads",
   title: "List leads",
-  description: "List leads (sales pipeline) for the signed-in user, newest activity first. Optionally filter by status or destination.",
+  description: "List leads (sales pipeline) for the signed-in user, most recently updated first. Filter by stage, status, destination, agent, free-text search, trip start range or last update. Each row includes totals, deposit and the TCC lead URL.",
   inputSchema: {
-    status: z.string().optional().describe("Filter by lead status, e.g. novo, proposta, ganho."),
+    stage: z.string().optional().describe("Pipeline stage code or label \u2014 see list_lead_stages."),
+    status: z.string().optional().describe("Internal status: new, proposal_sent, negotiation, won, lost."),
+    search: z.string().optional().describe("Free text: lead code, client name or email."),
+    agent: z.string().optional().describe("Assigned agent full name or email."),
     destination: z.string().optional().describe("Case-insensitive partial match on destination."),
+    trip_start_from: z.string().optional().describe("Trip starts on or after this date (YYYY-MM-DD)."),
+    trip_start_to: z.string().optional().describe("Trip starts on or before this date (YYYY-MM-DD)."),
+    updated_since: z.string().optional().describe("Only leads updated after this ISO date/time."),
     limit: z.number().int().optional().describe("Max rows to return (default 25, max 100).")
   },
   annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
-  handler: async ({ status, destination, limit }, ctx) => {
-    if (!ctx.isAuthenticated()) throw new ToolError("Not authenticated");
-    const take = Math.min(Math.max(limit ?? 25, 1), 100);
+  handler: async (args, ctx) => {
+    if (!ctx.isAuthenticated()) throw new ToolError2("Not authenticated");
+    const take = Math.min(Math.max(args.limit ?? 25, 1), 100);
     const supabase = supabaseForUser(ctx);
+    let agentId = null;
+    const { data: profileRows } = await supabase.from("profiles").select("id, full_name, email");
+    const profiles = profileRows ?? [];
+    if (args.agent) {
+      const needle = args.agent.trim().toLowerCase();
+      const hit = profiles.find((p) => (p.email || "").toLowerCase() === needle) ?? profiles.find((p) => (p.full_name || "").toLowerCase().includes(needle));
+      if (!hit) {
+        throw new ToolError2(
+          `Agent "${args.agent}" not found. Valid users: ${profiles.map((p) => p.full_name || p.email).join(" | ")}`
+        );
+      }
+      agentId = hit.id;
+    }
+    const agentName = (id) => {
+      const p = profiles.find((x) => x.id === id);
+      return p?.full_name || p?.email || id;
+    };
     let query = supabase.from("leads").select(
-      "id,lead_code,yt_id,client_name,email,status,destination,travel_dates,travel_end_date,pax,number_of_days,budget_level,sales_owner,updated_at"
+      "id,lead_code,yt_id,client_name,email,status,nethunt_stage,nethunt_record_id,destination,travel_dates,travel_end_date,pax,pax_children,pax_infants,number_of_days,budget_level,client_type,assigned_agents,active_version,updated_at"
     ).order("updated_at", { ascending: false }).limit(take);
-    if (status) query = query.eq("status", status);
-    if (destination) query = query.ilike("destination", `%${destination}%`);
+    if (args.stage) query = query.eq("nethunt_stage", resolveStage(args.stage).code);
+    if (args.status) query = query.eq("status", args.status);
+    if (args.destination) query = query.ilike("destination", `%${args.destination}%`);
+    if (args.trip_start_from) query = query.gte("travel_dates", args.trip_start_from);
+    if (args.trip_start_to) query = query.lte("travel_dates", args.trip_start_to);
+    if (args.updated_since) query = query.gte("updated_at", args.updated_since);
+    if (agentId) query = query.contains("assigned_agents", [agentId]);
+    if (args.search) {
+      const s = args.search.trim().replace(/,/g, " ");
+      query = query.or(
+        `lead_code.ilike.%${s}%,yt_id.ilike.%${s}%,client_name.ilike.%${s}%,email.ilike.%${s}%`
+      );
+    }
     const { data, error } = await query;
-    if (error) throw new ToolError(error.message);
+    if (error) throw new ToolError2(error.message);
+    const rows = data ?? [];
+    const ids = rows.map((r) => r.id);
+    const totals = /* @__PURE__ */ new Map();
+    const paid = /* @__PURE__ */ new Map();
+    if (ids.length) {
+      const [costing, payments] = await Promise.all([
+        supabase.from("lead_costing_data").select("lead_id, version, items").in("lead_id", ids),
+        supabase.from("lead_payments").select("lead_id, amount").in("lead_id", ids)
+      ]);
+      const live = new Map(rows.map((r) => [r.id, r.active_version ?? 0]));
+      (costing.data ?? []).forEach((row) => {
+        if (row.version !== (live.get(row.lead_id) ?? 0)) return;
+        const agg = totals.get(row.lead_id) ?? { pvp: 0, net: 0 };
+        (Array.isArray(row.items) ? row.items : []).forEach((it) => {
+          if (it?.status === "eliminar") return;
+          agg.pvp += Number(it?.pvpTotal) || 0;
+          agg.net += Number(it?.netTotal) || 0;
+        });
+        totals.set(row.lead_id, agg);
+      });
+      (payments.data ?? []).forEach((r) => {
+        paid.set(r.lead_id, (paid.get(r.lead_id) ?? 0) + (Number(r.amount) || 0));
+      });
+    }
+    const leads = rows.map((r) => {
+      const total = totals.get(r.id)?.pvp ?? 0;
+      const deposited = paid.get(r.id) ?? 0;
+      return {
+        lead_code: r.yt_id || r.lead_code,
+        id: r.id,
+        client_name: r.client_name,
+        email: r.email,
+        client_type: r.client_type,
+        destination: r.destination,
+        trip_start: r.travel_dates,
+        trip_end: r.travel_end_date,
+        days: r.number_of_days,
+        pax: r.pax,
+        pax_children: r.pax_children,
+        pax_infants: r.pax_infants,
+        stage: STAGES.find((s) => s.code === r.nethunt_stage)?.label ?? r.nethunt_stage ?? r.status,
+        status: r.status,
+        agents: (r.assigned_agents ?? []).map(agentName),
+        total_yt_eur: Math.round(total * 100) / 100,
+        deposited_eur: Math.round(deposited * 100) / 100,
+        outstanding_eur: Math.round(Math.max(0, total - deposited) * 100) / 100,
+        nethunt_record_id: r.nethunt_record_id ?? null,
+        tcc_url: `${APP_ORIGIN}/leads/${r.id}`,
+        updated_at: r.updated_at
+      };
+    });
+    const payload = { total: leads.length, leads };
     return {
-      content: [{ type: "text", text: JSON.stringify({ total: data?.length ?? 0, leads: data ?? [] }, null, 2) }],
-      structuredContent: { total: data?.length ?? 0, leads: data ?? [] }
+      content: [{ type: "text", text: JSON.stringify(payload, null, 2) }],
+      structuredContent: payload
     };
   }
 });
 
 // src/lib/mcp/tools/get-lead.ts
-import { defineTool as defineTool2, ToolError as ToolError2 } from "npm:@lovable.dev/mcp-js@0.26.1";
+import { defineTool as defineTool2, ToolError as ToolError3 } from "npm:@lovable.dev/mcp-js@0.26.1";
 import { z as z2 } from "npm:zod@^3.25.76";
 var get_lead_default = defineTool2({
   name: "get_lead",
   title: "Get lead detail",
-  description: "Get a single lead with its planner and costing data. Look it up by lead id (uuid) or by lead code such as YT-2026-0001.",
+  description: "Get a single lead with its planner and costing data. Look it up by lead id (uuid) or by lead code \u2014 'YT5130', 'YT-5130' and the internal 'YT-2026-5130' all work.",
   inputSchema: {
     lead_id: z2.string().optional().describe("Lead uuid."),
-    lead_code: z2.string().optional().describe("Lead code, e.g. YT-2026-0001.")
+    lead_code: z2.string().optional().describe("Lead code, e.g. YT5130.")
   },
   annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
   handler: async ({ lead_id, lead_code }, ctx) => {
-    if (!ctx.isAuthenticated()) throw new ToolError2("Not authenticated");
-    if (!lead_id && !lead_code) throw new ToolError2("Provide lead_id or lead_code");
+    if (!ctx.isAuthenticated()) throw new ToolError3("Not authenticated");
     const supabase = supabaseForUser(ctx);
-    let query = supabase.from("leads").select("*").limit(1);
-    query = lead_id ? query.eq("id", lead_id) : query.eq("lead_code", lead_code);
-    const { data, error } = await query.maybeSingle();
-    if (error) throw new ToolError2(error.message);
-    if (!data) throw new ToolError2("Lead not found");
+    const lead = await resolveLead(supabase, { lead_id, lead_code });
+    const version = liveVersion(lead);
     const [planner, costing] = await Promise.all([
-      supabase.from("lead_planner_data").select("*").eq("lead_id", data.id).eq("version", data.active_version ?? 0).order("day_number"),
-      supabase.from("lead_costing_data").select("*").eq("lead_id", data.id).eq("version", data.active_version ?? 0).order("day_number")
+      supabase.from("lead_planner_data").select("*").eq("lead_id", lead.id).eq("version", version).order("day_number"),
+      supabase.from("lead_costing_data").select("*").eq("lead_id", lead.id).eq("version", version).order("day_number")
     ]);
-    const payload = { lead: data, planner: planner.data ?? null, costing: costing.data ?? null };
+    const payload = {
+      lead: {
+        ...lead,
+        stage_label: STAGES.find((s) => s.code === lead.nethunt_stage)?.label ?? lead.nethunt_stage ?? lead.status,
+        tcc_url: leadUrl(lead)
+      },
+      version,
+      planner: planner.data ?? null,
+      costing: costing.data ?? null
+    };
     return {
       content: [{ type: "text", text: JSON.stringify(payload, null, 2) }],
       structuredContent: payload
@@ -121,7 +299,7 @@ var get_lead_default = defineTool2({
 });
 
 // src/lib/mcp/tools/list-upcoming-trips.ts
-import { defineTool as defineTool3, ToolError as ToolError3 } from "npm:@lovable.dev/mcp-js@0.26.1";
+import { defineTool as defineTool3, ToolError as ToolError4 } from "npm:@lovable.dev/mcp-js@0.26.1";
 import { z as z3 } from "npm:zod@^3.25.76";
 var list_upcoming_trips_default = defineTool3({
   name: "list_upcoming_trips",
@@ -133,7 +311,7 @@ var list_upcoming_trips_default = defineTool3({
   },
   annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
   handler: async ({ days, limit }, ctx) => {
-    if (!ctx.isAuthenticated()) throw new ToolError3("Not authenticated");
+    if (!ctx.isAuthenticated()) throw new ToolError4("Not authenticated");
     const window = Math.min(Math.max(days ?? 7, 1), 365);
     const take = Math.min(Math.max(limit ?? 50, 1), 100);
     const from = /* @__PURE__ */ new Date();
@@ -143,7 +321,7 @@ var list_upcoming_trips_default = defineTool3({
     const { data, error } = await supabase.from("trips").select(
       "id,trip_code,client_name,destination,start_date,end_date,status,pax,total_value,urgency,has_blocker,blocker_note,sales_owner,lead_id"
     ).gte("start_date", from.toISOString().slice(0, 10)).lte("start_date", until.toISOString().slice(0, 10)).order("start_date", { ascending: true }).limit(take);
-    if (error) throw new ToolError3(error.message);
+    if (error) throw new ToolError4(error.message);
     const payload = { days_ahead: window, total: data?.length ?? 0, trips: data ?? [] };
     return {
       content: [{ type: "text", text: JSON.stringify(payload, null, 2) }],
@@ -153,7 +331,7 @@ var list_upcoming_trips_default = defineTool3({
 });
 
 // src/lib/mcp/tools/list-tasks.ts
-import { defineTool as defineTool4, ToolError as ToolError4 } from "npm:@lovable.dev/mcp-js@0.26.1";
+import { defineTool as defineTool4, ToolError as ToolError5 } from "npm:@lovable.dev/mcp-js@0.26.1";
 import { z as z4 } from "npm:zod@^3.25.76";
 var list_tasks_default = defineTool4({
   name: "list_tasks",
@@ -167,7 +345,7 @@ var list_tasks_default = defineTool4({
   },
   annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
   handler: async ({ status, team, lead_id, limit }, ctx) => {
-    if (!ctx.isAuthenticated()) throw new ToolError4("Not authenticated");
+    if (!ctx.isAuthenticated()) throw new ToolError5("Not authenticated");
     const take = Math.min(Math.max(limit ?? 50, 1), 100);
     const supabase = supabaseForUser(ctx);
     let query = supabase.from("tasks").select("id,title,description,status,priority,team,category,due_date,lead_id,trip_id,assigned_to,updated_at").order("due_date", { ascending: true, nullsFirst: false }).limit(take);
@@ -175,7 +353,7 @@ var list_tasks_default = defineTool4({
     if (team) query = query.eq("team", team);
     if (lead_id) query = query.eq("lead_id", lead_id);
     const { data, error } = await query;
-    if (error) throw new ToolError4(error.message);
+    if (error) throw new ToolError5(error.message);
     const payload = { total: data?.length ?? 0, tasks: data ?? [] };
     return {
       content: [{ type: "text", text: JSON.stringify(payload, null, 2) }],
@@ -185,7 +363,7 @@ var list_tasks_default = defineTool4({
 });
 
 // src/lib/mcp/tools/create-task.ts
-import { defineTool as defineTool5, ToolError as ToolError5 } from "npm:@lovable.dev/mcp-js@0.26.1";
+import { defineTool as defineTool5, ToolError as ToolError6 } from "npm:@lovable.dev/mcp-js@0.26.1";
 import { z as z5 } from "npm:zod@^3.25.76";
 var create_task_default = defineTool5({
   name: "create_task",
@@ -202,8 +380,8 @@ var create_task_default = defineTool5({
   },
   annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
   handler: async ({ title, description, team, priority, due_date, lead_id, trip_id }, ctx) => {
-    if (!ctx.isAuthenticated()) throw new ToolError5("Not authenticated");
-    if (!title.trim()) throw new ToolError5("title is required");
+    if (!ctx.isAuthenticated()) throw new ToolError6("Not authenticated");
+    if (!title.trim()) throw new ToolError6("title is required");
     const supabase = supabaseForUser(ctx);
     const { data, error } = await supabase.from("tasks").insert({
       title: title.trim(),
@@ -215,7 +393,7 @@ var create_task_default = defineTool5({
       trip_id: trip_id ?? null,
       created_by: ctx.getUserId()
     }).select().single();
-    if (error) throw new ToolError5(error.message);
+    if (error) throw new ToolError6(error.message);
     return {
       content: [{ type: "text", text: JSON.stringify({ created: true, task: data }, null, 2) }],
       structuredContent: { task: data }
@@ -224,7 +402,7 @@ var create_task_default = defineTool5({
 });
 
 // src/lib/mcp/tools/update-task.ts
-import { defineTool as defineTool6, ToolError as ToolError6 } from "npm:@lovable.dev/mcp-js@0.26.1";
+import { defineTool as defineTool6, ToolError as ToolError7 } from "npm:@lovable.dev/mcp-js@0.26.1";
 import { z as z6 } from "npm:zod@^3.25.76";
 var update_task_default = defineTool6({
   name: "update_task",
@@ -242,8 +420,8 @@ var update_task_default = defineTool6({
   },
   annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false },
   handler: async ({ task_id, status, title, description, due_date, priority, team, assigned_to }, ctx) => {
-    if (!ctx.isAuthenticated()) throw new ToolError6("Not authenticated");
-    if (!task_id?.trim()) throw new ToolError6("task_id is required");
+    if (!ctx.isAuthenticated()) throw new ToolError7("Not authenticated");
+    if (!task_id?.trim()) throw new ToolError7("task_id is required");
     const supabase = supabaseForUser(ctx);
     const updates = {};
     if (status !== void 0) updates.status = status;
@@ -253,14 +431,734 @@ var update_task_default = defineTool6({
     if (priority !== void 0) updates.priority = priority;
     if (team !== void 0) updates.team = team;
     if (assigned_to !== void 0) updates.assigned_to = assigned_to;
-    if (Object.keys(updates).length === 0) throw new ToolError6("Provide at least one field to update");
+    if (Object.keys(updates).length === 0) throw new ToolError7("Provide at least one field to update");
     updates.updated_at = (/* @__PURE__ */ new Date()).toISOString();
     const { data, error } = await supabase.from("tasks").update(updates).eq("id", task_id.trim()).select().single();
-    if (error) throw new ToolError6(error.message);
-    if (!data) throw new ToolError6("Task not found or not accessible");
+    if (error) throw new ToolError7(error.message);
+    if (!data) throw new ToolError7("Task not found or not accessible");
     return {
       content: [{ type: "text", text: JSON.stringify({ updated: true, task: data }, null, 2) }],
       structuredContent: { task: data }
+    };
+  }
+});
+
+// src/lib/mcp/tools/list-lead-stages.ts
+import { defineTool as defineTool7, ToolError as ToolError8 } from "npm:@lovable.dev/mcp-js@0.26.1";
+var list_lead_stages_default = defineTool7({
+  name: "list_lead_stages",
+  title: "List lead stages",
+  description: "List the exact pipeline stages a lead can be set to (code + label + group). Call this before update_lead_stage or before filtering list_leads by stage, so stage strings are never guessed.",
+  inputSchema: {},
+  annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
+  handler: (_args, ctx) => {
+    if (!ctx.isAuthenticated()) throw new ToolError8("Not authenticated");
+    const stages = STAGES.map((s) => ({ code: s.code, label: s.label, group: s.group, status: s.status }));
+    return {
+      content: [{ type: "text", text: JSON.stringify({ total: stages.length, stages }, null, 2) }],
+      structuredContent: { total: stages.length, stages }
+    };
+  }
+});
+
+// src/lib/mcp/tools/update-lead-stage.ts
+import { defineTool as defineTool8, ToolError as ToolError9 } from "npm:@lovable.dev/mcp-js@0.26.1";
+import { z as z7 } from "npm:zod@^3.25.76";
+var update_lead_stage_default = defineTool8({
+  name: "update_lead_stage",
+  title: "Update lead stage",
+  description: "Move a lead to another pipeline stage, exactly like the stage dropdown in the lead header. Mirrors the stage to NetHunt when the lead is linked and records the change in the lead history. Use list_lead_stages for valid values.",
+  inputSchema: {
+    lead_id: z7.string().optional().describe("Lead uuid."),
+    lead_code: z7.string().optional().describe("Lead code such as YT5130."),
+    stage: z7.string().describe("Target stage code or label, e.g. 'SALES \xB7 Final Negotiation & Ready to Book'."),
+    note: z7.string().optional().describe("Optional reason stored with the history entry.")
+  },
+  annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false },
+  handler: async ({ lead_id, lead_code, stage, note }, ctx) => {
+    if (!ctx.isAuthenticated()) throw new ToolError9("Not authenticated");
+    const supabase = supabaseForUser(ctx);
+    const lead = await resolveLead(supabase, { lead_id, lead_code });
+    const target = resolveStage(stage);
+    const previous = {
+      stage: lead.nethunt_stage ?? null,
+      status: lead.status,
+      label: STAGES.find((s) => s.code === lead.nethunt_stage)?.label ?? null
+    };
+    const alreadyThere = lead.nethunt_stage === target.code && lead.status === target.status;
+    if (!alreadyThere) {
+      const { error } = await supabase.from("leads").update({ status: target.status, nethunt_stage: target.code }).eq("id", lead.id);
+      if (error) throw new ToolError9(error.message);
+      await supabase.from("lead_stage_history").insert({
+        lead_id: lead.id,
+        stage_code: target.code,
+        stage_label: target.label,
+        source: "mcp"
+      });
+      await auditLead(supabase, ctx, lead, "lead_status_changed", {
+        nethunt_stage: { from: previous.stage, to: target.code },
+        status: { from: previous.status, to: target.status }
+      }, note ? { note } : void 0);
+    }
+    const sync = await pushNetHunt(
+      supabase,
+      "lead",
+      lead.id,
+      { nethunt_stage: target.code, status: target.status },
+      Boolean(lead.nethunt_record_id)
+    );
+    const payload = {
+      lead: leadLabel(lead),
+      lead_id: lead.id,
+      previous_stage: previous.label ?? previous.stage,
+      new_stage: target.label,
+      new_status: target.status,
+      already_in_stage: alreadyThere,
+      nethunt_sync: sync
+    };
+    return {
+      content: [{ type: "text", text: JSON.stringify(payload, null, 2) }],
+      structuredContent: payload
+    };
+  }
+});
+
+// src/lib/mcp/tools/assign-lead-agents.ts
+import { defineTool as defineTool9, ToolError as ToolError10 } from "npm:@lovable.dev/mcp-js@0.26.1";
+import { z as z8 } from "npm:zod@^3.25.76";
+var assign_lead_agents_default = defineTool9({
+  name: "assign_lead_agents",
+  title: "Assign lead agents",
+  description: "Assign up to two TCC users as the agents of a lead, exactly like the 'Atribuir at\xE9 2 agentes' popup. Accepts a full name or an email; pass null to clear a slot.",
+  inputSchema: {
+    lead_id: z8.string().optional().describe("Lead uuid."),
+    lead_code: z8.string().optional().describe("Lead code such as YT5130."),
+    agent_1: z8.string().nullable().optional().describe("First agent: full name or email. null clears it."),
+    agent_2: z8.string().nullable().optional().describe("Second agent: full name or email. null clears it.")
+  },
+  annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false },
+  handler: async ({ lead_id, lead_code, agent_1, agent_2 }, ctx) => {
+    if (!ctx.isAuthenticated()) throw new ToolError10("Not authenticated");
+    if (agent_1 === void 0 && agent_2 === void 0) {
+      throw new ToolError10("Provide agent_1 and/or agent_2 (use null to clear)");
+    }
+    const supabase = supabaseForUser(ctx);
+    const lead = await resolveLead(supabase, { lead_id, lead_code });
+    const { data: profileRows, error: profErr } = await supabase.from("profiles").select("id, full_name, email, status");
+    if (profErr) throw new ToolError10(profErr.message);
+    const profiles = profileRows ?? [];
+    const validList = profiles.filter((p) => p.status !== "inactive").map((p) => p.full_name || p.email || p.id).join(" | ");
+    const match = (value) => {
+      const needle = value.trim().toLowerCase();
+      const hit = profiles.find((p) => (p.email || "").toLowerCase() === needle) ?? profiles.find((p) => (p.full_name || "").toLowerCase() === needle) ?? profiles.find((p) => p.id === value.trim()) ?? profiles.find((p) => (p.full_name || "").toLowerCase().includes(needle));
+      if (!hit) throw new ToolError10(`Agent "${value}" not found. Valid users: ${validList}`);
+      return hit.id;
+    };
+    const current = lead.assigned_agents ?? [];
+    const nextRaw = [
+      agent_1 === void 0 ? current[0] ?? null : agent_1,
+      agent_2 === void 0 ? current[1] ?? null : agent_2
+    ];
+    const next = nextRaw.map((v) => v == null || v === "" ? null : match(v)).filter((v) => Boolean(v));
+    if (new Set(next).size !== next.length) throw new ToolError10("agent_1 and agent_2 must be different users");
+    const nameOf = (id) => {
+      const p = profiles.find((x) => x.id === id);
+      return p?.full_name || p?.email || id;
+    };
+    const changed = current.join(",") !== next.join(",");
+    if (changed) {
+      const { error } = await supabase.from("leads").update({ assigned_agents: next }).eq("id", lead.id);
+      if (error) throw new ToolError10(error.message);
+      await auditLead(supabase, ctx, lead, "lead_agents_changed", {
+        assigned_agents: { from: current.map(nameOf), to: next.map(nameOf) }
+      });
+    }
+    const payload = {
+      lead: leadLabel(lead),
+      lead_id: lead.id,
+      previous_agents: current.map(nameOf),
+      new_agents: next.map(nameOf),
+      changed
+    };
+    return {
+      content: [{ type: "text", text: JSON.stringify(payload, null, 2) }],
+      structuredContent: payload
+    };
+  }
+});
+
+// src/lib/mcp/tools/update-lead-general-data.ts
+import { defineTool as defineTool10, ToolError as ToolError11 } from "npm:@lovable.dev/mcp-js@0.26.1";
+import { z as z9 } from "npm:zod@^3.25.76";
+
+// src/lib/mcp/generalSync.ts
+import { buildParticipantsLabel } from "npm:@/lib/participantsLabel";
+async function syncGeneralToProposalServer(supabase, args) {
+  const { data: planRow } = await supabase.from("travel_plans").select("id, days").eq("lead_id", args.leadId).eq("version", args.version).order("updated_at", { ascending: false }).limit(1).maybeSingle();
+  const days = Array.isArray(planRow?.days) ? planRow.days : [];
+  const startDate = days[0]?.date || args.travelDates || null;
+  const endDate = days[days.length - 1]?.date || args.travelEndDate || args.travelDates || null;
+  const { data: proposalRow } = await supabase.from("proposals").select("id, language").eq("lead_id", args.leadId).eq("version", args.version).maybeSingle();
+  const language = proposalRow?.language || "en";
+  const participants = buildParticipantsLabel(args.pax, args.paxChildren, language);
+  if (planRow) {
+    await supabase.from("travel_plans").update({ pax: participants, start_date: startDate, end_date: endDate }).eq("id", planRow.id);
+  }
+  if (proposalRow) {
+    const dateRange = startDate && endDate ? `${startDate} \u2014 ${endDate}` : startDate || "";
+    await supabase.from("proposals").update({ participants, date_range: dateRange }).eq("id", proposalRow.id);
+  }
+}
+
+// src/lib/mcp/tools/update-lead-general-data.ts
+var DATE = /^\d{4}-\d{2}-\d{2}$/;
+var update_lead_general_data_default = defineTool10({
+  name: "update_lead_general_data",
+  title: "Update lead general data",
+  description: "Update the general data of the LIVE version of a lead (dates, participants, language, client type, phone, category, destination), exactly like saving Dados Gerais in the TCC. Participants and dates are propagated to the travel plan and digital proposal. No financial fields.",
+  inputSchema: {
+    lead_id: z9.string().optional().describe("Lead uuid."),
+    lead_code: z9.string().optional().describe("Lead code such as YT5130."),
+    data_inicio: z9.string().optional().describe("Trip start date, YYYY-MM-DD."),
+    data_fim: z9.string().optional().describe("Trip end date, YYYY-MM-DD."),
+    n_adultos: z9.number().int().min(1).optional().describe("Number of adults."),
+    n_jovens: z9.number().int().min(0).optional().describe("Number of children/teens."),
+    n_criancas: z9.number().int().min(0).optional().describe("Alias of n_jovens (children)."),
+    n_bebes: z9.number().int().min(0).optional().describe("Number of infants."),
+    idioma: z9.string().optional().describe("Programme language: en, pt, es, fr, it, de."),
+    tipo_cliente: z9.enum(["B2C", "B2B"]).optional().describe("Client type."),
+    telefone: z9.string().optional().describe("Client phone."),
+    categoria: z9.string().optional().describe("Comfort/category level."),
+    destino: z9.string().optional().describe("Destination(s), comma separated.")
+  },
+  annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false },
+  handler: async (args, ctx) => {
+    if (!ctx.isAuthenticated()) throw new ToolError11("Not authenticated");
+    const { lead_id, lead_code, ...fields } = args;
+    const supabase = supabaseForUser(ctx);
+    const lead = await resolveLead(supabase, { lead_id, lead_code });
+    const version = liveVersion(lead);
+    if (fields.n_jovens !== void 0 && fields.n_criancas !== void 0 && fields.n_jovens !== fields.n_criancas) {
+      throw new ToolError11("n_jovens and n_criancas map to the same field \u2014 send only one of them");
+    }
+    for (const [k, v] of Object.entries({ data_inicio: fields.data_inicio, data_fim: fields.data_fim })) {
+      if (v && !DATE.test(v)) throw new ToolError11(`${k} must be YYYY-MM-DD`);
+    }
+    const updates = {};
+    const set = (col, value) => {
+      if (value !== void 0 && value !== null) updates[col] = value;
+    };
+    set("travel_dates", fields.data_inicio);
+    set("travel_end_date", fields.data_fim);
+    set("pax", fields.n_adultos);
+    set("pax_children", fields.n_jovens ?? fields.n_criancas);
+    set("pax_infants", fields.n_bebes);
+    set("client_type", fields.tipo_cliente);
+    set("phone", fields.telefone);
+    set("comfort_level", fields.categoria);
+    set("destination", fields.destino);
+    if (!Object.keys(updates).length && !fields.idioma) throw new ToolError11("No fields to update");
+    if (fields.data_inicio && fields.data_fim) {
+      const days = Math.round(
+        (Date.parse(fields.data_fim) - Date.parse(fields.data_inicio)) / 864e5
+      ) + 1;
+      if (days < 1) throw new ToolError11("data_fim must be on or after data_inicio");
+      updates.number_of_days = days;
+    }
+    const changes = {};
+    for (const key of Object.keys(updates)) changes[key] = { from: lead[key] ?? null, to: updates[key] };
+    if (Object.keys(updates).length) {
+      const { error } = await supabase.from("leads").update(updates).eq("id", lead.id);
+      if (error) throw new ToolError11(error.message);
+    }
+    const { data: verRow } = await supabase.from("lead_versions").select("id, general_data").eq("lead_id", lead.id).eq("version", version).maybeSingle();
+    const merged = { ...verRow?.general_data ?? {}, ...updates };
+    if (verRow) {
+      await supabase.from("lead_versions").update({ general_data: merged }).eq("id", verRow.id);
+    } else {
+      await supabase.from("lead_versions").insert({ lead_id: lead.id, version, name: `V${version}`, general_data: merged });
+    }
+    if (fields.idioma) {
+      const lang = fields.idioma.slice(0, 2).toLowerCase();
+      const { error } = await supabase.from("proposals").update({ language: lang }).eq("lead_id", lead.id).eq("version", version);
+      if (error) throw new ToolError11(error.message);
+      changes.language = { from: null, to: lang };
+    }
+    const pax = Number(updates.pax ?? lead.pax ?? 2);
+    const paxChildren = Number(updates.pax_children ?? lead.pax_children ?? 0);
+    await syncGeneralToProposalServer(supabase, {
+      leadId: lead.id,
+      version,
+      pax,
+      paxChildren,
+      travelDates: updates.travel_dates ?? (lead.travel_dates || null),
+      travelEndDate: updates.travel_end_date ?? (lead.travel_end_date || null)
+    });
+    await auditLead(supabase, ctx, lead, "lead_updated", changes, { version });
+    const payload = { lead: leadLabel(lead), lead_id: lead.id, version, updated_fields: changes };
+    return {
+      content: [{ type: "text", text: JSON.stringify(payload, null, 2) }],
+      structuredContent: payload
+    };
+  }
+});
+
+// src/lib/mcp/tools/add-lead-note.ts
+import { defineTool as defineTool11, ToolError as ToolError12 } from "npm:@lovable.dev/mcp-js@0.26.1";
+import { z as z10 } from "npm:zod@^3.25.76";
+var add_lead_note_default = defineTool11({
+  name: "add_lead_note",
+  title: "Add internal lead note",
+  description: "Add an internal note to a lead. The note shows in the lead history/timeline and is replicated as a NetHunt comment when the lead is linked. Notes are internal \u2014 nothing is sent to the client.",
+  inputSchema: {
+    lead_id: z10.string().optional().describe("Lead uuid."),
+    lead_code: z10.string().optional().describe("Lead code such as YT5130."),
+    text: z10.string().trim().min(1).describe("Note body."),
+    pin: z10.boolean().optional().describe("Pin the note at the top of the lead notes.")
+  },
+  annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
+  handler: async ({ lead_id, lead_code, text, pin }, ctx) => {
+    if (!ctx.isAuthenticated()) throw new ToolError12("Not authenticated");
+    const supabase = supabaseForUser(ctx);
+    const lead = await resolveLead(supabase, { lead_id, lead_code });
+    const stamp = (/* @__PURE__ */ new Date()).toISOString().slice(0, 16).replace("T", " ");
+    const author = ctx.getUserEmail() ?? "AI agent (MCP)";
+    const entry = `[${stamp}] ${author} (AI agent via MCP): ${text}`;
+    const existing = String(lead.notes || "").trim();
+    if (existing.includes(text.trim())) {
+      const payload2 = { lead: leadLabel(lead), lead_id: lead.id, added: false, reason: "Identical note already present" };
+      return { content: [{ type: "text", text: JSON.stringify(payload2, null, 2) }], structuredContent: payload2 };
+    }
+    const notes = pin ? [entry, existing].filter(Boolean).join("\n\n") : [existing, entry].filter(Boolean).join("\n\n");
+    const { error } = await supabase.from("leads").update({ notes }).eq("id", lead.id);
+    if (error) throw new ToolError12(error.message);
+    await auditLead(supabase, ctx, lead, "lead_note_added", { notes: { from: existing || null, to: entry } }, { pinned: Boolean(pin) });
+    const sync = await pushNetHunt(supabase, "comment", lead.id, { text: entry }, Boolean(lead.nethunt_record_id));
+    const payload = { lead: leadLabel(lead), lead_id: lead.id, added: true, pinned: Boolean(pin), note: entry, nethunt_sync: sync };
+    return { content: [{ type: "text", text: JSON.stringify(payload, null, 2) }], structuredContent: payload };
+  }
+});
+
+// src/lib/mcp/tools/get-travel-plan.ts
+import { defineTool as defineTool12, ToolError as ToolError13 } from "npm:@lovable.dev/mcp-js@0.26.1";
+import { z as z11 } from "npm:zod@^3.25.76";
+var strip = (s) => String(s ?? "").replace(/\*\*/g, "").trim();
+var get_travel_plan_default = defineTool12({
+  name: "get_travel_plan",
+  title: "Get travel plan",
+  description: "Read the commercial programme of a lead: title, summary, day-by-day (date, title, tagline, included items, night at), hotels and the public link of the digital itinerary. Use this to write client emails without opening the TCC.",
+  inputSchema: {
+    lead_id: z11.string().optional().describe("Lead uuid."),
+    lead_code: z11.string().optional().describe("Lead code such as YT5104."),
+    version: z11.number().int().optional().describe("Version to read (default: LIVE version).")
+  },
+  annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
+  handler: async ({ lead_id, lead_code, version }, ctx) => {
+    if (!ctx.isAuthenticated()) throw new ToolError13("Not authenticated");
+    const supabase = supabaseForUser(ctx);
+    const lead = await resolveLead(supabase, { lead_id, lead_code });
+    const ver = version ?? liveVersion(lead);
+    const { data: proposal, error } = await supabase.from("proposals").select("id, version, title, summary_text, participants, date_range, language, days, public_token, closing_terms, total_value_eur, wetravel_checkout_url").eq("lead_id", lead.id).eq("version", ver).order("created_at", { ascending: false }).limit(1).maybeSingle();
+    if (error) throw new ToolError13(error.message);
+    if (!proposal) throw new ToolError13(`No proposal found for ${leadLabel(lead)} version ${ver}`);
+    const p = proposal;
+    const closing = p.closing_terms || {};
+    const days = (Array.isArray(p.days) ? p.days : []).map((d, i) => ({
+      day_number: d.day_number ?? i + 1,
+      date: d.date_label || d.date || null,
+      title: strip(d.title),
+      tagline: strip(d.subtitle),
+      items: (Array.isArray(d.items) && d.items.length ? d.items : d.highlights || []).map(strip),
+      night_at: typeof d.accommodation === "string" ? strip(d.accommodation) : strip(d.accommodation?.hotel_name || d.accommodation?.label),
+      map_url: d.map_url || null,
+      images: (Array.isArray(d.images) ? d.images : []).filter((im) => im?.url).length
+    }));
+    const hotels = [
+      ...Array.isArray(closing.accommodation) ? closing.accommodation : [],
+      ...Array.isArray(closing.hotels) ? closing.hotels : []
+    ].map((h) => ({
+      name: strip(h.name),
+      city: strip(h.city) || null,
+      nights: Number(h.nights) || null,
+      room_type: strip(h.roomType) || null
+    }));
+    const payload = {
+      lead: leadLabel(lead),
+      lead_id: lead.id,
+      version: ver,
+      language: p.language || "en",
+      title: strip(p.title),
+      participants: p.participants || null,
+      date_range: p.date_range || null,
+      summary: strip(p.summary_text),
+      total_value_eur: p.total_value_eur ?? null,
+      itinerary_url: p.public_token ? `${APP_ORIGIN}/proposal/${p.public_token}` : null,
+      booking_url: p.wetravel_checkout_url || null,
+      days,
+      hotels
+    };
+    return {
+      content: [{ type: "text", text: JSON.stringify(payload, null, 2) }],
+      structuredContent: payload
+    };
+  }
+});
+
+// src/lib/mcp/tools/export-travel-plan-pdf.ts
+import { defineTool as defineTool13, ToolError as ToolError14 } from "npm:@lovable.dev/mcp-js@0.26.1";
+import { z as z12 } from "npm:zod@^3.25.76";
+
+// src/lib/mcp/pdf.ts
+import jsPDF from "npm:jspdf@^4.2.1";
+import { getPdfDict } from "npm:@/lib/proposalPdfI18n";
+import { resolveClosingText } from "npm:@/lib/closingTermsI18n";
+import { getHotelsDict, mergeProposalHotels } from "npm:@/lib/proposalHotelsI18n";
+import { stripBoldMarkers } from "npm:@/lib/richText";
+import { eur } from "npm:@/lib/money";
+var YT_BLUE = [10, 37, 64];
+var TERMS_URL = "https://drive.google.com/file/d/12AkvW2Ob0LtcooaciWY4e-nEx7hlOnQC/view?usp=sharing";
+var dayItems = (d) => {
+  if (Array.isArray(d.items) && d.items.length) return d.items.map(String);
+  if (Array.isArray(d.highlights) && d.highlights.length) return d.highlights.map(String);
+  return [];
+};
+var accommodationLabel = (d) => {
+  const a = d.accommodation;
+  if (!a) return null;
+  if (typeof a === "string") return a;
+  return a.hotel_name || a.label || null;
+};
+function toBase64(bytes) {
+  let binary = "";
+  const chunk = 32768;
+  for (let i = 0; i < bytes.length; i += chunk) {
+    binary += String.fromCharCode(...bytes.subarray(i, i + chunk));
+  }
+  return btoa(binary);
+}
+async function fetchImage(url) {
+  if (!url || !/^https?:\/\//i.test(url)) return null;
+  try {
+    const res = await fetch(url);
+    if (!res.ok) return null;
+    const type = res.headers.get("content-type") || "";
+    const format = type.includes("png") ? "PNG" : "JPEG";
+    const bytes = new Uint8Array(await res.arrayBuffer());
+    if (!bytes.length) return null;
+    return { dataUrl: `data:image/${format.toLowerCase()};base64,${toBase64(bytes)}`, format };
+  } catch {
+    return null;
+  }
+}
+async function buildTravelPlanPdf(p, opts = {}) {
+  const t = getPdfDict(p.language);
+  const hd = getHotelsDict(p.language);
+  const closing = p.closing_terms || {};
+  const showPricing = closing.showPricing !== false;
+  const showTerms = closing.showTerms !== false;
+  const showReviews = closing.showReviews !== false;
+  const showAbout = closing.showAbout !== false;
+  const showHotels = closing.showHotels !== false;
+  const showHotelDetails = closing.showHotelDetails !== false;
+  const days = Array.isArray(p.days) ? p.days : [];
+  const warnings = [];
+  const doc = new jsPDF({ unit: "pt", format: "a4", compress: true });
+  const pageW = doc.internal.pageSize.getWidth();
+  const pageH = doc.internal.pageSize.getHeight();
+  const margin = 42;
+  const contentW = pageW - margin * 2;
+  let y = margin;
+  const ensureSpace = (needed) => {
+    if (y + needed > pageH - margin) {
+      doc.addPage();
+      y = margin;
+    }
+  };
+  const text = (value, size, style = "normal", color = [60, 60, 60]) => {
+    doc.setFont("helvetica", style);
+    doc.setFontSize(size);
+    doc.setTextColor(color[0], color[1], color[2]);
+    const lines = doc.splitTextToSize(stripBoldMarkers(value), contentW);
+    lines.forEach((line) => {
+      ensureSpace(size + 6);
+      doc.text(line, margin, y + size);
+      y += size + 4;
+    });
+  };
+  const hero = await fetchImage(p.hero_image_url);
+  const logo = await fetchImage(p.brand_logo_url);
+  doc.setFillColor(...YT_BLUE);
+  doc.rect(0, 0, pageW, 92, "F");
+  if (logo) {
+    try {
+      doc.addImage(logo.dataUrl, logo.format, margin, 22, 120, 48);
+    } catch {
+    }
+  } else {
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(18);
+    doc.setTextColor(255, 255, 255);
+    doc.text("YOUR TOURS PORTUGAL", margin, 56);
+  }
+  y = 112;
+  if (hero) {
+    try {
+      const h = Math.round(contentW / (21 / 9));
+      doc.addImage(hero.dataUrl, hero.format, margin, y, contentW, h);
+      y += h + 18;
+    } catch {
+    }
+  } else {
+    warnings.push("Capa sem imagem hero");
+  }
+  text(p.title || t.travelPlanFallback, 20, "bold", YT_BLUE);
+  y += 4;
+  const headerBits = [p.client_name, p.booking_ref ? `ID: ${p.booking_ref}` : "", p.date_range, p.participants].filter(Boolean).join("  \xB7  ");
+  if (headerBits) text(headerBits, 10, "normal", [110, 110, 110]);
+  y += 8;
+  if (p.summary_text) text(p.summary_text, 11);
+  if (showPricing && p.wetravel_checkout_url) {
+    ensureSpace(60);
+    const btnW = 160, btnH = 32;
+    doc.setFillColor(...YT_BLUE);
+    doc.roundedRect(margin, y + 8, btnW, btnH, 6, 6, "F");
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(13);
+    doc.setTextColor(255, 255, 255);
+    doc.textWithLink("BOOK NOW", margin + btnW / 2, y + 30, { align: "center", url: p.wetravel_checkout_url });
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(7);
+    doc.setTextColor(90, 90, 90);
+    doc.text("Refundable Deposit if plans change*", margin + btnW / 2, y + btnH + 18, { align: "center" });
+    doc.setTextColor(0, 102, 204);
+    doc.textWithLink("see terms and conditions", margin + btnW / 2, y + btnH + 27, { align: "center", url: TERMS_URL });
+    y += btnH + 40;
+  }
+  if (days.length) {
+    doc.addPage();
+    y = margin;
+    text(t.summaryDayByDay, 14, "bold", YT_BLUE);
+    y += 6;
+    days.forEach((d, i) => {
+      text(`${t.day} ${d.day_number ?? i + 1} \u2014 ${d.title || ""}`, 10, "normal", [80, 80, 80]);
+    });
+  }
+  for (let i = 0; i < days.length; i++) {
+    const d = days[i];
+    const n = d.day_number ?? i + 1;
+    doc.addPage();
+    y = margin;
+    doc.setFillColor(...YT_BLUE);
+    doc.rect(margin, y, 4, 26, "F");
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(15);
+    doc.setTextColor(...YT_BLUE);
+    doc.text(stripBoldMarkers(`${t.day} ${n} \u2014 ${d.title || ""}`), margin + 12, y + 18);
+    y += 34;
+    const dateLabel = d.date_label || d.date || "";
+    if (dateLabel) text(dateLabel, 9, "normal", [130, 130, 130]);
+    if (d.subtitle) text(d.subtitle, 11, "bold", [70, 70, 70]);
+    const cover = await fetchImage(d.cover_image_url);
+    if (cover) {
+      try {
+        const h = Math.round(contentW / (16 / 9));
+        ensureSpace(h + 10);
+        doc.addImage(cover.dataUrl, cover.format, margin, y, contentW, h);
+        y += h + 12;
+      } catch {
+      }
+    }
+    const items = dayItems(d);
+    if (items.length) {
+      text(t.itineraryIncluded, 10, "bold", YT_BLUE);
+      items.forEach((it) => text(`\u2022  ${it}`, 10));
+      y += 4;
+    }
+    const acc = accommodationLabel(d);
+    if (acc) text(`${t.night}: ${acc}`, 10, "bold", [70, 70, 70]);
+    if (d.map_url) {
+      const mapImg = await fetchImage(d.map_url.startsWith("http") && /static|googleusercontent|storage/.test(d.map_url) ? d.map_url : null);
+      if (mapImg) {
+        try {
+          const h = Math.round(contentW / (21 / 9));
+          ensureSpace(h + 24);
+          doc.addImage(mapImg.dataUrl, mapImg.format, margin, y, contentW, h);
+          y += h + 8;
+        } catch {
+        }
+      } else {
+        warnings.push(`Dia ${n} sem mapa renderizado (apenas link Google Maps)`);
+      }
+      ensureSpace(20);
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(9);
+      doc.setTextColor(0, 102, 204);
+      doc.textWithLink(t.openRoute, margin, y + 10, { url: d.map_url });
+      y += 22;
+    } else {
+      warnings.push(`Dia ${n} sem mapa`);
+    }
+    const dayImages = (Array.isArray(d.images) ? d.images : []).filter((im) => im?.url).slice(0, 2);
+    if (!dayImages.length && !cover) warnings.push(`Dia ${n} sem imagens`);
+    if (dayImages.length) {
+      const gap = 12;
+      const w = (contentW - gap) / 2;
+      const h = Math.round(w / (4 / 3));
+      ensureSpace(h + 10);
+      for (let k = 0; k < dayImages.length; k++) {
+        const img = await fetchImage(dayImages[k].url);
+        if (!img) continue;
+        try {
+          doc.addImage(img.dataUrl, img.format, margin + k * (w + gap), y, w, h);
+        } catch {
+        }
+      }
+      y += h + 12;
+    }
+  }
+  doc.addPage();
+  y = margin;
+  const total = Number(p.total_value_eur) || 0;
+  const accList = Array.isArray(closing.accommodation) ? closing.accommodation : [];
+  const hotels = showHotels ? mergeProposalHotels(accList, Array.isArray(closing.hotels) ? closing.hotels : []) : [];
+  const hotelsNights = hotels.reduce((s, x) => s + (Number(x.nights) || 0), 0);
+  const hotelsRooms = hotels.reduce((s, x) => Math.max(s, Number(x.rooms) || 0), 0);
+  const hotelsTotal = Math.round(hotels.reduce((s, x) => s + (Number(x.value) || 0), 0));
+  if (hotels.length) {
+    text(hd.hotelsIncluded, 14, "bold", YT_BLUE);
+    hotels.forEach((h) => {
+      text(`**${h.name}**${h.city ? ` \u2014 ${h.city}` : ""}`, 11, "bold", [70, 70, 70]);
+      const meta = [
+        showHotelDetails && h.checkIn ? `${hd.checkIn}: ${h.checkIn}` : "",
+        showHotelDetails && h.checkOut ? `${hd.checkOut}: ${h.checkOut}` : "",
+        showHotelDetails && h.nights ? `${h.nights} ${hd.nights}` : "",
+        showHotelDetails && h.roomType ? String(h.roomType) : ""
+      ].filter(Boolean).join("  \xB7  ");
+      if (meta) text(meta, 9, "normal", [120, 120, 120]);
+    });
+    y += 8;
+  } else if (showHotels) {
+    warnings.push("Sem hot\xE9is indicados");
+  }
+  if (showPricing && total > 0) {
+    text(hd.total, 14, "bold", YT_BLUE);
+    const programmeTotal = Math.max(0, total - hotelsTotal);
+    const rows = [[hd.programmePrice, eur(programmeTotal)]];
+    if (hotels.length && hotelsTotal > 0) rows.push([hd.hotelsPrice(hotelsNights, hotelsRooms), eur(hotelsTotal)]);
+    rows.push([closing.netPricing ? t.totalPriceNet : hd.total, eur(total)]);
+    rows.forEach(([label, value], idx) => {
+      const bold = idx === rows.length - 1;
+      ensureSpace(20);
+      doc.setFont("helvetica", bold ? "bold" : "normal");
+      doc.setFontSize(10);
+      doc.setTextColor(bold ? 10 : 60, bold ? 37 : 60, bold ? 64 : 60);
+      doc.text(label, margin, y + 11);
+      doc.text(value, pageW - margin, y + 11, { align: "right" });
+      doc.setDrawColor(228, 232, 238);
+      doc.line(margin, y + 16, pageW - margin, y + 16);
+      y += 18;
+    });
+    y += 10;
+    const optionals = Array.isArray(closing.optionals) ? closing.optionals : [];
+    const showOptionals = !opts.hideOptionals && closing.showOptionals !== false && optionals.length > 0;
+    if (showOptionals) {
+      text(hd.optionals, 12, "bold", YT_BLUE);
+      optionals.forEach((o) => {
+        const label = `${Number(o.day) > 0 ? `${t.day} ${o.day} \u2014 ` : ""}${String(o.description || "")}`;
+        text(`\u2022  ${label}: ${eur(Number(o.pvp) || 0)}`, 10);
+      });
+      text(hd.optionalsNote, 8, "normal", [130, 130, 130]);
+      y += 6;
+    }
+  }
+  if (showTerms) {
+    for (const field of ["payment", "cancellation", "importantNotes", "closingMessage"]) {
+      const value = resolveClosingText(field, closing?.[field], p.language);
+      if (!value) continue;
+      const heading = {
+        payment: t.paymentConditions,
+        cancellation: t.cancellationConditions,
+        importantNotes: t.importantNotes,
+        closingMessage: ""
+      };
+      if (heading[field]) text(heading[field], 12, "bold", YT_BLUE);
+      value.split("\n").forEach((line) => line.trim() && text(line, 10));
+      y += 8;
+    }
+  }
+  if (showReviews) {
+    ensureSpace(60);
+    text(t.reviewsTitle, 14, "bold", YT_BLUE);
+    doc.setTextColor(0, 102, 204);
+    doc.setFontSize(10);
+    ensureSpace(20);
+    doc.textWithLink("yourtoursportugal.com/our-reviews", margin, y + 10, {
+      url: "https://yourtoursportugal.com/our-reviews/"
+    });
+    y += 26;
+  }
+  if (showAbout) {
+    ensureSpace(80);
+    text("Your Tours Portugal", 13, "bold", YT_BLUE);
+    text("info@yourtours.pt  \xB7  www.yourtoursportugal.com", 10, "normal", [90, 90, 90]);
+  }
+  const bytes = new Uint8Array(doc.output("arraybuffer"));
+  return { bytes, pages: doc.getNumberOfPages(), warnings: Array.from(new Set(warnings)) };
+}
+
+// src/lib/mcp/tools/export-travel-plan-pdf.ts
+var BUCKET = "travel-plan-pdfs";
+var SEVEN_DAYS = 60 * 60 * 24 * 7;
+var safe = (s) => s.replace(/[\\/:*?"<>|]+/g, " ").replace(/\s+/g, " ").trim();
+var export_travel_plan_pdf_default = defineTool13({
+  name: "export_travel_plan_pdf",
+  title: "Export travel plan PDF",
+  description: "Generate the client-facing Travel Plan PDF of a lead server-side (cover, day-by-day with images and route maps, hotels, pricing, terms, reviews, B2B logo when set), store it privately and return a signed download link valid for 7 days plus warnings about days missing maps or images.",
+  inputSchema: {
+    lead_id: z12.string().optional().describe("Lead uuid."),
+    lead_code: z12.string().optional().describe("Lead code such as YT5104."),
+    language: z12.string().optional().describe("Override the programme language (en, pt, es, fr, it, de)."),
+    version: z12.number().int().optional().describe("Version to export (default: LIVE version)."),
+    hide_optionals: z12.boolean().optional().describe("Hide optional experiences from the pricing block.")
+  },
+  annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false },
+  handler: async ({ lead_id, lead_code, language, version, hide_optionals }, ctx) => {
+    if (!ctx.isAuthenticated()) throw new ToolError14("Not authenticated");
+    const supabase = supabaseForUser(ctx);
+    const lead = await resolveLead(supabase, { lead_id, lead_code });
+    const ver = version ?? liveVersion(lead);
+    const { data: proposal, error } = await supabase.from("proposals").select("*").eq("lead_id", lead.id).eq("version", ver).order("created_at", { ascending: false }).limit(1).maybeSingle();
+    if (error) throw new ToolError14(error.message);
+    if (!proposal) throw new ToolError14(`No proposal found for ${leadLabel(lead)} version ${ver}`);
+    const p = proposal;
+    const built = await buildTravelPlanPdf(
+      { ...p, language: language || p.language, client_name: p.client_name || lead.client_name },
+      { hideOptionals: Boolean(hide_optionals) }
+    );
+    const code = leadLabel(lead);
+    const title = String(p.title || "Travel Plan").replace(/\*\*/g, "");
+    const fileName = `${safe(code)} - ${safe(String(lead.client_name || ""))} - ${safe(title)}.pdf`;
+    const path = `${safe(code)}/${fileName}`;
+    const { error: upErr } = await supabase.storage.from(BUCKET).upload(path, built.bytes, { contentType: "application/pdf", upsert: true });
+    if (upErr) throw new ToolError14(`Upload failed: ${upErr.message}`);
+    const { data: signed, error: signErr } = await supabase.storage.from(BUCKET).createSignedUrl(path, SEVEN_DAYS);
+    if (signErr) throw new ToolError14(`Could not sign the file: ${signErr.message}`);
+    const payload = {
+      lead: code,
+      lead_id: lead.id,
+      version: ver,
+      file_name: fileName,
+      storage_path: `${BUCKET}/${path}`,
+      signed_url: signed?.signedUrl ?? null,
+      expires_in_days: 7,
+      pages: built.pages,
+      size_bytes: built.bytes.length,
+      language: language || p.language || "en",
+      warnings: built.warnings
+    };
+    return {
+      content: [{ type: "text", text: JSON.stringify(payload, null, 2) }],
+      structuredContent: payload
     };
   }
 });
@@ -270,13 +1168,27 @@ var projectRef = "jufqscczzmioauzkqztj";
 var mcp_default = defineMcp({
   name: "your-travel-2-0",
   title: "Your Travel 2.0",
-  version: "0.1.0",
-  instructions: "Operations tools for Your Tours Portugal. Use `list_leads` and `get_lead` for the sales pipeline, `list_upcoming_trips` for departures needing attention, and `list_tasks` / `create_task` / `update_task` for operational follow-up. All data is scoped to the signed-in user's access.",
+  version: "0.2.0",
+  instructions: "Operations tools for Your Tours Portugal (TCC). Read the pipeline with `list_leads` / `get_lead`, the programme with `get_travel_plan`, departures with `list_upcoming_trips`, and follow-up with `list_tasks` / `create_task` / `update_task`. Prepare sales files with `update_lead_stage` (stages from `list_lead_stages`), `assign_lead_agents`, `update_lead_general_data`, `add_lead_note` and `export_travel_plan_pdf`. Leads accept the everyday code format such as YT5130. Every write is logged in the lead history as 'AI agent (MCP)' and mirrored to NetHunt when the lead is linked. These tools never send emails, never create payment links and never delete leads or versions \u2014 those stay human-only.",
   auth: auth.oauth.issuer({
     issuer: `https://${projectRef}.supabase.co/auth/v1`,
     acceptedAudiences: "authenticated"
   }),
-  tools: [list_leads_default, get_lead_default, list_upcoming_trips_default, list_tasks_default, create_task_default, update_task_default]
+  tools: [
+    list_leads_default,
+    get_lead_default,
+    list_lead_stages_default,
+    update_lead_stage_default,
+    assign_lead_agents_default,
+    update_lead_general_data_default,
+    add_lead_note_default,
+    get_travel_plan_default,
+    export_travel_plan_pdf_default,
+    list_upcoming_trips_default,
+    list_tasks_default,
+    create_task_default,
+    update_task_default
+  ]
 });
 
 // lovable-mcp-supabase-entry.ts
