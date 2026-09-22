@@ -8,6 +8,27 @@
       "when": 1790077782453,
       "tag": "0000_travel_plan_pdfs_storage_policies",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1790079059952,
+      "tag": "0001_create_ai_action_queue",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1790079226877,
+      "tag": "0002_add_trip_briefing_to_leads",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1790079363913,
+      "tag": "0003_add_confirmation_and_notes_to_lead_operations",
+      "breakpoints": true
     }
   ]
 }

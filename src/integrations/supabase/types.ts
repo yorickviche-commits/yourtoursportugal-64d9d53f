@@ -340,6 +340,105 @@ export type Database = {
           },
         ]
       }
+      ai_action_queue: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          created_by_label: string
+          error: string | null
+          executed_at: string | null
+          id: string
+          idempotency_key: string | null
+          lead_code: string | null
+          lead_id: string | null
+          payload: Json
+          result: Json | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          status: string
+          subtitle: string | null
+          title: string
+          type: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          created_by_label?: string
+          error?: string | null
+          executed_at?: string | null
+          id?: string
+          idempotency_key?: string | null
+          lead_code?: string | null
+          lead_id?: string | null
+          payload?: Json
+          result?: Json | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+          subtitle?: string | null
+          title: string
+          type: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          created_by_label?: string
+          error?: string | null
+          executed_at?: string | null
+          id?: string
+          idempotency_key?: string | null
+          lead_code?: string | null
+          lead_id?: string | null
+          payload?: Json
+          result?: Json | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+          subtitle?: string | null
+          title?: string
+          type?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_action_queue_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ai_action_queue_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "rpt_files"
+            referencedColumns: ["lead_id"]
+          },
+          {
+            foreignKeyName: "ai_action_queue_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_task_queue"
+            referencedColumns: ["lead_id"]
+          },
+          {
+            foreignKeyName: "ai_action_queue_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "v_lead_economics"
+            referencedColumns: ["lead_id"]
+          },
+          {
+            foreignKeyName: "ai_action_queue_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "v_lead_outcomes"
+            referencedColumns: ["lead_id"]
+          },
+        ]
+      }
       ai_agents: {
         Row: {
           agent_id: string
@@ -1374,6 +1473,7 @@ export type Database = {
         Row: {
           activity_title: string | null
           booking_status: string
+          confirmation_number: string | null
           created_at: string
           day_number: number
           id: string
@@ -1383,6 +1483,7 @@ export type Database = {
           item_key: string
           lead_id: string
           net_value: number | null
+          notes: string | null
           pax: number | null
           payment_status: string
           real_cost: number | null
@@ -1395,6 +1496,7 @@ export type Database = {
         Insert: {
           activity_title?: string | null
           booking_status?: string
+          confirmation_number?: string | null
           created_at?: string
           day_number?: number
           id?: string
@@ -1404,6 +1506,7 @@ export type Database = {
           item_key: string
           lead_id: string
           net_value?: number | null
+          notes?: string | null
           pax?: number | null
           payment_status?: string
           real_cost?: number | null
@@ -1416,6 +1519,7 @@ export type Database = {
         Update: {
           activity_title?: string | null
           booking_status?: string
+          confirmation_number?: string | null
           created_at?: string
           day_number?: number
           id?: string
@@ -1425,6 +1529,7 @@ export type Database = {
           item_key?: string
           lead_id?: string
           net_value?: number | null
+          notes?: string | null
           pax?: number | null
           payment_status?: string
           real_cost?: number | null
@@ -1870,6 +1975,7 @@ export type Database = {
           travel_dates: string | null
           travel_end_date: string | null
           travel_style: Json | null
+          trip_briefing: Json | null
           trip_finish: string | null
           trip_start: string | null
           updated_at: string
@@ -1917,6 +2023,7 @@ export type Database = {
           travel_dates?: string | null
           travel_end_date?: string | null
           travel_style?: Json | null
+          trip_briefing?: Json | null
           trip_finish?: string | null
           trip_start?: string | null
           updated_at?: string
@@ -1964,6 +2071,7 @@ export type Database = {
           travel_dates?: string | null
           travel_end_date?: string | null
           travel_style?: Json | null
+          trip_briefing?: Json | null
           trip_finish?: string | null
           trip_start?: string | null
           updated_at?: string
