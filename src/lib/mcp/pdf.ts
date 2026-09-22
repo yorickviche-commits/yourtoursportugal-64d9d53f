@@ -287,7 +287,7 @@ export async function buildTravelPlanPdf(
   const hotelsTotal = Math.round(hotels.reduce((s: number, x: any) => s + (Number(x.value) || 0), 0));
 
   if (hotels.length) {
-    text(hd.title, 14, "bold", YT_BLUE as unknown as number[]);
+    text(hd.hotelsIncluded, 14, "bold", YT_BLUE as unknown as number[]);
     hotels.forEach((h: any) => {
       text(`**${h.name}**${h.city ? ` — ${h.city}` : ""}`, 11, "bold", [70, 70, 70]);
       const meta = [
@@ -326,7 +326,7 @@ export async function buildTravelPlanPdf(
     const optionals: any[] = Array.isArray(closing.optionals) ? closing.optionals : [];
     const showOptionals = !opts.hideOptionals && closing.showOptionals !== false && optionals.length > 0;
     if (showOptionals) {
-      text(hd.optionalsTitle ?? "Optional experiences", 12, "bold", YT_BLUE as unknown as number[]);
+      text(hd.optionals, 12, "bold", YT_BLUE as unknown as number[]);
       optionals.forEach((o: any) => {
         const label = `${Number(o.day) > 0 ? `${t.day} ${o.day} — ` : ""}${String(o.description || "")}`;
         text(`•  ${label}: ${eur(Number(o.pvp) || 0)}`, 10);
@@ -341,9 +341,9 @@ export async function buildTravelPlanPdf(
       const value = resolveClosingText(closing?.[field], field, p.language);
       if (!value) continue;
       const heading: Record<string, string> = {
-        payment: t.payment ?? "Payment",
-        cancellation: t.cancellation ?? "Cancellation",
-        importantNotes: t.importantNotes ?? "Important notes",
+        payment: t.paymentConditions,
+        cancellation: t.cancellationConditions,
+        importantNotes: t.importantNotes,
         closingMessage: "",
       };
       if (heading[field]) text(heading[field], 12, "bold", YT_BLUE as unknown as number[]);
@@ -354,7 +354,7 @@ export async function buildTravelPlanPdf(
 
   if (showReviews) {
     ensureSpace(60);
-    text(hd.reviewsTitle ?? "What our customers say", 14, "bold", YT_BLUE as unknown as number[]);
+    text(t.reviewsTitle, 14, "bold", YT_BLUE as unknown as number[]);
     doc.setTextColor(0, 102, 204);
     doc.setFontSize(10);
     ensureSpace(20);
