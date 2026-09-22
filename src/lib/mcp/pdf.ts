@@ -338,7 +338,7 @@ export async function buildTravelPlanPdf(
 
   if (showTerms) {
     for (const field of ["payment", "cancellation", "importantNotes", "closingMessage"] as const) {
-      const value = resolveClosingText(closing?.[field], field, p.language);
+      const value = resolveClosingText(field, closing?.[field], p.language);
       if (!value) continue;
       const heading: Record<string, string> = {
         payment: t.paymentConditions,
