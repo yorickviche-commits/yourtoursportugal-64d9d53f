@@ -5,6 +5,13 @@ import listUpcomingTripsTool from "./tools/list-upcoming-trips";
 import listTasksTool from "./tools/list-tasks";
 import createTaskTool from "./tools/create-task";
 import updateTaskTool from "./tools/update-task";
+import listLeadStagesTool from "./tools/list-lead-stages";
+import updateLeadStageTool from "./tools/update-lead-stage";
+import assignLeadAgentsTool from "./tools/assign-lead-agents";
+import updateLeadGeneralDataTool from "./tools/update-lead-general-data";
+import addLeadNoteTool from "./tools/add-lead-note";
+import getTravelPlanTool from "./tools/get-travel-plan";
+import exportTravelPlanPdfTool from "./tools/export-travel-plan-pdf";
 
 // Issuer must be the direct Supabase host, built from the project ref literal.
 const projectRef = import.meta.env.VITE_SUPABASE_PROJECT_ID ?? "project-ref-unset";
