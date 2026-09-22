@@ -67,17 +67,6 @@ export default defineTool({
     const updates: Record<string, unknown> = {};
     for (const [k, v] of Object.entries(rest)) if (v !== undefined) updates[k] = v;
 
-    if (confirmation_number !== undefined || notes !== undefined) {
-      const { data: opRow } = await supabase
-        .from("ops_actions")
-        .select("id")
-        .limit(0); // no-op; confirmation/notes live on the operations row payload below
-      void opRow;
-    }
-
-    const existingNotes = String((row as any).invoice_file_name ?? "");
-    void existingNotes;
-
     if (confirmation_number !== undefined) updates.confirmation_number = confirmation_number;
     if (notes !== undefined) updates.notes = notes;
 
