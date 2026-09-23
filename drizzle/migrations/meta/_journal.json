@@ -29,6 +29,13 @@
       "when": 1790079363913,
       "tag": "0003_add_confirmation_and_notes_to_lead_operations",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1790168817714,
+      "tag": "0004_explicit_data_api_grants",
+      "breakpoints": true
     }
   ]
 }

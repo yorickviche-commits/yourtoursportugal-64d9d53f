@@ -5767,6 +5767,17 @@ export type Database = {
       }
     }
     Functions: {
+      audit_api_grants: {
+        Args: never
+        Returns: {
+          anon_select: boolean
+          authenticated_crud: boolean
+          kind: string
+          relation: string
+          rls_enabled: boolean
+          service_role_crud: boolean
+        }[]
+      }
       can_view_feedback: { Args: { _feedback_id: string }; Returns: boolean }
       delete_email: {
         Args: { message_id: number; queue_name: string }
