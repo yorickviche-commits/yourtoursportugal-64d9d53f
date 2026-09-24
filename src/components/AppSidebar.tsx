@@ -15,6 +15,8 @@ import { useAgentPendingActions } from '@/hooks/useAgentPendingActions';
 import { usePagePermissions } from '@/hooks/usePagePermissions';
 import { PageKey } from '@/lib/pagePermissions';
 import BrandLogo from './BrandLogo';
+import { useAiQueue } from './ai-approvals/AiApprovalsList';
+import { ShieldCheck } from 'lucide-react';
 
 interface NavItem { to: string; icon: any; label: string; pageKey: PageKey; }
 
@@ -74,6 +76,8 @@ const DesktopSidebar = () => {
   const visibleComercial = filter(comercialItems);
   const visibleAdmin = filter(adminItems);
   const showAgents = canAccess('agents');
+  const { data: aiQueue = [] } = useAiQueue();
+  const aiPending = aiQueue.filter(i => i.status === 'pending' || i.status === 'failed').length;
 
   const initials = profile?.full_name
     ? profile.full_name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()
@@ -152,6 +156,16 @@ const DesktopSidebar = () => {
               : <div className="border-t border-sidebar-border my-2" />
             }
 
+            <NavLink to="/agents/approvals" title="Aprovações AI"
+              className={cn('flex items-center gap-3 rounded-md text-sm transition-colors relative',
+                expanded ? 'px-3 py-2' : 'justify-center px-2 py-2',
+                location.pathname.startsWith('/agents/approvals') ? 'bg-sidebar-accent text-sidebar-accent-foreground font-medium' : 'text-sidebar-foreground hover:bg-sidebar-accent/50')}>
+              <div className="relative shrink-0">
+                <ShieldCheck className="h-4 w-4" />
+                {!expanded && aiPending > 0 && <span className="absolute -top-1 -right-1 h-3.5 w-3.5 rounded-full bg-destructive text-destructive-foreground text-[8px] font-bold flex items-center justify-center">{aiPending > 9 ? '9+' : aiPending}</span>}
+              </div>
+              {expanded && <><span className="truncate text-xs">Aprovações AI</span>{aiPending > 0 && <span className="ml-auto text-[10px] bg-destructive text-destructive-foreground px-1.5 py-0.5 rounded-full font-bold">{aiPending}</span>}</>}
+            </NavLink>
             <NavLink to="/agents" title="Spark Agent Center"
               className={cn(
                 'flex items-center gap-3 rounded-md text-sm transition-colors relative',
@@ -230,6 +244,8 @@ const MobileMenu = ({ open, onClose }: { open: boolean; onClose: () => void }) =
   const visibleComercial = filter(comercialItems);
   const visibleAdmin = filter(adminItems);
   const showAgents = canAccess('agents');
+  const { data: aiQueue = [] } = useAiQueue();
+  const aiPending = aiQueue.filter(i => i.status === 'pending' || i.status === 'failed').length;
 
   const initials = profile?.full_name
     ? profile.full_name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()
@@ -279,6 +295,13 @@ const MobileMenu = ({ open, onClose }: { open: boolean; onClose: () => void }) =
         {showAgents && (
           <div className="pt-2">
             <p className="px-4 py-2 text-xs uppercase text-muted-foreground font-semibold tracking-wider">AI Agents</p>
+            <NavLink to="/agents/approvals" onClick={onClose}
+              className={cn('flex items-center gap-3 px-4 py-3 text-sm rounded-lg min-h-[48px] transition-colors',
+                isActive('/agents/approvals') ? 'bg-primary/10 text-primary font-medium' : 'text-foreground hover:bg-muted')}>
+              <ShieldCheck className="h-5 w-5 shrink-0" />
+              <span>Aprovações AI</span>
+              {aiPending > 0 && <span className="ml-auto px-2 py-0.5 text-xs font-bold bg-destructive text-destructive-foreground rounded-full">{aiPending}</span>}
+            </NavLink>
             <NavLink to="/agents" onClick={onClose}
               className={cn(
                 'flex items-center gap-3 px-4 py-3 text-sm rounded-lg min-h-[48px] transition-colors',

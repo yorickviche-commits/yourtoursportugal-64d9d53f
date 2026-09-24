@@ -33,6 +33,7 @@ import NotFound from "./pages/NotFound";
 import Dashboard from "./pages/Dashboard";
 import AIWorkOfficePage from "./pages/AIWorkOfficePage";
 import ApprovalsPage from "./pages/ApprovalsPage";
+import AiApprovalsPage from "./pages/AiApprovalsPage";
 import TasksPage from "./pages/TasksPage";
 import CRMPage from "./pages/CRMPage";
 import CRMRecordDetailPage from "./pages/CRMRecordDetailPage";
@@ -106,6 +107,7 @@ const App = () => (
             <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
             <Route path="/ai-office" element={<ProtectedRoute><AIWorkOfficePage /></ProtectedRoute>} />
             <Route path="/agents/dashboard" element={<ProtectedRoute><AgentDashboardPage /></ProtectedRoute>} />
+            <Route path="/agents/approvals" element={<ProtectedRoute><AiApprovalsPage /></ProtectedRoute>} />
             <Route path="/approvals" element={<ProtectedRoute><ApprovalsPage /></ProtectedRoute>} />
             <Route path="/tasks" element={<ProtectedRoute><TasksPage /></ProtectedRoute>} />
             <Route path="/crm" element={<ProtectedRoute><CRMPage /></ProtectedRoute>} />
