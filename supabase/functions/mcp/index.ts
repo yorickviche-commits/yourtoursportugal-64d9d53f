@@ -50,10 +50,10 @@ function supabasePublishableKey() {
   throw new Error("SUPABASE_PUBLISHABLE_KEY, SUPABASE_PUBLISHABLE_KEYS, or SUPABASE_ANON_KEY is required");
 }
 function supabaseForUser(ctx) {
-  const token = ctx.getToken();
-  if (!token) throw new Error("supabaseForUser requires a verified OAuth token");
+  const token2 = ctx.getToken();
+  if (!token2) throw new Error("supabaseForUser requires a verified OAuth token");
   return createClient(supabaseProjectUrl(), supabasePublishableKey(), {
-    global: { headers: { Authorization: `Bearer ${token}` } },
+    global: { headers: { Authorization: `Bearer ${token2}` } },
     auth: { persistSession: false, autoRefreshToken: false }
   });
 }
@@ -310,9 +310,9 @@ var list_upcoming_trips_default = defineTool3({
     limit: z3.number().int().optional().describe("Max rows to return (default 50, max 100).")
   },
   annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
-  handler: async ({ days, limit }, ctx) => {
+  handler: async ({ days: days2, limit }, ctx) => {
     if (!ctx.isAuthenticated()) throw new ToolError4("Not authenticated");
-    const window = Math.min(Math.max(days ?? 7, 1), 365);
+    const window = Math.min(Math.max(days2 ?? 7, 1), 365);
     const take = Math.min(Math.max(limit ?? 50, 1), 100);
     const from = /* @__PURE__ */ new Date();
     const until = /* @__PURE__ */ new Date();
@@ -595,9 +595,9 @@ import { z as z9 } from "npm:zod@^3.25.76";
 import { buildParticipantsLabel } from "npm:@/lib/participantsLabel";
 async function syncGeneralToProposalServer(supabase, args) {
   const { data: planRow } = await supabase.from("travel_plans").select("id, days").eq("lead_id", args.leadId).eq("version", args.version).order("updated_at", { ascending: false }).limit(1).maybeSingle();
-  const days = Array.isArray(planRow?.days) ? planRow.days : [];
-  const startDate = days[0]?.date || args.travelDates || null;
-  const endDate = days[days.length - 1]?.date || args.travelEndDate || args.travelDates || null;
+  const days2 = Array.isArray(planRow?.days) ? planRow.days : [];
+  const startDate = days2[0]?.date || args.travelDates || null;
+  const endDate = days2[days2.length - 1]?.date || args.travelEndDate || args.travelDates || null;
   const { data: proposalRow } = await supabase.from("proposals").select("id, language").eq("lead_id", args.leadId).eq("version", args.version).maybeSingle();
   const language = proposalRow?.language || "en";
   const participants = buildParticipantsLabel(args.pax, args.paxChildren, language);
@@ -659,11 +659,11 @@ var update_lead_general_data_default = defineTool10({
     set("destination", fields.destino);
     if (!Object.keys(updates).length && !fields.idioma) throw new ToolError11("No fields to update");
     if (fields.data_inicio && fields.data_fim) {
-      const days = Math.round(
+      const days2 = Math.round(
         (Date.parse(fields.data_fim) - Date.parse(fields.data_inicio)) / 864e5
       ) + 1;
-      if (days < 1) throw new ToolError11("data_fim must be on or after data_inicio");
-      updates.number_of_days = days;
+      if (days2 < 1) throw new ToolError11("data_fim must be on or after data_inicio");
+      updates.number_of_days = days2;
     }
     const changes = {};
     for (const key of Object.keys(updates)) changes[key] = { from: lead[key] ?? null, to: updates[key] };
@@ -763,7 +763,7 @@ var get_travel_plan_default = defineTool12({
     if (!proposal) throw new ToolError13(`No proposal found for ${leadLabel(lead)} version ${ver}`);
     const p = proposal;
     const closing = p.closing_terms || {};
-    const days = (Array.isArray(p.days) ? p.days : []).map((d, i) => ({
+    const days2 = (Array.isArray(p.days) ? p.days : []).map((d, i) => ({
       day_number: d.day_number ?? i + 1,
       date: d.date_label || d.date || null,
       title: strip(d.title),
@@ -794,7 +794,7 @@ var get_travel_plan_default = defineTool12({
       total_value_eur: p.total_value_eur ?? null,
       itinerary_url: p.public_token ? `${APP_ORIGIN}/proposal/${p.public_token}` : null,
       booking_url: p.wetravel_checkout_url || null,
-      days,
+      days: days2,
       hotels
     };
     return {
@@ -860,7 +860,7 @@ async function buildTravelPlanPdf(p, opts = {}) {
   const showAbout = closing.showAbout !== false;
   const showHotels = closing.showHotels !== false;
   const showHotelDetails = closing.showHotelDetails !== false;
-  const days = Array.isArray(p.days) ? p.days : [];
+  const days2 = Array.isArray(p.days) ? p.days : [];
   const warnings = [];
   const doc = new jsPDF({ unit: "pt", format: "a4", compress: true });
   const pageW = doc.internal.pageSize.getWidth();
@@ -934,17 +934,17 @@ async function buildTravelPlanPdf(p, opts = {}) {
     doc.textWithLink("see terms and conditions", margin + btnW / 2, y + btnH + 27, { align: "center", url: TERMS_URL });
     y += btnH + 40;
   }
-  if (days.length) {
+  if (days2.length) {
     doc.addPage();
     y = margin;
     text(t.summaryDayByDay, 14, "bold", YT_BLUE);
     y += 6;
-    days.forEach((d, i) => {
+    days2.forEach((d, i) => {
       text(`${t.day} ${d.day_number ?? i + 1} \u2014 ${d.title || ""}`, 10, "normal", [80, 80, 80]);
     });
   }
-  for (let i = 0; i < days.length; i++) {
-    const d = days[i];
+  for (let i = 0; i < days2.length; i++) {
+    const d = days2[i];
     const n = d.day_number ?? i + 1;
     doc.addPage();
     y = margin;
@@ -1105,6 +1105,23 @@ async function buildTravelPlanPdf(p, opts = {}) {
   const bytes = new Uint8Array(doc.output("arraybuffer"));
   return { bytes, pages: doc.getNumberOfPages(), warnings: Array.from(new Set(warnings)) };
 }
+async function renderTravelPlanPdf(supabase, lead, version, _plan, _meta) {
+  const { data: proposal } = await supabase.from("proposals").select("*").eq("lead_id", lead.id).eq("version", version).order("created_at", { ascending: false }).limit(1).maybeSingle();
+  if (!proposal) throw new Error(`No proposal found for version ${version}`);
+  const built = await buildTravelPlanPdf({ ...proposal, client_name: proposal.client_name || lead.client_name });
+  return { ...built, proposal };
+}
+var safeName = (s) => s.replace(/[\\/:*?"<>|]+/g, "").replace(/\s+/g, " ").trim();
+async function storeTravelPlanPdf(supabase, lead, pdf) {
+  const code = safeName(String(lead.yt_id || lead.lead_code || lead.id));
+  const title = String(pdf.proposal?.title || "Travel Plan").replace(/\*\*/g, "");
+  const file_name = `${code} - ${safeName(String(lead.client_name || ""))} - ${safeName(title)}.pdf`;
+  const path = `${code}/${file_name}`;
+  const { error } = await supabase.storage.from("travel-plan-pdfs").upload(path, pdf.bytes, { contentType: "application/pdf", upsert: true });
+  if (error) throw new Error(`Upload failed: ${error.message}`);
+  const { data } = await supabase.storage.from("travel-plan-pdfs").createSignedUrl(path, 7 * 24 * 3600);
+  return { file_name, storage_path: path, signed_url: data?.signedUrl ?? null };
+}
 
 // src/lib/mcp/tools/export-travel-plan-pdf.ts
 var BUCKET = "travel-plan-pdfs";
@@ -1163,13 +1180,1658 @@ var export_travel_plan_pdf_default = defineTool13({
   }
 });
 
+// src/lib/mcp/tools/list-pending-approvals.ts
+import { defineTool as defineTool14, ToolError as ToolError16 } from "npm:@lovable.dev/mcp-js@0.26.1";
+import { z as z13 } from "npm:zod@^3.25.76";
+
+// src/lib/mcp/queue.ts
+import { ToolError as ToolError15 } from "npm:@lovable.dev/mcp-js@0.26.1";
+async function enqueueAction(supabase, ctx, lead, args) {
+  const key = `${args.type}:${lead.id}:${args.idempotencyKey}`;
+  const find = async () => {
+    const { data: data2 } = await supabase.from("ai_action_queue").select("*").eq("idempotency_key", key).maybeSingle();
+    return data2 ?? null;
+  };
+  const existing = await find();
+  if (existing) return { item: existing, created: false };
+  const { data, error } = await supabase.from("ai_action_queue").insert({
+    type: args.type,
+    lead_id: lead.id,
+    lead_code: leadLabel(lead),
+    title: args.title,
+    subtitle: args.subtitle ?? null,
+    payload: args.payload,
+    idempotency_key: key,
+    created_by: ctx.getUserId() ?? null,
+    created_by_label: "AI agent (MCP)"
+  }).select().single();
+  if (error) {
+    const again = await find();
+    if (again) return { item: again, created: false };
+    throw new ToolError15(error.message);
+  }
+  return { item: data, created: true };
+}
+var queueSummary = (row) => ({
+  approval_id: row.id,
+  type: row.type,
+  status: row.status,
+  lead: row.lead_code,
+  lead_id: row.lead_id,
+  title: row.title,
+  subtitle: row.subtitle,
+  created_at: row.created_at,
+  reviewed_at: row.reviewed_at,
+  executed_at: row.executed_at,
+  error: row.error
+});
+
+// src/lib/mcp/tools/list-pending-approvals.ts
+var list_pending_approvals_default = defineTool14({
+  name: "list_pending_approvals",
+  title: "List AI approval queue",
+  description: "List the actions waiting for human approval in the TCC (client emails, supplier/FSE emails, payment links). Agents propose these actions; a person approves, edits or rejects them in the 'Aprova\xE7\xF5es AI' page and only then are they executed.",
+  inputSchema: {
+    status: z13.enum(["pending", "approved", "rejected", "executed", "failed"]).optional().describe("Filter by status (default: pending)."),
+    type: z13.enum(["client_email", "fse_email", "payment_link"]).optional().describe("Filter by action type."),
+    lead_id: z13.string().optional().describe("Only items of this lead (uuid)."),
+    lead_code: z13.string().optional().describe("Only items of this lead (code such as YT5130)."),
+    limit: z13.number().int().min(1).max(200).optional().describe("Max items (default 50).")
+  },
+  annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
+  handler: async ({ status, type, lead_id, lead_code, limit }, ctx) => {
+    if (!ctx.isAuthenticated()) throw new ToolError16("Not authenticated");
+    const supabase = supabaseForUser(ctx);
+    let query = supabase.from("ai_action_queue").select("*").eq("status", status ?? "pending").order("created_at", { ascending: false }).limit(limit ?? 50);
+    if (type) query = query.eq("type", type);
+    if (lead_id || lead_code) {
+      const lead = await resolveLead(supabase, { lead_id, lead_code }, "id, lead_code, yt_id, client_name");
+      query = query.eq("lead_id", lead.id);
+    }
+    const { data, error } = await query;
+    if (error) throw new ToolError16(error.message);
+    const items = (data ?? []).map((row) => ({
+      ...queueSummary(row),
+      payload_preview: {
+        to: row.payload?.to ?? null,
+        subject: row.payload?.subject ?? null,
+        amount_eur: row.payload?.amount_eur ?? null,
+        attachments: (row.payload?.attachments ?? []).map((a) => a?.filename).filter(Boolean)
+      }
+    }));
+    const payload = { status: status ?? "pending", count: items.length, items };
+    return { content: [{ type: "text", text: JSON.stringify(payload, null, 2) }], structuredContent: payload };
+  }
+});
+
+// src/lib/mcp/tools/get-approval-status.ts
+import { defineTool as defineTool15, ToolError as ToolError17 } from "npm:@lovable.dev/mcp-js@0.26.1";
+import { z as z14 } from "npm:zod@^3.25.76";
+var get_approval_status_default = defineTool15({
+  name: "get_approval_status",
+  title: "Get AI approval status",
+  description: "Check what happened to one item of the AI approval queue: still pending, approved, rejected, executed (with the result, such as the payment link URL or the sent email) or failed (with the error).",
+  inputSchema: {
+    approval_id: z14.string().uuid().describe("Id returned when the action was queued.")
+  },
+  annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
+  handler: async ({ approval_id }, ctx) => {
+    if (!ctx.isAuthenticated()) throw new ToolError17("Not authenticated");
+    const supabase = supabaseForUser(ctx);
+    const { data, error } = await supabase.from("ai_action_queue").select("*").eq("id", approval_id).maybeSingle();
+    if (error) throw new ToolError17(error.message);
+    if (!data) throw new ToolError17(`Approval item ${approval_id} not found or not accessible`);
+    const row = data;
+    const payload = { ...queueSummary(row), result: row.result ?? null, payload: row.payload };
+    return { content: [{ type: "text", text: JSON.stringify(payload, null, 2) }], structuredContent: payload };
+  }
+});
+
+// src/lib/mcp/tools/get-costing.ts
+import { defineTool as defineTool16, ToolError as ToolError19 } from "npm:@lovable.dev/mcp-js@0.26.1";
+import { z as z15 } from "npm:zod@^3.25.76";
+
+// src/lib/mcp/costing.ts
+import { ToolError as ToolError18 } from "npm:@lovable.dev/mcp-js@0.26.1";
+import { BUSINESS_CONFIG } from "npm:@/lib/businessConfig";
+var ACCOMMODATION_DAY = 0;
+function calcLine(line) {
+  let netTotal;
+  if (line.pricingType === "per_night") {
+    netTotal = line.priceAdults * (line.numAdults || 0);
+  } else if (line.pricingType === "per_person") {
+    netTotal = line.priceAdults * line.numAdults + line.priceChildren * line.numChildren;
+  } else {
+    netTotal = line.priceAdults;
+  }
+  const pvpTotal = netTotal * (1 + line.marginPercent / 100);
+  return { ...line, netTotal, pvpTotal, profit: pvpTotal - netTotal };
+}
+function blankLine(partial) {
+  return calcLine({
+    id: partial.id || `ci-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+    description: partial.description || "",
+    supplier: partial.supplier || "",
+    pricingType: partial.pricingType || "total",
+    numAdults: partial.numAdults ?? 0,
+    priceAdults: partial.priceAdults ?? 0,
+    numChildren: partial.numChildren ?? 0,
+    priceChildren: partial.priceChildren ?? 0,
+    netTotal: 0,
+    marginPercent: partial.marginPercent ?? BUSINESS_CONFIG.DEFAULT_MARGIN_PERCENT,
+    pvpTotal: 0,
+    profit: 0,
+    status: partial.status || "neutro",
+    notes: partial.notes || [],
+    costLayer: partial.costLayer,
+    isProtocol: partial.isProtocol,
+    isFixedRate: partial.isFixedRate
+  });
+}
+async function loadCosting(supabase, lead, version) {
+  const { data, error } = await supabase.from("lead_costing_data").select("day_number, title, items").eq("lead_id", lead.id).eq("version", version).order("day_number", { ascending: true });
+  if (error) throw new ToolError18(error.message);
+  return (data ?? []).map((row) => ({
+    day_number: Number(row.day_number),
+    title: String(row.title ?? ""),
+    items: (Array.isArray(row.items) ? row.items : []).map((i) => calcLine(i))
+  }));
+}
+async function saveCostingDay(supabase, lead, version, day) {
+  const { data: existing } = await supabase.from("lead_costing_data").select("id").eq("lead_id", lead.id).eq("version", version).eq("day_number", day.day_number).maybeSingle();
+  const payload = {
+    lead_id: lead.id,
+    version,
+    day_number: day.day_number,
+    title: day.title || (day.day_number === ACCOMMODATION_DAY ? "Alojamento" : `Dia ${day.day_number}`),
+    items: day.items
+  };
+  const { error } = existing ? await supabase.from("lead_costing_data").update(payload).eq("id", existing.id) : await supabase.from("lead_costing_data").insert(payload);
+  if (error) throw new ToolError18(error.message);
+}
+var counts = (days2, optional) => days2.flatMap((d) => d.items).filter(
+  (i) => optional ? i.status === "opcionais" : i.status !== "opcionais" && i.status !== "eliminar"
+);
+function costingTotals(days2) {
+  const base = counts(days2, false);
+  const net = base.reduce((s, i) => s + i.netTotal, 0);
+  const pvp = base.reduce((s, i) => s + i.pvpTotal, 0);
+  const optionals = counts(days2, true).reduce((s, i) => s + i.pvpTotal, 0);
+  const round = (n) => Math.round(n * 100) / 100;
+  return {
+    net_eur: round(net),
+    pvp_eur: round(pvp),
+    profit_eur: round(pvp - net),
+    margin_percent: pvp > 0 ? round((pvp - net) / pvp * 100) : 0,
+    optionals_pvp_eur: round(optionals),
+    requires_ceo_approval: pvp > BUSINESS_CONFIG.CEO_APPROVAL_THRESHOLD_EUR,
+    ceo_threshold_eur: BUSINESS_CONFIG.CEO_APPROVAL_THRESHOLD_EUR,
+    min_margin_percent: BUSINESS_CONFIG.MIN_MARGIN_PERCENT
+  };
+}
+function assertMinimumMargin(totals) {
+  if (totals.pvp_eur > 0 && totals.margin_percent < totals.min_margin_percent) {
+    throw new ToolError18(
+      `Minimum margin violated: ${totals.margin_percent.toFixed(1)}% is below the required ${totals.min_margin_percent}% (net ${totals.net_eur.toFixed(2)} EUR, PVP ${totals.pvp_eur.toFixed(2)} EUR). Raise the selling price or lower the net cost \u2014 the costing was not saved.`
+    );
+  }
+}
+async function paymentsSummary(supabase, lead) {
+  const { data } = await supabase.from("lead_payments").select("amount").eq("lead_id", lead.id);
+  const deposited = (data ?? []).reduce((s, p) => s + Number(p.amount || 0), 0);
+  return Math.round(deposited * 100) / 100;
+}
+
+// src/lib/mcp/tools/get-costing.ts
+var get_costing_default = defineTool16({
+  name: "get_costing",
+  title: "Get costing",
+  description: "Read the costing of a lead: lines per day (service, supplier/FSE, unit cost, quantity, pax type, markup, selling price, optional yes/no), totals, margin, total YT, deposited and outstanding. Day 0 is the accommodation block.",
+  inputSchema: {
+    lead_id: z15.string().optional().describe("Lead uuid."),
+    lead_code: z15.string().optional().describe("Lead code such as YT5130."),
+    version: z15.number().int().optional().describe("Version to read (default: LIVE version).")
+  },
+  annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
+  handler: async ({ lead_id, lead_code, version }, ctx) => {
+    if (!ctx.isAuthenticated()) throw new ToolError19("Not authenticated");
+    const supabase = supabaseForUser(ctx);
+    const lead = await resolveLead(supabase, { lead_id, lead_code });
+    const ver = version ?? liveVersion(lead);
+    const days2 = await loadCosting(supabase, lead, ver);
+    const totals = costingTotals(days2);
+    const deposited = await paymentsSummary(supabase, lead);
+    const payload = {
+      lead: leadLabel(lead),
+      lead_id: lead.id,
+      version: ver,
+      days: days2.map((d) => ({
+        day_number: d.day_number,
+        title: d.title,
+        is_accommodation_block: d.day_number === ACCOMMODATION_DAY,
+        lines: d.items.map((i) => ({
+          line_id: i.id,
+          description: i.description,
+          supplier: i.supplier || null,
+          pricing_type: i.pricingType,
+          num_adults: i.numAdults,
+          price_adults: i.priceAdults,
+          num_children: i.numChildren,
+          price_children: i.priceChildren,
+          net_total: i.netTotal,
+          margin_percent: i.marginPercent,
+          pvp_total: i.pvpTotal,
+          status: i.status,
+          optional: i.status === "opcionais",
+          is_protocol: !!i.isProtocol,
+          is_fixed_rate: !!i.isFixedRate
+        }))
+      })),
+      totals: {
+        ...totals,
+        total_yt_eur: totals.pvp_eur,
+        deposited_eur: deposited,
+        outstanding_eur: Math.round((totals.pvp_eur - deposited) * 100) / 100
+      }
+    };
+    return { content: [{ type: "text", text: JSON.stringify(payload, null, 2) }], structuredContent: payload };
+  }
+});
+
+// src/lib/mcp/tools/upsert-costing-lines.ts
+import { defineTool as defineTool17, ToolError as ToolError20 } from "npm:@lovable.dev/mcp-js@0.26.1";
+import { z as z16 } from "npm:zod@^3.25.76";
+var lineSchema = z16.object({
+  day_number: z16.number().int().min(0).describe("Day of the programme (0 = accommodation block)."),
+  day_title: z16.string().optional().describe("Day title, used when the day row does not exist yet."),
+  line_id: z16.string().optional().describe("Existing line id \u2014 omit to create a new line."),
+  description: z16.string().optional().describe("Service description."),
+  supplier: z16.string().optional().describe("Supplier / FSE name."),
+  pricing_type: z16.enum(["total", "per_person", "per_night"]).optional().describe("How the net price is expressed."),
+  num_adults: z16.number().optional().describe("Adults (or number of nights when pricing_type is per_night)."),
+  price_adults: z16.number().optional().describe("Net price per adult, per night, or the net total."),
+  num_children: z16.number().optional().describe("Children."),
+  price_children: z16.number().optional().describe("Net price per child."),
+  margin_percent: z16.number().min(0).max(300).optional().describe("Markup percentage applied to the net cost."),
+  status: z16.enum(["neutro", "aceite", "eliminar", "opcionais"]).optional().describe("Line state; 'opcionais' keeps it out of the base totals.")
+});
+var upsert_costing_lines_default = defineTool17({
+  name: "upsert_costing_lines",
+  title: "Create or update costing lines",
+  description: "Create or update costing lines of a lead, exactly like editing the Custos table in the TCC. Totals and profit are recalculated with the same arithmetic. The save is refused when the resulting margin drops below the company minimum, and the answer flags when the file needs CEO approval because it is above the approval threshold.",
+  inputSchema: {
+    lead_id: z16.string().optional().describe("Lead uuid."),
+    lead_code: z16.string().optional().describe("Lead code such as YT5130."),
+    version: z16.number().int().optional().describe("Version to edit (default: LIVE version)."),
+    lines: z16.array(lineSchema).min(1).describe("Lines to create or update.")
+  },
+  annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false },
+  handler: async ({ lead_id, lead_code, version, lines }, ctx) => {
+    if (!ctx.isAuthenticated()) throw new ToolError20("Not authenticated");
+    const supabase = supabaseForUser(ctx);
+    const lead = await resolveLead(supabase, { lead_id, lead_code });
+    const ver = version ?? liveVersion(lead);
+    const days2 = await loadCosting(supabase, lead, ver);
+    const byDay = new Map(days2.map((d) => [d.day_number, d]));
+    const touched = /* @__PURE__ */ new Set();
+    const created = [];
+    const updated = [];
+    for (const input of lines) {
+      let day = byDay.get(input.day_number);
+      if (!day) {
+        day = { day_number: input.day_number, title: input.day_title || "", items: [] };
+        byDay.set(input.day_number, day);
+      } else if (input.day_title) {
+        day.title = input.day_title;
+      }
+      touched.add(input.day_number);
+      const patch = {
+        description: input.description,
+        supplier: input.supplier,
+        pricingType: input.pricing_type,
+        numAdults: input.num_adults,
+        priceAdults: input.price_adults,
+        numChildren: input.num_children,
+        priceChildren: input.price_children,
+        marginPercent: input.margin_percent,
+        status: input.status
+      };
+      for (const k of Object.keys(patch)) {
+        if (patch[k] === void 0) delete patch[k];
+      }
+      const idx = input.line_id ? day.items.findIndex((i) => i.id === input.line_id) : -1;
+      if (input.line_id && idx === -1) {
+        throw new ToolError20(
+          `Line "${input.line_id}" not found on day ${input.day_number}. Valid ids: ${day.items.map((i) => i.id).join(", ") || "(day has no lines)"}`
+        );
+      }
+      if (idx >= 0) {
+        day.items[idx] = calcLine({ ...day.items[idx], ...patch });
+        updated.push(day.items[idx].id);
+      } else {
+        if (!patch.description) throw new ToolError20("New costing lines need a description");
+        const line = blankLine(patch);
+        day.items.push(line);
+        created.push(line.id);
+      }
+    }
+    const allDays = [...byDay.values()].sort((a, b) => a.day_number - b.day_number);
+    const totals = costingTotals(allDays);
+    assertMinimumMargin(totals);
+    for (const dayNumber of touched) await saveCostingDay(supabase, lead, ver, byDay.get(dayNumber));
+    await auditLead(
+      supabase,
+      ctx,
+      lead,
+      "costing_updated",
+      { costing_lines: { from: `${days2.flatMap((d) => d.items).length} lines`, to: `${allDays.flatMap((d) => d.items).length} lines` } },
+      { version: ver, created_line_ids: created, updated_line_ids: updated }
+    );
+    const payload = {
+      lead: leadLabel(lead),
+      lead_id: lead.id,
+      version: ver,
+      created_line_ids: created,
+      updated_line_ids: updated,
+      totals,
+      requires_ceo_approval: totals.requires_ceo_approval,
+      note: totals.requires_ceo_approval ? `Total above ${totals.ceo_threshold_eur} EUR \u2014 needs CEO approval before going to the client.` : null
+    };
+    return { content: [{ type: "text", text: JSON.stringify(payload, null, 2) }], structuredContent: payload };
+  }
+});
+
+// src/lib/mcp/tools/remove-costing-line.ts
+import { defineTool as defineTool18, ToolError as ToolError21 } from "npm:@lovable.dev/mcp-js@0.26.1";
+import { z as z17 } from "npm:zod@^3.25.76";
+var remove_costing_line_default = defineTool18({
+  name: "remove_costing_line",
+  title: "Remove a costing line",
+  description: "Remove one line from the costing of a lead, like deleting a row in the Custos table. Only costing lines are affected \u2014 leads, versions and travel plans are never deleted by MCP tools.",
+  inputSchema: {
+    lead_id: z17.string().optional().describe("Lead uuid."),
+    lead_code: z17.string().optional().describe("Lead code such as YT5130."),
+    version: z17.number().int().optional().describe("Version to edit (default: LIVE version)."),
+    day_number: z17.number().int().min(0).describe("Day holding the line (0 = accommodation block)."),
+    line_id: z17.string().describe("Line id from get_costing.")
+  },
+  annotations: { readOnlyHint: false, destructiveHint: true, idempotentHint: true, openWorldHint: false },
+  handler: async ({ lead_id, lead_code, version, day_number, line_id }, ctx) => {
+    if (!ctx.isAuthenticated()) throw new ToolError21("Not authenticated");
+    const supabase = supabaseForUser(ctx);
+    const lead = await resolveLead(supabase, { lead_id, lead_code });
+    const ver = version ?? liveVersion(lead);
+    const days2 = await loadCosting(supabase, lead, ver);
+    const day = days2.find((d) => d.day_number === day_number);
+    if (!day) throw new ToolError21(`Day ${day_number} has no costing lines for version ${ver}`);
+    const line = day.items.find((i) => i.id === line_id);
+    if (!line) {
+      throw new ToolError21(
+        `Line "${line_id}" not found on day ${day_number}. Valid ids: ${day.items.map((i) => i.id).join(", ") || "(none)"}`
+      );
+    }
+    day.items = day.items.filter((i) => i.id !== line_id);
+    await saveCostingDay(supabase, lead, ver, day);
+    const totals = costingTotals(days2);
+    await auditLead(
+      supabase,
+      ctx,
+      lead,
+      "costing_line_removed",
+      { costing_line: { from: `${line.description} (${line.pvpTotal} EUR)`, to: null } },
+      { version: ver, day_number, line_id }
+    );
+    const payload = { lead: leadLabel(lead), lead_id: lead.id, version: ver, removed: line.description, totals };
+    return { content: [{ type: "text", text: JSON.stringify(payload, null, 2) }], structuredContent: payload };
+  }
+});
+
+// src/lib/mcp/tools/autofill-costing-from-plan.ts
+import { defineTool as defineTool19, ToolError as ToolError23 } from "npm:@lovable.dev/mcp-js@0.26.1";
+import { z as z18 } from "npm:zod@^3.25.76";
+
+// src/lib/mcp/travelPlan.ts
+import { ToolError as ToolError22 } from "npm:@lovable.dev/mcp-js@0.26.1";
+import { buildParticipantsLabel as buildParticipantsLabel2 } from "npm:@/lib/participantsLabel";
+var bulletText = (b) => typeof b === "string" ? b : String(b?.text ?? "");
+async function loadPlan(supabase, lead, version) {
+  const { data, error } = await supabase.from("travel_plans").select("id, trip_title, narrative, days, extra_instructions").eq("lead_id", lead.id).eq("version", version).order("updated_at", { ascending: false }).limit(1).maybeSingle();
+  if (error) throw new ToolError22(error.message);
+  let meta = { closing: {}, language: "EN" };
+  if (data?.extra_instructions) {
+    try {
+      const parsed = JSON.parse(data.extra_instructions);
+      meta = {
+        closing: parsed.closing ?? {},
+        language: String(parsed.language ?? "EN")
+      };
+      meta.cover_image = parsed.cover_image ?? null;
+      meta.brand_logo = parsed.brand_logo ?? null;
+    } catch {
+    }
+  }
+  const days2 = Array.isArray(data?.days) ? data.days : [];
+  const plan = {
+    trip_title: String(data?.trip_title ?? ""),
+    narrative: String(data?.narrative ?? ""),
+    cover_image: meta.cover_image ?? null,
+    brand_logo: meta.brand_logo ?? null,
+    days: days2
+  };
+  return {
+    plan,
+    meta,
+    planRowId: data?.id ?? null,
+    version,
+    isEmpty: days2.length === 0 && !plan.trip_title
+  };
+}
+var DAY_LABEL = { en: "Day", fr: "Jour", es: "D\xEDa", pt: "Dia", it: "Giorno", de: "Tag" };
+var token = (leadCode, version) => `${leadCode.toLowerCase().replace(/[^a-z0-9]+/g, "-")}-v${version}-${Math.random().toString(36).slice(2, 8)}`;
+async function savePlan(supabase, lead, version, plan, meta, sc) {
+  const startDate = plan.days[0]?.date || sc.travelDates || null;
+  const endDate = plan.days[plan.days.length - 1]?.date || sc.travelEndDate || null;
+  const lang = (meta.language || sc.language || "EN").toLowerCase().slice(0, 2);
+  const paxStr = buildParticipantsLabel2(sc.pax, sc.paxChildren, lang);
+  const metadata = JSON.stringify({
+    cover_image: plan.cover_image || null,
+    brand_logo: plan.brand_logo || null,
+    closing: meta.closing || {},
+    language: meta.language || sc.language || "EN"
+  });
+  const planPayload2 = {
+    lead_id: lead.id,
+    file_id: sc.leadCode,
+    trip_title: plan.trip_title,
+    client_name: sc.clientName,
+    start_date: startDate,
+    end_date: endDate,
+    pax: paxStr,
+    narrative: plan.narrative,
+    days: plan.days,
+    extra_instructions: metadata,
+    status: "draft",
+    version
+  };
+  const { data: existingPlanRow } = await supabase.from("travel_plans").select("id").eq("lead_id", lead.id).eq("version", version).order("updated_at", { ascending: false }).limit(1).maybeSingle();
+  const { error } = existingPlanRow ? await supabase.from("travel_plans").update(planPayload2).eq("id", existingPlanRow.id) : await supabase.from("travel_plans").insert(planPayload2);
+  if (error) throw new ToolError22(error.message);
+  const dateRange = startDate && endDate ? `${startDate} \u2014 ${endDate}` : startDate || "";
+  const proposalDays = plan.days.map((d) => ({
+    day_number: d.day_number,
+    date_label: d.date || `${DAY_LABEL[lang] || "Day"} ${d.day_number}`,
+    title: d.title,
+    subtitle: d.subtitle || "",
+    cover_image_url: d.images?.[0]?.url || "",
+    images: (d.images || []).map((img) => ({ url: img.url, caption: img.caption || "" })),
+    items: (d.bullets || []).map(bulletText),
+    accommodation: d.overnight ? { label: d.overnight, hotel_name: d.overnight, note: "" } : null,
+    map_url: d.mapUrl || ""
+  }));
+  const { data: existingProposal } = await supabase.from("proposals").select("id").eq("lead_id", lead.id).eq("version", version).maybeSingle();
+  const common = {
+    title: plan.trip_title,
+    client_name: sc.clientName,
+    date_range: dateRange,
+    participants: paxStr,
+    hero_image_url: plan.cover_image?.url || "",
+    brand_logo_url: plan.brand_logo || null,
+    summary_text: plan.narrative,
+    days: proposalDays,
+    language: lang,
+    total_value_eur: sc.totalPvpEur ?? null,
+    closing_terms: meta.closing || {}
+  };
+  if (existingProposal) {
+    const { error: upErr } = await supabase.from("proposals").update(common).eq("id", existingProposal.id);
+    if (upErr) throw new ToolError22(upErr.message);
+  } else {
+    const { error: insErr } = await supabase.from("proposals").insert({
+      ...common,
+      public_token: token(sc.leadCode, version),
+      lead_id: lead.id,
+      version,
+      map_stops: [],
+      status: "draft"
+    });
+    if (insErr) throw new ToolError22(insErr.message);
+  }
+}
+function planWarnings(plan) {
+  const w = [];
+  if (!plan.trip_title) w.push("Programme has no title");
+  if (!plan.narrative) w.push("Programme has no summary");
+  if (!plan.cover_image?.url) w.push("No cover image");
+  for (const d of plan.days) {
+    const n = d.day_number;
+    if (!d.images?.filter((i) => i?.url).length) w.push(`Day ${n} has no images`);
+    if (!d.mapUrl) w.push(`Day ${n} has no map`);
+    if (!d.overnight) w.push(`Day ${n} has no overnight stay`);
+    if (!(d.bullets || []).filter((b) => bulletText(b).trim()).length) w.push(`Day ${n} has no included items`);
+  }
+  return w;
+}
+async function planPayload(supabase, lead, version, plan) {
+  const { data: proposal } = await supabase.from("proposals").select("public_token, wetravel_checkout_url, total_value_eur, participants, date_range, language").eq("lead_id", lead.id).eq("version", version).maybeSingle();
+  const p = proposal;
+  return {
+    lead: leadLabel(lead),
+    lead_id: lead.id,
+    version,
+    title: plan.trip_title,
+    summary: plan.narrative,
+    language: p?.language ?? null,
+    participants: p?.participants ?? null,
+    date_range: p?.date_range ?? null,
+    total_value_eur: p?.total_value_eur ?? null,
+    itinerary_url: p?.public_token ? `${APP_ORIGIN}/proposal/${p.public_token}` : null,
+    booking_url: p?.wetravel_checkout_url ?? null,
+    days: plan.days.map((d) => ({
+      day_number: d.day_number,
+      date: d.date ?? null,
+      title: d.title,
+      tagline: d.subtitle ?? null,
+      items: (d.bullets || []).map(bulletText),
+      night_at: d.overnight ?? null,
+      map_url: d.mapUrl || null,
+      images: (d.images || []).filter((i) => i?.url).length
+    })),
+    warnings: planWarnings(plan)
+  };
+}
+
+// src/lib/mcp/tools/autofill-costing-from-plan.ts
+var autofill_costing_from_plan_default = defineTool19({
+  name: "autofill_costing_from_plan",
+  title: "Auto-fill costing from the travel plan",
+  description: "Build or complete the costing of a lead from its travel plan and the FSE protocols, exactly like the auto-import button in Custos. Existing lines keep their id and only empty rates are filled; nothing is deleted. Review the totals and margin afterwards.",
+  inputSchema: {
+    lead_id: z18.string().optional().describe("Lead uuid."),
+    lead_code: z18.string().optional().describe("Lead code such as YT5130."),
+    version: z18.number().int().optional().describe("Version to fill (default: LIVE version)."),
+    seed_missing_lines: z18.boolean().optional().describe("Create one costing line per programme item that has none yet (default true).")
+  },
+  annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false },
+  handler: async ({ lead_id, lead_code, version, seed_missing_lines }, ctx) => {
+    if (!ctx.isAuthenticated()) throw new ToolError23("Not authenticated");
+    const supabase = supabaseForUser(ctx);
+    const lead = await resolveLead(supabase, { lead_id, lead_code });
+    const ver = version ?? liveVersion(lead);
+    const { plan } = await loadPlan(supabase, lead, ver);
+    if (!plan.days.length) throw new ToolError23(`Lead ${leadLabel(lead)} has no travel plan on version ${ver} \u2014 run generate_travel_plan first`);
+    const days2 = await loadCosting(supabase, lead, ver);
+    const byDay = new Map(days2.map((d) => [d.day_number, d]));
+    const pax = Number(lead.pax ?? 2);
+    const paxChildren = Number(lead.pax_children ?? 0);
+    let seeded = 0;
+    if (seed_missing_lines !== false) {
+      for (const day of plan.days) {
+        const target = byDay.get(day.day_number) ?? { day_number: day.day_number, title: day.title || `Dia ${day.day_number}`, items: [] };
+        byDay.set(day.day_number, target);
+        const existing = new Set(target.items.map((i) => i.description.trim().toLowerCase()));
+        for (const bullet of day.bullets || []) {
+          const text = (typeof bullet === "string" ? bullet : bullet?.text || "").replace(/\*\*/g, "").trim();
+          if (!text || existing.has(text.toLowerCase())) continue;
+          target.items.push(
+            blankLine({ description: text, pricingType: "per_person", numAdults: pax, numChildren: paxChildren })
+          );
+          existing.add(text.toLowerCase());
+          seeded += 1;
+        }
+      }
+    }
+    const allDays = [...byDay.values()].sort((a, b) => a.day_number - b.day_number);
+    const flat = allDays.flatMap(
+      (d, dayIdx) => d.items.map((item, itemIdx) => ({ item, dayIdx, itemIdx, day: d.day_number }))
+    );
+    const toFill = flat.filter((f) => !f.item.priceAdults);
+    let filled = 0;
+    if (toFill.length) {
+      const { data, error } = await supabase.functions.invoke("auto-fulfill-budget", {
+        body: {
+          items: toFill.map((f) => ({ description: f.item.description, day: f.day, pricingType: f.item.pricingType })),
+          destination: String(lead.destination ?? "")
+        }
+      });
+      if (error) throw new ToolError23(error.message);
+      if (data?.error) throw new ToolError23(String(data.error));
+      for (const sug of data?.suggestions ?? []) {
+        const target = toFill[Number(sug.index)];
+        if (!target) continue;
+        const day = allDays[target.dayIdx];
+        day.items[target.itemIdx] = calcLine({
+          ...day.items[target.itemIdx],
+          supplier: sug.supplier || day.items[target.itemIdx].supplier,
+          priceAdults: sug.priceAdults ?? day.items[target.itemIdx].priceAdults,
+          pricingType: sug.pricingType || day.items[target.itemIdx].pricingType,
+          marginPercent: sug.marginPercent ?? day.items[target.itemIdx].marginPercent
+        });
+        filled += 1;
+      }
+    }
+    for (const day of allDays) await saveCostingDay(supabase, lead, ver, day);
+    const totals = costingTotals(allDays);
+    await auditLead(
+      supabase,
+      ctx,
+      lead,
+      "costing_autofilled",
+      { costing: { from: `${days2.flatMap((d) => d.items).length} lines`, to: `${flat.length} lines` } },
+      { version: ver, seeded, filled }
+    );
+    const payload = {
+      lead: leadLabel(lead),
+      lead_id: lead.id,
+      version: ver,
+      lines_created: seeded,
+      lines_priced: filled,
+      lines_still_without_price: allDays.flatMap((d) => d.items).filter((i) => !i.priceAdults).length,
+      totals,
+      margin_below_minimum: totals.pvp_eur > 0 && totals.margin_percent < totals.min_margin_percent
+    };
+    return { content: [{ type: "text", text: JSON.stringify(payload, null, 2) }], structuredContent: payload };
+  }
+});
+
+// src/lib/mcp/tools/get-operations.ts
+import { defineTool as defineTool20, ToolError as ToolError24 } from "npm:@lovable.dev/mcp-js@0.26.1";
+import { z as z19 } from "npm:zod@^3.25.76";
+import { BOOKING_OPTIONS, INVOICE_OPTIONS, PAYMENT_OPTIONS, normalizeBookingStatus, normalizeInvoiceStatus, normalizePaymentStatus } from "npm:@/components/leads/opsConstants";
+var get_operations_default = defineTool20({
+  name: "get_operations",
+  title: "Get operations board",
+  description: "Read the operations board of a lead: services per day with supplier/FSE, booking status, payment status, invoice status, schedule, pax, net value, and the operational trip briefing (pickup hotel, flights, on-site contacts, special requests).",
+  inputSchema: {
+    lead_id: z19.string().optional().describe("Lead uuid."),
+    lead_code: z19.string().optional().describe("Lead code such as YT5130.")
+  },
+  annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
+  handler: async ({ lead_id, lead_code }, ctx) => {
+    if (!ctx.isAuthenticated()) throw new ToolError24("Not authenticated");
+    const supabase = supabaseForUser(ctx);
+    const lead = await resolveLead(supabase, { lead_id, lead_code });
+    const { data, error } = await supabase.from("lead_operations").select("*").eq("lead_id", lead.id).order("day_number", { ascending: true }).order("sort_order", { ascending: true });
+    if (error) throw new ToolError24(error.message);
+    const services = (data ?? []).map((r) => ({
+      item_key: r.item_key,
+      day_number: r.day_number,
+      schedule_time: r.schedule_time,
+      service: r.activity_title,
+      supplier: r.supplier,
+      pax: r.pax,
+      net_value_eur: r.net_value,
+      real_cost_eur: r.real_cost,
+      booking_status: normalizeBookingStatus(r.booking_status),
+      payment_status: normalizePaymentStatus(r.payment_status),
+      invoice_status: normalizeInvoiceStatus(r.invoice_status),
+      invoice_file: r.invoice_file_name,
+      source: r.source
+    }));
+    const payload = {
+      lead: leadLabel(lead),
+      lead_id: lead.id,
+      trip_briefing: lead.trip_briefing ?? null,
+      services,
+      pending_bookings: services.filter((s) => s.booking_status !== "booked").length,
+      valid_statuses: {
+        booking: BOOKING_OPTIONS.map((o) => o.value),
+        payment: PAYMENT_OPTIONS.map((o) => o.value),
+        invoice: INVOICE_OPTIONS.map((o) => o.value)
+      }
+    };
+    return { content: [{ type: "text", text: JSON.stringify(payload, null, 2) }], structuredContent: payload };
+  }
+});
+
+// src/lib/mcp/tools/update-operation-item.ts
+import { defineTool as defineTool21, ToolError as ToolError25 } from "npm:@lovable.dev/mcp-js@0.26.1";
+import { z as z20 } from "npm:zod@^3.25.76";
+import { BOOKING_OPTIONS as BOOKING_OPTIONS2, INVOICE_OPTIONS as INVOICE_OPTIONS2, PAYMENT_OPTIONS as PAYMENT_OPTIONS2 } from "npm:@/components/leads/opsConstants";
+var values = (opts) => opts.map((o) => o.value);
+var update_operation_item_default = defineTool21({
+  name: "update_operation_item",
+  title: "Update an operations service",
+  description: "Update one service on the operations board of a lead: booking status, payment status, invoice status, schedule, supplier, pax, net value, the supplier confirmation number and notes. Uses the same states as the Opera\xE7\xF5es tab.",
+  inputSchema: {
+    lead_id: z20.string().optional().describe("Lead uuid."),
+    lead_code: z20.string().optional().describe("Lead code such as YT5130."),
+    item_key: z20.string().describe("Service key from get_operations."),
+    booking_status: z20.enum(["neutral", "sent", "booked"]).optional().describe("Booking state."),
+    payment_status: z20.enum(["neutral", "paid", "partially_paid", "monthly_account", "guide_to_pay", "not_paid"]).optional().describe("Payment state."),
+    invoice_status: z20.enum(["not_received", "guide_pickup", "received"]).optional().describe("Invoice state."),
+    schedule_time: z20.string().optional().describe("Service time, HH:MM."),
+    supplier: z20.string().optional().describe("Supplier / FSE name."),
+    pax: z20.number().int().min(0).optional().describe("Number of participants."),
+    net_value: z20.number().optional().describe("Agreed net value in EUR."),
+    confirmation_number: z20.string().optional().describe("Supplier booking confirmation reference."),
+    notes: z20.string().optional().describe("Operational note for this service.")
+  },
+  annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false },
+  handler: async (args, ctx) => {
+    if (!ctx.isAuthenticated()) throw new ToolError25("Not authenticated");
+    const { lead_id, lead_code, item_key, confirmation_number, notes, ...rest } = args;
+    const supabase = supabaseForUser(ctx);
+    const lead = await resolveLead(supabase, { lead_id, lead_code });
+    const { data: row, error: readErr } = await supabase.from("lead_operations").select("*").eq("lead_id", lead.id).eq("item_key", item_key).maybeSingle();
+    if (readErr) throw new ToolError25(readErr.message);
+    if (!row) {
+      const { data: keys } = await supabase.from("lead_operations").select("item_key").eq("lead_id", lead.id);
+      throw new ToolError25(
+        `Service "${item_key}" not found on ${leadLabel(lead)}. Valid keys: ${(keys ?? []).map((k) => k.item_key).join(", ") || "(no services yet)"}`
+      );
+    }
+    if (rest.booking_status && !values(BOOKING_OPTIONS2).includes(rest.booking_status)) {
+      throw new ToolError25(`Invalid booking_status. Valid: ${values(BOOKING_OPTIONS2).join(", ")}`);
+    }
+    if (rest.payment_status && !values(PAYMENT_OPTIONS2).includes(rest.payment_status)) {
+      throw new ToolError25(`Invalid payment_status. Valid: ${values(PAYMENT_OPTIONS2).join(", ")}`);
+    }
+    if (rest.invoice_status && !values(INVOICE_OPTIONS2).includes(rest.invoice_status)) {
+      throw new ToolError25(`Invalid invoice_status. Valid: ${values(INVOICE_OPTIONS2).join(", ")}`);
+    }
+    if (rest.schedule_time && !/^\d{2}:\d{2}(:\d{2})?$/.test(rest.schedule_time)) {
+      throw new ToolError25("schedule_time must be HH:MM");
+    }
+    const updates = {};
+    for (const [k, v] of Object.entries(rest)) if (v !== void 0) updates[k] = v;
+    if (confirmation_number !== void 0) updates.confirmation_number = confirmation_number;
+    if (notes !== void 0) updates.notes = notes;
+    const changes = {};
+    for (const key of Object.keys(updates)) changes[key] = { from: row[key] ?? null, to: updates[key] };
+    const { error } = await supabase.from("lead_operations").update({ ...updates, updated_at: (/* @__PURE__ */ new Date()).toISOString() }).eq("id", row.id);
+    if (error) throw new ToolError25(error.message);
+    await auditLead(supabase, ctx, lead, "operation_updated", changes, { item_key });
+    const payload = { lead: leadLabel(lead), lead_id: lead.id, item_key, updated_fields: changes };
+    return { content: [{ type: "text", text: JSON.stringify(payload, null, 2) }], structuredContent: payload };
+  }
+});
+
+// src/lib/mcp/tools/update-trip-briefing.ts
+import { defineTool as defineTool22, ToolError as ToolError26 } from "npm:@lovable.dev/mcp-js@0.26.1";
+import { z as z21 } from "npm:zod@^3.25.76";
+var update_trip_briefing_default = defineTool22({
+  name: "update_trip_briefing",
+  title: "Update the operational trip briefing",
+  description: "Store the operational briefing of a trip: pickup hotel, arrival and departure flights, on-site contacts, and special requests. Only the fields sent are changed; the others keep their current value. Read it back with get_operations.",
+  inputSchema: {
+    lead_id: z21.string().optional().describe("Lead uuid."),
+    lead_code: z21.string().optional().describe("Lead code such as YT5130."),
+    pickup_hotel: z21.string().optional().describe("Hotel or address where the guide picks the clients up."),
+    pickup_time: z21.string().optional().describe("Pickup time, HH:MM."),
+    arrival_flight: z21.string().optional().describe("Arrival flight, e.g. 'TP1234 LIS 12:40, 14 Mai'."),
+    departure_flight: z21.string().optional().describe("Departure flight."),
+    on_site_contacts: z21.string().optional().describe("Phone numbers / contacts on the ground."),
+    special_requests: z21.string().optional().describe("Dietary needs, mobility, celebrations, anything the guide must know."),
+    notes: z21.string().optional().describe("Free operational notes.")
+  },
+  annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false },
+  handler: async ({ lead_id, lead_code, ...fields }, ctx) => {
+    if (!ctx.isAuthenticated()) throw new ToolError26("Not authenticated");
+    const supabase = supabaseForUser(ctx);
+    const lead = await resolveLead(supabase, { lead_id, lead_code });
+    const current = lead.trip_briefing ?? {};
+    const patch = {};
+    for (const [k, v] of Object.entries(fields)) if (v !== void 0) patch[k] = v;
+    if (!Object.keys(patch).length) throw new ToolError26("Send at least one briefing field to update");
+    if (typeof patch.pickup_time === "string" && !/^\d{2}:\d{2}$/.test(patch.pickup_time)) {
+      throw new ToolError26("pickup_time must be HH:MM");
+    }
+    const next = { ...current, ...patch, updated_at: (/* @__PURE__ */ new Date()).toISOString() };
+    const { error } = await supabase.from("leads").update({ trip_briefing: next }).eq("id", lead.id);
+    if (error) throw new ToolError26(error.message);
+    const changes = {};
+    for (const key of Object.keys(patch)) changes[key] = { from: current[key] ?? null, to: patch[key] };
+    await auditLead(supabase, ctx, lead, "trip_briefing_updated", changes);
+    const payload = { lead: leadLabel(lead), lead_id: lead.id, trip_briefing: next };
+    return { content: [{ type: "text", text: JSON.stringify(payload, null, 2) }], structuredContent: payload };
+  }
+});
+
+// src/lib/mcp/tools/validate-lead.ts
+import { defineTool as defineTool23, ToolError as ToolError27 } from "npm:@lovable.dev/mcp-js@0.26.1";
+import { z as z22 } from "npm:zod@^3.25.76";
+var days = (from, to) => {
+  if (!from || !to) return null;
+  const a = new Date(from).getTime();
+  const b = new Date(to).getTime();
+  if (Number.isNaN(a) || Number.isNaN(b)) return null;
+  return Math.round((b - a) / 864e5) + 1;
+};
+var validate_lead_default = defineTool23({
+  name: "validate_lead",
+  title: "Validate a lead before the next stage",
+  description: "Checklist for one lead: required fields still missing, inconsistencies (dates vs number of days, pax vs costing, programme language vs client language, B2B without partner/logo), costing and margin health, and what is still needed before moving to the next pipeline stage.",
+  inputSchema: {
+    lead_id: z22.string().optional().describe("Lead uuid."),
+    lead_code: z22.string().optional().describe("Lead code such as YT5130."),
+    version: z22.number().int().optional().describe("Version to validate (default: LIVE version).")
+  },
+  annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
+  handler: async ({ lead_id, lead_code, version }, ctx) => {
+    if (!ctx.isAuthenticated()) throw new ToolError27("Not authenticated");
+    const supabase = supabaseForUser(ctx);
+    const lead = await resolveLead(supabase, { lead_id, lead_code });
+    const ver = version ?? liveVersion(lead);
+    const l = lead;
+    const missing = [];
+    const inconsistencies = [];
+    if (!l.client_name) missing.push("client_name");
+    if (!l.email) missing.push("email");
+    if (!l.phone) missing.push("phone");
+    if (!l.travel_dates) missing.push("start date");
+    if (!l.travel_end_date) missing.push("end date");
+    if (!Number(l.pax)) missing.push("pax (adults)");
+    if (!l.language) missing.push("language");
+    if (!l.destination) missing.push("destination");
+    if (!l.assigned_agents?.length) missing.push("assigned agent");
+    const span = days(l.travel_dates, l.travel_end_date);
+    if (span !== null && Number(l.number_of_days) && span !== Number(l.number_of_days)) {
+      inconsistencies.push(`Dates span ${span} days but number_of_days is ${l.number_of_days}`);
+    }
+    if (span !== null && span <= 0) inconsistencies.push("End date is not after the start date");
+    const { plan } = await loadPlan(supabase, lead, ver);
+    const { data: proposalRow } = await supabase.from("proposals").select("public_token, language, brand_logo_url").eq("lead_id", lead.id).eq("version", ver).maybeSingle();
+    const proposal = proposalRow;
+    const planDays = plan.days.length;
+    if (!planDays) missing.push("travel plan (no days yet)");
+    if (planDays && span !== null && planDays !== span) {
+      inconsistencies.push(`Travel plan has ${planDays} days but the dates span ${span} days`);
+    }
+    if (planDays && proposal?.language && l.language && String(proposal.language).toLowerCase() !== String(l.language).toLowerCase()) {
+      inconsistencies.push(`Programme language is ${proposal.language} but the client language is ${l.language}`);
+    }
+    const costing = await loadCosting(supabase, lead, ver);
+    const lines = costing.flatMap((d) => d.items);
+    const totals = costingTotals(costing);
+    if (!lines.length) missing.push("costing (no lines yet)");
+    const unpriced = lines.filter((i) => !i.priceAdults).length;
+    if (unpriced) inconsistencies.push(`${unpriced} costing lines without a net rate`);
+    const paxMismatch = lines.filter((i) => i.pricingType === "per_person" && i.numAdults !== Number(l.pax || 0));
+    if (paxMismatch.length) inconsistencies.push(`${paxMismatch.length} per-person costing lines do not use ${l.pax} adults`);
+    if (totals.pvp_eur > 0 && totals.margin_percent < totals.min_margin_percent) {
+      inconsistencies.push(`Margin ${totals.margin_percent}% is below the ${totals.min_margin_percent}% minimum`);
+    }
+    if (String(l.client_type || "").toUpperCase() === "B2B") {
+      if (!l.partner_id) missing.push("B2B partner");
+      if (!proposal?.brand_logo_url) missing.push("B2B logo on the proposal");
+    }
+    const deposited = await paymentsSummary(supabase, lead);
+    const nextStage = [];
+    if (missing.length || inconsistencies.length) nextStage.push("Fix the items above before sending to the client");
+    if (!proposal?.public_token) nextStage.push("Generate the digital itinerary link");
+    if (totals.requires_ceo_approval) nextStage.push(`Total above ${totals.ceo_threshold_eur} EUR \u2014 CEO approval required`);
+    if (!deposited) nextStage.push("No payment recorded yet \u2014 deposit needed before Operations");
+    const payload = {
+      lead: leadLabel(lead),
+      lead_id: lead.id,
+      version: ver,
+      stage: l.nethunt_stage ?? l.status,
+      ready: missing.length === 0 && inconsistencies.length === 0,
+      missing_fields: missing,
+      inconsistencies,
+      plan_warnings: planWarnings(plan),
+      costing: { ...totals, deposited_eur: deposited, outstanding_eur: Math.round((totals.pvp_eur - deposited) * 100) / 100 },
+      to_advance_stage: nextStage
+    };
+    return { content: [{ type: "text", text: JSON.stringify(payload, null, 2) }], structuredContent: payload };
+  }
+});
+
+// src/lib/mcp/tools/generate-travel-plan.ts
+import { defineTool as defineTool24, ToolError as ToolError29 } from "npm:@lovable.dev/mcp-js@0.26.1";
+import { z as z23 } from "npm:zod@^3.25.76";
+
+// src/lib/mcp/versions.ts
+import { ToolError as ToolError28 } from "npm:@lovable.dev/mcp-js@0.26.1";
+import { buildProposalToken } from "npm:@/lib/proposalVersion";
+import { GENERAL_FIELDS } from "npm:@/hooks/useLeadVersions";
+var pickGeneralData = (lead) => {
+  const out = {};
+  GENERAL_FIELDS.forEach((k) => {
+    out[k] = (lead ?? {})[k] ?? null;
+  });
+  return out;
+};
+async function createLeadVersion(supabase, lead, fromVersion) {
+  const leadId = lead.id;
+  const { data: versions } = await supabase.from("lead_versions").select("version").eq("lead_id", leadId);
+  const maxExisting = (versions ?? []).reduce((m, r) => Math.max(m, Number(r.version)), fromVersion);
+  const newVersion = maxExisting + 1;
+  const [planner, costing, plans] = await Promise.all([
+    supabase.from("lead_planner_data").select("*").eq("lead_id", leadId).eq("version", fromVersion),
+    supabase.from("lead_costing_data").select("*").eq("lead_id", leadId).eq("version", fromVersion),
+    supabase.from("travel_plans").select("*").eq("lead_id", leadId).eq("version", fromVersion)
+  ]);
+  const strip2 = (rows) => (rows ?? []).map(({ id: _id, created_at: _c, updated_at: _u, created_by: _b, ...rest }) => ({
+    ...rest,
+    lead_id: leadId,
+    version: newVersion
+  }));
+  const writes = await Promise.all([
+    supabase.from("lead_versions").insert({
+      lead_id: leadId,
+      version: newVersion,
+      name: `V${newVersion}`,
+      general_data: pickGeneralData(lead)
+    }),
+    strip2(planner.data).length ? supabase.from("lead_planner_data").insert(strip2(planner.data)) : Promise.resolve({ error: null }),
+    strip2(costing.data).length ? supabase.from("lead_costing_data").insert(strip2(costing.data)) : Promise.resolve({ error: null }),
+    strip2(plans.data).length ? supabase.from("travel_plans").insert(strip2(plans.data)) : Promise.resolve({ error: null })
+  ]);
+  const failed = writes.find((r) => r?.error);
+  if (failed && failed.error) throw new ToolError28(failed.error.message);
+  const { data: srcProposal } = await supabase.from("proposals").select("*").eq("lead_id", leadId).eq("version", fromVersion).maybeSingle();
+  if (srcProposal) {
+    const {
+      id: _pid,
+      created_at: _pc,
+      updated_at: _pu,
+      created_by: _pb,
+      public_token: _pt,
+      sent_at: _ps,
+      approved_at: _pa,
+      ...rest
+    } = srcProposal;
+    const { error: pErr } = await supabase.from("proposals").insert({
+      ...rest,
+      lead_id: leadId,
+      version: newVersion,
+      public_token: buildProposalToken(lead.yt_id || lead.lead_code || "ytp", newVersion),
+      status: "draft",
+      sent_at: null,
+      approved_at: null
+    });
+    if (pErr) throw new ToolError28(pErr.message);
+  }
+  const { error: upErr } = await supabase.from("leads").update({ active_version: newVersion }).eq("id", leadId);
+  if (upErr) throw new ToolError28(upErr.message);
+  return newVersion;
+}
+
+// src/lib/mcp/tools/generate-travel-plan.ts
+var generate_travel_plan_default = defineTool24({
+  name: "generate_travel_plan",
+  title: "Generate the travel plan with AI",
+  description: "Generate the day-by-day programme of a lead with the same AI generator used by 'Regenerar Tudo' in the Travel Planner. If the LIVE version already has a programme, a NEW version is created and becomes LIVE \u2014 the previous one stays readable, nothing is overwritten. Returns the programme plus the warnings to fix before sending it to the client.",
+  inputSchema: {
+    lead_id: z23.string().optional().describe("Lead uuid."),
+    lead_code: z23.string().optional().describe("Lead code such as YT5130."),
+    briefing: z23.string().optional().describe("Briefing / extra instructions for the AI (client wishes, pace, must-sees)."),
+    catalogue_products: z23.array(z23.string()).optional().describe("Catalogue product names to include in the programme."),
+    force_new_version: z23.boolean().optional().describe("Always create a new version, even if the live one is empty.")
+  },
+  annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
+  handler: async ({ lead_id, lead_code, briefing, catalogue_products, force_new_version }, ctx) => {
+    if (!ctx.isAuthenticated()) throw new ToolError29("Not authenticated");
+    const supabase = supabaseForUser(ctx);
+    const lead = await resolveLead(supabase, { lead_id, lead_code });
+    const l = lead;
+    const liveVer = liveVersion(lead);
+    const current = await loadPlan(supabase, lead, liveVer);
+    const newVersionNeeded = force_new_version === true || !current.isEmpty;
+    const targetVersion = newVersionNeeded ? await createLeadVersion(supabase, lead, liveVer) : liveVer;
+    const extra = [
+      briefing?.trim(),
+      catalogue_products?.length ? `Include these catalogue products: ${catalogue_products.join("; ")}` : null
+    ].filter(Boolean).join("\n\n");
+    const { data, error } = await supabase.functions.invoke("generate-travel-plan", {
+      body: {
+        leadData: {
+          yt_id: l.yt_id || lead.lead_code,
+          client_name: l.client_name,
+          destination: l.destination,
+          travel_dates: l.travel_dates,
+          travel_end_date: l.travel_end_date,
+          number_of_days: l.number_of_days,
+          pax: l.pax,
+          pax_children: l.pax_children,
+          language: l.language,
+          client_type: l.client_type,
+          travel_style: l.travel_style,
+          comfort_level: l.comfort_level,
+          budget_level: l.budget_level,
+          notes: l.notes,
+          request: l.request
+        },
+        extraInstructions: extra,
+        routeMapUrl: l.route_map_url ?? null,
+        routeDayMaps: l.route_day_maps ?? null
+      }
+    });
+    if (error) throw new ToolError29(error.message);
+    const result = data?.result;
+    if (data?.error) throw new ToolError29(String(data.error));
+    if (!result?.days?.length) throw new ToolError29("The AI generator returned no days \u2014 try again with a clearer briefing");
+    const plan = {
+      trip_title: String(result.trip_title ?? ""),
+      narrative: String(result.narrative ?? ""),
+      cover_image: result.cover_image ?? current.plan.cover_image ?? null,
+      brand_logo: result.brand_logo ?? current.plan.brand_logo ?? null,
+      days: result.days.map((d, i) => ({ ...d, day_number: d.day_number ?? i + 1 }))
+    };
+    await savePlan(supabase, lead, targetVersion, plan, current.meta, {
+      clientName: String(l.client_name ?? ""),
+      pax: Number(l.pax ?? 0),
+      paxChildren: Number(l.pax_children ?? 0),
+      language: String(l.language ?? "EN"),
+      travelDates: l.travel_dates,
+      travelEndDate: l.travel_end_date,
+      leadCode: String(l.yt_id || lead.lead_code)
+    });
+    await auditLead(
+      supabase,
+      ctx,
+      lead,
+      "travel_plan_generated",
+      { travel_plan: { from: `V${liveVer} (${current.plan.days.length} days)`, to: `V${targetVersion} (${plan.days.length} days)` } },
+      { new_version_created: newVersionNeeded }
+    );
+    const payload = {
+      ...await planPayload(supabase, lead, targetVersion, plan),
+      new_version_created: newVersionNeeded,
+      previous_version: liveVer,
+      live_version: targetVersion
+    };
+    return {
+      content: [{ type: "text", text: JSON.stringify(payload, null, 2) }],
+      structuredContent: payload
+    };
+  }
+});
+
+// src/lib/mcp/tools/update-travel-plan-day.ts
+import { defineTool as defineTool25, ToolError as ToolError30 } from "npm:@lovable.dev/mcp-js@0.26.1";
+import { z as z24 } from "npm:zod@^3.25.76";
+var update_travel_plan_day_default = defineTool25({
+  name: "update_travel_plan_day",
+  title: "Edit, add, remove or reorder a programme day",
+  description: "Edit one day of the travel plan (title, tagline, included items, night at, date, map), or add, remove and reorder days. Writes the same rows as the Travel Planner, so the digital itinerary and the PDF follow immediately.",
+  inputSchema: {
+    lead_id: z24.string().optional().describe("Lead uuid."),
+    lead_code: z24.string().optional().describe("Lead code such as YT5130."),
+    version: z24.number().int().optional().describe("Version to edit (default: LIVE version)."),
+    action: z24.enum(["update", "add", "remove", "move"]).describe("What to do with the day."),
+    day_number: z24.number().int().min(1).describe("Day to act on (for 'add', the position of the new day)."),
+    move_to: z24.number().int().min(1).optional().describe("New position when action is 'move'."),
+    title: z24.string().optional().describe("Day title."),
+    tagline: z24.string().optional().describe("Day subtitle / tagline."),
+    date: z24.string().optional().describe("Day date, YYYY-MM-DD."),
+    items: z24.array(z24.string()).optional().describe("Included items ('Itinerary & Included' bullets)."),
+    night_at: z24.string().optional().describe("Overnight stay (hotel / town)."),
+    map_url: z24.string().optional().describe("Google Maps route link for this day.")
+  },
+  annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
+  handler: async (args, ctx) => {
+    if (!ctx.isAuthenticated()) throw new ToolError30("Not authenticated");
+    const { lead_id, lead_code, version, action, day_number, move_to } = args;
+    const supabase = supabaseForUser(ctx);
+    const lead = await resolveLead(supabase, { lead_id, lead_code });
+    const l = lead;
+    const ver = version ?? liveVersion(lead);
+    const { plan, meta } = await loadPlan(supabase, lead, ver);
+    const days2 = [...plan.days].sort((a, b) => a.day_number - b.day_number);
+    const idx = days2.findIndex((d) => d.day_number === day_number);
+    const apply = (day) => ({
+      ...day,
+      title: args.title ?? day.title,
+      subtitle: args.tagline ?? day.subtitle,
+      date: args.date ?? day.date,
+      bullets: args.items ?? day.bullets,
+      overnight: args.night_at ?? day.overnight,
+      mapUrl: args.map_url ?? day.mapUrl
+    });
+    if (action === "update") {
+      if (idx === -1) throw new ToolError30(`Day ${day_number} does not exist. Existing days: ${days2.map((d) => d.day_number).join(", ") || "(none)"}`);
+      days2[idx] = apply(days2[idx]);
+    } else if (action === "add") {
+      const fresh = apply({ day_number, title: "", bullets: [] });
+      days2.splice(Math.min(Math.max(day_number - 1, 0), days2.length), 0, fresh);
+    } else if (action === "remove") {
+      if (idx === -1) throw new ToolError30(`Day ${day_number} does not exist`);
+      days2.splice(idx, 1);
+    } else {
+      if (idx === -1) throw new ToolError30(`Day ${day_number} does not exist`);
+      if (!move_to) throw new ToolError30("move_to is required when action is 'move'");
+      const [moved] = days2.splice(idx, 1);
+      days2.splice(Math.min(Math.max(move_to - 1, 0), days2.length), 0, moved);
+    }
+    const renumbered = days2.map((d, i) => ({ ...d, day_number: i + 1 }));
+    const next = { ...plan, days: renumbered };
+    await savePlan(supabase, lead, ver, next, meta, {
+      clientName: String(l.client_name ?? ""),
+      pax: Number(l.pax ?? 0),
+      paxChildren: Number(l.pax_children ?? 0),
+      language: String(l.language ?? "EN"),
+      travelDates: l.travel_dates,
+      travelEndDate: l.travel_end_date,
+      leadCode: String(l.yt_id || lead.lead_code)
+    });
+    await auditLead(supabase, ctx, lead, "travel_plan_day_updated", {
+      [`day_${day_number}`]: { from: `${plan.days.length} days`, to: `${renumbered.length} days (${action})` }
+    }, { version: ver, action });
+    const payload = { lead: leadLabel(lead), action, ...await planPayload(supabase, lead, ver, next) };
+    return { content: [{ type: "text", text: JSON.stringify(payload, null, 2) }], structuredContent: payload };
+  }
+});
+
+// src/lib/mcp/tools/update-travel-plan-header.ts
+import { defineTool as defineTool26, ToolError as ToolError31 } from "npm:@lovable.dev/mcp-js@0.26.1";
+import { z as z25 } from "npm:zod@^3.25.76";
+var update_travel_plan_header_default = defineTool26({
+  name: "update_travel_plan_header",
+  title: "Update the programme header",
+  description: "Update the header of the travel plan: title, subtitle/tagline, summary text and cover image. Same effect as editing the top of the Travel Planner, reflected in the digital itinerary and in the PDF.",
+  inputSchema: {
+    lead_id: z25.string().optional().describe("Lead uuid."),
+    lead_code: z25.string().optional().describe("Lead code such as YT5130."),
+    version: z25.number().int().optional().describe("Version to edit (default: LIVE version)."),
+    title: z25.string().optional().describe("Programme title."),
+    summary: z25.string().optional().describe("Programme summary / narrative."),
+    cover_image_url: z25.string().url().optional().describe("Cover image URL."),
+    cover_image_caption: z25.string().optional().describe("Cover image caption.")
+  },
+  annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false },
+  handler: async ({ lead_id, lead_code, version, title, summary, cover_image_url, cover_image_caption }, ctx) => {
+    if (!ctx.isAuthenticated()) throw new ToolError31("Not authenticated");
+    if (!title && !summary && !cover_image_url && !cover_image_caption) {
+      throw new ToolError31("Send at least one header field to update");
+    }
+    const supabase = supabaseForUser(ctx);
+    const lead = await resolveLead(supabase, { lead_id, lead_code });
+    const l = lead;
+    const ver = version ?? liveVersion(lead);
+    const { plan, meta } = await loadPlan(supabase, lead, ver);
+    const next = {
+      ...plan,
+      trip_title: title ?? plan.trip_title,
+      narrative: summary ?? plan.narrative,
+      cover_image: cover_image_url || cover_image_caption ? { url: cover_image_url ?? plan.cover_image?.url ?? "", caption: cover_image_caption ?? plan.cover_image?.caption } : plan.cover_image
+    };
+    await savePlan(supabase, lead, ver, next, meta, {
+      clientName: String(l.client_name ?? ""),
+      pax: Number(l.pax ?? 0),
+      paxChildren: Number(l.pax_children ?? 0),
+      language: String(l.language ?? "EN"),
+      travelDates: l.travel_dates,
+      travelEndDate: l.travel_end_date,
+      leadCode: String(l.yt_id || lead.lead_code)
+    });
+    await auditLead(supabase, ctx, lead, "travel_plan_header_updated", {
+      title: { from: plan.trip_title, to: next.trip_title },
+      summary: { from: plan.narrative ? `${plan.narrative.slice(0, 60)}\u2026` : null, to: next.narrative ? `${next.narrative.slice(0, 60)}\u2026` : null },
+      cover_image: { from: plan.cover_image?.url ?? null, to: next.cover_image?.url ?? null }
+    }, { version: ver });
+    const payload = { lead: leadLabel(lead), ...await planPayload(supabase, lead, ver, next) };
+    return { content: [{ type: "text", text: JSON.stringify(payload, null, 2) }], structuredContent: payload };
+  }
+});
+
+// src/lib/mcp/tools/fill-travel-plan-images.ts
+import { defineTool as defineTool27, ToolError as ToolError32 } from "npm:@lovable.dev/mcp-js@0.26.1";
+import { z as z26 } from "npm:zod@^3.25.76";
+var fill_travel_plan_images_default = defineTool27({
+  name: "fill_travel_plan_images",
+  title: "Fill programme images",
+  description: "Fill the missing images of the programme (cover and each day) with the same image search used by 'Preencher Imagens (AI)' in the Travel Planner. Days that already have images are left untouched unless overwrite is set.",
+  inputSchema: {
+    lead_id: z26.string().optional().describe("Lead uuid."),
+    lead_code: z26.string().optional().describe("Lead code such as YT5130."),
+    version: z26.number().int().optional().describe("Version to fill (default: LIVE version)."),
+    images_per_day: z26.number().int().min(1).max(3).optional().describe("Images per day (default 2)."),
+    overwrite: z26.boolean().optional().describe("Replace images that already exist (default false).")
+  },
+  annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: true },
+  handler: async ({ lead_id, lead_code, version, images_per_day, overwrite }, ctx) => {
+    if (!ctx.isAuthenticated()) throw new ToolError32("Not authenticated");
+    const supabase = supabaseForUser(ctx);
+    const lead = await resolveLead(supabase, { lead_id, lead_code });
+    const l = lead;
+    const ver = version ?? liveVersion(lead);
+    const count = images_per_day ?? 2;
+    const { plan, meta } = await loadPlan(supabase, lead, ver);
+    if (!plan.days.length) throw new ToolError32(`Lead ${leadLabel(lead)} has no travel plan on version ${ver}`);
+    const search = async (query, n) => {
+      const { data, error } = await supabase.functions.invoke("search-destination-images", {
+        body: { query, count: n, mode: "search" }
+      });
+      if (error) return [];
+      return (data?.images ?? []).filter((i) => i?.url).slice(0, n).map((i) => ({ url: i.url, caption: i.caption || query }));
+    };
+    const destination = String(l.destination ?? "Portugal");
+    let filledDays = 0;
+    const failures = [];
+    if (overwrite || !plan.cover_image?.url) {
+      const cover = await search(`${plan.trip_title || destination} Portugal landscape`, 1);
+      if (cover[0]) plan.cover_image = cover[0];
+      else failures.push("cover image");
+    }
+    for (const day of plan.days) {
+      const has = (day.images ?? []).filter((i) => i?.url);
+      if (!overwrite && has.length >= count) continue;
+      const found = await search(`${day.title || destination} ${destination} Portugal`, count);
+      if (!found.length) {
+        failures.push(`Day ${day.day_number}`);
+        continue;
+      }
+      day.images = overwrite ? found : [...has, ...found].slice(0, count);
+      filledDays += 1;
+    }
+    await savePlan(supabase, lead, ver, plan, meta, {
+      clientName: String(l.client_name ?? ""),
+      pax: Number(l.pax ?? 0),
+      paxChildren: Number(l.pax_children ?? 0),
+      language: String(l.language ?? "EN"),
+      travelDates: l.travel_dates,
+      travelEndDate: l.travel_end_date,
+      leadCode: String(l.yt_id || lead.lead_code)
+    });
+    await auditLead(supabase, ctx, lead, "travel_plan_images_filled", {
+      images: { from: "missing", to: `${filledDays} days filled` }
+    }, { version: ver });
+    const payload = {
+      lead: leadLabel(lead),
+      days_filled: filledDays,
+      days_without_images: failures,
+      ...await planPayload(supabase, lead, ver, plan)
+    };
+    return { content: [{ type: "text", text: JSON.stringify(payload, null, 2) }], structuredContent: payload };
+  }
+});
+
+// src/lib/mcp/tools/request-payment-link.ts
+import { defineTool as defineTool28, ToolError as ToolError33 } from "npm:@lovable.dev/mcp-js@0.26.1";
+import { z as z27 } from "npm:zod@^3.25.76";
+var KINDS = {
+  deposit_25: 0.25,
+  deposit_50: 0.5,
+  full: 1
+};
+var request_payment_link_default = defineTool28({
+  name: "request_payment_link",
+  title: "Request a payment link (human approval required)",
+  description: "Propose a WeTravel payment link for a lead. The link is NOT created here: the request is placed in the 'Aprova\xE7\xF5es AI' queue with the amount, deposit and description. When a person approves it, the existing 'Criar link de pagamento' logic runs and the link is saved on the lead. Amounts default to the base selling price (optionals excluded), as in the UI.",
+  inputSchema: {
+    lead_id: z27.string().optional().describe("Lead uuid."),
+    lead_code: z27.string().optional().describe("Lead code such as YT5130."),
+    kind: z27.enum(["deposit_25", "deposit_50", "full", "optionals", "custom"]).describe("What to charge: 25% deposit, 50% deposit, full amount, the optionals, or a custom amount."),
+    amount_eur: z27.number().positive().optional().describe("Amount in EUR \u2014 required for 'custom', otherwise computed."),
+    description: z27.string().optional().describe("Description shown to the client on the checkout page.")
+  },
+  annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false },
+  handler: async ({ lead_id, lead_code, kind, amount_eur, description }, ctx) => {
+    if (!ctx.isAuthenticated()) throw new ToolError33("Not authenticated");
+    const supabase = supabaseForUser(ctx);
+    const lead = await resolveLead(supabase, { lead_id, lead_code });
+    const l = lead;
+    const ver = liveVersion(lead);
+    const totals = costingTotals(await loadCosting(supabase, lead, ver));
+    let amount = amount_eur ?? 0;
+    if (kind === "custom") {
+      if (!amount_eur) throw new ToolError33("amount_eur is required when kind is 'custom'");
+    } else if (kind === "optionals") {
+      amount = totals.optionals_pvp_eur;
+      if (!amount) throw new ToolError33("This lead has no optional lines in the costing");
+    } else {
+      if (!totals.pvp_eur) throw new ToolError33("The costing has no selling price yet \u2014 fill the costing first");
+      amount = Math.round(totals.pvp_eur * KINDS[kind] * 100) / 100;
+    }
+    const { data: proposal } = await supabase.from("proposals").select("id, title").eq("lead_id", lead.id).eq("version", ver).maybeSingle();
+    const title = `${leadLabel(lead)} \xB7 ${l.client_name} \u2014 ${kind === "custom" ? "montante personalizado" : kind === "optionals" ? "opcionais" : kind.replace("_", " ")}`;
+    const { item, created } = await enqueueAction(supabase, ctx, lead, {
+      type: "payment_link",
+      title,
+      subtitle: `${amount.toFixed(2)} EUR`,
+      idempotencyKey: `${kind}:${amount.toFixed(2)}`,
+      payload: {
+        kind,
+        amount_eur: amount,
+        amount_cents: Math.round(amount * 100),
+        currency: "EUR",
+        deposit_cents: kind === "deposit_25" || kind === "deposit_50" ? Math.round(amount * 100) : null,
+        description: description ?? proposal?.title ?? l.destination ?? "Your Tours Portugal",
+        proposal_id: proposal?.id ?? null,
+        trip_ref: leadLabel(lead),
+        start_date: l.travel_dates ?? null,
+        end_date: l.travel_end_date ?? null,
+        total_pvp_eur: totals.pvp_eur,
+        requires_ceo_approval: totals.requires_ceo_approval
+      }
+    });
+    if (created) {
+      await auditLead(supabase, ctx, lead, "payment_link_requested", {
+        payment_link: { from: null, to: `${amount.toFixed(2)} EUR (${kind}) \u2014 awaiting human approval` }
+      }, { approval_id: item.id });
+    }
+    const payload = {
+      approval_id: item.id,
+      already_queued: !created,
+      status: item.status,
+      lead: leadLabel(lead),
+      proposed_amount_eur: amount,
+      kind,
+      requires_ceo_approval: totals.requires_ceo_approval,
+      note: "Nothing was created on WeTravel. A human must approve this item in 'Aprova\xE7\xF5es AI'."
+    };
+    return { content: [{ type: "text", text: JSON.stringify(payload, null, 2) }], structuredContent: payload };
+  }
+});
+
+// src/lib/mcp/tools/draft-fse-requests.ts
+import { defineTool as defineTool29, ToolError as ToolError34 } from "npm:@lovable.dev/mcp-js@0.26.1";
+import { z as z28 } from "npm:zod@^3.25.76";
+import { normalizeBookingStatus as normalizeBookingStatus2 } from "npm:@/components/leads/opsConstants";
+import { eur as eur2 } from "npm:@/lib/money";
+var ptDate = (d) => {
+  if (!d) return "a confirmar";
+  const dt = new Date(d);
+  return Number.isNaN(dt.getTime()) ? String(d) : dt.toLocaleDateString("pt-PT");
+};
+var draft_fse_requests_default = defineTool29({
+  name: "draft_fse_requests",
+  title: "Draft supplier (FSE) booking requests \u2014 human approval required",
+  description: "Draft the Portuguese availability/booking request emails to each supplier (FSE) of a lead, in the format the TCC already uses and with the correct YT reference. One queue item per supplier is created in 'Aprova\xE7\xF5es AI'; no email is sent until a human approves it.",
+  inputSchema: {
+    lead_id: z28.string().optional().describe("Lead uuid."),
+    lead_code: z28.string().optional().describe("Lead code such as YT5130."),
+    only_pending: z28.boolean().optional().describe("Only suppliers whose services are not booked yet (default true).")
+  },
+  annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false },
+  handler: async ({ lead_id, lead_code, only_pending }, ctx) => {
+    if (!ctx.isAuthenticated()) throw new ToolError34("Not authenticated");
+    const supabase = supabaseForUser(ctx);
+    const lead = await resolveLead(supabase, { lead_id, lead_code });
+    const l = lead;
+    const ref = leadLabel(lead);
+    const ver = liveVersion(lead);
+    const { data: opsRows } = await supabase.from("lead_operations").select("*").eq("lead_id", lead.id).order("day_number", { ascending: true });
+    const services = (opsRows ?? []).map((r) => ({
+      supplier: String(r.supplier ?? "").trim(),
+      day: Number(r.day_number ?? 0),
+      title: String(r.activity_title ?? ""),
+      pax: Number(r.pax ?? l.pax ?? 0),
+      net: Number(r.net_value ?? 0),
+      time: r.schedule_time ?? null,
+      booked: normalizeBookingStatus2(r.booking_status) === "booked"
+    }));
+    if (!services.length) {
+      const costing = await loadCosting(supabase, lead, ver);
+      for (const day of costing) {
+        for (const item of day.items) {
+          if (!item.supplier || item.status === "eliminar") continue;
+          services.push({
+            supplier: item.supplier.trim(),
+            day: day.day_number,
+            title: item.description,
+            pax: item.numAdults + item.numChildren || Number(l.pax ?? 0),
+            net: item.netTotal,
+            time: null,
+            booked: false
+          });
+        }
+      }
+    }
+    const usable = services.filter((s) => s.supplier && (only_pending === false || !s.booked));
+    if (!usable.length) throw new ToolError34(`No pending supplier services found on ${ref}`);
+    const bySupplier = /* @__PURE__ */ new Map();
+    for (const s of usable) bySupplier.set(s.supplier, [...bySupplier.get(s.supplier) ?? [], s]);
+    const { data: suppliers } = await supabase.from("suppliers").select("name, email");
+    const emailOf = (name) => (suppliers ?? []).find((x) => String(x.name ?? "").trim().toLowerCase() === name.toLowerCase())?.email ?? null;
+    const items = [];
+    for (const [supplier, list] of bySupplier) {
+      const lines = list.map(
+        (s) => `<li><strong>Dia ${s.day}</strong>${s.time ? ` \xB7 ${s.time}` : ""} \u2014 ${s.title} \xB7 ${s.pax} pax${s.net ? ` \xB7 net previsto ${eur2(s.net)}` : ""}</li>`
+      ).join("\n");
+      const subject = `${ref} \xB7 Pedido de disponibilidade \u2014 ${ptDate(l.travel_dates)} a ${ptDate(l.travel_end_date)}`;
+      const html = `<div style="font-family:'Trebuchet MS',sans-serif;font-size:14px;line-height:1.6;color:#0a2540">
+<p>Bom dia,</p>
+<p>Vimos por este meio pedir <strong>disponibilidade e confirma\xE7\xE3o</strong> para o seguinte programa:</p>
+<p><strong>Refer\xEAncia:</strong> ${ref}<br/>
+<strong>Datas:</strong> ${ptDate(l.travel_dates)} a ${ptDate(l.travel_end_date)}<br/>
+<strong>Participantes:</strong> ${l.pax ?? "?"} adultos${l.pax_children ? ` + ${l.pax_children} crian\xE7as` : ""}</p>
+<p><strong>Servi\xE7os pedidos:</strong></p>
+<ul>
+${lines}
+</ul>
+<p>Agradecemos a confirma\xE7\xE3o com o n\xFAmero de reserva e as condi\xE7\xF5es aplic\xE1veis.</p>
+<p>Obrigado e bom trabalho,<br/><strong>Your Tours Portugal</strong></p>
+</div>`;
+      const { item, created } = await enqueueAction(supabase, ctx, lead, {
+        type: "fse_email",
+        title: `${ref} \xB7 Pedido FSE \u2014 ${supplier}`,
+        subtitle: `${list.length} servi\xE7o(s)`,
+        idempotencyKey: `fse:${supplier.toLowerCase()}:${list.map((s) => `${s.day}-${s.title}`).join("|")}`,
+        payload: {
+          supplier,
+          to: emailOf(supplier),
+          subject,
+          html,
+          services: list,
+          missing_email: !emailOf(supplier)
+        }
+      });
+      items.push({ approval_id: item.id, supplier, to: emailOf(supplier), services: list.length, already_queued: !created });
+    }
+    await auditLead(supabase, ctx, lead, "fse_requests_drafted", {
+      fse_requests: { from: null, to: `${items.length} supplier email(s) queued for approval` }
+    });
+    const payload = {
+      lead: ref,
+      queued: items.length,
+      items,
+      suppliers_without_email: items.filter((i) => !i.to).map((i) => i.supplier),
+      note: "No email was sent. Each item must be approved in 'Aprova\xE7\xF5es AI'."
+    };
+    return { content: [{ type: "text", text: JSON.stringify(payload, null, 2) }], structuredContent: payload };
+  }
+});
+
+// src/lib/mcp/tools/draft-client-email.ts
+import { defineTool as defineTool30, ToolError as ToolError35 } from "npm:@lovable.dev/mcp-js@0.26.1";
+import { z as z29 } from "npm:zod@^3.25.76";
+var TEMPLATE = {
+  proposal: "sales_proposal",
+  first_draft: "sales_first_contact",
+  follow_up: "sales_followup_d2",
+  payment_request: "sales_proposal",
+  confirmation: "ops_client_briefing",
+  custom: "sales_proposal"
+};
+var draft_client_email_default = defineTool30({
+  name: "draft_client_email",
+  title: "Draft a client email \u2014 human approval required",
+  description: "Draft a client email with the AI Email Composer (house style, clickable cover, day-by-day, Book Now), optionally attaching the travel plan PDF. The email is placed in the 'Aprova\xE7\xF5es AI' queue: nothing is sent until a human approves it, and it is then sent from reservas@yourtours.pt and logged in Comunica\xE7\xF5es and NetHunt.",
+  inputSchema: {
+    lead_id: z29.string().optional().describe("Lead uuid."),
+    lead_code: z29.string().optional().describe("Lead code such as YT5130."),
+    purpose: z29.enum(["proposal", "first_draft", "follow_up", "payment_request", "confirmation", "custom"]).describe("What the email is for."),
+    notes: z29.string().optional().describe("Notes for the AI: what to emphasise, what changed, tone hints."),
+    language: z29.string().optional().describe("Email language (default: the client language on the lead)."),
+    attach_travel_plan_pdf: z29.boolean().optional().describe("Attach the travel plan PDF (default false)."),
+    cc: z29.array(z29.string().email()).optional().describe("Cc recipients."),
+    bcc: z29.array(z29.string().email()).optional().describe("Bcc recipients.")
+  },
+  annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: true },
+  handler: async ({ lead_id, lead_code, purpose, notes, language, attach_travel_plan_pdf, cc, bcc }, ctx) => {
+    if (!ctx.isAuthenticated()) throw new ToolError35("Not authenticated");
+    const supabase = supabaseForUser(ctx);
+    const lead = await resolveLead(supabase, { lead_id, lead_code });
+    const l = lead;
+    const ref = leadLabel(lead);
+    const ver = liveVersion(lead);
+    if (!l.email) throw new ToolError35(`Lead ${ref} has no client email address`);
+    const { plan, meta } = await loadPlan(supabase, lead, ver);
+    const { data: proposal } = await supabase.from("proposals").select("public_token, wetravel_checkout_url, title, total_value_eur").eq("lead_id", lead.id).eq("version", ver).maybeSingle();
+    const { data, error } = await supabase.functions.invoke("generate-email", {
+      body: {
+        templateKey: TEMPLATE[purpose],
+        leadContext: {
+          ...l,
+          language: language ?? l.language,
+          programme_title: plan.trip_title,
+          programme_summary: plan.narrative,
+          itinerary_url: proposal?.public_token ? `https://yourtoursportugal.lovable.app/proposal/${proposal.public_token}` : null,
+          booking_url: proposal?.wetravel_checkout_url ?? null,
+          senderName: "Yorick Viche"
+        },
+        customNotes: [purpose === "custom" ? null : `Purpose: ${purpose}`, notes].filter(Boolean).join("\n")
+      }
+    });
+    if (error) throw new ToolError35(error.message);
+    const email = data?.email;
+    if (!email?.body) throw new ToolError35("The email generator returned no content \u2014 try again with clearer notes");
+    const attachments = [];
+    const warnings = planWarnings(plan);
+    if (attach_travel_plan_pdf) {
+      if (!plan.days.length) throw new ToolError35(`Lead ${ref} has no travel plan to attach on version ${ver}`);
+      const pdf = await renderTravelPlanPdf(supabase, lead, ver, plan, meta);
+      const stored = await storeTravelPlanPdf(supabase, lead, pdf);
+      attachments.push({ filename: stored.file_name, path: stored.storage_path, signed_url: stored.signed_url, pages: pdf.pages });
+    }
+    const { item, created } = await enqueueAction(supabase, ctx, lead, {
+      type: "client_email",
+      title: `${ref} \xB7 ${l.client_name} \u2014 ${email.subject}`,
+      subtitle: purpose,
+      idempotencyKey: `client:${purpose}:${email.subject}`,
+      payload: {
+        to: l.email,
+        cc: cc ?? [],
+        bcc: bcc ?? [],
+        subject: email.subject,
+        html: email.body,
+        purpose,
+        language: language ?? l.language ?? "EN",
+        attachments,
+        from: "reservas@yourtours.pt"
+      }
+    });
+    if (created) {
+      await auditLead(supabase, ctx, lead, "client_email_drafted", {
+        client_email: { from: null, to: `${email.subject} \u2014 awaiting human approval` }
+      }, { approval_id: item.id, purpose });
+    }
+    const payload = {
+      approval_id: item.id,
+      already_queued: !created,
+      lead: ref,
+      to: l.email,
+      subject: email.subject,
+      attachments: attachments.map((a) => a.filename),
+      programme_warnings: warnings,
+      note: "No email was sent. Approve it in 'Aprova\xE7\xF5es AI' to send from reservas@yourtours.pt."
+    };
+    return { content: [{ type: "text", text: JSON.stringify(payload, null, 2) }], structuredContent: payload };
+  }
+});
+
+// src/lib/mcp/tools/import-lead-ai.ts
+import { defineTool as defineTool31, ToolError as ToolError36 } from "npm:@lovable.dev/mcp-js@0.26.1";
+import { z as z30 } from "npm:zod@^3.25.76";
+var SOURCES = { direct: "direct", site: "website", ota: "ota", b2b_partner: "b2b" };
+var toDate = (s) => {
+  if (!s) return null;
+  const d = new Date(s);
+  return Number.isNaN(d.getTime()) ? null : d;
+};
+var import_lead_ai_default = defineTool31({
+  name: "import_lead_ai",
+  title: "Create a lead from a client email (AI Import)",
+  description: "Create a new lead from the raw client request, using the same AI extraction as 'Nova Lead \u2192 AI Import'. Assigns the next YT code and starts at 'SALES \xB7 New Lead'. Deduplicates: if a lead with the same client email and overlapping dates exists, nothing is created and that lead is returned with duplicate=true.",
+  inputSchema: {
+    raw_text: z30.string().min(20).describe("Full client email / request text."),
+    source: z30.enum(["direct", "site", "ota", "b2b_partner"]).describe("Where the request came from."),
+    sender_email: z30.string().email().optional().describe("Sender email (used when the text has none)."),
+    gmail_thread_id: z30.string().optional().describe("Gmail message/thread id, stored in the notes."),
+    language: z30.string().optional().describe("Client language, e.g. EN, PT, FR.")
+  },
+  annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false },
+  handler: async ({ raw_text, source, sender_email, gmail_thread_id, language }, ctx) => {
+    if (!ctx.isAuthenticated()) throw new ToolError36("Not authenticated");
+    const supabase = supabaseForUser(ctx);
+    const { data, error } = await supabase.functions.invoke("parse-lead-email", { body: { emailText: raw_text } });
+    if (error) throw new ToolError36(`AI extraction failed: ${error.message}`);
+    const x = data?.extracted ?? {};
+    const email = String(x.email || sender_email || "").trim().toLowerCase();
+    const start = x.travelDates || null;
+    const end = x.travelEndDate || null;
+    if (email) {
+      const { data: same } = await supabase.from("leads").select("id, lead_code, yt_id, client_name, travel_dates, travel_end_date, nethunt_record_id").ilike("email", email);
+      const s = toDate(start), e = toDate(end) ?? s;
+      const dup = (same ?? []).find((r) => {
+        const rs = toDate(r.travel_dates), re = toDate(r.travel_end_date) ?? rs;
+        if (!s || !rs) return !s && !rs;
+        return s <= re && rs <= e;
+      });
+      if (dup) {
+        const payload2 = {
+          duplicate: true,
+          id: dup.id,
+          lead_code: dup.yt_id || dup.lead_code,
+          url: leadUrl(dup),
+          nethunt_record_id: dup.nethunt_record_id,
+          note: "A lead with this client email and overlapping dates already exists \u2014 nothing was created."
+        };
+        return { content: [{ type: "text", text: JSON.stringify(payload2, null, 2) }], structuredContent: payload2 };
+      }
+    }
+    const { data: codes } = await supabase.from("leads").select("yt_id").not("yt_id", "is", null);
+    const max = Math.max(0, ...(codes ?? []).map((r) => Number(String(r.yt_id).replace(/\D/g, "").slice(-4)) || 0));
+    const ytId = `YT${max + 1}`;
+    let nethuntId = null;
+    if (email) {
+      const { data: linked } = await supabase.from("leads").select("nethunt_record_id").ilike("email", email).not("nethunt_record_id", "is", null).limit(1);
+      nethuntId = linked?.[0]?.nethunt_record_id ?? null;
+    }
+    const notes = [x.request, x.preferences, gmail_thread_id ? `Gmail: ${gmail_thread_id}` : null].filter(Boolean).join("\n");
+    const row = {
+      yt_id: ytId,
+      client_type: source === "b2b_partner" ? "B2B" : "B2C",
+      client_name: x.clientName || email || "Cliente (AI Import)",
+      email,
+      phone: x.phone || "",
+      destination: Array.isArray(x.destination) ? x.destination.join(", ") : x.destination || "A definir",
+      travel_dates: start || "A definir",
+      travel_end_date: end || "",
+      number_of_days: Number(x.numberOfDays) || 0,
+      dates_type: x.datesType || "estimated",
+      pax: Number(x.pax) || 0,
+      status: "new",
+      nethunt_stage: "SALES - New Lead",
+      source: SOURCES[source],
+      budget_level: x.budget || "\u20AC\u20AC",
+      sales_owner: "Yorick",
+      notes,
+      travel_style: x.travelStyle || "",
+      comfort_level: x.comfortLevel || "",
+      language: language || x.language || "EN",
+      nethunt_record_id: nethuntId
+    };
+    const { data: created, error: insErr } = await supabase.from("leads").insert(row).select().single();
+    if (insErr) throw new ToolError36(insErr.message);
+    const lead = created;
+    await auditLead(supabase, ctx, lead, "lead_created", { lead: { from: null, to: ytId } }, { source, gmail_thread_id });
+    const required = ["clientName", "email", "travelDates", "pax", "destination"];
+    const payload = {
+      duplicate: false,
+      id: lead.id,
+      lead_code: ytId,
+      url: leadUrl(lead),
+      stage: "SALES \xB7 New Lead",
+      extracted: x,
+      missing_fields: required.filter((k) => !x[k] && !(k === "email" && email)),
+      nethunt_record_id: nethuntId,
+      nethunt_note: nethuntId ? "Linked to the client's existing NetHunt record" : "Not linked \u2014 create/link the NetHunt record in the TCC"
+    };
+    return { content: [{ type: "text", text: JSON.stringify(payload, null, 2) }], structuredContent: payload };
+  }
+});
+
 // src/lib/mcp/index.ts
 var projectRef = "jufqscczzmioauzkqztj";
 var mcp_default = defineMcp({
   name: "your-travel-2-0",
   title: "Your Travel 2.0",
-  version: "0.2.0",
-  instructions: "Operations tools for Your Tours Portugal (TCC). Read the pipeline with `list_leads` / `get_lead`, the programme with `get_travel_plan`, departures with `list_upcoming_trips`, and follow-up with `list_tasks` / `create_task` / `update_task`. Prepare sales files with `update_lead_stage` (stages from `list_lead_stages`), `assign_lead_agents`, `update_lead_general_data`, `add_lead_note` and `export_travel_plan_pdf`. Leads accept the everyday code format such as YT5130. Every write is logged in the lead history as 'AI agent (MCP)' and mirrored to NetHunt when the lead is linked. These tools never send emails, never create payment links and never delete leads or versions \u2014 those stay human-only.",
+  version: "0.3.0",
+  instructions: "Operations tools for Your Tours Portugal (TCC). Read the pipeline with `list_leads` / `get_lead`, the programme with `get_travel_plan`, departures with `list_upcoming_trips`, and follow-up with `list_tasks` / `create_task` / `update_task`. Prepare sales files with `update_lead_stage` (stages from `list_lead_stages`), `assign_lead_agents`, `update_lead_general_data`, `add_lead_note` and `export_travel_plan_pdf`. Leads accept the everyday code format such as YT5130. Every write is logged in the lead history as 'AI agent (MCP)' and mirrored to NetHunt when the lead is linked. These tools never send emails, never create payment links and never delete leads or versions. Client emails, supplier emails and payment links are only proposed into the 'Aprova\xE7\xF5es AI' queue (list_pending_approvals / get_approval_status); a person approves before anything is executed. Create leads with `import_lead_ai`, check them with `validate_lead`, build the programme with `generate_travel_plan` and the update_travel_plan_* tools, and the budget with the costing tools.",
   auth: auth.oauth.issuer({
     issuer: `https://${projectRef}.supabase.co/auth/v1`,
     acceptedAudiences: "authenticated"
@@ -1187,7 +2849,25 @@ var mcp_default = defineMcp({
     list_upcoming_trips_default,
     list_tasks_default,
     create_task_default,
-    update_task_default
+    update_task_default,
+    list_pending_approvals_default,
+    get_approval_status_default,
+    get_costing_default,
+    upsert_costing_lines_default,
+    remove_costing_line_default,
+    autofill_costing_from_plan_default,
+    get_operations_default,
+    update_operation_item_default,
+    update_trip_briefing_default,
+    validate_lead_default,
+    generate_travel_plan_default,
+    update_travel_plan_day_default,
+    update_travel_plan_header_default,
+    fill_travel_plan_images_default,
+    request_payment_link_default,
+    draft_fse_requests_default,
+    draft_client_email_default,
+    import_lead_ai_default
   ]
 });
 
