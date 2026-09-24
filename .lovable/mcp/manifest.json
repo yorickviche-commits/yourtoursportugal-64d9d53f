@@ -12,7 +12,7 @@
   "mcp": {
     "server": {
       "name": "your-travel-2-0",
-      "version": "0.2.0",
+      "version": "0.3.0",
       "title": "Your Travel 2.0"
     },
     "tools": [
@@ -542,6 +542,918 @@
           },
           "required": [
             "task_id"
+          ],
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "list_pending_approvals",
+        "title": "List AI approval queue",
+        "description": "List the actions waiting for human approval in the TCC (client emails, supplier/FSE emails, payment links). Agents propose these actions; a person approves, edits or rejects them in the 'Aprovações AI' page and only then are they executed.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "status": {
+              "type": "string",
+              "enum": [
+                "pending",
+                "approved",
+                "rejected",
+                "executed",
+                "failed"
+              ],
+              "description": "Filter by status (default: pending)."
+            },
+            "type": {
+              "type": "string",
+              "enum": [
+                "client_email",
+                "fse_email",
+                "payment_link"
+              ],
+              "description": "Filter by action type."
+            },
+            "lead_id": {
+              "type": "string",
+              "description": "Only items of this lead (uuid)."
+            },
+            "lead_code": {
+              "type": "string",
+              "description": "Only items of this lead (code such as YT5130)."
+            },
+            "limit": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 200,
+              "description": "Max items (default 50)."
+            }
+          },
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "get_approval_status",
+        "title": "Get AI approval status",
+        "description": "Check what happened to one item of the AI approval queue: still pending, approved, rejected, executed (with the result, such as the payment link URL or the sent email) or failed (with the error).",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "approval_id": {
+              "type": "string",
+              "format": "uuid",
+              "description": "Id returned when the action was queued."
+            }
+          },
+          "required": [
+            "approval_id"
+          ],
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "get_costing",
+        "title": "Get costing",
+        "description": "Read the costing of a lead: lines per day (service, supplier/FSE, unit cost, quantity, pax type, markup, selling price, optional yes/no), totals, margin, total YT, deposited and outstanding. Day 0 is the accommodation block.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "lead_id": {
+              "type": "string",
+              "description": "Lead uuid."
+            },
+            "lead_code": {
+              "type": "string",
+              "description": "Lead code such as YT5130."
+            },
+            "version": {
+              "type": "integer",
+              "description": "Version to read (default: LIVE version)."
+            }
+          },
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "upsert_costing_lines",
+        "title": "Create or update costing lines",
+        "description": "Create or update costing lines of a lead, exactly like editing the Custos table in the TCC. Totals and profit are recalculated with the same arithmetic. The save is refused when the resulting margin drops below the company minimum, and the answer flags when the file needs CEO approval because it is above the approval threshold.",
+        "annotations": {
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "lead_id": {
+              "type": "string",
+              "description": "Lead uuid."
+            },
+            "lead_code": {
+              "type": "string",
+              "description": "Lead code such as YT5130."
+            },
+            "version": {
+              "type": "integer",
+              "description": "Version to edit (default: LIVE version)."
+            },
+            "lines": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "day_number": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "description": "Day of the programme (0 = accommodation block)."
+                  },
+                  "day_title": {
+                    "type": "string",
+                    "description": "Day title, used when the day row does not exist yet."
+                  },
+                  "line_id": {
+                    "type": "string",
+                    "description": "Existing line id — omit to create a new line."
+                  },
+                  "description": {
+                    "type": "string",
+                    "description": "Service description."
+                  },
+                  "supplier": {
+                    "type": "string",
+                    "description": "Supplier / FSE name."
+                  },
+                  "pricing_type": {
+                    "type": "string",
+                    "enum": [
+                      "total",
+                      "per_person",
+                      "per_night"
+                    ],
+                    "description": "How the net price is expressed."
+                  },
+                  "num_adults": {
+                    "type": "number",
+                    "description": "Adults (or number of nights when pricing_type is per_night)."
+                  },
+                  "price_adults": {
+                    "type": "number",
+                    "description": "Net price per adult, per night, or the net total."
+                  },
+                  "num_children": {
+                    "type": "number",
+                    "description": "Children."
+                  },
+                  "price_children": {
+                    "type": "number",
+                    "description": "Net price per child."
+                  },
+                  "margin_percent": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 300,
+                    "description": "Markup percentage applied to the net cost."
+                  },
+                  "status": {
+                    "type": "string",
+                    "enum": [
+                      "neutro",
+                      "aceite",
+                      "eliminar",
+                      "opcionais"
+                    ],
+                    "description": "Line state; 'opcionais' keeps it out of the base totals."
+                  }
+                },
+                "required": [
+                  "day_number"
+                ],
+                "additionalProperties": false
+              },
+              "minItems": 1,
+              "description": "Lines to create or update."
+            }
+          },
+          "required": [
+            "lines"
+          ],
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "remove_costing_line",
+        "title": "Remove a costing line",
+        "description": "Remove one line from the costing of a lead, like deleting a row in the Custos table. Only costing lines are affected — leads, versions and travel plans are never deleted by MCP tools.",
+        "annotations": {
+          "readOnlyHint": false,
+          "destructiveHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "lead_id": {
+              "type": "string",
+              "description": "Lead uuid."
+            },
+            "lead_code": {
+              "type": "string",
+              "description": "Lead code such as YT5130."
+            },
+            "version": {
+              "type": "integer",
+              "description": "Version to edit (default: LIVE version)."
+            },
+            "day_number": {
+              "type": "integer",
+              "minimum": 0,
+              "description": "Day holding the line (0 = accommodation block)."
+            },
+            "line_id": {
+              "type": "string",
+              "description": "Line id from get_costing."
+            }
+          },
+          "required": [
+            "day_number",
+            "line_id"
+          ],
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "autofill_costing_from_plan",
+        "title": "Auto-fill costing from the travel plan",
+        "description": "Build or complete the costing of a lead from its travel plan and the FSE protocols, exactly like the auto-import button in Custos. Existing lines keep their id and only empty rates are filled; nothing is deleted. Review the totals and margin afterwards.",
+        "annotations": {
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "lead_id": {
+              "type": "string",
+              "description": "Lead uuid."
+            },
+            "lead_code": {
+              "type": "string",
+              "description": "Lead code such as YT5130."
+            },
+            "version": {
+              "type": "integer",
+              "description": "Version to fill (default: LIVE version)."
+            },
+            "seed_missing_lines": {
+              "type": "boolean",
+              "description": "Create one costing line per programme item that has none yet (default true)."
+            }
+          },
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "get_operations",
+        "title": "Get operations board",
+        "description": "Read the operations board of a lead: services per day with supplier/FSE, booking status, payment status, invoice status, schedule, pax, net value, and the operational trip briefing (pickup hotel, flights, on-site contacts, special requests).",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "lead_id": {
+              "type": "string",
+              "description": "Lead uuid."
+            },
+            "lead_code": {
+              "type": "string",
+              "description": "Lead code such as YT5130."
+            }
+          },
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "update_operation_item",
+        "title": "Update an operations service",
+        "description": "Update one service on the operations board of a lead: booking status, payment status, invoice status, schedule, supplier, pax, net value, the supplier confirmation number and notes. Uses the same states as the Operações tab.",
+        "annotations": {
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "lead_id": {
+              "type": "string",
+              "description": "Lead uuid."
+            },
+            "lead_code": {
+              "type": "string",
+              "description": "Lead code such as YT5130."
+            },
+            "item_key": {
+              "type": "string",
+              "description": "Service key from get_operations."
+            },
+            "booking_status": {
+              "type": "string",
+              "enum": [
+                "neutral",
+                "sent",
+                "booked"
+              ],
+              "description": "Booking state."
+            },
+            "payment_status": {
+              "type": "string",
+              "enum": [
+                "neutral",
+                "paid",
+                "partially_paid",
+                "monthly_account",
+                "guide_to_pay",
+                "not_paid"
+              ],
+              "description": "Payment state."
+            },
+            "invoice_status": {
+              "type": "string",
+              "enum": [
+                "not_received",
+                "guide_pickup",
+                "received"
+              ],
+              "description": "Invoice state."
+            },
+            "schedule_time": {
+              "type": "string",
+              "description": "Service time, HH:MM."
+            },
+            "supplier": {
+              "type": "string",
+              "description": "Supplier / FSE name."
+            },
+            "pax": {
+              "type": "integer",
+              "minimum": 0,
+              "description": "Number of participants."
+            },
+            "net_value": {
+              "type": "number",
+              "description": "Agreed net value in EUR."
+            },
+            "confirmation_number": {
+              "type": "string",
+              "description": "Supplier booking confirmation reference."
+            },
+            "notes": {
+              "type": "string",
+              "description": "Operational note for this service."
+            }
+          },
+          "required": [
+            "item_key"
+          ],
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "update_trip_briefing",
+        "title": "Update the operational trip briefing",
+        "description": "Store the operational briefing of a trip: pickup hotel, arrival and departure flights, on-site contacts, and special requests. Only the fields sent are changed; the others keep their current value. Read it back with get_operations.",
+        "annotations": {
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "lead_id": {
+              "type": "string",
+              "description": "Lead uuid."
+            },
+            "lead_code": {
+              "type": "string",
+              "description": "Lead code such as YT5130."
+            },
+            "pickup_hotel": {
+              "type": "string",
+              "description": "Hotel or address where the guide picks the clients up."
+            },
+            "pickup_time": {
+              "type": "string",
+              "description": "Pickup time, HH:MM."
+            },
+            "arrival_flight": {
+              "type": "string",
+              "description": "Arrival flight, e.g. 'TP1234 LIS 12:40, 14 Mai'."
+            },
+            "departure_flight": {
+              "type": "string",
+              "description": "Departure flight."
+            },
+            "on_site_contacts": {
+              "type": "string",
+              "description": "Phone numbers / contacts on the ground."
+            },
+            "special_requests": {
+              "type": "string",
+              "description": "Dietary needs, mobility, celebrations, anything the guide must know."
+            },
+            "notes": {
+              "type": "string",
+              "description": "Free operational notes."
+            }
+          },
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "validate_lead",
+        "title": "Validate a lead before the next stage",
+        "description": "Checklist for one lead: required fields still missing, inconsistencies (dates vs number of days, pax vs costing, programme language vs client language, B2B without partner/logo), costing and margin health, and what is still needed before moving to the next pipeline stage.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "lead_id": {
+              "type": "string",
+              "description": "Lead uuid."
+            },
+            "lead_code": {
+              "type": "string",
+              "description": "Lead code such as YT5130."
+            },
+            "version": {
+              "type": "integer",
+              "description": "Version to validate (default: LIVE version)."
+            }
+          },
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "generate_travel_plan",
+        "title": "Generate the travel plan with AI",
+        "description": "Generate the day-by-day programme of a lead with the same AI generator used by 'Regenerar Tudo' in the Travel Planner. If the LIVE version already has a programme, a NEW version is created and becomes LIVE — the previous one stays readable, nothing is overwritten. Returns the programme plus the warnings to fix before sending it to the client.",
+        "annotations": {
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "idempotentHint": false,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "lead_id": {
+              "type": "string",
+              "description": "Lead uuid."
+            },
+            "lead_code": {
+              "type": "string",
+              "description": "Lead code such as YT5130."
+            },
+            "briefing": {
+              "type": "string",
+              "description": "Briefing / extra instructions for the AI (client wishes, pace, must-sees)."
+            },
+            "catalogue_products": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "Catalogue product names to include in the programme."
+            },
+            "force_new_version": {
+              "type": "boolean",
+              "description": "Always create a new version, even if the live one is empty."
+            }
+          },
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "update_travel_plan_day",
+        "title": "Edit, add, remove or reorder a programme day",
+        "description": "Edit one day of the travel plan (title, tagline, included items, night at, date, map), or add, remove and reorder days. Writes the same rows as the Travel Planner, so the digital itinerary and the PDF follow immediately.",
+        "annotations": {
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "idempotentHint": false,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "lead_id": {
+              "type": "string",
+              "description": "Lead uuid."
+            },
+            "lead_code": {
+              "type": "string",
+              "description": "Lead code such as YT5130."
+            },
+            "version": {
+              "type": "integer",
+              "description": "Version to edit (default: LIVE version)."
+            },
+            "action": {
+              "type": "string",
+              "enum": [
+                "update",
+                "add",
+                "remove",
+                "move"
+              ],
+              "description": "What to do with the day."
+            },
+            "day_number": {
+              "type": "integer",
+              "minimum": 1,
+              "description": "Day to act on (for 'add', the position of the new day)."
+            },
+            "move_to": {
+              "type": "integer",
+              "minimum": 1,
+              "description": "New position when action is 'move'."
+            },
+            "title": {
+              "type": "string",
+              "description": "Day title."
+            },
+            "tagline": {
+              "type": "string",
+              "description": "Day subtitle / tagline."
+            },
+            "date": {
+              "type": "string",
+              "description": "Day date, YYYY-MM-DD."
+            },
+            "items": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "Included items ('Itinerary & Included' bullets)."
+            },
+            "night_at": {
+              "type": "string",
+              "description": "Overnight stay (hotel / town)."
+            },
+            "map_url": {
+              "type": "string",
+              "description": "Google Maps route link for this day."
+            }
+          },
+          "required": [
+            "action",
+            "day_number"
+          ],
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "update_travel_plan_header",
+        "title": "Update the programme header",
+        "description": "Update the header of the travel plan: title, subtitle/tagline, summary text and cover image. Same effect as editing the top of the Travel Planner, reflected in the digital itinerary and in the PDF.",
+        "annotations": {
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "lead_id": {
+              "type": "string",
+              "description": "Lead uuid."
+            },
+            "lead_code": {
+              "type": "string",
+              "description": "Lead code such as YT5130."
+            },
+            "version": {
+              "type": "integer",
+              "description": "Version to edit (default: LIVE version)."
+            },
+            "title": {
+              "type": "string",
+              "description": "Programme title."
+            },
+            "summary": {
+              "type": "string",
+              "description": "Programme summary / narrative."
+            },
+            "cover_image_url": {
+              "type": "string",
+              "format": "uri",
+              "description": "Cover image URL."
+            },
+            "cover_image_caption": {
+              "type": "string",
+              "description": "Cover image caption."
+            }
+          },
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "fill_travel_plan_images",
+        "title": "Fill programme images",
+        "description": "Fill the missing images of the programme (cover and each day) with the same image search used by 'Preencher Imagens (AI)' in the Travel Planner. Days that already have images are left untouched unless overwrite is set.",
+        "annotations": {
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "idempotentHint": true,
+          "openWorldHint": true
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "lead_id": {
+              "type": "string",
+              "description": "Lead uuid."
+            },
+            "lead_code": {
+              "type": "string",
+              "description": "Lead code such as YT5130."
+            },
+            "version": {
+              "type": "integer",
+              "description": "Version to fill (default: LIVE version)."
+            },
+            "images_per_day": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 3,
+              "description": "Images per day (default 2)."
+            },
+            "overwrite": {
+              "type": "boolean",
+              "description": "Replace images that already exist (default false)."
+            }
+          },
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "request_payment_link",
+        "title": "Request a payment link (human approval required)",
+        "description": "Propose a WeTravel payment link for a lead. The link is NOT created here: the request is placed in the 'Aprovações AI' queue with the amount, deposit and description. When a person approves it, the existing 'Criar link de pagamento' logic runs and the link is saved on the lead. Amounts default to the base selling price (optionals excluded), as in the UI.",
+        "annotations": {
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "lead_id": {
+              "type": "string",
+              "description": "Lead uuid."
+            },
+            "lead_code": {
+              "type": "string",
+              "description": "Lead code such as YT5130."
+            },
+            "kind": {
+              "type": "string",
+              "enum": [
+                "deposit_25",
+                "deposit_50",
+                "full",
+                "optionals",
+                "custom"
+              ],
+              "description": "What to charge: 25% deposit, 50% deposit, full amount, the optionals, or a custom amount."
+            },
+            "amount_eur": {
+              "type": "number",
+              "exclusiveMinimum": 0,
+              "description": "Amount in EUR — required for 'custom', otherwise computed."
+            },
+            "description": {
+              "type": "string",
+              "description": "Description shown to the client on the checkout page."
+            }
+          },
+          "required": [
+            "kind"
+          ],
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "draft_fse_requests",
+        "title": "Draft supplier (FSE) booking requests — human approval required",
+        "description": "Draft the Portuguese availability/booking request emails to each supplier (FSE) of a lead, in the format the TCC already uses and with the correct YT reference. One queue item per supplier is created in 'Aprovações AI'; no email is sent until a human approves it.",
+        "annotations": {
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "lead_id": {
+              "type": "string",
+              "description": "Lead uuid."
+            },
+            "lead_code": {
+              "type": "string",
+              "description": "Lead code such as YT5130."
+            },
+            "only_pending": {
+              "type": "boolean",
+              "description": "Only suppliers whose services are not booked yet (default true)."
+            }
+          },
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "draft_client_email",
+        "title": "Draft a client email — human approval required",
+        "description": "Draft a client email with the AI Email Composer (house style, clickable cover, day-by-day, Book Now), optionally attaching the travel plan PDF. The email is placed in the 'Aprovações AI' queue: nothing is sent until a human approves it, and it is then sent from reservas@yourtours.pt and logged in Comunicações and NetHunt.",
+        "annotations": {
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "idempotentHint": true,
+          "openWorldHint": true
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "lead_id": {
+              "type": "string",
+              "description": "Lead uuid."
+            },
+            "lead_code": {
+              "type": "string",
+              "description": "Lead code such as YT5130."
+            },
+            "purpose": {
+              "type": "string",
+              "enum": [
+                "proposal",
+                "first_draft",
+                "follow_up",
+                "payment_request",
+                "confirmation",
+                "custom"
+              ],
+              "description": "What the email is for."
+            },
+            "notes": {
+              "type": "string",
+              "description": "Notes for the AI: what to emphasise, what changed, tone hints."
+            },
+            "language": {
+              "type": "string",
+              "description": "Email language (default: the client language on the lead)."
+            },
+            "attach_travel_plan_pdf": {
+              "type": "boolean",
+              "description": "Attach the travel plan PDF (default false)."
+            },
+            "cc": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "format": "email"
+              },
+              "description": "Cc recipients."
+            },
+            "bcc": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "format": "email"
+              },
+              "description": "Bcc recipients."
+            }
+          },
+          "required": [
+            "purpose"
+          ],
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "import_lead_ai",
+        "title": "Create a lead from a client email (AI Import)",
+        "description": "Create a new lead from the raw client request, using the same AI extraction as 'Nova Lead → AI Import'. Assigns the next YT code and starts at 'SALES · New Lead'. Deduplicates: if a lead with the same client email and overlapping dates exists, nothing is created and that lead is returned with duplicate=true.",
+        "annotations": {
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "raw_text": {
+              "type": "string",
+              "minLength": 20,
+              "description": "Full client email / request text."
+            },
+            "source": {
+              "type": "string",
+              "enum": [
+                "direct",
+                "site",
+                "ota",
+                "b2b_partner"
+              ],
+              "description": "Where the request came from."
+            },
+            "sender_email": {
+              "type": "string",
+              "format": "email",
+              "description": "Sender email (used when the text has none)."
+            },
+            "gmail_thread_id": {
+              "type": "string",
+              "description": "Gmail message/thread id, stored in the notes."
+            },
+            "language": {
+              "type": "string",
+              "description": "Client language, e.g. EN, PT, FR."
+            }
+          },
+          "required": [
+            "raw_text",
+            "source"
           ],
           "additionalProperties": false,
           "$schema": "http://json-schema.org/draft-07/schema#"
