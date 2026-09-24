@@ -373,3 +373,38 @@ export async function buildTravelPlanPdf(
   const bytes = new Uint8Array(doc.output("arraybuffer") as ArrayBuffer);
   return { bytes, pages: doc.getNumberOfPages(), warnings: Array.from(new Set(warnings)) };
 }
+
+/** Builds the travel plan PDF for a lead version (same as export_travel_plan_pdf). */
+export async function renderTravelPlanPdf(
+  supabase: any,
+  lead: { id: string; client_name?: unknown },
+  version: number,
+  _plan?: unknown,
+  _meta?: unknown,
+): Promise<BuiltPdf & { proposal: any }> {
+  const { data: proposal } = await supabase
+    .from("proposals").select("*").eq("lead_id", lead.id).eq("version", version)
+    .order("created_at", { ascending: false }).limit(1).maybeSingle();
+  if (!proposal) throw new Error(`No proposal found for version ${version}`);
+  const built = await buildTravelPlanPdf({ ...proposal, client_name: proposal.client_name || lead.client_name });
+  return { ...built, proposal };
+}
+
+const safeName = (s: string) => s.replace(/[\\/:*?"<>|]+/g, "").replace(/\s+/g, " ").trim();
+
+/** Stores the PDF in the private `travel-plan-pdfs` bucket and signs it for 7 days. */
+export async function storeTravelPlanPdf(
+  supabase: any,
+  lead: { client_name?: unknown; yt_id?: unknown; lead_code?: unknown; id: string },
+  pdf: BuiltPdf & { proposal?: any },
+) {
+  const code = safeName(String(lead.yt_id || lead.lead_code || lead.id));
+  const title = String(pdf.proposal?.title || "Travel Plan").replace(/\*\*/g, "");
+  const file_name = `${code} - ${safeName(String(lead.client_name || ""))} - ${safeName(title)}.pdf`;
+  const path = `${code}/${file_name}`;
+  const { error } = await supabase.storage.from("travel-plan-pdfs")
+    .upload(path, pdf.bytes, { contentType: "application/pdf", upsert: true });
+  if (error) throw new Error(`Upload failed: ${error.message}`);
+  const { data } = await supabase.storage.from("travel-plan-pdfs").createSignedUrl(path, 7 * 24 * 3600);
+  return { file_name, storage_path: path, signed_url: data?.signedUrl ?? null };
+}

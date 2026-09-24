@@ -57,6 +57,8 @@ const PRIORITIES = [
 
 interface Props { leadId: string }
 
+import AiApprovalsList from '@/components/ai-approvals/AiApprovalsList';
+
 export default function LeadCrmTab({ leadId }: Props) {
   const { toast } = useToast();
   const [filter, setFilter] = useState('all');
