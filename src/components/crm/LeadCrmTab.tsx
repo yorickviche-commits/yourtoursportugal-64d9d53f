@@ -261,6 +261,12 @@ export default function LeadCrmTab({ leadId }: Props) {
         </div>
       </div>
 
+      {/* AI approval queue for this lead */}
+      <div className="bg-card border rounded-lg p-4 space-y-2">
+        <p className="text-xs font-semibold uppercase text-muted-foreground">Aprovações AI</p>
+        <AiApprovalsList leadId={leadId} />
+      </div>
+
       {/* Tasks */}
       <LeadTasks leadId={leadId} tasks={tasks.data || []} loading={tasks.isLoading} />
 
