@@ -94,6 +94,74 @@ export type Database = {
           },
         ]
       }
+      agent_api_keys: {
+        Row: {
+          agent_label: string
+          agent_user_id: string | null
+          calls_day: string
+          calls_today: number
+          created_at: string
+          created_by: string | null
+          daily_call_limit: number
+          expires_at: string
+          id: string
+          key_hash: string
+          key_prefix: string
+          last_used_at: string | null
+          model: string | null
+          name: string
+          revoked_at: string | null
+          rotated_from: string | null
+          scopes: string[]
+        }
+        Insert: {
+          agent_label: string
+          agent_user_id?: string | null
+          calls_day?: string
+          calls_today?: number
+          created_at?: string
+          created_by?: string | null
+          daily_call_limit?: number
+          expires_at?: string
+          id?: string
+          key_hash: string
+          key_prefix: string
+          last_used_at?: string | null
+          model?: string | null
+          name: string
+          revoked_at?: string | null
+          rotated_from?: string | null
+          scopes?: string[]
+        }
+        Update: {
+          agent_label?: string
+          agent_user_id?: string | null
+          calls_day?: string
+          calls_today?: number
+          created_at?: string
+          created_by?: string | null
+          daily_call_limit?: number
+          expires_at?: string
+          id?: string
+          key_hash?: string
+          key_prefix?: string
+          last_used_at?: string | null
+          model?: string | null
+          name?: string
+          revoked_at?: string | null
+          rotated_from?: string | null
+          scopes?: string[]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agent_api_keys_rotated_from_fkey"
+            columns: ["rotated_from"]
+            isOneToOne: false
+            referencedRelation: "agent_api_keys"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       agent_notifications: {
         Row: {
           agent_name: string
@@ -2106,8 +2174,14 @@ export type Database = {
           created_by: string | null
           general_data: Json
           id: string
+          is_ai_proposal: boolean
           lead_id: string
           name: string
+          promoted_at: string | null
+          promoted_by: string | null
+          proposed_at: string | null
+          proposed_by_key_id: string | null
+          proposed_by_label: string | null
           updated_at: string
           version: number
         }
@@ -2116,8 +2190,14 @@ export type Database = {
           created_by?: string | null
           general_data?: Json
           id?: string
+          is_ai_proposal?: boolean
           lead_id: string
           name?: string
+          promoted_at?: string | null
+          promoted_by?: string | null
+          proposed_at?: string | null
+          proposed_by_key_id?: string | null
+          proposed_by_label?: string | null
           updated_at?: string
           version?: number
         }
@@ -2126,8 +2206,14 @@ export type Database = {
           created_by?: string | null
           general_data?: Json
           id?: string
+          is_ai_proposal?: boolean
           lead_id?: string
           name?: string
+          promoted_at?: string | null
+          promoted_by?: string | null
+          proposed_at?: string | null
+          proposed_by_key_id?: string | null
+          proposed_by_label?: string | null
           updated_at?: string
           version?: number
         }
@@ -6211,6 +6297,16 @@ export type Database = {
         Args: { p_error?: string; p_id: number; p_success: boolean }
         Returns: boolean
       }
+      current_agent_key: {
+        Args: never
+        Returns: {
+          agent_label: string
+          id: string
+          model: string
+          name: string
+          scopes: string[]
+        }[]
+      }
       delete_email: {
         Args: { message_id: number; queue_name: string }
         Returns: boolean
@@ -6251,6 +6347,7 @@ export type Database = {
         Returns: boolean
       }
       is_admin: { Args: { _user_id: string }; Returns: boolean }
+      is_agent_user: { Args: { _user_id: string }; Returns: boolean }
       is_internal_user: { Args: { _user_id: string }; Returns: boolean }
       is_sync_admin: { Args: { _user_id: string }; Returns: boolean }
       lead_live_pvp: { Args: { p_lead_id: string }; Returns: number }
@@ -6285,6 +6382,10 @@ export type Database = {
         Returns: number
       }
       nethunt_stage_code: { Args: { p_stage: string }; Returns: string }
+      promote_ai_proposal: {
+        Args: { p_lead_id: string; p_version: number }
+        Returns: undefined
+      }
       read_email_batch: {
         Args: { batch_size: number; queue_name: string; vt: number }
         Returns: {

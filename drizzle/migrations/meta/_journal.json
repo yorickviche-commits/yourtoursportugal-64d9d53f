@@ -78,6 +78,13 @@
       "when": 1790650323154,
       "tag": "0010_sync_health_and_calendar_migration",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1790679116108,
+      "tag": "0011_agent_api_keys_and_ai_proposals",
+      "breakpoints": true
     }
   ]
 }
