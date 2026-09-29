@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Pencil, Plus, Trash2, Loader2, Check, Lock, Unlock } from 'lucide-react';
+import { Pencil, Plus, Trash2, Loader2, Check, Lock, Unlock, Bot, ArrowUpCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
@@ -9,7 +9,7 @@ import {
   AlertDialogDescription, AlertDialogFooter,
 } from '@/components/ui/alert-dialog';
 import {
-  DbLeadVersion, useCreateLeadVersion, useDeleteLeadVersion, useRenameLeadVersion,
+  DbLeadVersion, useCreateLeadVersion, useDeleteLeadVersion, useRenameLeadVersion, usePromoteAiProposal,
 } from '@/hooks/useLeadVersions';
 
 interface Props {
@@ -32,6 +32,19 @@ const LeadVersionBar = ({
   const createVersion = useCreateLeadVersion();
   const renameVersion = useRenameLeadVersion();
   const deleteVersion = useDeleteLeadVersion();
+  const promote = usePromoteAiProposal();
+
+  const handlePromote = async (version: number) => {
+    if (!confirm(`Tornar a proposta AI V${version} a versão LIVE?`)) return;
+    try {
+      await promote.mutateAsync({ leadId, version });
+      onSelect(version);
+      onToggleEditArchived(false);
+      toast({ title: `V${version} é agora LIVE` });
+    } catch (e: any) {
+      toast({ title: 'Erro ao promover', description: e.message, variant: 'destructive' });
+    }
+  };
   const [renaming, setRenaming] = useState<number | null>(null);
   const [draftName, setDraftName] = useState('');
   const [confirmDelete, setConfirmDelete] = useState(false);
@@ -124,6 +137,12 @@ const LeadVersionBar = ({
                       active ? 'bg-white/20 text-white' : 'bg-emerald-100 text-emerald-700',
                     )}>LIVE</span>
                   )}
+                  {v.is_ai_proposal && (
+                    <span className={cn(
+                      'text-[9px] font-bold px-1 rounded inline-flex items-center gap-0.5',
+                      active ? 'bg-white/20 text-white' : 'bg-violet-100 text-violet-700',
+                    )}><Bot className="h-2.5 w-2.5" />Proposta AI · {v.proposed_by_label || 'agente'}</span>
+                  )}
                 </button>
                 <button
                   onClick={() => { setRenaming(v.version); setDraftName(v.name || `V${v.version}`); }}
@@ -137,6 +156,16 @@ const LeadVersionBar = ({
                 >
                   <Pencil className="h-3 w-3" />
                 </button>
+                {v.is_ai_proposal && (
+                  <button
+                    onClick={() => handlePromote(v.version)}
+                    disabled={promote.isPending}
+                    className="ml-1 px-1.5 py-1 text-[10px] font-semibold rounded border border-emerald-300 text-emerald-700 hover:bg-emerald-50 inline-flex items-center gap-0.5"
+                    title="Tornar esta proposta AI a versão LIVE"
+                  >
+                    <ArrowUpCircle className="h-3 w-3" />Tornar LIVE
+                  </button>
+                )}
               </div>
             );
           })}

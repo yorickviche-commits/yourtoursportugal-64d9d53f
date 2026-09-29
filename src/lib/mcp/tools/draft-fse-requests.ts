@@ -4,8 +4,8 @@ import { supabaseForUser } from "../supabase";
 import { auditLead, leadLabel, liveVersion, resolveLead } from "../lead";
 import { loadCosting } from "../costing";
 import { enqueueAction } from "../queue";
-import { normalizeBookingStatus } from "@/components/leads/opsConstants";
-import { eur } from "@/lib/money";
+import { normalizeBookingStatus } from "../../../components/leads/opsConstants";
+import { eur } from "../../../lib/money";
 
 const ptDate = (d?: string | null) => {
   if (!d) return "a confirmar";

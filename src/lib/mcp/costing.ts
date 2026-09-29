@@ -1,6 +1,6 @@
 import { ToolError } from "@lovable.dev/mcp-js";
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { BUSINESS_CONFIG } from "@/lib/businessConfig";
+import { BUSINESS_CONFIG } from "../../lib/businessConfig";
 import type { LeadRow } from "./lead";
 
 /**

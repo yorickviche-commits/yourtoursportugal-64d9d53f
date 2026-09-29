@@ -1,0 +1,2 @@
+- Agent keys: scheduled agents use `/functions/v1/mcp-agent` (hand-written gateway, verifies `ytp_agent_` key) which forwards to the SDK-generated `mcp-agent-core` (src/lib/mcp/agent-entry.ts, same tools via toolset.ts). Why: @lovable.dev/mcp-js only supports OAuth issuer auth.
+- src/lib/mcp must use relative imports only (no `@/`). Why: the edge bundler turns `@/` into broken `npm:` specifiers.

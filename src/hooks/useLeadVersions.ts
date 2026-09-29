@@ -9,6 +9,9 @@ export interface DbLeadVersion {
   name: string;
   general_data: Record<string, any>;
   created_at: string;
+  is_ai_proposal?: boolean;
+  proposed_by_label?: string | null;
+  proposed_at?: string | null;
 }
 
 /** Fields of `leads` that belong to "Dados Gerais" and are snapshotted per version. */
@@ -136,7 +139,17 @@ export const useDeleteLeadVersion = () => {
   return useMutation({
     mutationFn: async ({ leadId, version }: { leadId: string; version: number }) => {
       if (version <= 0) throw new Error('A versão base (V0) não pode ser apagada.');
-      const prev = version - 1;
+      const [{ data: allVers }, { data: leadNow }] = await Promise.all([
+        supabase.from('lead_versions').select('version,is_ai_proposal').eq('lead_id', leadId),
+        supabase.from('leads').select('active_version').eq('id', leadId).maybeSingle(),
+      ]);
+      const target = (allVers || []).find((r: any) => r.version === version) as any;
+      const isProposal = !!target?.is_ai_proposal;
+      // Propostas AI nunca são LIVE: a versão LIVE mantém-se ao apagar uma.
+      const prev = isProposal
+        ? Number((leadNow as any)?.active_version ?? 0)
+        : (allVers || []).filter((r: any) => !r.is_ai_proposal && r.version < version)
+            .reduce((m: number, r: any) => Math.max(m, r.version), 0);
 
       // Proposta desta versão (+ anotações) desaparece com a versão.
       const { data: propRow } = await supabase
@@ -161,6 +174,7 @@ export const useDeleteLeadVersion = () => {
         .from('lead_versions').select('general_data')
         .eq('lead_id', leadId).eq('version', prev).maybeSingle();
       const general = ((prevRow as any)?.general_data ?? {}) as Record<string, any>;
+      if (isProposal) return prev;
       const restore: Record<string, any> = { active_version: prev };
       GENERAL_FIELDS.forEach(k => {
         if (general[k] !== undefined && general[k] !== null) restore[k] = general[k];
@@ -188,4 +202,19 @@ export const saveVersionGeneralData = async (leadId: string, version: number, ge
       .insert({ lead_id: leadId, version, name: `V${version}`, general_data: general as any } as any);
     if (error) throw error;
   }
+};
+
+/** Promotes an AI proposal to LIVE (humans only — enforced server-side). */
+export const usePromoteAiProposal = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ leadId, version }: { leadId: string; version: number }) => {
+      const { error } = await supabase.rpc('promote_ai_proposal' as any, { p_lead_id: leadId, p_version: version } as any);
+      if (error) throw error;
+    },
+    onSuccess: (_d, vars) => {
+      invalidateLead(qc, vars.leadId);
+      qc.invalidateQueries({ queryKey: ['leads', vars.leadId] });
+    },
+  });
 };

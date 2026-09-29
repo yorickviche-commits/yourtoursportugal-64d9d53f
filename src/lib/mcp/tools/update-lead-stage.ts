@@ -2,6 +2,7 @@ import { defineTool, ToolError } from "@lovable.dev/mcp-js";
 import { z } from "zod";
 import { supabaseForUser } from "../supabase";
 import { auditLead, leadLabel, pushNetHunt, resolveLead, resolveStage, STAGES } from "../lead";
+import { agentIdentity } from "../agent";
 
 export default defineTool({
   name: "update_lead_stage",
@@ -20,6 +21,9 @@ export default defineTool({
     const supabase = supabaseForUser(ctx);
     const lead = await resolveLead(supabase, { lead_id, lead_code });
     const target = resolveStage(stage);
+    if (target.group === "OPERATIONS" && (await agentIdentity(supabase, ctx))) {
+      throw new ToolError("AI agents cannot move a lead to an OPERATIONS stage — a person must do it in the TCC.");
+    }
 
     const previous = {
       stage: lead.nethunt_stage ?? null,

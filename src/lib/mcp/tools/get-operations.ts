@@ -2,7 +2,7 @@ import { defineTool, ToolError } from "@lovable.dev/mcp-js";
 import { z } from "zod";
 import { supabaseForUser } from "../supabase";
 import { leadLabel, resolveLead } from "../lead";
-import { BOOKING_OPTIONS, INVOICE_OPTIONS, PAYMENT_OPTIONS, normalizeBookingStatus, normalizeInvoiceStatus, normalizePaymentStatus } from "@/components/leads/opsConstants";
+import { BOOKING_OPTIONS, INVOICE_OPTIONS, PAYMENT_OPTIONS, normalizeBookingStatus, normalizeInvoiceStatus, normalizePaymentStatus } from "../../../components/leads/opsConstants";
 
 export default defineTool({
   name: "get_operations",

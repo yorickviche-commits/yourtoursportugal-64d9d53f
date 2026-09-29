@@ -1,5 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { buildParticipantsLabel } from "@/lib/participantsLabel";
+import { buildParticipantsLabel } from "../../lib/participantsLabel";
 
 /**
  * Server-side mirror of `syncGeneralToProposal` — propagates participants and

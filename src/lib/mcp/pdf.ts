@@ -9,11 +9,11 @@
  * browser print.
  */
 import jsPDF from "jspdf";
-import { getPdfDict } from "@/lib/proposalPdfI18n";
-import { resolveClosingText } from "@/lib/closingTermsI18n";
-import { getHotelsDict, resolveHotelsText, mergeProposalHotels } from "@/lib/proposalHotelsI18n";
-import { stripBoldMarkers } from "@/lib/richText";
-import { eur } from "@/lib/money";
+import { getPdfDict } from "../../lib/proposalPdfI18n";
+import { resolveClosingText } from "../../lib/closingTermsI18n";
+import { getHotelsDict, resolveHotelsText, mergeProposalHotels } from "../../lib/proposalHotelsI18n";
+import { stripBoldMarkers } from "../../lib/richText";
+import { eur } from "../../lib/money";
 
 const YT_BLUE: [number, number, number] = [10, 37, 64];
 const TERMS_URL = "https://drive.google.com/file/d/12AkvW2Ob0LtcooaciWY4e-nEx7hlOnQC/view?usp=sharing";

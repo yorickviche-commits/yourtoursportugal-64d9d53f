@@ -1,7 +1,17 @@
 import { ToolError } from "@lovable.dev/mcp-js";
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { buildProposalToken } from "@/lib/proposalVersion";
-import { GENERAL_FIELDS } from "@/hooks/useLeadVersions";
+// Mirrors GENERAL_FIELDS (useLeadVersions) and buildProposalToken (proposalVersion);
+// kept local so the edge bundle never pulls the browser client.
+const GENERAL_FIELDS = [
+  "yt_id", "client_name", "email", "phone", "client_type", "destination",
+  "travel_dates", "travel_end_date", "number_of_days", "dates_type",
+  "pax", "pax_children", "pax_infants", "budget_level", "notes", "sales_owner",
+  "status", "comfort_level", "travel_style", "source",
+] as const;
+const buildProposalToken = (leadCode: string, version: number) => {
+  const slug = (leadCode || "ytp").toLowerCase().replace(/[^a-z0-9]/g, "-");
+  return `ytp-${slug}-v${version}-${Math.random().toString(36).slice(2, 6)}`;
+};
 import type { LeadRow } from "./lead";
 
 const pickGeneralData = (lead: any): Record<string, unknown> => {
@@ -21,7 +31,9 @@ export async function createLeadVersion(
   supabase: SupabaseClient,
   lead: LeadRow,
   fromVersion: number,
+  opts?: { agent?: { id: string; agent_label: string; model: string | null } },
 ): Promise<number> {
+  const agent = opts?.agent;
   const leadId = lead.id;
   const { data: versions } = await supabase.from("lead_versions").select("version").eq("lead_id", leadId);
   const maxExisting = ((versions ?? []) as any[]).reduce((m, r) => Math.max(m, Number(r.version)), fromVersion);
@@ -44,8 +56,16 @@ export async function createLeadVersion(
     supabase.from("lead_versions").insert({
       lead_id: leadId,
       version: newVersion,
-      name: `V${newVersion}`,
+      name: agent ? `Proposta AI V${newVersion}` : `V${newVersion}`,
       general_data: pickGeneralData(lead) as never,
+      ...(agent
+        ? {
+            is_ai_proposal: true,
+            proposed_by_label: `${agent.agent_label}${agent.model ? ` · ${agent.model}` : ""}`,
+            proposed_by_key_id: agent.id,
+            proposed_at: new Date().toISOString(),
+          }
+        : {}),
     } as never),
     strip(planner.data).length
       ? supabase.from("lead_planner_data").insert(strip(planner.data) as never)
@@ -89,6 +109,8 @@ export async function createLeadVersion(
     if (pErr) throw new ToolError(pErr.message);
   }
 
+  // AI proposals never become LIVE — a human promotes them in the TCC.
+  if (agent) return newVersion;
   const { error: upErr } = await supabase.from("leads").update({ active_version: newVersion } as never).eq("id", leadId);
   if (upErr) throw new ToolError(upErr.message);
   return newVersion;

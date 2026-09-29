@@ -1,6 +1,6 @@
 import { ToolError } from "@lovable.dev/mcp-js";
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { buildParticipantsLabel } from "@/lib/participantsLabel";
+import { buildParticipantsLabel } from "../../lib/participantsLabel";
 import { APP_ORIGIN, leadLabel, type LeadRow } from "./lead";
 
 /**
