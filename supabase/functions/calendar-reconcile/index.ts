@@ -47,7 +47,16 @@ async function reconcile(sb: any, trigger: string) {
           continue;
         }
         if (!r.ok) continue;
-        if (m.protection_status === 'ok' && m.google_etag && r.data?.etag && r.data.etag !== m.google_etag) {
+        // Sem etag guardado: mesma regra do core (updated > last_synced_at + 60 s => manual); senão grava baseline.
+        let noEtagManual = false;
+        if (m.protection_status === 'ok' && !m.google_etag) {
+          const gUp = r.data?.updated;
+          noEtagManual = !!(gUp && m.last_synced_at && new Date(gUp).getTime() - new Date(m.last_synced_at).getTime() > 60_000);
+          if (!noEtagManual && r.data?.etag) {
+            await sb.from('calendar_events').update({ google_etag: r.data.etag, google_updated_at: gUp || null }).eq('id', m.id);
+          }
+        }
+        if (m.protection_status === 'ok' && (noEtagManual || (m.google_etag && r.data?.etag && r.data.etag !== m.google_etag))) {
           try { await saveSnapshot(sb, m.lead_id, m.day_date, r.data, 'reconcile_manual_edit'); } catch (e) { console.error(e); }
           await sb.from('calendar_events').update({
             protection_status: 'manual_edit', manual_edit_detected_at: new Date().toISOString(),

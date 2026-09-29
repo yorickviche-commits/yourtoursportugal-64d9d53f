@@ -137,7 +137,24 @@ function bookingLabel(status: string | null): string {
 
 const esc = (s: unknown) => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 const link = (url: string | null | undefined, label: string) => url ? `<a href="${esc(url)}">${esc(label || url)}</a>` : esc(label);
-const lines = (txt: string | null | undefined) => String(txt || '').split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+// Flattens strings / arrays / objects (notes, trip_briefing JSON) into readable lines — never "[object Object]".
+const toLines = (v: unknown): string[] => {
+  if (v == null || v === '') return [];
+  if (Array.isArray(v)) return v.flatMap(toLines);
+  if (typeof v === 'object') {
+    const o = v as Record<string, unknown>;
+    const txt = o.text ?? o.note ?? o.note_text ?? o.content ?? o.value ?? o.label;
+    if (typeof txt === 'string' || typeof txt === 'number') return toLines(String(txt));
+    return Object.entries(o).flatMap(([k, val]) => {
+      if (val == null || val === '') return [];
+      const sub = toLines(val);
+      if (!sub.length) return [];
+      return typeof val === 'object' ? [`${k}:`, ...sub] : [`${k}: ${sub.join(' ')}`];
+    });
+  }
+  return String(v).split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+};
+const lines = (txt: unknown) => toLines(txt);
 function hhmm(t: string | null | undefined): string {
   if (!t) return '';
   const m = String(t).match(/^(\d{1,2})[:h](\d{2})/);
@@ -274,6 +291,33 @@ async function saveSnapshot(supabase: any, leadId: string, dayDate: string, ev: 
 }
 
 export interface CoreResult { status: number; body: any }
+
+// Looks for non-TCC events on `dayDate` that belong to `lead` (YT digits, booking ref, surname).
+async function findManualEvent(calPath: string, dayDate: string, lead: any): Promise<{ candidates: any[] }> {
+  const tMin = new Date(dayDate + 'T00:00:00Z'); tMin.setUTCHours(-2);
+  const tMax = new Date(dayDate + 'T00:00:00Z'); tMax.setUTCHours(26);
+  const r = await gcal(`${calPath}?singleEvents=true&maxResults=250&timeMin=${encodeURIComponent(tMin.toISOString())}&timeMax=${encodeURIComponent(tMax.toISOString())}`, { method: 'GET' });
+  if (!r.ok) throw new Error(`Google Calendar API ${r.status}: ${r.text}`);
+  const ytDigits = String(lead.yt_id || lead.lead_code || '').match(/\d{3,}/g)?.pop() || '';
+  const bookRef = String(lead.external_booking_ref || '').replace(/^#/, '').trim().toLowerCase();
+  const surname = String(lead.client_name || '').trim().split(/\s+/).filter(w => w.length >= 3).pop()?.toLowerCase() || '';
+  const norm = (x: string) => x.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+  const out: any[] = [];
+  for (const ev of (r.data?.items || [])) {
+    if (ev.status === 'cancelled') continue;
+    const priv = ev.extendedProperties?.private || {};
+    if (priv.yt_lead_id || priv.source === 'tcc' || String(ev.id || '').startsWith('tcc')) continue;
+    const evDay = (ev.start?.date || ev.start?.dateTime || '').slice(0, 10);
+    if (evDay && evDay !== dayDate) continue;
+    const text = norm(`${ev.summary || ''}\n${ev.description || ''}`);
+    const refRe = ytDigits ? new RegExp(`(ref\\.?\\s*interna|file\\s*(nr|id)|yt)[^\\d]{0,12}${ytDigits}\\b`) : null;
+    const hit = (ytDigits && (refRe!.test(text) || new RegExp(`\\b${ytDigits}\\b`).test(text)))
+      || (bookRef.length >= 4 && text.includes(bookRef))
+      || (surname && new RegExp(`\\b${norm(surname).replace(/[.*+?^${}()|[\]\\]/g, '')}\\b`).test(text));
+    if (hit) out.push(ev);
+  }
+  return { candidates: out };
+}
 
 export async function runCalendarSync(
   supabase: any,
@@ -522,6 +566,27 @@ export async function runCalendarSync(
           // 2) Never create events in the past.
           if (day.day_date < today) {
             results.push({ day_date: day.day_date, action: 'skipped_past' });
+            continue;
+          }
+          // 2b) Never create when a manual (non-TCC) event of this lead already exists on this day.
+          const manualHit = await findManualEvent(calPath, day.day_date, lead);
+          if (manualHit.candidates.length === 1) {
+            const ev = manualHit.candidates[0];
+            try { await saveSnapshot(supabase, leadId, day.day_date, ev, 'manual_event_existing'); } catch (e) { console.error(e); }
+            await upsertMapping({
+              google_event_id: ev.id, google_etag: ev.etag || null, google_updated_at: ev.updated || null,
+              protection_status: 'manual_edit', manual_edit_detected_at: new Date().toISOString(),
+              status: summary.label, sync_error: 'Evento manual existente ligado — rever na página Sincronização (Migração).',
+            });
+            results.push({ day_date: day.day_date, action: 'linked_manual_existing', eventId: ev.id });
+            continue;
+          }
+          if (manualHit.candidates.length > 1) {
+            await upsertMapping({
+              google_event_id: null, status: summary.label,
+              sync_error: 'Possível evento manual existente — ligar na página Sincronização',
+            });
+            results.push({ day_date: day.day_date, action: 'skipped_possible_manual', candidates: manualHit.candidates.map((c: any) => c.id) });
             continue;
           }
           // 3) Create with deterministic id; 409 → existing event → update path.
