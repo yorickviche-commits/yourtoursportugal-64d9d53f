@@ -53,7 +53,8 @@ Deno.serve(async (req) => {
     try {
       const res = await runCalendarSync(sb, { lead_id: it.entity_id, mode: 'update' });
       const errs = (res.body?.results || []).filter((r: any) => r.action === 'error').map((r: any) => `${r.day_date}: ${r.error}`);
-      if (res.body?.ok === false) errs.push(String(res.body.error || 'erro'));
+      // 'travel_dates not parseable' is a data gap, not a sync failure: no retries/alerts.
+      if (res.body?.ok === false && res.body?.error !== 'travel_dates not parseable') errs.push(String(res.body.error || 'erro'));
       if (errs.length) throw new Error(errs.join(' | ').slice(0, 2000));
       await sb.rpc('complete_sync_item', { p_id: it.id, p_success: true });
       out.push({ id: it.id, ok: true });
