@@ -55,6 +55,6 @@ export function usePagePermissions() {
     canAccess,
     allowedPages,
     isAdmin,
-    loading: authLoading || query.isLoading,
+    loading: authLoading || query.isLoading || syncAdmin.isLoading,
   };
 }
