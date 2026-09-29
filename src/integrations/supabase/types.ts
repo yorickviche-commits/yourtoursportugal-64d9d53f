@@ -1999,9 +1999,11 @@ export type Database = {
           comfort_tier: string | null
           created_at: string
           created_by: string | null
+          created_via: string | null
           dates_type: string | null
           destination: string | null
           email: string | null
+          estimated_value: number | null
           exact_itinerary_pdf_path: string | null
           id: string
           lead_code: string
@@ -2047,9 +2049,11 @@ export type Database = {
           comfort_tier?: string | null
           created_at?: string
           created_by?: string | null
+          created_via?: string | null
           dates_type?: string | null
           destination?: string | null
           email?: string | null
+          estimated_value?: number | null
           exact_itinerary_pdf_path?: string | null
           id?: string
           lead_code: string
@@ -2095,9 +2099,11 @@ export type Database = {
           comfort_tier?: string | null
           created_at?: string
           created_by?: string | null
+          created_via?: string | null
           dates_type?: string | null
           destination?: string | null
           email?: string | null
+          estimated_value?: number | null
           exact_itinerary_pdf_path?: string | null
           id?: string
           lead_code?: string
@@ -2438,6 +2444,63 @@ export type Database = {
           source_id?: string
           status?: string
           updated_at?: string
+        }
+        Relationships: []
+      }
+      nethunt_conflicts: {
+        Row: {
+          created_at: string
+          entity: string
+          entity_id: string
+          field: string
+          id: string
+          nethunt_value: Json | null
+          tcc_value: Json | null
+          winner: string
+        }
+        Insert: {
+          created_at?: string
+          entity: string
+          entity_id: string
+          field: string
+          id?: string
+          nethunt_value?: Json | null
+          tcc_value?: Json | null
+          winner: string
+        }
+        Update: {
+          created_at?: string
+          entity?: string
+          entity_id?: string
+          field?: string
+          id?: string
+          nethunt_value?: Json | null
+          tcc_value?: Json | null
+          winner?: string
+        }
+        Relationships: []
+      }
+      nethunt_field_state: {
+        Row: {
+          entity: string
+          entity_id: string
+          field: string
+          synced_at: string
+          value: Json | null
+        }
+        Insert: {
+          entity: string
+          entity_id: string
+          field: string
+          synced_at?: string
+          value?: Json | null
+        }
+        Update: {
+          entity?: string
+          entity_id?: string
+          field?: string
+          synced_at?: string
+          value?: Json | null
         }
         Relationships: []
       }
@@ -5964,6 +6027,7 @@ export type Database = {
       }
       is_admin: { Args: { _user_id: string }; Returns: boolean }
       is_internal_user: { Args: { _user_id: string }; Returns: boolean }
+      lead_live_pvp: { Args: { p_lead_id: string }; Returns: number }
       list_public_feedback: {
         Args: never
         Returns: {
