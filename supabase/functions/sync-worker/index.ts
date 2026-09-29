@@ -3,8 +3,7 @@
 // Step 1: processes target='calendar' only; 'nethunt' items stay pending.
 import { createClient, SUPABASE_URL, SERVICE_ROLE_KEY, getSyncAdmins, runCalendarSync, ADMIN_URL_BASE } from '../_shared/calendar-sync-core.ts';
 
-const BACKOFF_MIN = [1, 2, 5, 15, 60];
-const MAX_ATTEMPTS = 5;
+// Backoff [1,2,5,15,60] min and the 5-failure limit live in SQL complete_sync_item().
 
 const reply = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } });
@@ -56,16 +55,12 @@ Deno.serve(async (req) => {
       const errs = (res.body?.results || []).filter((r: any) => r.action === 'error').map((r: any) => `${r.day_date}: ${r.error}`);
       if (res.body?.ok === false) errs.push(String(res.body.error || 'erro'));
       if (errs.length) throw new Error(errs.join(' | ').slice(0, 2000));
-      await sb.from('sync_queue').update({ status: 'done', last_error: null, updated_at: new Date().toISOString() }).eq('id', it.id);
+      await sb.rpc('complete_sync_item', { p_id: it.id, p_success: true });
       out.push({ id: it.id, ok: true });
     } catch (e: any) {
       const msg = String(e?.message || e);
+      const { data: failed } = await sb.rpc('complete_sync_item', { p_id: it.id, p_success: false, p_error: msg });
       const attempts = (it.attempts || 0) + 1;
-      const failed = attempts >= MAX_ATTEMPTS;
-      const next = new Date(Date.now() + BACKOFF_MIN[Math.min(attempts - 1, BACKOFF_MIN.length - 1)] * 60_000).toISOString();
-      await sb.from('sync_queue').update({
-        status: failed ? 'failed' : 'pending', attempts, next_attempt_at: next, last_error: msg, updated_at: new Date().toISOString(),
-      }).eq('id', it.id);
       if (failed) await notifyFailure(sb, it.entity_id, msg);
       out.push({ id: it.id, ok: false, attempts, error: msg });
     }

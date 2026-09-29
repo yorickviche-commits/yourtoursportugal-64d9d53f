@@ -41,3 +41,5 @@ project_id = "jufqscczzmioauzkqztj"
     verify_jwt = false
   [functions.proposal-preview]
     verify_jwt = false
+  [functions.sync-worker]
+    verify_jwt = false
