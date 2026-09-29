@@ -6,11 +6,10 @@ import {
   corsHeaders, json, serviceClient, logSync,
   updateRecord, createRecord, createComment, fetchRecord,
   fromClientType, fromSource, fromDate, fromDateTime, statusToStage, wkey, rawStage,
-  recId, recUpdatedAt,
-  type FieldAction,
+  recId, recUpdatedAt, setBaselines, dealValues, field, ytKey, LEAD_SYNC_COLS, leadValues, leadAction,
+  PRIORITY_OUT, type FieldAction, type Vals,
 } from "../_shared/nethunt.ts";
 
-const PRIORITY_OUT: Record<string, string> = { high: "High", urgent: "High", medium: "Medium", low: "Low" };
 
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
@@ -20,7 +19,7 @@ serve(async (req) => {
   const sb = serviceClient();
   try {
     const { entity, id, changes = {} } = await req.json() as {
-      entity: "lead" | "task" | "comment" | "task_create" | "task_complete";
+      entity: "lead" | "task" | "comment" | "task_create" | "task_complete" | "lead_create_deal";
       id?: string;
       changes?: Record<string, unknown>;
     };
@@ -34,11 +33,15 @@ serve(async (req) => {
       if (!lead?.nethunt_record_id) throw new Error("Lead sem record NetHunt associado");
 
       const actions: FieldAction[] = [];
+      const sent: Vals = {};
       if ("nethunt_stage" in changes || "status" in changes) {
         const stage = (changes.nethunt_stage as string | undefined) ??
           statusToStage((changes.status as string) ?? lead.status, lead.nethunt_stage);
-        if (stage) actions.push({ field: wkey(F.stage), value: rawStage(stage) });
+        if (stage) { actions.push({ field: wkey(F.stage), value: rawStage(stage) }); sent.stage = stage; }
       }
+      for (const k of ["trip_start", "trip_finish", "close_date"]) if (k in changes) sent[k] = fromDate(changes[k] as string);
+      if ("client_type" in changes && fromClientType(changes.client_type as string)) sent.client_type = changes.client_type;
+      if ("source" in changes && fromSource(changes.source as string)) sent.source = changes.source;
       if ("trip_start" in changes) actions.push({ field: wkey(F.tripStart), value: fromDate(changes.trip_start as string) });
       if ("trip_finish" in changes) actions.push({ field: wkey(F.tripFinish), value: fromDate(changes.trip_finish as string) });
       if ("close_date" in changes) actions.push({ field: wkey(F.closeDate), value: fromDate(changes.close_date as string) });
@@ -53,6 +56,7 @@ serve(async (req) => {
       if (!actions.length) return json({ ok: true, skipped: "no_fields" });
 
       await updateRecord(lead.nethunt_record_id, actions);
+      await setBaselines(sb, "lead", lead.id, sent);
       const fresh = await fetchRecord(DEALS_FOLDER, lead.nethunt_record_id);
       await sb.from("leads").update({
         nethunt_updated_at: fresh ? recUpdatedAt(fresh) : now,
@@ -60,6 +64,36 @@ serve(async (req) => {
       } as never).eq("id", lead.id);
       await logSync(sb, [{ direction: "push", entity: "lead", entity_id: lead.id, nethunt_record_id: lead.nethunt_record_id, action: "update", detail: { fields: actions.map((a) => a.field) } }]);
       return json({ ok: true });
+    }
+
+    // 'Criar file no NetHunt': explicit action for a lead without a NetHunt record (never automatic).
+    if (entity === "lead_create_deal") {
+      if (!id) throw new Error("id required");
+      const { data } = await sb.from("leads").select(LEAD_SYNC_COLS).eq("id", id).maybeSingle();
+      const lead = data as any;
+      if (!lead) throw new Error("Lead não encontrada");
+      if (lead.nethunt_record_id) return json({ ok: true, already_linked: true, nethunt_record_id: lead.nethunt_record_id, yt_id: lead.yt_id });
+      const { vals } = await leadValues(sb as never, lead);
+      const fields: Record<string, unknown> = {};
+      for (const [f, v] of Object.entries(vals)) {
+        if (v === undefined || v === null) continue;
+        const a = leadAction(f, v);
+        if (a && a.value != null && !(Array.isArray(a.value) && !a.value.length)) fields[a.field] = a.value;
+      }
+      if (!fields[wkey(F.stage)]) fields[wkey(F.stage)] = rawStage("SALES - New Lead");
+      const created = await createRecord(DEALS_FOLDER, fields);
+      const rid = created ? recId(created) : null;
+      if (!rid) throw new Error("NetHunt não devolveu o record criado");
+      const fresh = (await fetchRecord(DEALS_FOLDER, rid)) ?? created;
+      const yt = ytKey(field(fresh, F.ytId));
+      const patch: Record<string, unknown> = {
+        nethunt_record_id: rid, nethunt_updated_at: recUpdatedAt(fresh), nethunt_synced_at: now,
+      };
+      if (yt) patch.yt_id = `YT${yt}`;
+      await setBaselines(sb, "lead", lead.id, dealValues(fresh));
+      await sb.from("leads").update(patch as never).eq("id", lead.id);
+      await logSync(sb, [{ direction: "push", entity: "lead", entity_id: lead.id, nethunt_record_id: rid, action: "create" }]);
+      return json({ ok: true, nethunt_record_id: rid, yt_id: patch.yt_id ?? null });
     }
 
     if (entity === "comment") {
@@ -129,7 +163,15 @@ serve(async (req) => {
         nethunt_updated_at: created ? recUpdatedAt(created) : now,
         nethunt_synced_at: now,
       } as never).select("id").maybeSingle();
-      await logSync(sb, [{ direction: "push", entity: "task", entity_id: (ins as { id: string } | null)?.id ?? null, nethunt_record_id: rid, action: "create" }]);
+      const newId = (ins as { id: string } | null)?.id ?? null;
+      if (newId && rid) {
+        await setBaselines(sb, "task", newId, {
+          title, description: String(changes.description ?? ""), priority: String(changes.priority ?? "medium"),
+          completed: false, all_day: Boolean(changes.all_day), due_at: dueAt ? new Date(dueAt).toISOString() : null,
+          assignee_emails: (changes.assignee_emails as string[]) ?? [],
+        });
+      }
+      await logSync(sb, [{ direction: "push", entity: "task", entity_id: newId, nethunt_record_id: rid, action: "create" }]);
       return json({ ok: true, task_id: (ins as { id: string } | null)?.id ?? null });
     }
 
@@ -167,6 +209,10 @@ serve(async (req) => {
       await sb.from("tasks").update(patch as never).eq("id", task.id);
       if (task.nethunt_record_id && actions.length) {
         await updateRecord(task.nethunt_record_id, actions);
+        const sent: Vals = {};
+        for (const k of ["title", "description", "priority", "completed", "all_day", "assignee_emails"]) if (k in patch) sent[k] = patch[k];
+        if ("due_at" in patch) sent.due_at = patch.due_at ? new Date(String(patch.due_at)).toISOString() : null;
+        await setBaselines(sb, "task", task.id, sent);
         const fresh = await fetchRecord(TASKS_FOLDER, task.nethunt_record_id);
         if (fresh) await sb.from("tasks").update({ nethunt_updated_at: recUpdatedAt(fresh) } as never).eq("id", task.id);
       }
