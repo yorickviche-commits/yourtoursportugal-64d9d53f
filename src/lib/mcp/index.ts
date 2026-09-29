@@ -20,6 +20,7 @@ import removeCostingLineTool from "./tools/remove-costing-line";
 import autofillCostingFromPlanTool from "./tools/autofill-costing-from-plan";
 import getOperationsTool from "./tools/get-operations";
 import updateOperationItemTool from "./tools/update-operation-item";
+import updateDayOpsTool from "./tools/update-day-ops";
 import updateTripBriefingTool from "./tools/update-trip-briefing";
 import validateLeadTool from "./tools/validate-lead";
 import generateTravelPlanTool from "./tools/generate-travel-plan";
@@ -67,6 +68,7 @@ export default defineMcp({
     autofillCostingFromPlanTool,
     getOperationsTool,
     updateOperationItemTool,
+    updateDayOpsTool,
     updateTripBriefingTool,
     validateLeadTool,
     generateTravelPlanTool,

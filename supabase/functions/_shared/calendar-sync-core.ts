@@ -17,7 +17,7 @@ const ORPHAN_INACTIVE_MSG = 'Lead/dia já não está ativo no TCC — rever even
 
 export interface SyncRequest {
   lead_id: string;
-  mode?: 'create' | 'update' | 'delete' | 'full_resync' | 'force_overwrite';
+  mode?: 'create' | 'update' | 'delete' | 'full_resync' | 'force_overwrite' | 'preview';
   day_dates?: string[];
 }
 
@@ -77,135 +77,138 @@ function ymd(d: Date): string {
   return d.toISOString().slice(0, 10);
 }
 
-interface CostingItem {
-  id: string;
-  description?: string;
-  supplier?: string;
-  status?: string;
-  netTotal?: number;
-  pvpTotal?: number;
-  numAdults?: number;
-  numChildren?: number;
-  notes?: any[];
-  category?: string;
-}
-
-interface OperationRow {
-  item_key: string;
-  day_number: number;
+interface DayItem {
+  key: string;
+  title: string;
+  supplier: string;
+  costDesc: string;
   schedule_time: string | null;
+  schedule_end_time: string | null;
   booking_status: string | null;
   payment_status: string | null;
   invoice_status: string | null;
+  opNotes: string;
+  itemNotes: string[];
+  emailSentAt?: string;
 }
 
-interface EmailLog {
-  operation_id: string | null;
-  lead_operation_id: string | null;
-  sent_at: string;
+interface DayOps {
+  guide_name?: string | null; vehicle?: string | null; vehicle_pickup?: string | null;
+  pickup_time?: string | null; pickup_location?: string | null; pickup_maps_url?: string | null;
+  dropoff_location?: string | null; dropoff_maps_url?: string | null;
+  notes_backoffice?: string | null; notes_guide?: string | null; guide_payment_amount?: number | null;
 }
 
 interface DayPayload {
   day_number: number;
   day_date: string;
-  items: Array<CostingItem & OperationRow & { emailSentAt?: string }>;
+  tour: string;
+  ops: DayOps;
+  items: DayItem[];
 }
 
-function summarizeDayStatus(items: DayPayload['items']): { prefix: string; label: string; colorId: string } {
+type StatusKey = 'por_confirmar' | 'parcial' | 'confirmado' | 'ok' | 'cancelado';
+const DEFAULT_COLORS: Record<StatusKey, string> = { por_confirmar: '5', parcial: '6', confirmado: '9', ok: '10', cancelado: '8' };
+
+function summarizeDayStatus(items: DayItem[]): { prefix: string; label: string; key: StatusKey } {
   const total = items.length;
-  if (total === 0) return { prefix: '', label: 'Rascunho', colorId: '5' };
+  if (total === 0) return { prefix: '', label: 'Por confirmar', key: 'por_confirmar' };
   const cancelled = items.filter(i => i.booking_status === 'cancelled').length;
-  if (cancelled === total) return { prefix: 'CANCELADO', label: 'Cancelado', colorId: '11' };
-  const booked = items.filter(i => i.booking_status === 'booked').length;
-  const paid = items.filter(i => i.payment_status === 'paid').length;
-  const invoiced = items.filter(i => i.invoice_status === 'received').length;
-  if (booked === total && paid === total && invoiced === total) return { prefix: 'OK -', label: 'Confirmado + Pago + Faturado', colorId: '10' };
-  if (booked === total) return { prefix: '*', label: 'Confirmado', colorId: '9' };
-  if (booked > 0) return { prefix: '**', label: 'Parcial', colorId: '8' };
-  return { prefix: '', label: 'Por confirmar', colorId: '5' };
+  if (cancelled === total) return { prefix: 'CANCELADO', label: 'Cancelado', key: 'cancelado' };
+  const active = items.filter(i => i.booking_status !== 'cancelled');
+  const booked = active.filter(i => i.booking_status === 'booked' || i.booking_status === 'confirmed').length;
+  const paid = active.filter(i => i.payment_status === 'paid').length;
+  const invoiced = active.filter(i => i.invoice_status === 'received').length;
+  const n = active.length;
+  if (booked === n && paid === n && invoiced === n) return { prefix: 'ok -', label: 'Confirmado', key: 'ok' };
+  if (booked === n) return { prefix: '*', label: 'Confirmado', key: 'confirmado' };
+  if (booked > 0) return { prefix: '**', label: 'Parcial', key: 'parcial' };
+  return { prefix: '', label: 'Por confirmar', key: 'por_confirmar' };
 }
 
 function bookingLabel(status: string | null): string {
   switch (status) {
-    case 'booked': return 'Reservado';
-    case 'confirmed': return 'Reservado';
-    case 'sent': return 'Pedido enviado';
-    case 'requested': return 'Pedido enviado';
-    case 'neutral': return 'Neutro';
+    case 'booked': case 'confirmed': return 'Reservado';
+    case 'sent': case 'requested': case 'pending': return 'Pedido enviado';
     case 'cancelled': return 'Cancelado';
-    case 'pending': return 'Aguarda resposta';
     default: return 'Por reservar';
   }
 }
 
-function buildTitle(lead: any, day: DayPayload, agentName: string): string {
-  const summary = summarizeDayStatus(day.items);
-  const family = (lead.client_name || '').split(' ').slice(-1)[0] || lead.client_name || 'Cliente';
-  const tour = lead.destination || 'Tour';
-  const parts = [];
-  if (summary.prefix) parts.push(summary.prefix);
-  parts.push(`*${tour} (${family} Family)`);
-  parts.push(`- ${summary.label}`);
-  if (agentName) parts.push(`- ${agentName}`);
-  return parts.join(' ');
+const esc = (s: unknown) => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+const link = (url: string | null | undefined, label: string) => url ? `<a href="${esc(url)}">${esc(label || url)}</a>` : esc(label);
+const lines = (txt: string | null | undefined) => String(txt || '').split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+function hhmm(t: string | null | undefined): string {
+  if (!t) return '';
+  const m = String(t).match(/^(\d{1,2})[:h](\d{2})/);
+  return m ? `${m[1].padStart(2, '0')}h${m[2]}` : String(t);
 }
+const eurFmt = (n: number) => new Intl.NumberFormat('pt-PT', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(n) + '€';
 
-function fmtTime(t: string | null): string {
-  if (!t) return '--:--';
-  return t.slice(0, 5);
-}
-
-function fmtDate(iso: string | null | undefined, short = true): string {
+function fmtDate(iso: string | null | undefined): string {
   if (!iso) return '';
   const d = new Date(iso);
   if (isNaN(d.getTime())) return '';
-  return short ? `${String(d.getUTCDate()).padStart(2,'0')}/${String(d.getUTCMonth()+1).padStart(2,'0')}` : d.toISOString().slice(0,10);
+  return `${String(d.getUTCDate()).padStart(2, '0')}/${String(d.getUTCMonth() + 1).padStart(2, '0')}`;
 }
 
-function buildDescription(lead: any, day: DayPayload, dayIndex: number, totalDays: number, proposalUrl?: string): string {
-  const bookingId = lead.yt_id || lead.lead_code || '';
-  const notes = (lead.notes || '').trim();
-  const pax = `${lead.pax || 0} pessoas (${lead.pax || 0} adultos${lead.pax_children ? ` + ${lead.pax_children} jovens` : ''}${lead.pax_infants ? ` + ${lead.pax_infants} bebés` : ''})`;
-  const firstItem = day.items[0];
-  const pickup = firstItem?.schedule_time ? `${fmtTime(firstItem.schedule_time)}` : 'a definir';
+export function buildTitle(day: DayPayload, origin: string): string {
+  const s = summarizeDayStatus(day.items);
+  const parts: string[] = [];
+  if (s.prefix) parts.push(s.prefix);
+  parts.push(`*${day.tour} (${origin})`);
+  parts.push(`- ${s.label}`);
+  if (day.ops.guide_name) parts.push(`- ${day.ops.guide_name}`);
+  return parts.join(' ');
+}
 
-  const header = [
-    proposalUrl ? `Programa comercial cliente: ${proposalUrl}\n` : '',
-    notes ? `NOTAS PARA BACKOFFICE:\n${notes}\n` : '',
-    `────────────────────────`,
-    `Tour: ${lead.destination || ''}`,
-    `Dia: ${dayIndex + 1} / ${totalDays}`,
-    `Data: ${day.day_date}`,
-    `Pick-up: ${pickup}`,
-    `Idioma: EN`,
-    `Nome: ${lead.client_name || ''}`,
-    `Nº pax: ${pax}`,
-    `Contacto: ${lead.phone || ''} | ${lead.email || ''}`,
-    `Origem da reserva: ${lead.source || 'Your Tours'}`,
-    bookingId ? `Nº Reserva: #${bookingId}` : '',
-    `Ref. Interna: ${lead.lead_code || ''}`,
-    `Estado: ${lead.status || ''}`,
-  ].filter(Boolean).join('\n');
-
-  const detailsHeader = `\n\nDETALHES DO SERVIÇO:\n`;
-  const details = day.items
-    .sort((a, b) => (a.schedule_time || '99:99').localeCompare(b.schedule_time || '99:99'))
-    .map(item => {
-      const time = fmtTime(item.schedule_time);
-      const supplier = item.supplier || 'Fornecedor';
-      const desc = item.description || '';
-      const status = bookingLabel(item.booking_status);
-      const lines = [`• ${time} - ${supplier} | ${desc} - ${status}`];
-      if (item.emailSentAt) lines.push(`    ◦ email enviado ${fmtDate(item.emailSentAt)}`);
-      if (item.payment_status === 'paid') lines.push(`    ◦ Pago pelo BackOffice`);
-      if (item.invoice_status === 'received') {
-        lines.push(`    ◦ Fatura recebida`);
-      }
-      return lines.join('\n');
-    })
-    .join('\n\n');
-
-  return header + detailsHeader + (details || '(sem serviços atribuídos ao dia)');
+export function buildDescription(lead: any, day: DayPayload, dayIndex: number, totalDays: number, origin: string, proposalUrl?: string): string {
+  const o = day.ops;
+  const out: string[] = [];
+  const tccUrl = `${APP_ORIGIN}/leads/${lead.id}`;
+  out.push(`Programa (TCC): ${link(tccUrl, tccUrl)}${proposalUrl ? ` | Programa comercial cliente: ${link(proposalUrl, proposalUrl)}` : ''}`);
+  const bo = lines(o.notes_backoffice);
+  if (bo.length) out.push('', '<b>NOTAS PARA BACKOFFICE:</b>', ...bo.map(l => `• ${esc(l)}`));
+  if (o.vehicle || o.vehicle_pickup) out.push('', `Carrinha: ${esc(o.vehicle || '')}${o.vehicle_pickup ? ` | Recolha: ${esc(o.vehicle_pickup)}` : ''}`);
+  out.push('----------------------------------------------------');
+  out.push(`<b>${esc(day.tour)}</b> · Dia ${dayIndex + 1} / ${totalDays} · ${day.day_date}`);
+  const pick = o.pickup_time || o.pickup_location
+    ? `Pick-up: ${hhmm(o.pickup_time)}${o.pickup_location ? ` - ${link(o.pickup_maps_url, o.pickup_location)}` : ''}` : '';
+  const drop = o.dropoff_location ? `Drop-off: ${link(o.dropoff_maps_url, o.dropoff_location)}` : '';
+  if (pick || drop) out.push([pick, drop].filter(Boolean).join(' · '));
+  // Convenção TCC: leads.pax = adultos; crianças e bebés à parte.
+  const adults = Number(lead.pax || 0), kids = Number(lead.pax_children || 0), babies = Number(lead.pax_infants || 0);
+  const paxTxt = `${adults} adultos${kids ? ` + ${kids} crianças` : ''}${babies ? ` + ${babies} bebés` : ''}`;
+  out.push(`${esc(lead.service_language || 'EN')} · ${esc(lead.client_name || '')} · Nº pax: ${paxTxt}`);
+  out.push(`Contacto: ${esc(lead.phone || '')} | ${esc(lead.email || '')} · ${esc(origin)}`);
+  const ref = lead.yt_id || lead.lead_code || '';
+  out.push(`Ref. Interna: ${esc(ref)}${lead.external_booking_ref ? ` · Nº Reserva: #${esc(lead.external_booking_ref)}` : ''}`);
+  const allCancelled = day.items.length > 0 && day.items.every(i => i.booking_status === 'cancelled');
+  out.push(`Estado: ${allCancelled ? 'cancelado' : 'booked'}`);
+  if (o.guide_payment_amount != null) out.push(`Valor a receber pelo guia: ${eurFmt(Number(o.guide_payment_amount))}`);
+  const gn = lines(o.notes_guide);
+  if (gn.length) out.push('', '<b>NOTAS PARA O GUIA:</b>', ...gn.map(l => `• ${esc(l)}`));
+  out.push('------------------------------------------------');
+  out.push('<b>DETALHES DO SERVIÇO:</b>');
+  const sorted = [...day.items].sort((a, b) => (a.schedule_time || '99:99').localeCompare(b.schedule_time || '99:99'));
+  if (!sorted.length) out.push('(sem serviços atribuídos ao dia)');
+  for (const it of sorted) {
+    const time = [hhmm(it.schedule_time), hhmm(it.schedule_end_time)].filter(Boolean).join(' | ') || '--h--';
+    out.push(`• ${time} - ${esc(it.supplier || 'FSE')} | ${esc(it.title)} - ${bookingLabel(it.booking_status)}`);
+    const sub: string[] = [];
+    if (it.costDesc && it.costDesc !== it.title) sub.push(esc(it.costDesc));
+    it.itemNotes.forEach(n => sub.push(esc(n)));
+    if (it.booking_status === 'booked' || it.booking_status === 'confirmed') sub.push('Confirmação FSE');
+    if (it.opNotes) sub.push(esc(it.opNotes));
+    if (it.emailSentAt) sub.push(`email enviado ${fmtDate(it.emailSentAt)}`);
+    if (it.payment_status === 'paid') sub.push('Pago pelo BackOffice');
+    else if (it.payment_status === 'guide_to_pay') sub.push('Guia paga no local');
+    else if (it.payment_status === 'monthly_account') sub.push('Conta mensal');
+    if (it.invoice_status === 'received') sub.push('Fatura recebida');
+    sub.forEach(s => out.push(`    ◦ ${s}`));
+  }
+  out.push('', `<i>Evento gerado automaticamente pelo TCC — alterações no TCC: ${link(tccUrl, tccUrl)}</i>`);
+  return out.join('<br>');
 }
 
 async function getCalendarId(supabase: any): Promise<{ calendarId: string; enabled: boolean }> {
@@ -280,76 +283,123 @@ export async function runCalendarSync(
   const mode = opts.mode;
   const forceDates = opts.forceDates || new Set<string>();
 
+  const isPreview = mode === 'preview';
   const { calendarId, enabled } = await getCalendarId(supabase);
-  if (!enabled) return { status: 200, body: { ok: true, skipped: 'disabled' } };
+  if (!enabled && !isPreview) return { status: 200, body: { ok: true, skipped: 'disabled' } };
 
   const { data: lead, error: leadErr } = await supabase.from('leads').select('*').eq('id', leadId).maybeSingle();
   if (leadErr) throw leadErr;
   if (!lead) {
+    if (isPreview) return { status: 404, body: { ok: false, error: 'lead not found' } };
     // Lead removed: keep Google events, flag mappings orphan.
     await markAllOrphanForLead(supabase, leadId);
     return { status: 200, body: { ok: true, orphaned: true, reason: 'lead not found' } };
   }
 
-  if (mode === 'delete' || !isCalendarEligible(lead)) {
+  if (!isPreview && (mode === 'delete' || !isCalendarEligible(lead))) {
     await markAllOrphanForLead(supabase, leadId);
     return { status: 200, body: { ok: true, orphaned: true } };
   }
 
-  const [{ data: costingRows }, { data: ops }, { data: emails }, { data: agents }, { data: proposals }] = await Promise.all([
-    supabase.from('lead_costing_data').select('day_number, items, version').eq('lead_id', leadId).eq('version', lead.active_version || 0),
+  const activeVersion = Number(lead.active_version || 0);
+  const [{ data: costingRows }, { data: ops }, { data: emails }, { data: proposals }, { data: dayOpsRows }, { data: plannerRows }, { data: colorCfg }, partnerRes] = await Promise.all([
+    supabase.from('lead_costing_data').select('day_number, items, version').eq('lead_id', leadId).eq('version', activeVersion),
     supabase.from('lead_operations').select('*').eq('lead_id', leadId),
     supabase.from('booking_emails_log').select('lead_operation_id, sent_at').eq('lead_id', leadId).order('sent_at', { ascending: false }),
-    lead.assigned_agents && lead.assigned_agents.length
-      ? supabase.from('profiles').select('id, full_name, email').in('id', lead.assigned_agents)
-      : Promise.resolve({ data: [] as any[] }),
     supabase.from('proposals')
       .select('public_token, version, created_at')
       .eq('lead_id', leadId)
       .order('version', { ascending: false })
       .order('created_at', { ascending: false }),
+    supabase.from('lead_day_ops').select('*').eq('lead_id', leadId),
+    supabase.from('lead_planner_data').select('day_number, title, version').eq('lead_id', leadId).eq('version', activeVersion),
+    supabase.from('integration_settings').select('config').eq('name', 'calendar_colors').maybeSingle(),
+    lead.partner_id ? supabase.from('partners').select('name').eq('id', lead.partner_id).maybeSingle() : Promise.resolve({ data: null }),
   ]);
 
-  const activeVersion = Number(lead.active_version || 0);
   const proposal = (proposals || []).find((p: any) => Number(p.version) === activeVersion) || proposals?.[0];
   const proposalUrl = proposal?.public_token
     ? `${APP_ORIGIN}/proposal/${encodeURIComponent(proposal.public_token)}`
     : undefined;
+  const origin = (lead.booking_origin || '').trim() || (partnerRes as any)?.data?.name || 'YT';
+  const colors: Record<string, string> = { ...DEFAULT_COLORS, ...((colorCfg as any)?.config || {}) };
 
-  const opByKey = new Map<string, OperationRow>((ops || []).map((o: any) => [`${o.day_number}:${o.item_key}`, o]));
   const emailByOpId = new Map<string, string>();
   for (const e of (emails || [])) {
     if (e.lead_operation_id && !emailByOpId.has(e.lead_operation_id)) emailByOpId.set(e.lead_operation_id, e.sent_at);
+  }
+  const dayOpsByNum = new Map<number, DayOps>((dayOpsRows || []).map((r: any) => [Number(r.day_number), r]));
+  const tourByNum = new Map<number, string>((plannerRows || []).map((r: any) => [Number(r.day_number), r.title]));
+
+  const norm = (s: unknown) => String(s || '').toLowerCase().replace(/[^a-z0-9]+/g, '');
+  const costByDay = new Map<number, any[]>();
+  for (const row of (costingRows || [])) costByDay.set(Number(row.day_number), Array.isArray(row.items) ? row.items : []);
+
+  // Item notes (item_notes, entity_type 'lead_cost_item' / 'lead_operation')
+  const opKeys = (ops || []).map((o: any) => o.item_key).concat((ops || []).map((o: any) => o.id));
+  const notesByEntity = new Map<string, string[]>();
+  if (opKeys.length) {
+    const { data: notes } = await supabase.from('item_notes').select('entity_id, note_text, created_at').in('entity_id', opKeys).order('created_at');
+    for (const n of (notes || [])) {
+      if (!n.note_text) continue;
+      const arr = notesByEntity.get(n.entity_id) || [];
+      arr.push(n.note_text); notesByEntity.set(n.entity_id, arr);
+    }
   }
 
   const startDate = parseTravelStart(lead.travel_dates, lead.travel_end_date);
   if (!startDate) return { status: 200, body: { ok: false, error: 'travel_dates not parseable' } };
 
-  const daysMap = new Map<number, DayPayload>();
-  for (const row of (costingRows || [])) {
-    const dayNum = row.day_number;
-    const dayDate = ymd(addDays(startDate, dayNum - 1));
-    const items = Array.isArray(row.items) ? row.items : [];
-    const dayItems = items.map((ci: CostingItem) => {
-      const op = opByKey.get(`${dayNum}:${ci.id}`);
-      const opId = (op as any)?.id;
-      return {
-        ...ci,
-        item_key: ci.id,
-        day_number: dayNum,
-        schedule_time: op?.schedule_time || null,
-        booking_status: op?.booking_status || null,
-        payment_status: op?.payment_status || null,
-        invoice_status: op?.invoice_status || null,
-        emailSentAt: opId ? emailByOpId.get(opId) : undefined,
-      };
+  const dayNums = new Set<number>();
+  (ops || []).forEach((o: any) => dayNums.add(Number(o.day_number)));
+  costByDay.forEach((items, d) => { if (items.length) dayNums.add(d); });
+
+  const days: DayPayload[] = [];
+  for (const dayNum of Array.from(dayNums).sort((a, b) => a - b)) {
+    const costItems = costByDay.get(dayNum) || [];
+    const dayOps = (ops || []).filter((o: any) => Number(o.day_number) === dayNum)
+      .sort((a: any, b: any) => (a.sort_order || 0) - (b.sort_order || 0));
+    const toItem = (o: any, ci: any): DayItem => ({
+      key: o?.item_key || ci?.id || '',
+      title: o?.activity_title || ci?.description || ci?.category || 'Serviço',
+      supplier: o?.supplier || ci?.supplier || '',
+      costDesc: ci?.description || '',
+      schedule_time: o?.schedule_time || null,
+      schedule_end_time: o?.schedule_end_time || null,
+      booking_status: o?.booking_status || null,
+      payment_status: o?.payment_status || null,
+      invoice_status: o?.invoice_status || null,
+      opNotes: o?.notes || '',
+      itemNotes: [...(notesByEntity.get(o?.item_key) || []), ...(notesByEntity.get(o?.id) || [])],
+      emailSentAt: o?.id ? emailByOpId.get(o.id) : undefined,
     });
-    if (dayItems.length > 0) daysMap.set(dayNum, { day_number: dayNum, day_date: dayDate, items: dayItems });
+    const items: DayItem[] = dayOps.length
+      ? dayOps.map((o: any) => toItem(o, costItems.find((ci: any) => ci.id === o.item_key || norm(ci.description) === norm(o.activity_title))))
+      : costItems.map((ci: any) => toItem(null, ci));
+    days.push({
+      day_number: dayNum,
+      day_date: ymd(addDays(startDate, dayNum - 1)),
+      tour: tourByNum.get(dayNum) || lead.destination || 'Tour',
+      ops: dayOpsByNum.get(dayNum) || {},
+      items,
+    });
   }
 
-  const days = Array.from(daysMap.values()).sort((a, b) => a.day_number - b.day_number);
   const totalDays = days.length || lead.number_of_days || 1;
-  const agentName = (agents && agents[0]?.full_name) || lead.sales_owner || '';
+
+  if (isPreview) {
+    return {
+      status: 200,
+      body: {
+        ok: true,
+        events: days.map((d, i) => ({
+          day_date: d.day_date,
+          title: buildTitle(d, origin),
+          description: buildDescription(lead, d, i, totalDays, origin, proposalUrl),
+        })),
+      },
+    };
+  }
 
   const { data: existingMappings } = await supabase.from('calendar_events').select('*').eq('lead_id', leadId);
   const existingByDate = new Map((existingMappings || []).map((m: any) => [m.day_date, m]));
@@ -363,15 +413,17 @@ export async function runCalendarSync(
     const day = days[i];
     activeDates.add(day.day_date);
     const summary = summarizeDayStatus(day.items);
-    const title = buildTitle(lead, day, agentName);
-    const description = buildDescription(lead, day, i, totalDays, proposalUrl);
+    const title = buildTitle(day, origin);
+    const description = buildDescription(lead, day, i, totalDays, origin, proposalUrl);
+    // colorId is NEVER sent on updates (existing colours preserved); only new events get a status colour.
+    const newColorId = String(colors[summary.key] || DEFAULT_COLORS[summary.key]);
     const eventPayload: any = {
       summary: title,
       description,
       location: lead.destination || '',
-      colorId: '3',
       start: { date: day.day_date, timeZone: 'Europe/Lisbon' },
       end: { date: ymd(addDays(new Date(day.day_date + 'T00:00:00Z'), 1)), timeZone: 'Europe/Lisbon' },
+      attendees: [],
       extendedProperties: {
         private: {
           yt_lead_id: leadId,
@@ -380,8 +432,6 @@ export async function runCalendarSync(
         },
       },
     };
-    const attendees = (agents || []).map((a: any) => ({ email: a.email })).filter((a: any) => a.email);
-    if (attendees.length > 0) eventPayload.attendees = attendees;
 
     const payloadHash = hash(eventPayload);
     const existing: any = existingByDate.get(day.day_date);
@@ -477,7 +527,7 @@ export async function runCalendarSync(
           // 3) Create with deterministic id; 409 → existing event → update path.
           const fixedId = deterministicEventId(leadId, day.day_date);
           const created = await gcal(`${calPath}?sendUpdates=none`, {
-            method: 'POST', body: JSON.stringify({ ...eventPayload, id: fixedId }),
+            method: 'POST', body: JSON.stringify({ ...eventPayload, id: fixedId, colorId: newColorId }),
           });
           if (created.status === 409) {
             saved = await updatePath(fixedId, null);

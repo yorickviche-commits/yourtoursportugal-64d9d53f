@@ -26,6 +26,7 @@ import BookingEmailHistory from '@/components/trip/BookingEmailHistory';
 import SupplierSearchDropdown from '@/components/trip/SupplierSearchDropdown';
 import LeadOpsAnalyticsPanel from '@/components/leads/LeadOpsAnalyticsPanel';
 import GuidePlanningDialog from '@/components/leads/GuidePlanningDialog';
+import LeadDayOpsBlock from '@/components/leads/LeadDayOpsBlock';
 
 
 import {
@@ -171,6 +172,7 @@ const LeadOperationsEditor = ({ activeVersion, leadId, leadCode, pvpTotal = 0, s
         netValue: cost?.net ?? Number(op?.net_value ?? 0) ?? 0,
         realCost: op?.real_cost != null ? Number(op.real_cost) : null,
         scheduleTime: op?.schedule_time || '',
+        scheduleEndTime: (op as any)?.schedule_end_time?.slice(0, 5) || '',
         bookingStatus: normalizeBookingStatus(op?.booking_status),
         paymentStatus: normalizePaymentStatus(op?.payment_status),
         invoiceStatus: normalizeInvoiceStatus(op?.invoice_status),
@@ -221,6 +223,7 @@ const LeadOperationsEditor = ({ activeVersion, leadId, leadCode, pvpTotal = 0, s
           netValue: Number(op.net_value ?? 0),
           realCost: op.real_cost != null ? Number(op.real_cost) : null,
           scheduleTime: op.schedule_time || '',
+          scheduleEndTime: (op as any).schedule_end_time?.slice(0, 5) || '',
           bookingStatus: normalizeBookingStatus(op.booking_status),
           paymentStatus: normalizePaymentStatus(op.payment_status),
           invoiceStatus: normalizeInvoiceStatus(op.invoice_status),
@@ -280,6 +283,7 @@ const LeadOperationsEditor = ({ activeVersion, leadId, leadCode, pvpTotal = 0, s
           item_key: r.itemKey,
           day_number: r.dayNumber,
           schedule_time: r.scheduleTime || null,
+          schedule_end_time: r.scheduleEndTime || null,
           booking_status: r.bookingStatus,
           payment_status: r.paymentStatus,
           invoice_status: r.invoiceStatus,
@@ -475,6 +479,7 @@ const LeadOperationsEditor = ({ activeVersion, leadId, leadCode, pvpTotal = 0, s
 
                 <CollapsibleContent>
                   <div className="px-4 pb-4 overflow-x-auto">
+                    <LeadDayOpsBlock leadId={leadId} dayNumber={day} />
                     {/* Header row */}
                     <div className={cn(GRID, 'min-w-[1150px] text-[10px] font-medium text-white uppercase bg-[hsl(var(--info))]/80 px-2 py-2 rounded-t')}>
                       <div>Hora</div>
@@ -506,14 +511,24 @@ const LeadOperationsEditor = ({ activeVersion, leadId, leadCode, pvpTotal = 0, s
                         return (
                           <div key={row.itemKey} className={cn(GRID, 'px-2 py-2 items-start text-xs hover:bg-muted/10')}>
                             {/* Hora */}
-                            <div className="flex items-center gap-1 pt-1">
-                              <Clock className="h-3 w-3 text-muted-foreground shrink-0" />
-                              <Input
-                                className="h-7 text-xs border-0 bg-transparent shadow-none focus-visible:ring-1 px-1 w-14"
-                                value={row.scheduleTime}
-                                onChange={e => updateRow(row.itemKey, { scheduleTime: e.target.value })}
-                                placeholder="--:--"
-                              />
+                            <div className="flex items-start gap-1 pt-1">
+                              <Clock className="h-3 w-3 text-muted-foreground shrink-0 mt-2" />
+                              <div className="flex flex-col">
+                                <Input
+                                  className="h-7 text-xs border-0 bg-transparent shadow-none focus-visible:ring-1 px-1 w-14"
+                                  value={row.scheduleTime}
+                                  onChange={e => updateRow(row.itemKey, { scheduleTime: e.target.value })}
+                                  placeholder="--:--"
+                                  title="Hora de início"
+                                />
+                                <Input
+                                  className="h-6 text-[10px] text-muted-foreground border-0 bg-transparent shadow-none focus-visible:ring-1 px-1 w-14"
+                                  value={row.scheduleEndTime || ''}
+                                  onChange={e => updateRow(row.itemKey, { scheduleEndTime: e.target.value })}
+                                  placeholder="fim"
+                                  title="Hora de fim"
+                                />
+                              </div>
                             </div>
 
                             {/* Atividade — editável, multi-linha, bem visível */}

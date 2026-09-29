@@ -1,4 +1,6 @@
-import { Calendar, CheckCircle2, AlertTriangle, Loader2, RefreshCw, ShieldAlert } from 'lucide-react';
+import { useState } from 'react';
+import { Calendar, CheckCircle2, AlertTriangle, Loader2, RefreshCw, ShieldAlert, Eye } from 'lucide-react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { useCalendarSyncStatus } from '@/hooks/useCalendarSync';
 import { useAuth } from '@/hooks/useAuth';
 import { useQuery } from '@tanstack/react-query';
@@ -27,6 +29,17 @@ export default function CalendarSyncBadge({ leadId, leadStatus }: Props) {
     },
   });
   const isAdmin = syncAdmins.includes((user?.email || '').toLowerCase());
+  const [previewOpen, setPreviewOpen] = useState(false);
+  const [previewLoading, setPreviewLoading] = useState(false);
+  const [previewError, setPreviewError] = useState<string | null>(null);
+  const [preview, setPreview] = useState<{ day_date: string; title: string; description: string }[] | null>(null);
+  const openPreview = async () => {
+    setPreviewOpen(true); setPreviewLoading(true); setPreviewError(null); setPreview(null);
+    const { data, error } = await supabase.functions.invoke('calendar-sync', { body: { lead_id: leadId, mode: 'preview' } });
+    setPreviewLoading(false);
+    if (error || !(data as any)?.ok) { setPreviewError((data as any)?.error || error?.message || 'Falha na pré-visualização'); return; }
+    setPreview((data as any).events || []);
+  };
 
   if (leadStatus !== 'won' && totalDays === 0) return null;
 
@@ -116,7 +129,25 @@ export default function CalendarSyncBadge({ leadId, leadStatus }: Props) {
             Forçar reescrita (admin)
           </Button>
         )}
+        <Button variant="ghost" size="sm" className="h-5 px-2 text-[10px]" onClick={openPreview}>
+          <Eye className="h-3 w-3 mr-1" /> Ver como fica no calendário
+        </Button>
       </div>
+      <Dialog open={previewOpen} onOpenChange={setPreviewOpen}>
+        <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
+          <DialogHeader><DialogTitle>Pré-visualização do calendário</DialogTitle></DialogHeader>
+          {previewLoading && <div className="flex items-center gap-2 text-sm"><Loader2 className="h-4 w-4 animate-spin" /> A gerar…</div>}
+          {previewError && <div className="text-sm text-destructive">{previewError}</div>}
+          {preview?.length === 0 && <div className="text-sm text-muted-foreground">Sem dias com serviços.</div>}
+          {preview?.map(ev => (
+            <div key={ev.day_date} className="border rounded p-3 space-y-2">
+              <div className="text-[10px] text-muted-foreground">{ev.day_date}</div>
+              <div className="text-sm font-semibold break-words">{ev.title}</div>
+              <div className="text-xs leading-relaxed break-words [&_a]:underline" dangerouslySetInnerHTML={{ __html: ev.description }} />
+            </div>
+          ))}
+        </DialogContent>
+      </Dialog>
     </TooltipProvider>
   );
 }

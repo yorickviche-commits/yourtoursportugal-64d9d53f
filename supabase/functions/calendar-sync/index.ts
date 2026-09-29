@@ -26,6 +26,15 @@ Deno.serve(async (req) => {
     if (!body.lead_id) throw new Error('lead_id required');
     const mode = body.mode || 'update';
 
+    if (mode === 'preview') {
+      const email = await getCallerEmail(req);
+      if (!email) return reply({ ok: false, error: 'autenticação necessária' }, 401);
+      const { data: isInternal } = await supabase.rpc('is_internal_user', {
+        _user_id: (await createClient(SUPABASE_URL, Deno.env.get('SUPABASE_ANON_KEY')!).auth.getUser((req.headers.get('Authorization') || '').slice(7))).data.user?.id,
+      });
+      if (!isInternal) return reply({ ok: false, error: 'sem acesso' }, 403);
+    }
+
     const forceDates = new Set<string>();
     if (mode === 'force_overwrite') {
       const email = await getCallerEmail(req);
