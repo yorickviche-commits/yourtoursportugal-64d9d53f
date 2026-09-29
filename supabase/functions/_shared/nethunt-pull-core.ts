@@ -6,10 +6,94 @@ import {
   pageRecords, fetchRecord, nhSoft, recId, recUpdatedAt, field,
   stageToStatus, toClientType, toSource, toDate, toIso, ytKey, canonicalStage,
   type LogRow, type NHRecord,
+  dealValues, leadValues, taskNhValues, taskRowValues, getBaselines, setBaselines, same,
+  LEAD_SYNC_COLS, type LeadForSync, type Vals,
 } from "./nethunt.ts";
 import { syncTimeline } from "./nethunt-timeline.ts";
 
-type Lead = { id: string; updated_at: string; nethunt_stage: string | null };
+type Lead = LeadForSync & { updated_at: string; nethunt_record_id: string | null; yt_id: string | null };
+
+/** Deals created in NetHunt from this date on create a TCC lead when unmatched. */
+const AUTO_CREATE_SINCE = "2026-09-29T00:00:00Z";
+
+/**
+ * Field-by-field merge against the baseline (nethunt_field_state).
+ * Returns fields to apply to the TCC with the NetHunt value; `push` = TCC must be re-sent.
+ * Baselines are written BEFORE the caller updates the TCC row (prevents echo).
+ */
+async function mergeFields(
+  sb: SupabaseClient, entity: "lead" | "task", id: string,
+  nhVals: Vals, tccVals: Vals, nhUpdatedAt: string, tccUpdatedAt: string, tccAuthority: Set<string>,
+) {
+  const base = await getBaselines(sb, entity, id);
+  const { data: pend } = await sb.from("sync_queue").select("fields, requested_at")
+    .eq("target", "nethunt").eq("entity", entity).eq("entity_id", id).in("status", ["pending", "processing"])
+    .order("requested_at", { ascending: false }).limit(1);
+  const pending = (pend as { fields: string[]; requested_at: string }[] | null)?.[0] ?? null;
+  const tccTime = (f: string) =>
+    pending && (!pending.fields?.length || pending.fields.includes(f)) ? pending.requested_at : tccUpdatedAt;
+
+  const apply: string[] = [];
+  const newBase: Vals = {};
+  const conflicts: Record<string, unknown>[] = [];
+  let push = false;
+  for (const [f, nv] of Object.entries(nhVals)) {
+    if (nv === undefined) continue;
+    const tv = tccVals[f];
+    const has = base.has(f);
+    const bv = base.get(f);
+    if (tccAuthority.has(f)) {
+      if (!same(nv, tv)) {
+        if (has && !same(nv, bv)) conflicts.push({ entity, entity_id: id, field: f, tcc_value: tv ?? null, nethunt_value: nv ?? null, winner: "tcc" });
+        push = true;
+      }
+      newBase[f] = nv;
+      continue;
+    }
+    if (!has) { if (!same(nv, tv)) apply.push(f); newBase[f] = nv; continue; }
+    if (same(nv, bv)) continue;
+    if (same(tv, bv) || same(tv, nv)) { if (!same(tv, nv)) apply.push(f); newBase[f] = nv; continue; }
+    const nhWins = nhUpdatedAt >= tccTime(f);
+    conflicts.push({ entity, entity_id: id, field: f, tcc_value: tv ?? null, nethunt_value: nv ?? null, winner: nhWins ? "nethunt" : "tcc" });
+    if (nhWins) apply.push(f); else push = true;
+    newBase[f] = nv;
+  }
+  await setBaselines(sb, entity, id, newBase);
+  if (conflicts.length) await sb.from("nethunt_conflicts").insert(conflicts as never);
+  if (push) await sb.rpc("enqueue_sync", { p_target: "nethunt", p_entity: entity, p_entity_id: id, p_fields: [], p_reason: "pull_conflict" } as never);
+  return { apply, push, conflicts: conflicts.length };
+}
+
+async function createLeadFromDeal(sb: SupabaseClient, r: NHRecord, logs: LogRow[]) {
+  const rid = recId(r);
+  const v = dealValues(r);
+  const yt = ytKey(field(r, F.ytId));
+  const status = stageToStatus(v.stage as string | null);
+  const row: Record<string, unknown> = {
+    client_name: (v.name as string) || (yt ? `YT${yt}` : "Cliente NetHunt"),
+    nethunt_record_id: rid,
+    yt_id: yt ? `YT${yt}` : null,
+    nethunt_stage: v.stage ?? null,
+    status: status ?? "new",
+    trip_start: v.trip_start ?? null,
+    trip_finish: v.trip_finish ?? null,
+    travel_dates: (v.trip_start as string) || "A definir",
+    travel_end_date: (v.trip_finish as string) || "",
+    client_type: (v.client_type as string) ?? "B2C",
+    source: (v.source as string) ?? "direct",
+    estimated_value: v.value ?? null,
+    close_date: v.close_date ?? null,
+    created_via: "nethunt_auto",
+    destination: "A definir",
+    nethunt_updated_at: recUpdatedAt(r),
+    nethunt_synced_at: new Date().toISOString(),
+  };
+  const { data, error } = await sb.from("leads").insert(row as never).select("id").maybeSingle();
+  const id = (data as { id: string } | null)?.id ?? null;
+  if (id) await setBaselines(sb, "lead", id, v);
+  logs.push({ direction: "pull", entity: "lead", entity_id: id, nethunt_record_id: rid, action: "create", status: error ? "error" : "ok", detail: error ? { message: error.message } : { created_via: "nethunt_auto" } });
+  return id;
+}
 
 async function syncDeal(sb: SupabaseClient, r: NHRecord, logs: LogRow[]) {
   const rid = recId(r);
@@ -17,60 +101,53 @@ async function syncDeal(sb: SupabaseClient, r: NHRecord, logs: LogRow[]) {
   const ytId = field(r, F.ytId);
 
   let lead: Lead | null = null;
-  const byRid = await sb
-    .from("leads").select("id, updated_at, nethunt_stage")
-    .eq("nethunt_record_id", rid).maybeSingle();
+  const byRid = await sb.from("leads").select(LEAD_SYNC_COLS).eq("nethunt_record_id", rid).maybeSingle();
   lead = (byRid.data as Lead | null) ?? null;
 
   const ytDigits = ytKey(ytId);
   if (!lead && ytDigits) {
-    const byYt = await sb
-      .from("leads").select("id, updated_at, nethunt_stage, yt_id")
-      .ilike("yt_id", `%${ytDigits}`);
-    const rows = (byYt.data as (Lead & { yt_id: string })[] | null) ?? [];
+    const byYt = await sb.from("leads").select(LEAD_SYNC_COLS).ilike("yt_id", `%${ytDigits}`);
+    const rows = (byYt.data as Lead[] | null) ?? [];
     lead = rows.find((l) => ytKey(l.yt_id) === ytDigits) ?? null;
   }
   if (!lead) {
+    const createdAt = toIso(r.createdAt);
+    if (createdAt && createdAt >= AUTO_CREATE_SINCE) return await createLeadFromDeal(sb, r, logs);
     logs.push({ direction: "pull", entity: "lead", nethunt_record_id: rid, action: "unmatched", status: "skipped", detail: { yt_id: ytId ?? null } });
     return null;
   }
-  if (lead.updated_at && lead.updated_at > updatedAt) {
-    // Even when the local row is newer, make sure the NetHunt link is stored —
-    // otherwise the CRM tab/timeline can never resolve this record.
-    await sb.from("leads").update({
-      nethunt_record_id: rid,
-      nethunt_synced_at: new Date().toISOString(),
-    } as never).eq("id", lead.id);
-    logs.push({ direction: "pull", entity: "lead", entity_id: lead.id, nethunt_record_id: rid, action: "update", status: "skipped_lww" });
-    return lead.id;
-  }
 
-  const stage = canonicalStage(field(r, F.stage) as string | null);
-  const status = stageToStatus(stage);
+  const nhVals = dealValues(r);
+  const { vals: tccVals, hasCosting } = await leadValues(sb, lead);
+  const { apply, conflicts } = await mergeFields(
+    sb, "lead", lead.id, nhVals, tccVals, updatedAt, lead.updated_at, new Set(hasCosting ? ["value"] : []),
+  );
+
   const patch: Record<string, unknown> = {
     nethunt_record_id: rid,
-    nethunt_stage: stage,
     nethunt_updated_at: updatedAt,
     nethunt_synced_at: new Date().toISOString(),
-    trip_start: toDate(field(r, F.tripStart)),
-    trip_finish: toDate(field(r, F.tripFinish)),
-    close_date: toDate(field(r, F.closeDate)),
   };
-  if (status) patch.status = status;
-  const ct = toClientType(field(r, F.clientType));
-  if (ct) patch.client_type = ct;
-  const src = toSource(field(r, F.source));
-  if (src) patch.source = src;
+  if (ytDigits) patch.yt_id = `YT${ytDigits}`;
+  for (const f of apply) {
+    const v = nhVals[f];
+    if (f === "stage") {
+      patch.nethunt_stage = v;
+      const st = stageToStatus(v as string | null);
+      if (st) patch.status = st;
+    } else if (f === "name") patch.client_name = v;
+    else if (f === "value") patch.estimated_value = v;
+    else patch[f] = v;
+  }
 
   const { error } = await sb.from("leads").update(patch as never).eq("id", lead.id);
   logs.push({
     direction: "pull", entity: "lead", entity_id: lead.id, nethunt_record_id: rid,
-    action: "update", status: error ? "error" : "ok", detail: error ? { message: error.message } : null,
+    action: "update", status: error ? "error" : "ok",
+    detail: error ? { message: error.message } : { fields: apply, conflicts },
   });
   return lead.id;
 }
-
-const PRIORITY_IN: Record<string, string> = { High: "high", Medium: "medium", Low: "low" };
 
 async function syncTask(sb: SupabaseClient, r: NHRecord, logs: LogRow[]) {
   const rid = recId(r);
@@ -84,20 +161,20 @@ async function syncTask(sb: SupabaseClient, r: NHRecord, logs: LogRow[]) {
     leadId = (data as { id: string }[] | null)?.[0]?.id ?? null;
   }
 
-  const assignee = field(r, TF.assignee);
-  const dueAt = toIso(field(r, TF.dueDate));
-  const completed = Boolean(field(r, TF.completed));
-  const row: Record<string, unknown> = {
-    nethunt_record_id: rid,
-    title: String(field(r, TF.name) ?? "(sem título)"),
-    description: field(r, TF.description) ? String(field(r, TF.description)) : "",
-    priority: PRIORITY_IN[String(field(r, TF.priority) ?? "")] ?? "medium",
-    completed,
-    status: completed ? "done" : "todo",
-    all_day: Boolean(field(r, TF.allDay)),
-    due_at: dueAt,
-    due_date: dueAt ? dueAt.slice(0, 10) : null,
-    assignee_emails: Array.isArray(assignee) ? assignee.map(String) : assignee ? [String(assignee)] : [],
+  const { data: existing } = await sb.from("tasks").select("*").eq("nethunt_record_id", rid).maybeSingle();
+  const ex = existing as Record<string, any> | null;
+
+  // Deleted in NetHunt → cancelled in the TCC (never deleted).
+  if (r.deleted) {
+    if (ex && ex.status !== "cancelled") {
+      await sb.from("tasks").update({ status: "cancelled", nethunt_synced_at: new Date().toISOString() } as never).eq("id", ex.id);
+      logs.push({ direction: "pull", entity: "task", entity_id: ex.id, nethunt_record_id: rid, action: "cancel" });
+    }
+    return;
+  }
+
+  const nhVals = taskNhValues(r);
+  const meta = {
     creator_email: field(r, TF.creator) ? String(field(r, TF.creator)) : null,
     nethunt_record_links: linkIds,
     lead_id: leadId,
@@ -105,20 +182,26 @@ async function syncTask(sb: SupabaseClient, r: NHRecord, logs: LogRow[]) {
     nethunt_synced_at: new Date().toISOString(),
   };
 
-  const { data: existing } = await sb
-    .from("tasks").select("id, updated_at").eq("nethunt_record_id", rid).maybeSingle();
-  const ex = existing as { id: string; updated_at: string } | null;
-
   if (ex) {
-    if (ex.updated_at && ex.updated_at > updatedAt) {
-      logs.push({ direction: "pull", entity: "task", entity_id: ex.id, nethunt_record_id: rid, action: "update", status: "skipped_lww" });
-      return;
+    const { apply, conflicts } = await mergeFields(sb, "task", ex.id, nhVals, taskRowValues(ex), updatedAt, ex.updated_at, new Set());
+    const patch: Record<string, unknown> = { ...meta };
+    for (const f of apply) {
+      patch[f] = nhVals[f];
+      if (f === "completed") patch.status = nhVals.completed ? "done" : "todo";
+      if (f === "due_at") patch.due_date = nhVals.due_at ? String(nhVals.due_at).slice(0, 10) : null;
     }
-    const { error } = await sb.from("tasks").update(row as never).eq("id", ex.id);
-    logs.push({ direction: "pull", entity: "task", entity_id: ex.id, nethunt_record_id: rid, action: "update", status: error ? "error" : "ok", detail: error ? { message: error.message } : null });
+    const { error } = await sb.from("tasks").update(patch as never).eq("id", ex.id);
+    logs.push({ direction: "pull", entity: "task", entity_id: ex.id, nethunt_record_id: rid, action: "update", status: error ? "error" : "ok", detail: error ? { message: error.message } : { fields: apply, conflicts } });
   } else {
+    const row = {
+      ...nhVals, ...meta, nethunt_record_id: rid,
+      status: nhVals.completed ? "done" : "todo",
+      due_date: nhVals.due_at ? String(nhVals.due_at).slice(0, 10) : null,
+    };
     const { data, error } = await sb.from("tasks").insert(row as never).select("id").maybeSingle();
-    logs.push({ direction: "pull", entity: "task", entity_id: (data as { id: string } | null)?.id ?? null, nethunt_record_id: rid, action: "create", status: error ? "error" : "ok", detail: error ? { message: error.message } : null });
+    const id = (data as { id: string } | null)?.id ?? null;
+    if (id) await setBaselines(sb, "task", id, nhVals);
+    logs.push({ direction: "pull", entity: "task", entity_id: id, nethunt_record_id: rid, action: "create", status: error ? "error" : "ok", detail: error ? { message: error.message } : null });
   }
 }
 
