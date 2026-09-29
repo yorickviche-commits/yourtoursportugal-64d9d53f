@@ -50,6 +50,13 @@
       "when": 1790645129657,
       "tag": "0006_calendar_events_protection",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1790646627858,
+      "tag": "0007_sync_queue_and_calendar_snapshots",
+      "breakpoints": true
     }
   ]
 }

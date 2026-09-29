@@ -683,6 +683,48 @@ export type Database = {
         }
         Relationships: []
       }
+      calendar_event_snapshots: {
+        Row: {
+          attachments: Json | null
+          color_id: string | null
+          created_at: string
+          day_date: string
+          description: string | null
+          google_event_id: string | null
+          id: string
+          lead_id: string
+          raw: Json | null
+          reason: string | null
+          summary: string | null
+        }
+        Insert: {
+          attachments?: Json | null
+          color_id?: string | null
+          created_at?: string
+          day_date: string
+          description?: string | null
+          google_event_id?: string | null
+          id?: string
+          lead_id: string
+          raw?: Json | null
+          reason?: string | null
+          summary?: string | null
+        }
+        Update: {
+          attachments?: Json | null
+          color_id?: string | null
+          created_at?: string
+          day_date?: string
+          description?: string | null
+          google_event_id?: string | null
+          id?: string
+          lead_id?: string
+          raw?: Json | null
+          reason?: string | null
+          summary?: string | null
+        }
+        Relationships: []
+      }
       calendar_events: {
         Row: {
           created_at: string
@@ -4455,6 +4497,69 @@ export type Database = {
         }
         Relationships: []
       }
+      sync_queue: {
+        Row: {
+          attempts: number
+          entity: string
+          entity_id: string
+          fields: string[]
+          id: number
+          last_error: string | null
+          next_attempt_at: string
+          reason: string | null
+          requested_at: string
+          status: string
+          target: string
+          updated_at: string
+        }
+        Insert: {
+          attempts?: number
+          entity: string
+          entity_id: string
+          fields?: string[]
+          id?: number
+          last_error?: string | null
+          next_attempt_at?: string
+          reason?: string | null
+          requested_at?: string
+          status?: string
+          target: string
+          updated_at?: string
+        }
+        Update: {
+          attempts?: number
+          entity?: string
+          entity_id?: string
+          fields?: string[]
+          id?: number
+          last_error?: string | null
+          next_attempt_at?: string
+          reason?: string | null
+          requested_at?: string
+          status?: string
+          target?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      sync_worker_config: {
+        Row: {
+          created_at: string
+          id: number
+          secret: string
+        }
+        Insert: {
+          created_at?: string
+          id?: number
+          secret?: string
+        }
+        Update: {
+          created_at?: string
+          id?: number
+          secret?: string
+        }
+        Relationships: []
+      }
       system_settings: {
         Row: {
           category: string
@@ -5791,6 +5896,33 @@ export type Database = {
         }[]
       }
       can_view_feedback: { Args: { _feedback_id: string }; Returns: boolean }
+      claim_sync_items: {
+        Args: { p_limit?: number; p_target: string }
+        Returns: {
+          attempts: number
+          entity: string
+          entity_id: string
+          fields: string[]
+          id: number
+          last_error: string | null
+          next_attempt_at: string
+          reason: string | null
+          requested_at: string
+          status: string
+          target: string
+          updated_at: string
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "sync_queue"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
+      complete_sync_item: {
+        Args: { p_error?: string; p_id: number; p_success: boolean }
+        Returns: boolean
+      }
       delete_email: {
         Args: { message_id: number; queue_name: string }
         Returns: boolean
@@ -5800,7 +5932,29 @@ export type Database = {
         Args: { payload: Json; queue_name: string }
         Returns: number
       }
+      enqueue_sync: {
+        Args: {
+          p_entity: string
+          p_entity_id: string
+          p_fields?: string[]
+          p_reason?: string
+          p_target: string
+        }
+        Returns: undefined
+      }
       feedback_is_new: { Args: { _feedback_id: string }; Returns: boolean }
+      get_sync_status: {
+        Args: { p_entity_id: string; p_target: string }
+        Returns: {
+          attempts: number
+          last_error: string
+          next_attempt_at: string
+          requested_at: string
+          status: string
+          updated_at: string
+        }[]
+      }
+      get_sync_worker_secret: { Args: never; Returns: string }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
