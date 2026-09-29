@@ -12,7 +12,7 @@
   "mcp": {
     "server": {
       "name": "your-travel-2-0",
-      "version": "0.3.0",
+      "version": "0.4.0",
       "title": "Your Travel 2.0"
     },
     "tools": [
@@ -1132,7 +1132,7 @@
       {
         "name": "generate_travel_plan",
         "title": "Generate the travel plan with AI",
-        "description": "Generate the day-by-day programme of a lead with the same AI generator used by 'Regenerar Tudo' in the Travel Planner. If the LIVE version already has a programme, a NEW version is created and becomes LIVE — the previous one stays readable, nothing is overwritten. Returns the programme plus the warnings to fix before sending it to the client.",
+        "description": "Generate the day-by-day programme of a lead with the same AI generator used by 'Regenerar Tudo' in the Travel Planner. If the LIVE version already has a programme, a NEW version is created and becomes LIVE (for agent keys: always a new 'Proposta AI' version that stays non-LIVE until a person promotes it) — the previous one stays readable, nothing is overwritten. Returns the programme plus the warnings to fix before sending it to the client.",
         "annotations": {
           "readOnlyHint": false,
           "destructiveHint": false,
