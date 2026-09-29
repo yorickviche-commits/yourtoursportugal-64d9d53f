@@ -30,6 +30,7 @@ import requestPaymentLinkTool from "./tools/request-payment-link";
 import draftFseRequestsTool from "./tools/draft-fse-requests";
 import draftClientEmailTool from "./tools/draft-client-email";
 import importLeadAiTool from "./tools/import-lead-ai";
+import createNethuntDealTool from "./tools/create-nethunt-deal";
 
 // Issuer must be the direct Supabase host, built from the project ref literal.
 const projectRef = import.meta.env.VITE_SUPABASE_PROJECT_ID ?? "project-ref-unset";
@@ -76,5 +77,6 @@ export default defineMcp({
     draftFseRequestsTool,
     draftClientEmailTool,
     importLeadAiTool,
+    createNethuntDealTool,
   ],
 });

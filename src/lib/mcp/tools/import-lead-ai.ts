@@ -35,6 +35,58 @@ export default defineTool({
     const start = x.travelDates || null;
     const end = x.travelEndDate || null;
 
+    // Merge into a lead that already exists for this file (NetHunt-first flow):
+    // 1) YT#### in the text / extraction matches leads.yt_id, else
+    // 2) a 'nethunt_auto' lead created in the last 48 h with the same client email.
+    const ytDigits = (String(x.ytId || x.yt_id || "").match(/\d{3,}/) || raw_text.match(/\bYT[-\s]?(\d{3,})\b/i))?.[1] ??
+      String(x.ytId || x.yt_id || "").replace(/\D/g, "") || null;
+    let target: any = null;
+    if (ytDigits) {
+      const { data: byYt } = await supabase.from("leads").select("*").ilike("yt_id", `%${ytDigits}`);
+      target = (byYt ?? []).find((r: any) => String(r.yt_id || "").replace(/\D/g, "") === ytDigits) ?? null;
+    }
+    if (!target && email) {
+      const since = new Date(Date.now() - 48 * 3600_000).toISOString();
+      const { data: auto } = await supabase.from("leads").select("*")
+        .eq("created_via", "nethunt_auto").ilike("email", email).gte("created_at", since)
+        .order("created_at", { ascending: false }).limit(1);
+      target = auto?.[0] ?? null;
+    }
+    if (!target && email) {
+      // nethunt_auto leads have no email yet: match by name when the email is unknown there
+      const since = new Date(Date.now() - 48 * 3600_000).toISOString();
+      const { data: auto } = await supabase.from("leads").select("*")
+        .eq("created_via", "nethunt_auto").gte("created_at", since).or("email.is.null,email.eq.");
+      const nm = String(x.clientName || "").trim().toLowerCase();
+      target = nm ? (auto ?? []).find((r: any) => String(r.client_name || "").trim().toLowerCase() === nm) ?? null : null;
+    }
+    if (target) {
+      const fill: Record<string, unknown> = {};
+      const cand: Record<string, unknown> = {
+        email, phone: x.phone || "",
+        destination: Array.isArray(x.destination) ? x.destination.join(", ") : x.destination || "",
+        travel_dates: start || "", travel_end_date: end || "",
+        number_of_days: Number(x.numberOfDays) || 0, dates_type: x.datesType || "",
+        pax: Number(x.pax) || 0, budget_level: x.budget || "",
+        notes: [x.request, x.preferences, gmail_thread_id ? `Gmail: ${gmail_thread_id}` : null].filter(Boolean).join("\n"),
+        travel_style: x.travelStyle || "", comfort_level: x.comfortLevel || "", language: language || x.language || "",
+      };
+      const empty = (v: unknown) => v == null || v === "" || v === 0 || v === "A definir";
+      for (const [k, v] of Object.entries(cand)) if (!empty(v) && empty(target[k])) fill[k] = v;
+      if (Object.keys(fill).length) {
+        const { error: upErr } = await supabase.from("leads").update(fill as never).eq("id", target.id);
+        if (upErr) throw new ToolError(upErr.message);
+      }
+      await auditLead(supabase, ctx, target as LeadRow, "lead_import_merged",
+        Object.fromEntries(Object.entries(fill).map(([k, v]) => [k, { from: target[k] ?? null, to: v }])), { source, gmail_thread_id });
+      const payload = {
+        duplicate: true, merged: true, id: target.id, lead_code: target.yt_id || target.lead_code,
+        url: leadUrl(target as LeadRow), nethunt_record_id: target.nethunt_record_id, filled_fields: Object.keys(fill),
+        note: "Existing lead for this file was updated (empty fields filled) instead of creating a new one. Generate the travel plan on this lead.",
+      };
+      return { content: [{ type: "text", text: JSON.stringify(payload, null, 2) }], structuredContent: payload };
+    }
+
     // Deduplication: same email + overlapping dates
     if (email) {
       const { data: same } = await supabase

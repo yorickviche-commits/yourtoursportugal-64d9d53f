@@ -9,13 +9,14 @@ export default defineTool({
   description:
     "Creates the deal in NetHunt CRM for a TCC lead that has no NetHunt record yet, and stores the returned record id and YT ID on the lead. Never runs automatically; idempotent (returns the existing link if already linked).",
   inputSchema: {
-    lead: z.string().min(1).describe("Lead uuid or code, e.g. YT5130 / YT-5130."),
+    lead_id: z.string().optional().describe("Lead uuid."),
+    lead_code: z.string().optional().describe("Lead code, e.g. YT5130 / YT-5130."),
   },
   annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: true },
-  handler: async ({ lead }, ctx) => {
+  handler: async ({ lead_id, lead_code }, ctx) => {
     if (!ctx.isAuthenticated()) throw new ToolError("Not authenticated");
     const supabase = supabaseForUser(ctx);
-    const row = await resolveLead(supabase, lead);
+    const row = await resolveLead(supabase, { lead_id, lead_code });
     const { data, error } = await supabase.functions.invoke("nethunt-push", {
       body: { entity: "lead_create_deal", id: row.id },
     });
