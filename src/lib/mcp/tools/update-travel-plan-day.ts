@@ -1,7 +1,7 @@
 import { defineTool, ToolError } from "@lovable.dev/mcp-js";
 import { z } from "zod";
 import { supabaseForUser } from "../supabase";
-import { auditLead, leadLabel, liveVersion, resolveLead } from "../lead";
+import { auditLead, leadLabel, resolveLead } from "../lead";
 import { resolveWriteVersion } from "../agent";
 import { loadPlan, planPayload, savePlan, type PlanDay } from "../travelPlan";
 
