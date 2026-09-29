@@ -20,7 +20,7 @@ export default defineConfig(({ mode }) => ({
       overlay: false,
     },
   },
-  plugins: [react(), mcpPlugin(), mode === "development" && componentTagger()].filter(Boolean),
+  plugins: [react(), mcpPlugin(), mcpPlugin({ mcpEntry: "src/lib/mcp/agent-entry.ts", functionName: "mcp-agent-core" }), mode === "development" && componentTagger()].filter(Boolean),
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),
