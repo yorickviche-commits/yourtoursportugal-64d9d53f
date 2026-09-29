@@ -2,6 +2,7 @@ import { ToolError } from "@lovable.dev/mcp-js";
 import type { ToolContext } from "@lovable.dev/mcp-js";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { leadLabel, type LeadRow } from "./lead";
+import { agentIdentity } from "./agent";
 
 /**
  * Human approval gate. AI agents never execute actions with an external effect
@@ -54,6 +55,7 @@ export async function enqueueAction(
   };
 
   const existing = await find();
+  const agent = await agentIdentity(supabase, ctx);
   if (existing) return { item: existing, created: false };
 
   const { data, error } = await supabase
@@ -67,7 +69,7 @@ export async function enqueueAction(
       payload: args.payload as never,
       idempotency_key: key,
       created_by: ctx.getUserId() ?? null,
-      created_by_label: "AI agent (MCP)",
+      created_by_label: agent ? agent.agent_label : "AI agent (MCP)",
     } as never)
     .select()
     .single();

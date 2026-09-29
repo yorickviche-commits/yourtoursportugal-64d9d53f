@@ -2,6 +2,7 @@ import { ToolError } from "@lovable.dev/mcp-js";
 import type { ToolContext } from "@lovable.dev/mcp-js";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { liveVersion, type LeadRow } from "./lead";
+import { createLeadVersion } from "./versions";
 
 /**
  * Agent identity: when the caller is the technical user behind a `ytp_agent_`
@@ -79,6 +80,5 @@ export async function resolveWriteVersion(
   const existing = (data as any[] | null)?.[0]?.version;
   if (existing !== undefined && existing !== null) return Number(existing);
 
-  const { createLeadVersion } = await import("./versions");
   return createLeadVersion(supabase, lead, live, { agent });
 }

@@ -1,6 +1,7 @@
 import { ToolError } from "@lovable.dev/mcp-js";
 import type { ToolContext } from "@lovable.dev/mcp-js";
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { agentActor, agentIdentity } from "./agent";
 
 export const APP_ORIGIN = "https://yourtoursportugal.lovable.app";
 
@@ -120,13 +121,15 @@ export async function auditLead(
   changes: Record<string, { from: unknown; to: unknown }>,
   extra?: Record<string, unknown>,
 ) {
+  const agent = await agentIdentity(supabase, ctx);
   const { error } = await supabase.from("activity_logs").insert({
     action_type: actionType,
     entity_type: "lead",
     entity_id: lead.id,
     user_id: ctx.getUserId() ?? null,
     details: {
-      actor: "AI agent (MCP)",
+      actor: agentActor(agent),
+      ...(agent ? { agent_key_id: agent.id, agent_label: agent.agent_label, agent_model: agent.model } : {}),
       actor_user_id: ctx.getUserId() ?? null,
       actor_email: ctx.getUserEmail() ?? null,
       lead_code: leadLabel(lead),
@@ -135,6 +138,13 @@ export async function auditLead(
     },
   } as never);
   if (error) console.warn("audit insert failed", error.message);
+
+  // Agent writes are stamped on the NetHunt timeline too (label, model, version).
+  if (agent && lead.nethunt_record_id) {
+    const ver = (extra as any)?.version ?? (extra as any)?.target_version;
+    const text = `[${agentActor(agent)}] ${actionType}${ver !== undefined ? ` · V${ver}` : ""} — ${Object.keys(changes).join(", ") || "update"}`;
+    await pushNetHunt(supabase, "comment", lead.id, { text }, true);
+  }
 }
 
 export type SyncResult = { status: "ok" | "not_linked" | "error"; message?: string };

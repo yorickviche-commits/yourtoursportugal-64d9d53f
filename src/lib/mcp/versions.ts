@@ -21,7 +21,9 @@ export async function createLeadVersion(
   supabase: SupabaseClient,
   lead: LeadRow,
   fromVersion: number,
+  opts?: { agent?: { id: string; agent_label: string; model: string | null } },
 ): Promise<number> {
+  const agent = opts?.agent;
   const leadId = lead.id;
   const { data: versions } = await supabase.from("lead_versions").select("version").eq("lead_id", leadId);
   const maxExisting = ((versions ?? []) as any[]).reduce((m, r) => Math.max(m, Number(r.version)), fromVersion);
@@ -44,8 +46,16 @@ export async function createLeadVersion(
     supabase.from("lead_versions").insert({
       lead_id: leadId,
       version: newVersion,
-      name: `V${newVersion}`,
+      name: agent ? `Proposta AI V${newVersion}` : `V${newVersion}`,
       general_data: pickGeneralData(lead) as never,
+      ...(agent
+        ? {
+            is_ai_proposal: true,
+            proposed_by_label: `${agent.agent_label}${agent.model ? ` · ${agent.model}` : ""}`,
+            proposed_by_key_id: agent.id,
+            proposed_at: new Date().toISOString(),
+          }
+        : {}),
     } as never),
     strip(planner.data).length
       ? supabase.from("lead_planner_data").insert(strip(planner.data) as never)
@@ -89,6 +99,8 @@ export async function createLeadVersion(
     if (pErr) throw new ToolError(pErr.message);
   }
 
+  // AI proposals never become LIVE — a human promotes them in the TCC.
+  if (agent) return newVersion;
   const { error: upErr } = await supabase.from("leads").update({ active_version: newVersion } as never).eq("id", leadId);
   if (upErr) throw new ToolError(upErr.message);
   return newVersion;
