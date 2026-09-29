@@ -283,76 +283,123 @@ export async function runCalendarSync(
   const mode = opts.mode;
   const forceDates = opts.forceDates || new Set<string>();
 
+  const isPreview = mode === 'preview';
   const { calendarId, enabled } = await getCalendarId(supabase);
-  if (!enabled) return { status: 200, body: { ok: true, skipped: 'disabled' } };
+  if (!enabled && !isPreview) return { status: 200, body: { ok: true, skipped: 'disabled' } };
 
   const { data: lead, error: leadErr } = await supabase.from('leads').select('*').eq('id', leadId).maybeSingle();
   if (leadErr) throw leadErr;
   if (!lead) {
+    if (isPreview) return { status: 404, body: { ok: false, error: 'lead not found' } };
     // Lead removed: keep Google events, flag mappings orphan.
     await markAllOrphanForLead(supabase, leadId);
     return { status: 200, body: { ok: true, orphaned: true, reason: 'lead not found' } };
   }
 
-  if (mode === 'delete' || !isCalendarEligible(lead)) {
+  if (!isPreview && (mode === 'delete' || !isCalendarEligible(lead))) {
     await markAllOrphanForLead(supabase, leadId);
     return { status: 200, body: { ok: true, orphaned: true } };
   }
 
-  const [{ data: costingRows }, { data: ops }, { data: emails }, { data: agents }, { data: proposals }] = await Promise.all([
-    supabase.from('lead_costing_data').select('day_number, items, version').eq('lead_id', leadId).eq('version', lead.active_version || 0),
+  const activeVersion = Number(lead.active_version || 0);
+  const [{ data: costingRows }, { data: ops }, { data: emails }, { data: proposals }, { data: dayOpsRows }, { data: plannerRows }, { data: colorCfg }, partnerRes] = await Promise.all([
+    supabase.from('lead_costing_data').select('day_number, items, version').eq('lead_id', leadId).eq('version', activeVersion),
     supabase.from('lead_operations').select('*').eq('lead_id', leadId),
     supabase.from('booking_emails_log').select('lead_operation_id, sent_at').eq('lead_id', leadId).order('sent_at', { ascending: false }),
-    lead.assigned_agents && lead.assigned_agents.length
-      ? supabase.from('profiles').select('id, full_name, email').in('id', lead.assigned_agents)
-      : Promise.resolve({ data: [] as any[] }),
     supabase.from('proposals')
       .select('public_token, version, created_at')
       .eq('lead_id', leadId)
       .order('version', { ascending: false })
       .order('created_at', { ascending: false }),
+    supabase.from('lead_day_ops').select('*').eq('lead_id', leadId),
+    supabase.from('lead_planner_data').select('day_number, title, version').eq('lead_id', leadId).eq('version', activeVersion),
+    supabase.from('integration_settings').select('config').eq('name', 'calendar_colors').maybeSingle(),
+    lead.partner_id ? supabase.from('partners').select('name').eq('id', lead.partner_id).maybeSingle() : Promise.resolve({ data: null }),
   ]);
 
-  const activeVersion = Number(lead.active_version || 0);
   const proposal = (proposals || []).find((p: any) => Number(p.version) === activeVersion) || proposals?.[0];
   const proposalUrl = proposal?.public_token
     ? `${APP_ORIGIN}/proposal/${encodeURIComponent(proposal.public_token)}`
     : undefined;
+  const origin = (lead.booking_origin || '').trim() || (partnerRes as any)?.data?.name || 'YT';
+  const colors: Record<string, string> = { ...DEFAULT_COLORS, ...((colorCfg as any)?.config || {}) };
 
-  const opByKey = new Map<string, OperationRow>((ops || []).map((o: any) => [`${o.day_number}:${o.item_key}`, o]));
   const emailByOpId = new Map<string, string>();
   for (const e of (emails || [])) {
     if (e.lead_operation_id && !emailByOpId.has(e.lead_operation_id)) emailByOpId.set(e.lead_operation_id, e.sent_at);
+  }
+  const dayOpsByNum = new Map<number, DayOps>((dayOpsRows || []).map((r: any) => [Number(r.day_number), r]));
+  const tourByNum = new Map<number, string>((plannerRows || []).map((r: any) => [Number(r.day_number), r.title]));
+
+  const norm = (s: unknown) => String(s || '').toLowerCase().replace(/[^a-z0-9]+/g, '');
+  const costByDay = new Map<number, any[]>();
+  for (const row of (costingRows || [])) costByDay.set(Number(row.day_number), Array.isArray(row.items) ? row.items : []);
+
+  // Item notes (item_notes, entity_type 'lead_cost_item' / 'lead_operation')
+  const opKeys = (ops || []).map((o: any) => o.item_key).concat((ops || []).map((o: any) => o.id));
+  const notesByEntity = new Map<string, string[]>();
+  if (opKeys.length) {
+    const { data: notes } = await supabase.from('item_notes').select('entity_id, note_text, created_at').in('entity_id', opKeys).order('created_at');
+    for (const n of (notes || [])) {
+      if (!n.note_text) continue;
+      const arr = notesByEntity.get(n.entity_id) || [];
+      arr.push(n.note_text); notesByEntity.set(n.entity_id, arr);
+    }
   }
 
   const startDate = parseTravelStart(lead.travel_dates, lead.travel_end_date);
   if (!startDate) return { status: 200, body: { ok: false, error: 'travel_dates not parseable' } };
 
-  const daysMap = new Map<number, DayPayload>();
-  for (const row of (costingRows || [])) {
-    const dayNum = row.day_number;
-    const dayDate = ymd(addDays(startDate, dayNum - 1));
-    const items = Array.isArray(row.items) ? row.items : [];
-    const dayItems = items.map((ci: CostingItem) => {
-      const op = opByKey.get(`${dayNum}:${ci.id}`);
-      const opId = (op as any)?.id;
-      return {
-        ...ci,
-        item_key: ci.id,
-        day_number: dayNum,
-        schedule_time: op?.schedule_time || null,
-        booking_status: op?.booking_status || null,
-        payment_status: op?.payment_status || null,
-        invoice_status: op?.invoice_status || null,
-        emailSentAt: opId ? emailByOpId.get(opId) : undefined,
-      };
+  const dayNums = new Set<number>();
+  (ops || []).forEach((o: any) => dayNums.add(Number(o.day_number)));
+  costByDay.forEach((items, d) => { if (items.length) dayNums.add(d); });
+
+  const days: DayPayload[] = [];
+  for (const dayNum of Array.from(dayNums).sort((a, b) => a - b)) {
+    const costItems = costByDay.get(dayNum) || [];
+    const dayOps = (ops || []).filter((o: any) => Number(o.day_number) === dayNum)
+      .sort((a: any, b: any) => (a.sort_order || 0) - (b.sort_order || 0));
+    const toItem = (o: any, ci: any): DayItem => ({
+      key: o?.item_key || ci?.id || '',
+      title: o?.activity_title || ci?.description || ci?.category || 'Serviço',
+      supplier: o?.supplier || ci?.supplier || '',
+      costDesc: ci?.description || '',
+      schedule_time: o?.schedule_time || null,
+      schedule_end_time: o?.schedule_end_time || null,
+      booking_status: o?.booking_status || null,
+      payment_status: o?.payment_status || null,
+      invoice_status: o?.invoice_status || null,
+      opNotes: o?.notes || '',
+      itemNotes: [...(notesByEntity.get(o?.item_key) || []), ...(notesByEntity.get(o?.id) || [])],
+      emailSentAt: o?.id ? emailByOpId.get(o.id) : undefined,
     });
-    if (dayItems.length > 0) daysMap.set(dayNum, { day_number: dayNum, day_date: dayDate, items: dayItems });
+    const items: DayItem[] = dayOps.length
+      ? dayOps.map((o: any) => toItem(o, costItems.find((ci: any) => ci.id === o.item_key || norm(ci.description) === norm(o.activity_title))))
+      : costItems.map((ci: any) => toItem(null, ci));
+    days.push({
+      day_number: dayNum,
+      day_date: ymd(addDays(startDate, dayNum - 1)),
+      tour: tourByNum.get(dayNum) || lead.destination || 'Tour',
+      ops: dayOpsByNum.get(dayNum) || {},
+      items,
+    });
   }
 
-  const days = Array.from(daysMap.values()).sort((a, b) => a.day_number - b.day_number);
   const totalDays = days.length || lead.number_of_days || 1;
-  const agentName = (agents && agents[0]?.full_name) || lead.sales_owner || '';
+
+  if (isPreview) {
+    return {
+      status: 200,
+      body: {
+        ok: true,
+        events: days.map((d, i) => ({
+          day_date: d.day_date,
+          title: buildTitle(d, origin),
+          description: buildDescription(lead, d, i, totalDays, origin, proposalUrl),
+        })),
+      },
+    };
+  }
 
   const { data: existingMappings } = await supabase.from('calendar_events').select('*').eq('lead_id', leadId);
   const existingByDate = new Map((existingMappings || []).map((m: any) => [m.day_date, m]));
@@ -366,15 +413,17 @@ export async function runCalendarSync(
     const day = days[i];
     activeDates.add(day.day_date);
     const summary = summarizeDayStatus(day.items);
-    const title = buildTitle(lead, day, agentName);
-    const description = buildDescription(lead, day, i, totalDays, proposalUrl);
+    const title = buildTitle(day, origin);
+    const description = buildDescription(lead, day, i, totalDays, origin, proposalUrl);
+    // colorId is NEVER sent on updates (existing colours preserved); only new events get a status colour.
+    const newColorId = String(colors[summary.key] || DEFAULT_COLORS[summary.key]);
     const eventPayload: any = {
       summary: title,
       description,
       location: lead.destination || '',
-      colorId: '3',
       start: { date: day.day_date, timeZone: 'Europe/Lisbon' },
       end: { date: ymd(addDays(new Date(day.day_date + 'T00:00:00Z'), 1)), timeZone: 'Europe/Lisbon' },
+      attendees: [],
       extendedProperties: {
         private: {
           yt_lead_id: leadId,
@@ -383,8 +432,6 @@ export async function runCalendarSync(
         },
       },
     };
-    const attendees = (agents || []).map((a: any) => ({ email: a.email })).filter((a: any) => a.email);
-    if (attendees.length > 0) eventPayload.attendees = attendees;
 
     const payloadHash = hash(eventPayload);
     const existing: any = existingByDate.get(day.day_date);
@@ -480,7 +527,7 @@ export async function runCalendarSync(
           // 3) Create with deterministic id; 409 → existing event → update path.
           const fixedId = deterministicEventId(leadId, day.day_date);
           const created = await gcal(`${calPath}?sendUpdates=none`, {
-            method: 'POST', body: JSON.stringify({ ...eventPayload, id: fixedId }),
+            method: 'POST', body: JSON.stringify({ ...eventPayload, id: fixedId, colorId: newColorId }),
           });
           if (created.status === 409) {
             saved = await updatePath(fixedId, null);
