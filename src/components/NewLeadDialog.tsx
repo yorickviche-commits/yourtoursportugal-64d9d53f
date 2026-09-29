@@ -100,6 +100,50 @@ const NewLeadDialog = ({ open, onOpenChange }: { open: boolean; onOpenChange: (v
       toast({ title: 'Nome obrigatório', variant: 'destructive' });
       return;
     }
+    // Same file already in the TCC (e.g. auto-created from NetHunt)? Update it instead of duplicating.
+    try {
+      const digits = form.ytId.replace(/\D/g, '');
+      let target: any = null;
+      if (digits) {
+        const { data } = await supabase.from('leads').select('*').ilike('yt_id', `%${digits}`);
+        target = (data || []).find((r: any) => String(r.yt_id || '').replace(/\D/g, '') === digits) || null;
+      }
+      if (!target && form.email.trim()) {
+        const since = new Date(Date.now() - 48 * 3600_000).toISOString();
+        const { data } = await supabase.from('leads').select('*')
+          .eq('created_via' as any, 'nethunt_auto').ilike('email', form.email.trim()).gte('created_at', since)
+          .order('created_at', { ascending: false }).limit(1);
+        target = data?.[0] || null;
+      }
+      if (target) {
+        const cand: Record<string, any> = {
+          client_name: form.clientName, email: form.email, phone: form.phone,
+          destination: form.destination.join(', '), travel_dates: form.travelDates, travel_end_date: form.travelEndDate,
+          number_of_days: form.numberOfDays, dates_type: form.datesType, pax: form.pax, budget_level: form.budget,
+          notes: [form.request, form.preferences].filter(Boolean).join('\n'),
+          travel_style: form.travelStyle, comfort_level: form.comfortLevel,
+        };
+        const isEmpty = (v: any) => v == null || v === '' || v === 0 || v === 'A definir' || (Array.isArray(v) && !v.length);
+        const fill: Record<string, any> = {};
+        for (const [k, v] of Object.entries(cand)) if (!isEmpty(v) && isEmpty(target[k])) fill[k] = v;
+        if (Object.keys(fill).length) {
+          const { error } = await supabase.from('leads').update(fill as any).eq('id', target.id);
+          if (error) throw error;
+        }
+        await logActivity('lead_import_merged', 'lead', target.id, { fields: Object.keys(fill) });
+        toast({ title: `Lead ${target.yt_id || target.lead_code} já existia`, description: 'Dados importados adicionados à lead existente.' });
+        onOpenChange(false);
+        setForm({ ...emptyForm });
+        setEmailText('');
+        setMode('manual');
+        navigate(`/leads/${target.id}`);
+        return;
+      }
+    } catch (err: any) {
+      toast({ title: 'Erro ao verificar lead existente', description: err.message, variant: 'destructive' });
+      return;
+    }
+
     try {
       const newLead = await createLead.mutateAsync({
         yt_id: form.ytId.trim(),
