@@ -279,10 +279,14 @@ export async function fetchRecord(folderId: string, recordId: string): Promise<N
 
 export type FieldAction = { field: string; value: unknown; action?: string };
 
+// NetHunt expects fieldActions as an object keyed by field name: { Field: { overwrite: true, add: value } }
+// (the previous array shape returned HTTP 500 for every update).
 export const updateRecord = (recordId: string, fieldActions: FieldAction[]) =>
   nh(`/actions/update-record/${recordId}?overwrite=true`, {
     method: "POST",
-    body: { fieldActions: fieldActions.map((f) => ({ action: "set", ...f })) },
+    body: {
+      fieldActions: Object.fromEntries(fieldActions.map((f) => [f.field, { overwrite: true, add: f.value }])),
+    },
   });
 
 export const createRecord = (folderId: string, fields: Record<string, unknown>) =>
