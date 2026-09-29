@@ -961,6 +961,90 @@
         "outputSchema": null
       },
       {
+        "name": "update_day_ops",
+        "title": "Update day operations data",
+        "description": "Set the per-day operational data of a lead (guide, vehicle, pick-up/drop-off, back-office and guide notes, guide payment). Used to build the Google Calendar event. Only the fields given are changed.",
+        "annotations": {
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "lead_id": {
+              "type": "string",
+              "description": "Lead uuid."
+            },
+            "lead_code": {
+              "type": "string",
+              "description": "Lead code such as YT5130."
+            },
+            "day_number": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 60,
+              "description": "Trip day number (1 = first day)."
+            },
+            "guide_name": {
+              "type": "string",
+              "maxLength": 200
+            },
+            "vehicle": {
+              "type": "string",
+              "maxLength": 200
+            },
+            "vehicle_pickup": {
+              "type": "string",
+              "maxLength": 300
+            },
+            "pickup_time": {
+              "type": "string",
+              "pattern": "^\\d{1,2}:\\d{2}$",
+              "description": "HH:MM"
+            },
+            "pickup_location": {
+              "type": "string",
+              "maxLength": 300
+            },
+            "pickup_maps_url": {
+              "type": "string",
+              "format": "uri"
+            },
+            "dropoff_location": {
+              "type": "string",
+              "maxLength": 300
+            },
+            "dropoff_maps_url": {
+              "type": "string",
+              "format": "uri"
+            },
+            "notes_backoffice": {
+              "type": "string",
+              "maxLength": 4000,
+              "description": "One note per line."
+            },
+            "notes_guide": {
+              "type": "string",
+              "maxLength": 4000,
+              "description": "One note per line."
+            },
+            "guide_payment_amount": {
+              "type": "number",
+              "minimum": 0,
+              "description": "EUR"
+            }
+          },
+          "required": [
+            "day_number"
+          ],
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
         "name": "update_trip_briefing",
         "title": "Update the operational trip briefing",
         "description": "Store the operational briefing of a trip: pickup hotel, arrival and departure flights, on-site contacts, and special requests. Only the fields sent are changed; the others keep their current value. Read it back with get_operations.",
