@@ -1,6 +1,8 @@
 import { Calendar, CheckCircle2, AlertTriangle, Loader2, RefreshCw, ShieldAlert } from 'lucide-react';
 import { useCalendarSyncStatus } from '@/hooks/useCalendarSync';
 import { useAuth } from '@/hooks/useAuth';
+import { useQuery } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
@@ -11,12 +13,20 @@ interface Props {
   leadStatus: string;
 }
 
-const ADMIN_EMAIL = 'yorick.viche@yourtours.pt';
+const QUEUE_LABEL: Record<string, string> = { pending: 'pendente', processing: 'a sincronizar', failed: 'falhou', done: 'concluída' };
 
 export default function CalendarSyncBadge({ leadId, leadStatus }: Props) {
-  const { events, hasError, lastSynced, totalDays, syncedDays, sync, forceOverwrite } = useCalendarSyncStatus(leadId);
+  const { events, hasError, lastSynced, totalDays, syncedDays, sync, forceOverwrite, queueStatus } = useCalendarSyncStatus(leadId);
   const { user } = useAuth();
-  const isAdmin = (user?.email || '').toLowerCase() === ADMIN_EMAIL;
+  const { data: syncAdmins = [] } = useQuery({
+    queryKey: ['sync_admins'],
+    staleTime: 5 * 60_000,
+    queryFn: async (): Promise<string[]> => {
+      const { data } = await supabase.from('integration_settings').select('config').eq('name', 'sync_admins').maybeSingle();
+      return (((data?.config as any)?.emails || []) as string[]).map(e => String(e).toLowerCase());
+    },
+  });
+  const isAdmin = syncAdmins.includes((user?.email || '').toLowerCase());
 
   if (leadStatus !== 'won' && totalDays === 0) return null;
 
@@ -90,6 +100,12 @@ export default function CalendarSyncBadge({ leadId, leadStatus }: Props) {
               <div><strong>Google Calendar</strong></div>
               {lastSynced && <div>Última sincronização: {new Date(lastSynced).toLocaleString('pt-PT')}</div>}
               <div>{totalDays} dia(s) mapeados</div>
+              {queueStatus && queueStatus.status !== 'done' && (
+                <div>Fila: {QUEUE_LABEL[queueStatus.status] || queueStatus.status}{queueStatus.attempts ? ` (${queueStatus.attempts} tentativa(s))` : ''}</div>
+              )}
+              {queueStatus?.last_error && queueStatus.status !== 'done' && (
+                <div className="text-red-500 whitespace-pre-wrap">Último erro: {queueStatus.last_error}</div>
+              )}
               {errorDetails && <div className="text-red-500 whitespace-pre-wrap">{errorDetails}</div>}
               <div className="text-muted-foreground pt-1">Clique 🔄 para ressincronizar (respeita edições manuais).</div>
             </div>

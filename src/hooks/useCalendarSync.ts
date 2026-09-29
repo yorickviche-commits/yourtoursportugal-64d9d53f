@@ -16,24 +16,25 @@ interface CalendarEventRow {
   manual_edit_detected_at: string | null;
 }
 
-// Debounced invoker of the calendar-sync edge function.
-// Called from anywhere in the lead page after a mutation that affects the event.
-const pendingByLead = new Map<string, ReturnType<typeof setTimeout>>();
-
-export function triggerCalendarSync(leadId: string, mode: SyncMode = 'update', delayMs = 2000) {
+// Enqueues a calendar sync in the backend queue (debounce + retries handled server-side).
+// Signature kept for callers; `delayMs` is ignored. full_resync/force_overwrite call calendar-sync directly.
+export function triggerCalendarSync(leadId: string, mode: SyncMode = 'update', _delayMs = 2000) {
   if (!leadId) return;
-  const existing = pendingByLead.get(leadId);
-  if (existing) clearTimeout(existing);
-  const t = setTimeout(async () => {
-    pendingByLead.delete(leadId);
-    try {
-      const { error } = await supabase.functions.invoke('calendar-sync', { body: { lead_id: leadId, mode } });
-      if (error) console.error('[calendar-sync] failed', error);
-    } catch (e) {
-      console.error('[calendar-sync] threw', e);
-    }
-  }, delayMs);
-  pendingByLead.set(leadId, t);
+  if (mode === 'full_resync') {
+    supabase.functions.invoke('calendar-sync', { body: { lead_id: leadId, mode } })
+      .then(({ error }) => { if (error) console.error('[calendar-sync] failed', error); });
+    return;
+  }
+  (supabase.rpc as any)('enqueue_sync', {
+    p_target: 'calendar', p_entity: 'lead', p_entity_id: leadId, p_fields: [], p_reason: `ui:${mode}`,
+  }).then(({ error }: any) => { if (error) console.error('[enqueue_sync] failed', error); });
+}
+
+export interface SyncQueueStatus {
+  status: 'pending' | 'processing' | 'done' | 'failed';
+  attempts: number;
+  last_error: string | null;
+  updated_at: string;
 }
 
 export function useCalendarSyncStatus(leadId: string | undefined) {
@@ -55,11 +56,25 @@ export function useCalendarSyncStatus(leadId: string | undefined) {
     refetchInterval: 15000,
   });
 
+  const queue = useQuery({
+    queryKey: ['sync_status', 'calendar', leadId],
+    enabled: !!leadId,
+    queryFn: async (): Promise<SyncQueueStatus | null> => {
+      const { data, error } = await (supabase.rpc as any)('get_sync_status', { p_target: 'calendar', p_entity_id: leadId });
+      if (error) return null;
+      return (Array.isArray(data) ? data[0] : data) || null;
+    },
+    refetchInterval: 15000,
+  });
+
   const sync = useCallback((mode: SyncMode = 'update', delayMs?: number) => {
     if (!leadId) return;
     triggerCalendarSync(leadId, mode, delayMs);
     // Refresh badge shortly after expected completion
-    setTimeout(() => queryClient.invalidateQueries({ queryKey: ['calendar_events', leadId] }), (delayMs ?? 2000) + 3000);
+    setTimeout(() => {
+      queryClient.invalidateQueries({ queryKey: ['calendar_events', leadId] });
+      queryClient.invalidateQueries({ queryKey: ['sync_status', 'calendar', leadId] });
+    }, (delayMs ?? 2000) + 3000);
   }, [leadId, queryClient]);
 
   const forceOverwrite = useCallback(async (dayDates: string[]): Promise<{ ok: boolean; error?: string }> => {
@@ -95,6 +110,7 @@ export function useCalendarSyncStatus(leadId: string | undefined) {
     syncedDays,
     sync,
     forceOverwrite,
+    queueStatus: queue.data || null,
     refetch: query.refetch,
   };
 }
