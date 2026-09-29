@@ -38,7 +38,8 @@ export default defineTool({
       .upsert({ lead_id: lead.id, day_number, ...changes, updated_at: new Date().toISOString() } as any, { onConflict: "lead_id,day_number" });
     if (error) throw new ToolError(error.message);
 
-    await auditLead(supabase, ctx, lead, "day_ops_updated", changes, { day_number });
+    const audit = Object.fromEntries(Object.entries(changes).map(([k, v]) => [k, { from: null, to: v }]));
+    await auditLead(supabase, ctx, lead, "day_ops_updated", audit, { day_number });
     const payload = { lead: leadLabel(lead), lead_id: lead.id, day_number, updated_fields: changes };
     return { content: [{ type: "text", text: JSON.stringify(payload, null, 2) }], structuredContent: payload };
   },

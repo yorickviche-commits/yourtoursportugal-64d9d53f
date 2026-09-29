@@ -1985,7 +1985,8 @@ var update_day_ops_default = defineTool22({
     if (!Object.keys(changes).length) throw new ToolError26("No fields to update");
     const { error } = await supabase.from("lead_day_ops").upsert({ lead_id: lead.id, day_number, ...changes, updated_at: (/* @__PURE__ */ new Date()).toISOString() }, { onConflict: "lead_id,day_number" });
     if (error) throw new ToolError26(error.message);
-    await auditLead(supabase, ctx, lead, "day_ops_updated", changes, { day_number });
+    const audit = Object.fromEntries(Object.entries(changes).map(([k, v]) => [k, { from: null, to: v }]));
+    await auditLead(supabase, ctx, lead, "day_ops_updated", audit, { day_number });
     const payload = { lead: leadLabel(lead), lead_id: lead.id, day_number, updated_fields: changes };
     return { content: [{ type: "text", text: JSON.stringify(payload, null, 2) }], structuredContent: payload };
   }
