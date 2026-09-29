@@ -43,6 +43,13 @@
       "when": 1790426423011,
       "tag": "0005_restrict_policies_to_internal_team",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1790645129657,
+      "tag": "0006_calendar_events_protection",
+      "breakpoints": true
     }
   ]
 }
