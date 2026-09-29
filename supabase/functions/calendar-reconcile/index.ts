@@ -101,7 +101,7 @@ async function reconcile(sb: any, trigger: string) {
     const { data: conf } = await sb.from('nethunt_conflicts').select('*').gte('created_at', since24).order('created_at', { ascending: false }).limit(100);
     report.nethunt_conflicts = conf || [];
     const { data: unmatched } = await sb.from('nethunt_sync_log').select('nethunt_record_id, detail, created_at').eq('action', 'unmatched').not('nethunt_record_id', 'is', null).order('created_at', { ascending: false }).limit(1000);
-    const rids = [...new Set((unmatched || []).map((u: any) => u.nethunt_record_id))];
+    const rids: string[] = [...new Set<string>((unmatched || []).map((u: any) => String(u.nethunt_record_id)))];
     if (rids.length) {
       const { data: linked } = await sb.from('leads').select('nethunt_record_id').in('nethunt_record_id', rids);
       const linkedSet = new Set((linked || []).map((l: any) => l.nethunt_record_id));
