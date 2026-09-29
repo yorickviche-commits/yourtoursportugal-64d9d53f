@@ -812,6 +812,93 @@ export type Database = {
           },
         ]
       }
+      calendar_migration_items: {
+        Row: {
+          calendar_id: string
+          classification: string
+          day_date: string | null
+          description: string | null
+          extracted: Json | null
+          google_event_id: string
+          html_link: string | null
+          lead_id: string | null
+          raw: Json | null
+          scanned_at: string
+          status: string
+          summary: string | null
+          updated_at: string
+          yt_ref: string | null
+        }
+        Insert: {
+          calendar_id: string
+          classification: string
+          day_date?: string | null
+          description?: string | null
+          extracted?: Json | null
+          google_event_id: string
+          html_link?: string | null
+          lead_id?: string | null
+          raw?: Json | null
+          scanned_at?: string
+          status?: string
+          summary?: string | null
+          updated_at?: string
+          yt_ref?: string | null
+        }
+        Update: {
+          calendar_id?: string
+          classification?: string
+          day_date?: string | null
+          description?: string | null
+          extracted?: Json | null
+          google_event_id?: string
+          html_link?: string | null
+          lead_id?: string | null
+          raw?: Json | null
+          scanned_at?: string
+          status?: string
+          summary?: string | null
+          updated_at?: string
+          yt_ref?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "calendar_migration_items_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "calendar_migration_items_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "rpt_files"
+            referencedColumns: ["lead_id"]
+          },
+          {
+            foreignKeyName: "calendar_migration_items_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_task_queue"
+            referencedColumns: ["lead_id"]
+          },
+          {
+            foreignKeyName: "calendar_migration_items_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "v_lead_economics"
+            referencedColumns: ["lead_id"]
+          },
+          {
+            foreignKeyName: "calendar_migration_items_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "v_lead_outcomes"
+            referencedColumns: ["lead_id"]
+          },
+        ]
+      }
       ceo_approval_queue: {
         Row: {
           agent_id: string
@@ -4710,6 +4797,39 @@ export type Database = {
         }
         Relationships: []
       }
+      sync_reconcile_runs: {
+        Row: {
+          emailed: boolean
+          error: string | null
+          finished_at: string | null
+          id: string
+          report: Json
+          started_at: string
+          stats: Json
+          trigger: string | null
+        }
+        Insert: {
+          emailed?: boolean
+          error?: string | null
+          finished_at?: string | null
+          id?: string
+          report?: Json
+          started_at?: string
+          stats?: Json
+          trigger?: string | null
+        }
+        Update: {
+          emailed?: boolean
+          error?: string | null
+          finished_at?: string | null
+          id?: string
+          report?: Json
+          started_at?: string
+          stats?: Json
+          trigger?: string | null
+        }
+        Relationships: []
+      }
       sync_worker_config: {
         Row: {
           created_at: string
@@ -6132,6 +6252,7 @@ export type Database = {
       }
       is_admin: { Args: { _user_id: string }; Returns: boolean }
       is_internal_user: { Args: { _user_id: string }; Returns: boolean }
+      is_sync_admin: { Args: { _user_id: string }; Returns: boolean }
       lead_live_pvp: { Args: { p_lead_id: string }; Returns: number }
       list_public_feedback: {
         Args: never

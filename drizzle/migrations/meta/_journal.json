@@ -71,6 +71,13 @@
       "when": 1790649323700,
       "tag": "0009_calendar_yt_event_format",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1790650323154,
+      "tag": "0010_sync_health_and_calendar_migration",
+      "breakpoints": true
     }
   ]
 }
