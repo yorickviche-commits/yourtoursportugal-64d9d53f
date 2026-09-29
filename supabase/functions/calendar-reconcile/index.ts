@@ -180,8 +180,6 @@ Deno.serve(async (req) => {
       const id = Number(body.id);
       const { error } = await sb.from('sync_queue').update({ status: 'pending', attempts: 0, next_attempt_at: new Date().toISOString(), updated_at: new Date().toISOString() }).eq('id', id).eq('status', 'failed');
       if (error) throw error;
-      await sb.rpc('enqueue_sync', { p_target: 'calendar', p_entity: '__wake__', p_entity_id: '00000000-0000-0000-0000-000000000000', p_fields: [], p_reason: 'wake' }).then(() => null, () => null);
-      await sb.from('sync_queue').delete().eq('entity', '__wake__');
       return reply({ ok: true });
     }
     if (action === 'link_deal') {
