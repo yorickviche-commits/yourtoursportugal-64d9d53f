@@ -27,10 +27,17 @@ export default defineTool({
       .order("sort_order", { ascending: true });
     if (error) throw new ToolError(error.message);
 
+    const { data: dayOps } = await supabase
+      .from("lead_day_ops")
+      .select("day_number, guide_name, vehicle, vehicle_pickup, pickup_time, pickup_location, pickup_maps_url, dropoff_location, dropoff_maps_url, notes_backoffice, notes_guide, guide_payment_amount")
+      .eq("lead_id", lead.id)
+      .order("day_number", { ascending: true });
+
     const services = ((data ?? []) as any[]).map((r) => ({
       item_key: r.item_key,
       day_number: r.day_number,
       schedule_time: r.schedule_time,
+      schedule_end_time: r.schedule_end_time ?? null,
       service: r.activity_title,
       supplier: r.supplier,
       pax: r.pax,
@@ -47,6 +54,10 @@ export default defineTool({
       lead: leadLabel(lead),
       lead_id: lead.id,
       trip_briefing: (lead as any).trip_briefing ?? null,
+      service_language: (lead as any).service_language ?? null,
+      booking_origin: (lead as any).booking_origin ?? null,
+      external_booking_ref: (lead as any).external_booking_ref ?? null,
+      day_ops: dayOps ?? [],
       services,
       pending_bookings: services.filter((s) => s.booking_status !== "booked").length,
       valid_statuses: {

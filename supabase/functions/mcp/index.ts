@@ -1852,10 +1852,12 @@ var get_operations_default = defineTool20({
     const lead = await resolveLead(supabase, { lead_id, lead_code });
     const { data, error } = await supabase.from("lead_operations").select("*").eq("lead_id", lead.id).order("day_number", { ascending: true }).order("sort_order", { ascending: true });
     if (error) throw new ToolError24(error.message);
+    const { data: dayOps } = await supabase.from("lead_day_ops").select("day_number, guide_name, vehicle, vehicle_pickup, pickup_time, pickup_location, pickup_maps_url, dropoff_location, dropoff_maps_url, notes_backoffice, notes_guide, guide_payment_amount").eq("lead_id", lead.id).order("day_number", { ascending: true });
     const services = (data ?? []).map((r) => ({
       item_key: r.item_key,
       day_number: r.day_number,
       schedule_time: r.schedule_time,
+      schedule_end_time: r.schedule_end_time ?? null,
       service: r.activity_title,
       supplier: r.supplier,
       pax: r.pax,
@@ -1871,6 +1873,10 @@ var get_operations_default = defineTool20({
       lead: leadLabel(lead),
       lead_id: lead.id,
       trip_briefing: lead.trip_briefing ?? null,
+      service_language: lead.service_language ?? null,
+      booking_origin: lead.booking_origin ?? null,
+      external_booking_ref: lead.external_booking_ref ?? null,
+      day_ops: dayOps ?? [],
       services,
       pending_bookings: services.filter((s) => s.booking_status !== "booked").length,
       valid_statuses: {
@@ -1946,39 +1952,78 @@ var update_operation_item_default = defineTool21({
   }
 });
 
-// src/lib/mcp/tools/update-trip-briefing.ts
+// src/lib/mcp/tools/update-day-ops.ts
 import { defineTool as defineTool22, ToolError as ToolError26 } from "npm:@lovable.dev/mcp-js@0.26.1";
 import { z as z21 } from "npm:zod@^3.25.76";
-var update_trip_briefing_default = defineTool22({
+var update_day_ops_default = defineTool22({
+  name: "update_day_ops",
+  title: "Update day operations data",
+  description: "Set the per-day operational data of a lead (guide, vehicle, pick-up/drop-off, back-office and guide notes, guide payment). Used to build the Google Calendar event. Only the fields given are changed.",
+  inputSchema: {
+    lead_id: z21.string().optional().describe("Lead uuid."),
+    lead_code: z21.string().optional().describe("Lead code such as YT5130."),
+    day_number: z21.number().int().min(1).max(60).describe("Trip day number (1 = first day)."),
+    guide_name: z21.string().max(200).optional(),
+    vehicle: z21.string().max(200).optional(),
+    vehicle_pickup: z21.string().max(300).optional(),
+    pickup_time: z21.string().regex(/^\d{1,2}:\d{2}$/).optional().describe("HH:MM"),
+    pickup_location: z21.string().max(300).optional(),
+    pickup_maps_url: z21.string().url().optional(),
+    dropoff_location: z21.string().max(300).optional(),
+    dropoff_maps_url: z21.string().url().optional(),
+    notes_backoffice: z21.string().max(4e3).optional().describe("One note per line."),
+    notes_guide: z21.string().max(4e3).optional().describe("One note per line."),
+    guide_payment_amount: z21.number().min(0).optional().describe("EUR")
+  },
+  annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false },
+  handler: async (args, ctx) => {
+    if (!ctx.isAuthenticated()) throw new ToolError26("Not authenticated");
+    const { lead_id, lead_code, day_number, ...fields } = args;
+    const supabase = supabaseForUser(ctx);
+    const lead = await resolveLead(supabase, { lead_id, lead_code });
+    const changes = Object.fromEntries(Object.entries(fields).filter(([, v]) => v !== void 0));
+    if (!Object.keys(changes).length) throw new ToolError26("No fields to update");
+    const { error } = await supabase.from("lead_day_ops").upsert({ lead_id: lead.id, day_number, ...changes, updated_at: (/* @__PURE__ */ new Date()).toISOString() }, { onConflict: "lead_id,day_number" });
+    if (error) throw new ToolError26(error.message);
+    await auditLead(supabase, ctx, lead, "day_ops_updated", changes, { day_number });
+    const payload = { lead: leadLabel(lead), lead_id: lead.id, day_number, updated_fields: changes };
+    return { content: [{ type: "text", text: JSON.stringify(payload, null, 2) }], structuredContent: payload };
+  }
+});
+
+// src/lib/mcp/tools/update-trip-briefing.ts
+import { defineTool as defineTool23, ToolError as ToolError27 } from "npm:@lovable.dev/mcp-js@0.26.1";
+import { z as z22 } from "npm:zod@^3.25.76";
+var update_trip_briefing_default = defineTool23({
   name: "update_trip_briefing",
   title: "Update the operational trip briefing",
   description: "Store the operational briefing of a trip: pickup hotel, arrival and departure flights, on-site contacts, and special requests. Only the fields sent are changed; the others keep their current value. Read it back with get_operations.",
   inputSchema: {
-    lead_id: z21.string().optional().describe("Lead uuid."),
-    lead_code: z21.string().optional().describe("Lead code such as YT5130."),
-    pickup_hotel: z21.string().optional().describe("Hotel or address where the guide picks the clients up."),
-    pickup_time: z21.string().optional().describe("Pickup time, HH:MM."),
-    arrival_flight: z21.string().optional().describe("Arrival flight, e.g. 'TP1234 LIS 12:40, 14 Mai'."),
-    departure_flight: z21.string().optional().describe("Departure flight."),
-    on_site_contacts: z21.string().optional().describe("Phone numbers / contacts on the ground."),
-    special_requests: z21.string().optional().describe("Dietary needs, mobility, celebrations, anything the guide must know."),
-    notes: z21.string().optional().describe("Free operational notes.")
+    lead_id: z22.string().optional().describe("Lead uuid."),
+    lead_code: z22.string().optional().describe("Lead code such as YT5130."),
+    pickup_hotel: z22.string().optional().describe("Hotel or address where the guide picks the clients up."),
+    pickup_time: z22.string().optional().describe("Pickup time, HH:MM."),
+    arrival_flight: z22.string().optional().describe("Arrival flight, e.g. 'TP1234 LIS 12:40, 14 Mai'."),
+    departure_flight: z22.string().optional().describe("Departure flight."),
+    on_site_contacts: z22.string().optional().describe("Phone numbers / contacts on the ground."),
+    special_requests: z22.string().optional().describe("Dietary needs, mobility, celebrations, anything the guide must know."),
+    notes: z22.string().optional().describe("Free operational notes.")
   },
   annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false },
   handler: async ({ lead_id, lead_code, ...fields }, ctx) => {
-    if (!ctx.isAuthenticated()) throw new ToolError26("Not authenticated");
+    if (!ctx.isAuthenticated()) throw new ToolError27("Not authenticated");
     const supabase = supabaseForUser(ctx);
     const lead = await resolveLead(supabase, { lead_id, lead_code });
     const current = lead.trip_briefing ?? {};
     const patch = {};
     for (const [k, v] of Object.entries(fields)) if (v !== void 0) patch[k] = v;
-    if (!Object.keys(patch).length) throw new ToolError26("Send at least one briefing field to update");
+    if (!Object.keys(patch).length) throw new ToolError27("Send at least one briefing field to update");
     if (typeof patch.pickup_time === "string" && !/^\d{2}:\d{2}$/.test(patch.pickup_time)) {
-      throw new ToolError26("pickup_time must be HH:MM");
+      throw new ToolError27("pickup_time must be HH:MM");
     }
     const next = { ...current, ...patch, updated_at: (/* @__PURE__ */ new Date()).toISOString() };
     const { error } = await supabase.from("leads").update({ trip_briefing: next }).eq("id", lead.id);
-    if (error) throw new ToolError26(error.message);
+    if (error) throw new ToolError27(error.message);
     const changes = {};
     for (const key of Object.keys(patch)) changes[key] = { from: current[key] ?? null, to: patch[key] };
     await auditLead(supabase, ctx, lead, "trip_briefing_updated", changes);
@@ -1988,8 +2033,8 @@ var update_trip_briefing_default = defineTool22({
 });
 
 // src/lib/mcp/tools/validate-lead.ts
-import { defineTool as defineTool23, ToolError as ToolError27 } from "npm:@lovable.dev/mcp-js@0.26.1";
-import { z as z22 } from "npm:zod@^3.25.76";
+import { defineTool as defineTool24, ToolError as ToolError28 } from "npm:@lovable.dev/mcp-js@0.26.1";
+import { z as z23 } from "npm:zod@^3.25.76";
 var days = (from, to) => {
   if (!from || !to) return null;
   const a = new Date(from).getTime();
@@ -1997,18 +2042,18 @@ var days = (from, to) => {
   if (Number.isNaN(a) || Number.isNaN(b)) return null;
   return Math.round((b - a) / 864e5) + 1;
 };
-var validate_lead_default = defineTool23({
+var validate_lead_default = defineTool24({
   name: "validate_lead",
   title: "Validate a lead before the next stage",
   description: "Checklist for one lead: required fields still missing, inconsistencies (dates vs number of days, pax vs costing, programme language vs client language, B2B without partner/logo), costing and margin health, and what is still needed before moving to the next pipeline stage.",
   inputSchema: {
-    lead_id: z22.string().optional().describe("Lead uuid."),
-    lead_code: z22.string().optional().describe("Lead code such as YT5130."),
-    version: z22.number().int().optional().describe("Version to validate (default: LIVE version).")
+    lead_id: z23.string().optional().describe("Lead uuid."),
+    lead_code: z23.string().optional().describe("Lead code such as YT5130."),
+    version: z23.number().int().optional().describe("Version to validate (default: LIVE version).")
   },
   annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
   handler: async ({ lead_id, lead_code, version }, ctx) => {
-    if (!ctx.isAuthenticated()) throw new ToolError27("Not authenticated");
+    if (!ctx.isAuthenticated()) throw new ToolError28("Not authenticated");
     const supabase = supabaseForUser(ctx);
     const lead = await resolveLead(supabase, { lead_id, lead_code });
     const ver = version ?? liveVersion(lead);
@@ -2078,11 +2123,11 @@ var validate_lead_default = defineTool23({
 });
 
 // src/lib/mcp/tools/generate-travel-plan.ts
-import { defineTool as defineTool24, ToolError as ToolError29 } from "npm:@lovable.dev/mcp-js@0.26.1";
-import { z as z23 } from "npm:zod@^3.25.76";
+import { defineTool as defineTool25, ToolError as ToolError30 } from "npm:@lovable.dev/mcp-js@0.26.1";
+import { z as z24 } from "npm:zod@^3.25.76";
 
 // src/lib/mcp/versions.ts
-import { ToolError as ToolError28 } from "npm:@lovable.dev/mcp-js@0.26.1";
+import { ToolError as ToolError29 } from "npm:@lovable.dev/mcp-js@0.26.1";
 import { buildProposalToken } from "npm:@/lib/proposalVersion";
 import { GENERAL_FIELDS } from "npm:@/hooks/useLeadVersions";
 var pickGeneralData = (lead) => {
@@ -2119,7 +2164,7 @@ async function createLeadVersion(supabase, lead, fromVersion) {
     strip2(plans.data).length ? supabase.from("travel_plans").insert(strip2(plans.data)) : Promise.resolve({ error: null })
   ]);
   const failed = writes.find((r) => r?.error);
-  if (failed && failed.error) throw new ToolError28(failed.error.message);
+  if (failed && failed.error) throw new ToolError29(failed.error.message);
   const { data: srcProposal } = await supabase.from("proposals").select("*").eq("lead_id", leadId).eq("version", fromVersion).maybeSingle();
   if (srcProposal) {
     const {
@@ -2141,28 +2186,28 @@ async function createLeadVersion(supabase, lead, fromVersion) {
       sent_at: null,
       approved_at: null
     });
-    if (pErr) throw new ToolError28(pErr.message);
+    if (pErr) throw new ToolError29(pErr.message);
   }
   const { error: upErr } = await supabase.from("leads").update({ active_version: newVersion }).eq("id", leadId);
-  if (upErr) throw new ToolError28(upErr.message);
+  if (upErr) throw new ToolError29(upErr.message);
   return newVersion;
 }
 
 // src/lib/mcp/tools/generate-travel-plan.ts
-var generate_travel_plan_default = defineTool24({
+var generate_travel_plan_default = defineTool25({
   name: "generate_travel_plan",
   title: "Generate the travel plan with AI",
   description: "Generate the day-by-day programme of a lead with the same AI generator used by 'Regenerar Tudo' in the Travel Planner. If the LIVE version already has a programme, a NEW version is created and becomes LIVE \u2014 the previous one stays readable, nothing is overwritten. Returns the programme plus the warnings to fix before sending it to the client.",
   inputSchema: {
-    lead_id: z23.string().optional().describe("Lead uuid."),
-    lead_code: z23.string().optional().describe("Lead code such as YT5130."),
-    briefing: z23.string().optional().describe("Briefing / extra instructions for the AI (client wishes, pace, must-sees)."),
-    catalogue_products: z23.array(z23.string()).optional().describe("Catalogue product names to include in the programme."),
-    force_new_version: z23.boolean().optional().describe("Always create a new version, even if the live one is empty.")
+    lead_id: z24.string().optional().describe("Lead uuid."),
+    lead_code: z24.string().optional().describe("Lead code such as YT5130."),
+    briefing: z24.string().optional().describe("Briefing / extra instructions for the AI (client wishes, pace, must-sees)."),
+    catalogue_products: z24.array(z24.string()).optional().describe("Catalogue product names to include in the programme."),
+    force_new_version: z24.boolean().optional().describe("Always create a new version, even if the live one is empty.")
   },
   annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
   handler: async ({ lead_id, lead_code, briefing, catalogue_products, force_new_version }, ctx) => {
-    if (!ctx.isAuthenticated()) throw new ToolError29("Not authenticated");
+    if (!ctx.isAuthenticated()) throw new ToolError30("Not authenticated");
     const supabase = supabaseForUser(ctx);
     const lead = await resolveLead(supabase, { lead_id, lead_code });
     const l = lead;
@@ -2198,10 +2243,10 @@ var generate_travel_plan_default = defineTool24({
         routeDayMaps: l.route_day_maps ?? null
       }
     });
-    if (error) throw new ToolError29(error.message);
+    if (error) throw new ToolError30(error.message);
     const result = data?.result;
-    if (data?.error) throw new ToolError29(String(data.error));
-    if (!result?.days?.length) throw new ToolError29("The AI generator returned no days \u2014 try again with a clearer briefing");
+    if (data?.error) throw new ToolError30(String(data.error));
+    if (!result?.days?.length) throw new ToolError30("The AI generator returned no days \u2014 try again with a clearer briefing");
     const plan = {
       trip_title: String(result.trip_title ?? ""),
       narrative: String(result.narrative ?? ""),
@@ -2240,29 +2285,29 @@ var generate_travel_plan_default = defineTool24({
 });
 
 // src/lib/mcp/tools/update-travel-plan-day.ts
-import { defineTool as defineTool25, ToolError as ToolError30 } from "npm:@lovable.dev/mcp-js@0.26.1";
-import { z as z24 } from "npm:zod@^3.25.76";
-var update_travel_plan_day_default = defineTool25({
+import { defineTool as defineTool26, ToolError as ToolError31 } from "npm:@lovable.dev/mcp-js@0.26.1";
+import { z as z25 } from "npm:zod@^3.25.76";
+var update_travel_plan_day_default = defineTool26({
   name: "update_travel_plan_day",
   title: "Edit, add, remove or reorder a programme day",
   description: "Edit one day of the travel plan (title, tagline, included items, night at, date, map), or add, remove and reorder days. Writes the same rows as the Travel Planner, so the digital itinerary and the PDF follow immediately.",
   inputSchema: {
-    lead_id: z24.string().optional().describe("Lead uuid."),
-    lead_code: z24.string().optional().describe("Lead code such as YT5130."),
-    version: z24.number().int().optional().describe("Version to edit (default: LIVE version)."),
-    action: z24.enum(["update", "add", "remove", "move"]).describe("What to do with the day."),
-    day_number: z24.number().int().min(1).describe("Day to act on (for 'add', the position of the new day)."),
-    move_to: z24.number().int().min(1).optional().describe("New position when action is 'move'."),
-    title: z24.string().optional().describe("Day title."),
-    tagline: z24.string().optional().describe("Day subtitle / tagline."),
-    date: z24.string().optional().describe("Day date, YYYY-MM-DD."),
-    items: z24.array(z24.string()).optional().describe("Included items ('Itinerary & Included' bullets)."),
-    night_at: z24.string().optional().describe("Overnight stay (hotel / town)."),
-    map_url: z24.string().optional().describe("Google Maps route link for this day.")
+    lead_id: z25.string().optional().describe("Lead uuid."),
+    lead_code: z25.string().optional().describe("Lead code such as YT5130."),
+    version: z25.number().int().optional().describe("Version to edit (default: LIVE version)."),
+    action: z25.enum(["update", "add", "remove", "move"]).describe("What to do with the day."),
+    day_number: z25.number().int().min(1).describe("Day to act on (for 'add', the position of the new day)."),
+    move_to: z25.number().int().min(1).optional().describe("New position when action is 'move'."),
+    title: z25.string().optional().describe("Day title."),
+    tagline: z25.string().optional().describe("Day subtitle / tagline."),
+    date: z25.string().optional().describe("Day date, YYYY-MM-DD."),
+    items: z25.array(z25.string()).optional().describe("Included items ('Itinerary & Included' bullets)."),
+    night_at: z25.string().optional().describe("Overnight stay (hotel / town)."),
+    map_url: z25.string().optional().describe("Google Maps route link for this day.")
   },
   annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
   handler: async (args, ctx) => {
-    if (!ctx.isAuthenticated()) throw new ToolError30("Not authenticated");
+    if (!ctx.isAuthenticated()) throw new ToolError31("Not authenticated");
     const { lead_id, lead_code, version, action, day_number, move_to } = args;
     const supabase = supabaseForUser(ctx);
     const lead = await resolveLead(supabase, { lead_id, lead_code });
@@ -2281,17 +2326,17 @@ var update_travel_plan_day_default = defineTool25({
       mapUrl: args.map_url ?? day.mapUrl
     });
     if (action === "update") {
-      if (idx === -1) throw new ToolError30(`Day ${day_number} does not exist. Existing days: ${days2.map((d) => d.day_number).join(", ") || "(none)"}`);
+      if (idx === -1) throw new ToolError31(`Day ${day_number} does not exist. Existing days: ${days2.map((d) => d.day_number).join(", ") || "(none)"}`);
       days2[idx] = apply(days2[idx]);
     } else if (action === "add") {
       const fresh = apply({ day_number, title: "", bullets: [] });
       days2.splice(Math.min(Math.max(day_number - 1, 0), days2.length), 0, fresh);
     } else if (action === "remove") {
-      if (idx === -1) throw new ToolError30(`Day ${day_number} does not exist`);
+      if (idx === -1) throw new ToolError31(`Day ${day_number} does not exist`);
       days2.splice(idx, 1);
     } else {
-      if (idx === -1) throw new ToolError30(`Day ${day_number} does not exist`);
-      if (!move_to) throw new ToolError30("move_to is required when action is 'move'");
+      if (idx === -1) throw new ToolError31(`Day ${day_number} does not exist`);
+      if (!move_to) throw new ToolError31("move_to is required when action is 'move'");
       const [moved] = days2.splice(idx, 1);
       days2.splice(Math.min(Math.max(move_to - 1, 0), days2.length), 0, moved);
     }
@@ -2315,26 +2360,26 @@ var update_travel_plan_day_default = defineTool25({
 });
 
 // src/lib/mcp/tools/update-travel-plan-header.ts
-import { defineTool as defineTool26, ToolError as ToolError31 } from "npm:@lovable.dev/mcp-js@0.26.1";
-import { z as z25 } from "npm:zod@^3.25.76";
-var update_travel_plan_header_default = defineTool26({
+import { defineTool as defineTool27, ToolError as ToolError32 } from "npm:@lovable.dev/mcp-js@0.26.1";
+import { z as z26 } from "npm:zod@^3.25.76";
+var update_travel_plan_header_default = defineTool27({
   name: "update_travel_plan_header",
   title: "Update the programme header",
   description: "Update the header of the travel plan: title, subtitle/tagline, summary text and cover image. Same effect as editing the top of the Travel Planner, reflected in the digital itinerary and in the PDF.",
   inputSchema: {
-    lead_id: z25.string().optional().describe("Lead uuid."),
-    lead_code: z25.string().optional().describe("Lead code such as YT5130."),
-    version: z25.number().int().optional().describe("Version to edit (default: LIVE version)."),
-    title: z25.string().optional().describe("Programme title."),
-    summary: z25.string().optional().describe("Programme summary / narrative."),
-    cover_image_url: z25.string().url().optional().describe("Cover image URL."),
-    cover_image_caption: z25.string().optional().describe("Cover image caption.")
+    lead_id: z26.string().optional().describe("Lead uuid."),
+    lead_code: z26.string().optional().describe("Lead code such as YT5130."),
+    version: z26.number().int().optional().describe("Version to edit (default: LIVE version)."),
+    title: z26.string().optional().describe("Programme title."),
+    summary: z26.string().optional().describe("Programme summary / narrative."),
+    cover_image_url: z26.string().url().optional().describe("Cover image URL."),
+    cover_image_caption: z26.string().optional().describe("Cover image caption.")
   },
   annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false },
   handler: async ({ lead_id, lead_code, version, title, summary, cover_image_url, cover_image_caption }, ctx) => {
-    if (!ctx.isAuthenticated()) throw new ToolError31("Not authenticated");
+    if (!ctx.isAuthenticated()) throw new ToolError32("Not authenticated");
     if (!title && !summary && !cover_image_url && !cover_image_caption) {
-      throw new ToolError31("Send at least one header field to update");
+      throw new ToolError32("Send at least one header field to update");
     }
     const supabase = supabaseForUser(ctx);
     const lead = await resolveLead(supabase, { lead_id, lead_code });
@@ -2367,29 +2412,29 @@ var update_travel_plan_header_default = defineTool26({
 });
 
 // src/lib/mcp/tools/fill-travel-plan-images.ts
-import { defineTool as defineTool27, ToolError as ToolError32 } from "npm:@lovable.dev/mcp-js@0.26.1";
-import { z as z26 } from "npm:zod@^3.25.76";
-var fill_travel_plan_images_default = defineTool27({
+import { defineTool as defineTool28, ToolError as ToolError33 } from "npm:@lovable.dev/mcp-js@0.26.1";
+import { z as z27 } from "npm:zod@^3.25.76";
+var fill_travel_plan_images_default = defineTool28({
   name: "fill_travel_plan_images",
   title: "Fill programme images",
   description: "Fill the missing images of the programme (cover and each day) with the same image search used by 'Preencher Imagens (AI)' in the Travel Planner. Days that already have images are left untouched unless overwrite is set.",
   inputSchema: {
-    lead_id: z26.string().optional().describe("Lead uuid."),
-    lead_code: z26.string().optional().describe("Lead code such as YT5130."),
-    version: z26.number().int().optional().describe("Version to fill (default: LIVE version)."),
-    images_per_day: z26.number().int().min(1).max(3).optional().describe("Images per day (default 2)."),
-    overwrite: z26.boolean().optional().describe("Replace images that already exist (default false).")
+    lead_id: z27.string().optional().describe("Lead uuid."),
+    lead_code: z27.string().optional().describe("Lead code such as YT5130."),
+    version: z27.number().int().optional().describe("Version to fill (default: LIVE version)."),
+    images_per_day: z27.number().int().min(1).max(3).optional().describe("Images per day (default 2)."),
+    overwrite: z27.boolean().optional().describe("Replace images that already exist (default false).")
   },
   annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: true },
   handler: async ({ lead_id, lead_code, version, images_per_day, overwrite }, ctx) => {
-    if (!ctx.isAuthenticated()) throw new ToolError32("Not authenticated");
+    if (!ctx.isAuthenticated()) throw new ToolError33("Not authenticated");
     const supabase = supabaseForUser(ctx);
     const lead = await resolveLead(supabase, { lead_id, lead_code });
     const l = lead;
     const ver = version ?? liveVersion(lead);
     const count = images_per_day ?? 2;
     const { plan, meta } = await loadPlan(supabase, lead, ver);
-    if (!plan.days.length) throw new ToolError32(`Lead ${leadLabel(lead)} has no travel plan on version ${ver}`);
+    if (!plan.days.length) throw new ToolError33(`Lead ${leadLabel(lead)} has no travel plan on version ${ver}`);
     const search = async (query, n) => {
       const { data, error } = await supabase.functions.invoke("search-destination-images", {
         body: { query, count: n, mode: "search" }
@@ -2439,27 +2484,27 @@ var fill_travel_plan_images_default = defineTool27({
 });
 
 // src/lib/mcp/tools/request-payment-link.ts
-import { defineTool as defineTool28, ToolError as ToolError33 } from "npm:@lovable.dev/mcp-js@0.26.1";
-import { z as z27 } from "npm:zod@^3.25.76";
+import { defineTool as defineTool29, ToolError as ToolError34 } from "npm:@lovable.dev/mcp-js@0.26.1";
+import { z as z28 } from "npm:zod@^3.25.76";
 var KINDS = {
   deposit_25: 0.25,
   deposit_50: 0.5,
   full: 1
 };
-var request_payment_link_default = defineTool28({
+var request_payment_link_default = defineTool29({
   name: "request_payment_link",
   title: "Request a payment link (human approval required)",
   description: "Propose a WeTravel payment link for a lead. The link is NOT created here: the request is placed in the 'Aprova\xE7\xF5es AI' queue with the amount, deposit and description. When a person approves it, the existing 'Criar link de pagamento' logic runs and the link is saved on the lead. Amounts default to the base selling price (optionals excluded), as in the UI.",
   inputSchema: {
-    lead_id: z27.string().optional().describe("Lead uuid."),
-    lead_code: z27.string().optional().describe("Lead code such as YT5130."),
-    kind: z27.enum(["deposit_25", "deposit_50", "full", "optionals", "custom"]).describe("What to charge: 25% deposit, 50% deposit, full amount, the optionals, or a custom amount."),
-    amount_eur: z27.number().positive().optional().describe("Amount in EUR \u2014 required for 'custom', otherwise computed."),
-    description: z27.string().optional().describe("Description shown to the client on the checkout page.")
+    lead_id: z28.string().optional().describe("Lead uuid."),
+    lead_code: z28.string().optional().describe("Lead code such as YT5130."),
+    kind: z28.enum(["deposit_25", "deposit_50", "full", "optionals", "custom"]).describe("What to charge: 25% deposit, 50% deposit, full amount, the optionals, or a custom amount."),
+    amount_eur: z28.number().positive().optional().describe("Amount in EUR \u2014 required for 'custom', otherwise computed."),
+    description: z28.string().optional().describe("Description shown to the client on the checkout page.")
   },
   annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false },
   handler: async ({ lead_id, lead_code, kind, amount_eur, description }, ctx) => {
-    if (!ctx.isAuthenticated()) throw new ToolError33("Not authenticated");
+    if (!ctx.isAuthenticated()) throw new ToolError34("Not authenticated");
     const supabase = supabaseForUser(ctx);
     const lead = await resolveLead(supabase, { lead_id, lead_code });
     const l = lead;
@@ -2467,12 +2512,12 @@ var request_payment_link_default = defineTool28({
     const totals = costingTotals(await loadCosting(supabase, lead, ver));
     let amount = amount_eur ?? 0;
     if (kind === "custom") {
-      if (!amount_eur) throw new ToolError33("amount_eur is required when kind is 'custom'");
+      if (!amount_eur) throw new ToolError34("amount_eur is required when kind is 'custom'");
     } else if (kind === "optionals") {
       amount = totals.optionals_pvp_eur;
-      if (!amount) throw new ToolError33("This lead has no optional lines in the costing");
+      if (!amount) throw new ToolError34("This lead has no optional lines in the costing");
     } else {
-      if (!totals.pvp_eur) throw new ToolError33("The costing has no selling price yet \u2014 fill the costing first");
+      if (!totals.pvp_eur) throw new ToolError34("The costing has no selling price yet \u2014 fill the costing first");
       amount = Math.round(totals.pvp_eur * KINDS[kind] * 100) / 100;
     }
     const { data: proposal } = await supabase.from("proposals").select("id, title").eq("lead_id", lead.id).eq("version", ver).maybeSingle();
@@ -2517,8 +2562,8 @@ var request_payment_link_default = defineTool28({
 });
 
 // src/lib/mcp/tools/draft-fse-requests.ts
-import { defineTool as defineTool29, ToolError as ToolError34 } from "npm:@lovable.dev/mcp-js@0.26.1";
-import { z as z28 } from "npm:zod@^3.25.76";
+import { defineTool as defineTool30, ToolError as ToolError35 } from "npm:@lovable.dev/mcp-js@0.26.1";
+import { z as z29 } from "npm:zod@^3.25.76";
 import { normalizeBookingStatus as normalizeBookingStatus2 } from "npm:@/components/leads/opsConstants";
 import { eur as eur2 } from "npm:@/lib/money";
 var ptDate = (d) => {
@@ -2526,18 +2571,18 @@ var ptDate = (d) => {
   const dt = new Date(d);
   return Number.isNaN(dt.getTime()) ? String(d) : dt.toLocaleDateString("pt-PT");
 };
-var draft_fse_requests_default = defineTool29({
+var draft_fse_requests_default = defineTool30({
   name: "draft_fse_requests",
   title: "Draft supplier (FSE) booking requests \u2014 human approval required",
   description: "Draft the Portuguese availability/booking request emails to each supplier (FSE) of a lead, in the format the TCC already uses and with the correct YT reference. One queue item per supplier is created in 'Aprova\xE7\xF5es AI'; no email is sent until a human approves it.",
   inputSchema: {
-    lead_id: z28.string().optional().describe("Lead uuid."),
-    lead_code: z28.string().optional().describe("Lead code such as YT5130."),
-    only_pending: z28.boolean().optional().describe("Only suppliers whose services are not booked yet (default true).")
+    lead_id: z29.string().optional().describe("Lead uuid."),
+    lead_code: z29.string().optional().describe("Lead code such as YT5130."),
+    only_pending: z29.boolean().optional().describe("Only suppliers whose services are not booked yet (default true).")
   },
   annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false },
   handler: async ({ lead_id, lead_code, only_pending }, ctx) => {
-    if (!ctx.isAuthenticated()) throw new ToolError34("Not authenticated");
+    if (!ctx.isAuthenticated()) throw new ToolError35("Not authenticated");
     const supabase = supabaseForUser(ctx);
     const lead = await resolveLead(supabase, { lead_id, lead_code });
     const l = lead;
@@ -2571,7 +2616,7 @@ var draft_fse_requests_default = defineTool29({
       }
     }
     const usable = services.filter((s) => s.supplier && (only_pending === false || !s.booked));
-    if (!usable.length) throw new ToolError34(`No pending supplier services found on ${ref}`);
+    if (!usable.length) throw new ToolError35(`No pending supplier services found on ${ref}`);
     const bySupplier = /* @__PURE__ */ new Map();
     for (const s of usable) bySupplier.set(s.supplier, [...bySupplier.get(s.supplier) ?? [], s]);
     const { data: suppliers } = await supabase.from("suppliers").select("name, email");
@@ -2626,8 +2671,8 @@ ${lines}
 });
 
 // src/lib/mcp/tools/draft-client-email.ts
-import { defineTool as defineTool30, ToolError as ToolError35 } from "npm:@lovable.dev/mcp-js@0.26.1";
-import { z as z29 } from "npm:zod@^3.25.76";
+import { defineTool as defineTool31, ToolError as ToolError36 } from "npm:@lovable.dev/mcp-js@0.26.1";
+import { z as z30 } from "npm:zod@^3.25.76";
 var TEMPLATE = {
   proposal: "sales_proposal",
   first_draft: "sales_first_contact",
@@ -2636,29 +2681,29 @@ var TEMPLATE = {
   confirmation: "ops_client_briefing",
   custom: "sales_proposal"
 };
-var draft_client_email_default = defineTool30({
+var draft_client_email_default = defineTool31({
   name: "draft_client_email",
   title: "Draft a client email \u2014 human approval required",
   description: "Draft a client email with the AI Email Composer (house style, clickable cover, day-by-day, Book Now), optionally attaching the travel plan PDF. The email is placed in the 'Aprova\xE7\xF5es AI' queue: nothing is sent until a human approves it, and it is then sent from reservas@yourtours.pt and logged in Comunica\xE7\xF5es and NetHunt.",
   inputSchema: {
-    lead_id: z29.string().optional().describe("Lead uuid."),
-    lead_code: z29.string().optional().describe("Lead code such as YT5130."),
-    purpose: z29.enum(["proposal", "first_draft", "follow_up", "payment_request", "confirmation", "custom"]).describe("What the email is for."),
-    notes: z29.string().optional().describe("Notes for the AI: what to emphasise, what changed, tone hints."),
-    language: z29.string().optional().describe("Email language (default: the client language on the lead)."),
-    attach_travel_plan_pdf: z29.boolean().optional().describe("Attach the travel plan PDF (default false)."),
-    cc: z29.array(z29.string().email()).optional().describe("Cc recipients."),
-    bcc: z29.array(z29.string().email()).optional().describe("Bcc recipients.")
+    lead_id: z30.string().optional().describe("Lead uuid."),
+    lead_code: z30.string().optional().describe("Lead code such as YT5130."),
+    purpose: z30.enum(["proposal", "first_draft", "follow_up", "payment_request", "confirmation", "custom"]).describe("What the email is for."),
+    notes: z30.string().optional().describe("Notes for the AI: what to emphasise, what changed, tone hints."),
+    language: z30.string().optional().describe("Email language (default: the client language on the lead)."),
+    attach_travel_plan_pdf: z30.boolean().optional().describe("Attach the travel plan PDF (default false)."),
+    cc: z30.array(z30.string().email()).optional().describe("Cc recipients."),
+    bcc: z30.array(z30.string().email()).optional().describe("Bcc recipients.")
   },
   annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: true },
   handler: async ({ lead_id, lead_code, purpose, notes, language, attach_travel_plan_pdf, cc, bcc }, ctx) => {
-    if (!ctx.isAuthenticated()) throw new ToolError35("Not authenticated");
+    if (!ctx.isAuthenticated()) throw new ToolError36("Not authenticated");
     const supabase = supabaseForUser(ctx);
     const lead = await resolveLead(supabase, { lead_id, lead_code });
     const l = lead;
     const ref = leadLabel(lead);
     const ver = liveVersion(lead);
-    if (!l.email) throw new ToolError35(`Lead ${ref} has no client email address`);
+    if (!l.email) throw new ToolError36(`Lead ${ref} has no client email address`);
     const { plan, meta } = await loadPlan(supabase, lead, ver);
     const { data: proposal } = await supabase.from("proposals").select("public_token, wetravel_checkout_url, title, total_value_eur").eq("lead_id", lead.id).eq("version", ver).maybeSingle();
     const { data, error } = await supabase.functions.invoke("generate-email", {
@@ -2676,13 +2721,13 @@ var draft_client_email_default = defineTool30({
         customNotes: [purpose === "custom" ? null : `Purpose: ${purpose}`, notes].filter(Boolean).join("\n")
       }
     });
-    if (error) throw new ToolError35(error.message);
+    if (error) throw new ToolError36(error.message);
     const email = data?.email;
-    if (!email?.body) throw new ToolError35("The email generator returned no content \u2014 try again with clearer notes");
+    if (!email?.body) throw new ToolError36("The email generator returned no content \u2014 try again with clearer notes");
     const attachments = [];
     const warnings = planWarnings(plan);
     if (attach_travel_plan_pdf) {
-      if (!plan.days.length) throw new ToolError35(`Lead ${ref} has no travel plan to attach on version ${ver}`);
+      if (!plan.days.length) throw new ToolError36(`Lead ${ref} has no travel plan to attach on version ${ver}`);
       const pdf = await renderTravelPlanPdf(supabase, lead, ver, plan, meta);
       const stored = await storeTravelPlanPdf(supabase, lead, pdf);
       attachments.push({ filename: stored.file_name, path: stored.storage_path, signed_url: stored.signed_url, pages: pdf.pages });
@@ -2724,31 +2769,31 @@ var draft_client_email_default = defineTool30({
 });
 
 // src/lib/mcp/tools/import-lead-ai.ts
-import { defineTool as defineTool31, ToolError as ToolError36 } from "npm:@lovable.dev/mcp-js@0.26.1";
-import { z as z30 } from "npm:zod@^3.25.76";
+import { defineTool as defineTool32, ToolError as ToolError37 } from "npm:@lovable.dev/mcp-js@0.26.1";
+import { z as z31 } from "npm:zod@^3.25.76";
 var SOURCES = { direct: "direct", site: "website", ota: "ota", b2b_partner: "b2b" };
 var toDate = (s) => {
   if (!s) return null;
   const d = new Date(s);
   return Number.isNaN(d.getTime()) ? null : d;
 };
-var import_lead_ai_default = defineTool31({
+var import_lead_ai_default = defineTool32({
   name: "import_lead_ai",
   title: "Create a lead from a client email (AI Import)",
   description: "Create a new lead from the raw client request, using the same AI extraction as 'Nova Lead \u2192 AI Import'. Assigns the next YT code and starts at 'SALES \xB7 New Lead'. Deduplicates: if a lead with the same client email and overlapping dates exists, nothing is created and that lead is returned with duplicate=true.",
   inputSchema: {
-    raw_text: z30.string().min(20).describe("Full client email / request text."),
-    source: z30.enum(["direct", "site", "ota", "b2b_partner"]).describe("Where the request came from."),
-    sender_email: z30.string().email().optional().describe("Sender email (used when the text has none)."),
-    gmail_thread_id: z30.string().optional().describe("Gmail message/thread id, stored in the notes."),
-    language: z30.string().optional().describe("Client language, e.g. EN, PT, FR.")
+    raw_text: z31.string().min(20).describe("Full client email / request text."),
+    source: z31.enum(["direct", "site", "ota", "b2b_partner"]).describe("Where the request came from."),
+    sender_email: z31.string().email().optional().describe("Sender email (used when the text has none)."),
+    gmail_thread_id: z31.string().optional().describe("Gmail message/thread id, stored in the notes."),
+    language: z31.string().optional().describe("Client language, e.g. EN, PT, FR.")
   },
   annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false },
   handler: async ({ raw_text, source, sender_email, gmail_thread_id, language }, ctx) => {
-    if (!ctx.isAuthenticated()) throw new ToolError36("Not authenticated");
+    if (!ctx.isAuthenticated()) throw new ToolError37("Not authenticated");
     const supabase = supabaseForUser(ctx);
     const { data, error } = await supabase.functions.invoke("parse-lead-email", { body: { emailText: raw_text } });
-    if (error) throw new ToolError36(`AI extraction failed: ${error.message}`);
+    if (error) throw new ToolError37(`AI extraction failed: ${error.message}`);
     const x = data?.extracted ?? {};
     const email = String(x.email || sender_email || "").trim().toLowerCase();
     const start = x.travelDates || null;
@@ -2791,7 +2836,7 @@ var import_lead_ai_default = defineTool31({
       for (const [k, v] of Object.entries(cand)) if (!empty(v) && empty(target[k])) fill[k] = v;
       if (Object.keys(fill).length) {
         const { error: upErr } = await supabase.from("leads").update(fill).eq("id", target.id);
-        if (upErr) throw new ToolError36(upErr.message);
+        if (upErr) throw new ToolError37(upErr.message);
       }
       await auditLead(
         supabase,
@@ -2866,7 +2911,7 @@ var import_lead_ai_default = defineTool31({
       nethunt_record_id: nethuntId
     };
     const { data: created, error: insErr } = await supabase.from("leads").insert(row).select().single();
-    if (insErr) throw new ToolError36(insErr.message);
+    if (insErr) throw new ToolError37(insErr.message);
     const lead = created;
     await auditLead(supabase, ctx, lead, "lead_created", { lead: { from: null, to: ytId } }, { source, gmail_thread_id });
     const required = ["clientName", "email", "travelDates", "pax", "destination"];
@@ -2886,26 +2931,26 @@ var import_lead_ai_default = defineTool31({
 });
 
 // src/lib/mcp/tools/create-nethunt-deal.ts
-import { defineTool as defineTool32, ToolError as ToolError37 } from "npm:@lovable.dev/mcp-js@0.26.1";
-import { z as z31 } from "npm:zod@^3.25.76";
-var create_nethunt_deal_default = defineTool32({
+import { defineTool as defineTool33, ToolError as ToolError38 } from "npm:@lovable.dev/mcp-js@0.26.1";
+import { z as z32 } from "npm:zod@^3.25.76";
+var create_nethunt_deal_default = defineTool33({
   name: "create_nethunt_deal",
   title: "Create the NetHunt file for a lead",
   description: "Creates the deal in NetHunt CRM for a TCC lead that has no NetHunt record yet, and stores the returned record id and YT ID on the lead. Never runs automatically; idempotent (returns the existing link if already linked).",
   inputSchema: {
-    lead_id: z31.string().optional().describe("Lead uuid."),
-    lead_code: z31.string().optional().describe("Lead code, e.g. YT5130 / YT-5130.")
+    lead_id: z32.string().optional().describe("Lead uuid."),
+    lead_code: z32.string().optional().describe("Lead code, e.g. YT5130 / YT-5130.")
   },
   annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: true },
   handler: async ({ lead_id, lead_code }, ctx) => {
-    if (!ctx.isAuthenticated()) throw new ToolError37("Not authenticated");
+    if (!ctx.isAuthenticated()) throw new ToolError38("Not authenticated");
     const supabase = supabaseForUser(ctx);
     const row = await resolveLead(supabase, { lead_id, lead_code });
     const { data, error } = await supabase.functions.invoke("nethunt-push", {
       body: { entity: "lead_create_deal", id: row.id }
     });
-    if (error) throw new ToolError37(`NetHunt: ${error.message}`);
-    if (data?.ok === false) throw new ToolError37(`NetHunt: ${data.error}`);
+    if (error) throw new ToolError38(`NetHunt: ${error.message}`);
+    if (data?.ok === false) throw new ToolError38(`NetHunt: ${data.error}`);
     await auditLead(supabase, ctx, row, "nethunt_deal_created", {
       nethunt_record_id: { from: null, to: data?.nethunt_record_id ?? null }
     });
@@ -2946,6 +2991,7 @@ var mcp_default = defineMcp({
     autofill_costing_from_plan_default,
     get_operations_default,
     update_operation_item_default,
+    update_day_ops_default,
     update_trip_briefing_default,
     validate_lead_default,
     generate_travel_plan_default,
