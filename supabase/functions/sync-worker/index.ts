@@ -3,6 +3,7 @@
 // Processes target='calendar' (Google Calendar) and target='nethunt' (field-level push to NetHunt).
 import {
   LEAD_SYNC_COLS, leadValues, taskRowValues, pushDiff, getBaselines, updateRecord, wkey, TF,
+  createRecord, recId, recUpdatedAt, setBaselines, logSync, fromDateTime, PRIORITY_OUT, TASKS_FOLDER,
 } from '../_shared/nethunt.ts';
 import { createClient, SUPABASE_URL, SERVICE_ROLE_KEY, getSyncAdmins, runCalendarSync, ADMIN_URL_BASE } from '../_shared/calendar-sync-core.ts';
 
@@ -13,6 +14,40 @@ const reply = (body: unknown, status = 200) =>
 
 function esc(s: string) {
   return s.replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]!));
+}
+
+// Creates a TCC task (inserted outside the UI, e.g. MCP) in NetHunt, linked to the lead's deal. Idempotent:
+// only runs while nethunt_record_id is NULL and writes it back conditionally.
+async function createNethuntTask(sb: any, task: any): Promise<void> {
+  if (!task.lead_id) return;
+  const { data: lead } = await sb.from('leads').select('nethunt_record_id').eq('id', task.lead_id).maybeSingle();
+  const leadRid = lead?.nethunt_record_id;
+  if (!leadRid) return;
+  const vals = taskRowValues(task);
+  const fields: Record<string, unknown> = {
+    [wkey(TF.name)]: vals.title || '(sem título)',
+    [wkey(TF.description)]: vals.description ?? '',
+    [wkey(TF.priority)]: PRIORITY_OUT[String(vals.priority)] ?? 'Medium',
+    [wkey(TF.completed)]: Boolean(vals.completed),
+    [wkey(TF.allDay)]: Boolean(vals.all_day),
+    [wkey(TF.recordLinks)]: [leadRid],
+  };
+  const due = task.due_at || (task.due_date ? `${task.due_date}T09:00:00Z` : null);
+  if (due) fields[wkey(TF.dueDate)] = fromDateTime(due);
+  if (Array.isArray(vals.assignee_emails) && vals.assignee_emails.length) fields[wkey(TF.assignee)] = vals.assignee_emails;
+  // Re-check right before creating (frontend push may have linked it meanwhile).
+  const { data: again } = await sb.from('tasks').select('nethunt_record_id').eq('id', task.id).maybeSingle();
+  if (again?.nethunt_record_id) return;
+  const created = await createRecord(TASKS_FOLDER, fields);
+  const rid = created ? recId(created) : null;
+  if (!rid) throw new Error('NetHunt não devolveu recordId ao criar task');
+  const now = new Date().toISOString();
+  await sb.from('tasks').update({
+    nethunt_record_id: rid, nethunt_record_links: [leadRid],
+    nethunt_updated_at: created ? recUpdatedAt(created) : now, nethunt_synced_at: now,
+  }).eq('id', task.id).is('nethunt_record_id', null);
+  await setBaselines(sb, 'task', task.id, vals);
+  await logSync(sb, [{ direction: 'push', entity: 'task', entity_id: task.id, nethunt_record_id: rid, action: 'create' }]);
 }
 
 async function syncNethunt(sb: any, entity: string, id: string): Promise<void> {
@@ -26,7 +61,8 @@ async function syncNethunt(sb: any, entity: string, id: string): Promise<void> {
   if (entity === 'task') {
     const { data: task } = await sb.from('tasks').select('*').eq('id', id).maybeSingle();
     if (task) {
-      if (task.nethunt_record_id) await pushDiff(sb, 'task', id, task.nethunt_record_id, taskRowValues(task));
+      if (task.nethunt_record_id) { await pushDiff(sb, 'task', id, task.nethunt_record_id, taskRowValues(task)); return; }
+      await createNethuntTask(sb, task);
       return;
     }
     // Deleted in the TCC → Completed=true + 'Cancelada no TCC' in NetHunt (never delete there).

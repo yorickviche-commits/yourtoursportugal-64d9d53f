@@ -441,7 +441,7 @@
       {
         "name": "create_task",
         "title": "Create task",
-        "description": "Create an operational or sales task for the signed-in user. Keep titles short and actionable.",
+        "description": "Create an operational or sales task for the signed-in user. Keep titles short and actionable. Link it to a lead with lead_id (uuid) or lead_code/yt_id (e.g. YT4794); tasks on leads linked to NetHunt are created in NetHunt automatically.",
         "annotations": {
           "readOnlyHint": false,
           "destructiveHint": false,
@@ -474,6 +474,14 @@
             "lead_id": {
               "type": "string",
               "description": "Link to this lead uuid."
+            },
+            "lead_code": {
+              "type": "string",
+              "description": "Link to this lead by code, e.g. YT4794."
+            },
+            "yt_id": {
+              "type": "string",
+              "description": "Alias of lead_code."
             },
             "trip_id": {
               "type": "string",
