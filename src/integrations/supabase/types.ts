@@ -1523,6 +1523,99 @@ export type Database = {
           },
         ]
       }
+      lead_day_ops: {
+        Row: {
+          day_number: number
+          dropoff_location: string | null
+          dropoff_maps_url: string | null
+          guide_name: string | null
+          guide_payment_amount: number | null
+          id: string
+          lead_id: string
+          notes_backoffice: string | null
+          notes_guide: string | null
+          pickup_location: string | null
+          pickup_maps_url: string | null
+          pickup_time: string | null
+          updated_at: string
+          updated_by: string | null
+          vehicle: string | null
+          vehicle_pickup: string | null
+        }
+        Insert: {
+          day_number: number
+          dropoff_location?: string | null
+          dropoff_maps_url?: string | null
+          guide_name?: string | null
+          guide_payment_amount?: number | null
+          id?: string
+          lead_id: string
+          notes_backoffice?: string | null
+          notes_guide?: string | null
+          pickup_location?: string | null
+          pickup_maps_url?: string | null
+          pickup_time?: string | null
+          updated_at?: string
+          updated_by?: string | null
+          vehicle?: string | null
+          vehicle_pickup?: string | null
+        }
+        Update: {
+          day_number?: number
+          dropoff_location?: string | null
+          dropoff_maps_url?: string | null
+          guide_name?: string | null
+          guide_payment_amount?: number | null
+          id?: string
+          lead_id?: string
+          notes_backoffice?: string | null
+          notes_guide?: string | null
+          pickup_location?: string | null
+          pickup_maps_url?: string | null
+          pickup_time?: string | null
+          updated_at?: string
+          updated_by?: string | null
+          vehicle?: string | null
+          vehicle_pickup?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lead_day_ops_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lead_day_ops_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "rpt_files"
+            referencedColumns: ["lead_id"]
+          },
+          {
+            foreignKeyName: "lead_day_ops_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_task_queue"
+            referencedColumns: ["lead_id"]
+          },
+          {
+            foreignKeyName: "lead_day_ops_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "v_lead_economics"
+            referencedColumns: ["lead_id"]
+          },
+          {
+            foreignKeyName: "lead_day_ops_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "v_lead_outcomes"
+            referencedColumns: ["lead_id"]
+          },
+        ]
+      }
       lead_operations: {
         Row: {
           activity_title: string | null
@@ -1541,6 +1634,7 @@ export type Database = {
           pax: number | null
           payment_status: string
           real_cost: number | null
+          schedule_end_time: string | null
           schedule_time: string | null
           sort_order: number
           source: string
@@ -1564,6 +1658,7 @@ export type Database = {
           pax?: number | null
           payment_status?: string
           real_cost?: number | null
+          schedule_end_time?: string | null
           schedule_time?: string | null
           sort_order?: number
           source?: string
@@ -1587,6 +1682,7 @@ export type Database = {
           pax?: number | null
           payment_status?: string
           real_cost?: number | null
+          schedule_end_time?: string | null
           schedule_time?: string | null
           sort_order?: number
           source?: string
@@ -1990,6 +2086,7 @@ export type Database = {
         Row: {
           active_version: number | null
           assigned_agents: string[]
+          booking_origin: string | null
           budget_level: string | null
           budget_tier: string | null
           client_name: string
@@ -2005,6 +2102,7 @@ export type Database = {
           email: string | null
           estimated_value: number | null
           exact_itinerary_pdf_path: string | null
+          external_booking_ref: string | null
           id: string
           lead_code: string
           magic_question: string | null
@@ -2026,6 +2124,7 @@ export type Database = {
           route_map_path: string | null
           route_map_url: string | null
           sales_owner: string | null
+          service_language: string | null
           source: string
           status: string
           travel_dates: string | null
@@ -2040,6 +2139,7 @@ export type Database = {
         Insert: {
           active_version?: number | null
           assigned_agents?: string[]
+          booking_origin?: string | null
           budget_level?: string | null
           budget_tier?: string | null
           client_name?: string
@@ -2055,6 +2155,7 @@ export type Database = {
           email?: string | null
           estimated_value?: number | null
           exact_itinerary_pdf_path?: string | null
+          external_booking_ref?: string | null
           id?: string
           lead_code: string
           magic_question?: string | null
@@ -2076,6 +2177,7 @@ export type Database = {
           route_map_path?: string | null
           route_map_url?: string | null
           sales_owner?: string | null
+          service_language?: string | null
           source?: string
           status?: string
           travel_dates?: string | null
@@ -2090,6 +2192,7 @@ export type Database = {
         Update: {
           active_version?: number | null
           assigned_agents?: string[]
+          booking_origin?: string | null
           budget_level?: string | null
           budget_tier?: string | null
           client_name?: string
@@ -2105,6 +2208,7 @@ export type Database = {
           email?: string | null
           estimated_value?: number | null
           exact_itinerary_pdf_path?: string | null
+          external_booking_ref?: string | null
           id?: string
           lead_code?: string
           magic_question?: string | null
@@ -2126,6 +2230,7 @@ export type Database = {
           route_map_path?: string | null
           route_map_url?: string | null
           sales_owner?: string | null
+          service_language?: string | null
           source?: string
           status?: string
           travel_dates?: string | null
