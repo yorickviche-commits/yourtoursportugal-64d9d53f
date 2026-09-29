@@ -17,7 +17,7 @@ const ORPHAN_INACTIVE_MSG = 'Lead/dia já não está ativo no TCC — rever even
 
 export interface SyncRequest {
   lead_id: string;
-  mode?: 'create' | 'update' | 'delete' | 'full_resync' | 'force_overwrite';
+  mode?: 'create' | 'update' | 'delete' | 'full_resync' | 'force_overwrite' | 'preview';
   day_dates?: string[];
 }
 
