@@ -12,30 +12,45 @@ const GOOGLE_CALENDAR_API_KEY = Deno.env.get('GOOGLE_CALENDAR_API_KEY');
 const GATEWAY_URL = 'https://connector-gateway.lovable.dev/google_calendar/calendar/v3';
 const APP_ORIGIN = 'https://yourtoursportugal.lovable.app';
 
+const FORCE_ADMIN_EMAIL = 'yorick.viche@yourtours.pt';
+const MANUAL_EDIT_MSG = 'Evento editado manualmente no Google Calendar — o TCC não sobrescreve. Rever no calendário.';
+const ORPHAN_MISSING_MSG = 'Evento não encontrado no Google Calendar';
+const ORPHAN_INACTIVE_MSG = 'Lead/dia já não está ativo no TCC — rever evento no calendário';
+
 interface SyncRequest {
   lead_id: string;
-  mode?: 'create' | 'update' | 'delete' | 'full_resync';
+  mode?: 'create' | 'update' | 'delete' | 'full_resync' | 'force_overwrite';
+  day_dates?: string[];
 }
 
-async function calendarFetch(path: string, init: RequestInit = {}) {
+function gatewayHeaders(extra: Record<string, string> = {}) {
   if (!LOVABLE_API_KEY) throw new Error('LOVABLE_API_KEY not configured');
   if (!GOOGLE_CALENDAR_API_KEY) throw new Error('GOOGLE_CALENDAR_API_KEY not configured (connector not linked)');
+  return {
+    'Authorization': `Bearer ${LOVABLE_API_KEY}`,
+    'X-Connection-Api-Key': GOOGLE_CALENDAR_API_KEY,
+    'Content-Type': 'application/json',
+    ...extra,
+  };
+}
+
+// Only GET / PATCH / POST are ever used. This function never issues DELETE to Google Calendar.
+async function gcal(path: string, init: { method: 'GET' | 'PATCH' | 'POST'; body?: string; headers?: Record<string, string> }) {
   const res = await fetch(`${GATEWAY_URL}${path}`, {
-    ...init,
-    headers: {
-      'Authorization': `Bearer ${LOVABLE_API_KEY}`,
-      'X-Connection-Api-Key': GOOGLE_CALENDAR_API_KEY,
-      'Content-Type': 'application/json',
-      ...(init.headers || {}),
-    },
+    method: init.method,
+    body: init.body,
+    headers: gatewayHeaders(init.headers || {}),
   });
-  const body = await res.text();
-  if (!res.ok) {
-    // 410 = event already deleted; treat as ok on DELETE
-    if (res.status === 410 && init.method === 'DELETE') return null;
-    throw new Error(`Google Calendar API ${res.status}: ${body}`);
-  }
-  return body ? JSON.parse(body) : null;
+  const text = await res.text();
+  let data: any = null;
+  try { data = text ? JSON.parse(text) : null; } catch { data = null; }
+  return { ok: res.ok, status: res.status, text, data };
+}
+
+async function calendarFetch(path: string, init: { method: 'POST'; body: string }) {
+  const r = await gcal(path, init);
+  if (!r.ok) throw new Error(`Google Calendar API ${r.status}: ${r.text}`);
+  return r.data;
 }
 
 // Simple stable stringify + hash (djb2) — order-insensitive not required, JSON.stringify keeps insertion order which is fine here.
@@ -208,21 +223,22 @@ async function getCalendarId(supabase: any): Promise<{ calendarId: string; enabl
   };
 }
 
-async function deleteAllForLead(supabase: any, calendarId: string, leadId: string) {
-  const { data: existing } = await supabase
-    .from('calendar_events')
-    .select('id, google_event_id')
-    .eq('lead_id', leadId);
-  for (const row of existing || []) {
-    if (row.google_event_id) {
-      try {
-        await calendarFetch(`/calendars/${encodeURIComponent(calendarId)}/events/${row.google_event_id}`, { method: 'DELETE' });
-      } catch (e) {
-        console.error('Failed to delete event', row.google_event_id, e);
-      }
-    }
-  }
-  await supabase.from('calendar_events').delete().eq('lead_id', leadId);
+// NEVER deletes Google events nor mapping rows — only flags them as orphan.
+async function markAllOrphanForLead(supabase: any, leadId: string) {
+  await supabase.from('calendar_events')
+    .update({ protection_status: 'orphan', sync_error: ORPHAN_INACTIVE_MSG })
+    .eq('lead_id', leadId)
+    .neq('protection_status', 'manual_edit');
+}
+
+async function getCallerEmail(req: Request): Promise<string | null> {
+  const auth = req.headers.get('Authorization') || '';
+  if (!auth.toLowerCase().startsWith('bearer ')) return null;
+  const jwt = auth.slice(7);
+  const anon = createClient(SUPABASE_URL, Deno.env.get('SUPABASE_ANON_KEY')!);
+  const { data, error } = await anon.auth.getUser(jwt);
+  if (error || !data?.user?.email) return null;
+  return data.user.email.toLowerCase();
 }
 
 Deno.serve(async (req) => {
@@ -234,6 +250,22 @@ Deno.serve(async (req) => {
     const body = await req.json() as SyncRequest;
     if (!body.lead_id) throw new Error('lead_id required');
     const mode = body.mode || 'update';
+
+    const forceDates = new Set<string>();
+    if (mode === 'force_overwrite') {
+      const email = await getCallerEmail(req);
+      if (email !== FORCE_ADMIN_EMAIL) {
+        return new Response(JSON.stringify({ ok: false, error: 'force_overwrite reservado ao administrador' }), {
+          status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+      for (const d of body.day_dates || []) if (/^\d{4}-\d{2}-\d{2}$/.test(d)) forceDates.add(d);
+      if (forceDates.size === 0) {
+        return new Response(JSON.stringify({ ok: false, error: 'day_dates obrigatório em force_overwrite' }), {
+          status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+    }
 
     const { calendarId, enabled } = await getCalendarId(supabase);
     if (!enabled) {
@@ -248,10 +280,10 @@ Deno.serve(async (req) => {
     if (leadErr) throw leadErr;
     if (!lead) throw new Error('lead not found');
 
-    // If not won (or explicit delete), wipe everything
+    // Not won (or explicit delete): never delete anything — flag as orphan.
     if (mode === 'delete' || lead.status !== 'won') {
-      await deleteAllForLead(supabase, calendarId, body.lead_id);
-      return new Response(JSON.stringify({ ok: true, deleted: true }), {
+      await markAllOrphanForLead(supabase, body.lead_id);
+      return new Response(JSON.stringify({ ok: true, orphaned: true }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
@@ -355,41 +387,95 @@ Deno.serve(async (req) => {
 
       const payloadHash = hash(eventPayload);
       const existing: any = existingByDate.get(day.day_date);
+      const forced = mode === 'force_overwrite' && forceDates.has(day.day_date);
 
-      if (existing && existing.last_payload_hash === payloadHash && existing.google_event_id && mode !== 'full_resync') {
+      // Manual edits are permanently protected (even in full_resync) unless admin force_overwrite for this date.
+      if (existing?.protection_status === 'manual_edit' && !forced) {
+        results.push({ day_date: day.day_date, action: 'protected_manual_edit' });
+        continue;
+      }
+      if (mode === 'force_overwrite' && !forced) {
+        results.push({ day_date: day.day_date, action: 'skipped_not_requested' });
+        continue;
+      }
+
+      if (existing && existing.protection_status === 'ok' && existing.last_payload_hash === payloadHash && existing.google_event_id && mode !== 'full_resync' && !forced) {
         results.push({ day_date: day.day_date, action: 'unchanged' });
         continue;
       }
 
+      const markManual = async () => {
+        await supabase.from('calendar_events').update({
+          protection_status: 'manual_edit',
+          manual_edit_detected_at: new Date().toISOString(),
+          sync_error: MANUAL_EDIT_MSG,
+        }).eq('id', existing.id);
+        results.push({ day_date: day.day_date, action: 'protected_manual_edit' });
+      };
+
       try {
         let eventId = existing?.google_event_id;
+        let saved: any = null;
         if (eventId) {
-          await calendarFetch(`/calendars/${encodeURIComponent(calendarId)}/events/${eventId}?sendUpdates=none`, {
-            method: 'PATCH', body: JSON.stringify(eventPayload),
+          const evPath = `/calendars/${encodeURIComponent(calendarId)}/events/${eventId}`;
+          const current = await gcal(evPath, { method: 'GET' });
+          if (current.status === 404 || current.status === 410 || current.data?.status === 'cancelled') {
+            await supabase.from('calendar_events').update({
+              protection_status: 'orphan',
+              sync_error: ORPHAN_MISSING_MSG,
+            }).eq('id', existing.id);
+            results.push({ day_date: day.day_date, action: 'orphan_missing' });
+            continue;
+          }
+          if (!current.ok) throw new Error(`Google Calendar API ${current.status}: ${current.text}`);
+          const gEtag: string | undefined = current.data?.etag;
+          const gUpdated: string | undefined = current.data?.updated;
+
+          if (!forced) {
+            let manual = false;
+            if (existing.google_etag) {
+              manual = !!gEtag && gEtag !== existing.google_etag;
+            } else if (gUpdated && existing.last_synced_at) {
+              manual = new Date(gUpdated).getTime() - new Date(existing.last_synced_at).getTime() > 60_000;
+            }
+            if (manual) { await markManual(); continue; }
+          }
+
+          const patched = await gcal(`${evPath}?sendUpdates=none`, {
+            method: 'PATCH',
+            body: JSON.stringify(eventPayload),
+            headers: gEtag ? { 'If-Match': gEtag } : {},
           });
+          if (patched.status === 412) { await markManual(); continue; }
+          if (!patched.ok) throw new Error(`Google Calendar API ${patched.status}: ${patched.text}`);
+          saved = patched.data;
         } else {
-          const created = await calendarFetch(`/calendars/${encodeURIComponent(calendarId)}/events?sendUpdates=none`, {
+          saved = await calendarFetch(`/calendars/${encodeURIComponent(calendarId)}/events?sendUpdates=none`, {
             method: 'POST', body: JSON.stringify(eventPayload),
           });
-          eventId = created?.id;
+          eventId = saved?.id;
         }
         await supabase.from('calendar_events').upsert({
           lead_id: body.lead_id,
           day_date: day.day_date,
           google_event_id: eventId,
+          google_etag: saved?.etag || null,
+          google_updated_at: saved?.updated || null,
           last_synced_at: new Date().toISOString(),
           last_payload_hash: payloadHash,
           status: summary.label,
           sync_error: null,
+          protection_status: 'ok',
+          manual_edit_detected_at: null,
         }, { onConflict: 'lead_id,day_date' });
-        results.push({ day_date: day.day_date, action: existing ? 'updated' : 'created', eventId });
+        results.push({ day_date: day.day_date, action: existing ? (forced ? 'force_overwritten' : 'updated') : 'created', eventId });
       } catch (err: any) {
         console.error('Failed to sync day', day.day_date, err);
         await supabase.from('calendar_events').upsert({
           lead_id: body.lead_id,
           day_date: day.day_date,
           google_event_id: existing?.google_event_id || null,
-          last_synced_at: new Date().toISOString(),
+          last_synced_at: existing?.last_synced_at || new Date().toISOString(),
           last_payload_hash: existing?.last_payload_hash || null,
           status: summary.label,
           sync_error: String(err.message || err),
@@ -398,16 +484,14 @@ Deno.serve(async (req) => {
       }
     }
 
-    // Delete stale mappings (days that no longer exist)
+    // Stale mappings (days no longer in costing): NEVER delete — mark orphan, keep Google event intact.
     for (const m of existingMappings || []) {
       if (!activeDates.has((m as any).day_date)) {
-        if ((m as any).google_event_id) {
-          try {
-            await calendarFetch(`/calendars/${encodeURIComponent(calendarId)}/events/${(m as any).google_event_id}?sendUpdates=none`, { method: 'DELETE' });
-          } catch (e) { console.error('cleanup delete failed', e); }
-        }
-        await supabase.from('calendar_events').delete().eq('id', (m as any).id);
-        results.push({ day_date: (m as any).day_date, action: 'removed' });
+        await supabase.from('calendar_events').update({
+          protection_status: 'orphan',
+          sync_error: ORPHAN_INACTIVE_MSG,
+        }).eq('id', (m as any).id);
+        results.push({ day_date: (m as any).day_date, action: 'orphaned' });
       }
     }
 
