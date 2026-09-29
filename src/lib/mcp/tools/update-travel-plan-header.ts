@@ -2,6 +2,7 @@ import { defineTool, ToolError } from "@lovable.dev/mcp-js";
 import { z } from "zod";
 import { supabaseForUser } from "../supabase";
 import { auditLead, leadLabel, liveVersion, resolveLead } from "../lead";
+import { resolveWriteVersion } from "../agent";
 import { loadPlan, planPayload, savePlan } from "../travelPlan";
 
 export default defineTool({
@@ -27,7 +28,7 @@ export default defineTool({
     const supabase = supabaseForUser(ctx);
     const lead = await resolveLead(supabase, { lead_id, lead_code });
     const l = lead as any;
-    const ver = version ?? liveVersion(lead);
+    const ver = await resolveWriteVersion(supabase, ctx, lead, version);
 
     const { plan, meta } = await loadPlan(supabase, lead, ver);
     const next = {

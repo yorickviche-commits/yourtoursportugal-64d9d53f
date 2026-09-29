@@ -2,6 +2,7 @@ import { defineTool, ToolError } from "@lovable.dev/mcp-js";
 import { z } from "zod";
 import { supabaseForUser } from "../supabase";
 import { auditLead, leadLabel, liveVersion, resolveLead } from "../lead";
+import { resolveWriteVersion } from "../agent";
 import { blankLine, calcLine, costingTotals, loadCosting, saveCostingDay, type CostDay } from "../costing";
 import { loadPlan } from "../travelPlan";
 
@@ -29,7 +30,7 @@ export default defineTool({
     if (!ctx.isAuthenticated()) throw new ToolError("Not authenticated");
     const supabase = supabaseForUser(ctx);
     const lead = await resolveLead(supabase, { lead_id, lead_code });
-    const ver = version ?? liveVersion(lead);
+    const ver = await resolveWriteVersion(supabase, ctx, lead, version);
 
     const { plan } = await loadPlan(supabase, lead, ver);
     if (!plan.days.length) throw new ToolError(`Lead ${leadLabel(lead)} has no travel plan on version ${ver} — run generate_travel_plan first`);

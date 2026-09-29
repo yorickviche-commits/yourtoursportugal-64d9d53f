@@ -2,6 +2,7 @@ import { defineTool, ToolError } from "@lovable.dev/mcp-js";
 import { z } from "zod";
 import { supabaseForUser } from "../supabase";
 import { auditLead, leadLabel, liveVersion, resolveLead } from "../lead";
+import { resolveWriteVersion } from "../agent";
 import { costingTotals, loadCosting, saveCostingDay } from "../costing";
 
 export default defineTool({
@@ -21,7 +22,7 @@ export default defineTool({
     if (!ctx.isAuthenticated()) throw new ToolError("Not authenticated");
     const supabase = supabaseForUser(ctx);
     const lead = await resolveLead(supabase, { lead_id, lead_code });
-    const ver = version ?? liveVersion(lead);
+    const ver = await resolveWriteVersion(supabase, ctx, lead, version);
 
     const days = await loadCosting(supabase, lead, ver);
     const day = days.find((d) => d.day_number === day_number);

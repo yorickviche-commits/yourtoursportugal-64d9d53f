@@ -155,6 +155,27 @@ function agentIdentity(supabase, ctx) {
   return hit;
 }
 var agentActor = (a) => a ? `${a.agent_label}${a.model ? ` \xB7 ${a.model}` : ""}` : "AI agent (MCP)";
+async function resolveWriteVersion(supabase, ctx, lead, explicit) {
+  const agent = await agentIdentity(supabase, ctx);
+  const live = liveVersion(lead);
+  if (!agent) return explicit ?? live;
+  if (explicit !== void 0) {
+    if (explicit === live) {
+      throw new ToolError2(
+        `V${live} is the LIVE version \u2014 AI agents cannot edit it. Omit 'version' to write on your AI proposal.`
+      );
+    }
+    const { data: data2 } = await supabase.from("lead_versions").select("is_ai_proposal").eq("lead_id", lead.id).eq("version", explicit).maybeSingle();
+    if (!data2?.is_ai_proposal) {
+      throw new ToolError2(`V${explicit} is not an AI proposal \u2014 AI agents can only edit their own AI proposals.`);
+    }
+    return explicit;
+  }
+  const { data } = await supabase.from("lead_versions").select("version").eq("lead_id", lead.id).eq("is_ai_proposal", true).eq("proposed_by_key_id", agent.id).order("version", { ascending: false }).limit(1);
+  const existing = data?.[0]?.version;
+  if (existing !== void 0 && existing !== null) return Number(existing);
+  return createLeadVersion(supabase, lead, live, { agent });
+}
 
 // src/lib/mcp/lead.ts
 var APP_ORIGIN = "https://yourtoursportugal.lovable.app";
@@ -826,8 +847,9 @@ var add_lead_note_default = defineTool11({
     const supabase = supabaseForUser(ctx);
     const lead = await resolveLead(supabase, { lead_id, lead_code });
     const stamp = (/* @__PURE__ */ new Date()).toISOString().slice(0, 16).replace("T", " ");
-    const author = ctx.getUserEmail() ?? "AI agent (MCP)";
-    const entry = `[${stamp}] ${author} (AI agent via MCP): ${text}`;
+    const agent = await agentIdentity(supabase, ctx);
+    const author = agent ? agentActor(agent) : ctx.getUserEmail() ?? "AI agent (MCP)";
+    const entry = agent ? `[${stamp}] ${author}: ${text}` : `[${stamp}] ${author} (AI agent via MCP): ${text}`;
     const existing = String(lead.notes || "").trim();
     if (existing.includes(text.trim())) {
       const payload2 = { lead: leadLabel(lead), lead_id: lead.id, added: false, reason: "Identical note already present" };
@@ -1575,7 +1597,7 @@ var upsert_costing_lines_default = defineTool17({
     if (!ctx.isAuthenticated()) throw new ToolError22("Not authenticated");
     const supabase = supabaseForUser(ctx);
     const lead = await resolveLead(supabase, { lead_id, lead_code });
-    const ver = version ?? liveVersion(lead);
+    const ver = await resolveWriteVersion(supabase, ctx, lead, version);
     const days2 = await loadCosting(supabase, lead, ver);
     const byDay = new Map(days2.map((d) => [d.day_number, d]));
     const touched = /* @__PURE__ */ new Set();
@@ -1665,7 +1687,7 @@ var remove_costing_line_default = defineTool18({
     if (!ctx.isAuthenticated()) throw new ToolError23("Not authenticated");
     const supabase = supabaseForUser(ctx);
     const lead = await resolveLead(supabase, { lead_id, lead_code });
-    const ver = version ?? liveVersion(lead);
+    const ver = await resolveWriteVersion(supabase, ctx, lead, version);
     const days2 = await loadCosting(supabase, lead, ver);
     const day = days2.find((d) => d.day_number === day_number);
     if (!day) throw new ToolError23(`Day ${day_number} has no costing lines for version ${ver}`);
@@ -1861,7 +1883,7 @@ var autofill_costing_from_plan_default = defineTool19({
     if (!ctx.isAuthenticated()) throw new ToolError25("Not authenticated");
     const supabase = supabaseForUser(ctx);
     const lead = await resolveLead(supabase, { lead_id, lead_code });
-    const ver = version ?? liveVersion(lead);
+    const ver = await resolveWriteVersion(supabase, ctx, lead, version);
     const { plan } = await loadPlan(supabase, lead, ver);
     if (!plan.days.length) throw new ToolError25(`Lead ${leadLabel(lead)} has no travel plan on version ${ver} \u2014 run generate_travel_plan first`);
     const days2 = await loadCosting(supabase, lead, ver);
@@ -2349,7 +2371,7 @@ var update_travel_plan_day_default = defineTool26({
     const supabase = supabaseForUser(ctx);
     const lead = await resolveLead(supabase, { lead_id, lead_code });
     const l = lead;
-    const ver = version ?? liveVersion(lead);
+    const ver = await resolveWriteVersion(supabase, ctx, lead, version);
     const { plan, meta } = await loadPlan(supabase, lead, ver);
     const days2 = [...plan.days].sort((a, b) => a.day_number - b.day_number);
     const idx = days2.findIndex((d) => d.day_number === day_number);
@@ -2421,7 +2443,7 @@ var update_travel_plan_header_default = defineTool27({
     const supabase = supabaseForUser(ctx);
     const lead = await resolveLead(supabase, { lead_id, lead_code });
     const l = lead;
-    const ver = version ?? liveVersion(lead);
+    const ver = await resolveWriteVersion(supabase, ctx, lead, version);
     const { plan, meta } = await loadPlan(supabase, lead, ver);
     const next = {
       ...plan,
@@ -2468,7 +2490,7 @@ var fill_travel_plan_images_default = defineTool28({
     const supabase = supabaseForUser(ctx);
     const lead = await resolveLead(supabase, { lead_id, lead_code });
     const l = lead;
-    const ver = version ?? liveVersion(lead);
+    const ver = await resolveWriteVersion(supabase, ctx, lead, version);
     const count = images_per_day ?? 2;
     const { plan, meta } = await loadPlan(supabase, lead, ver);
     if (!plan.days.length) throw new ToolError34(`Lead ${leadLabel(lead)} has no travel plan on version ${ver}`);

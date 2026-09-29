@@ -2,6 +2,7 @@ import { defineTool, ToolError } from "@lovable.dev/mcp-js";
 import { z } from "zod";
 import { supabaseForUser } from "../supabase";
 import { auditLead, leadLabel, pushNetHunt, resolveLead } from "../lead";
+import { agentActor, agentIdentity } from "../agent";
 
 export default defineTool({
   name: "add_lead_note",
@@ -21,8 +22,9 @@ export default defineTool({
     const lead = await resolveLead(supabase, { lead_id, lead_code });
 
     const stamp = new Date().toISOString().slice(0, 16).replace("T", " ");
-    const author = ctx.getUserEmail() ?? "AI agent (MCP)";
-    const entry = `[${stamp}] ${author} (AI agent via MCP): ${text}`;
+    const agent = await agentIdentity(supabase, ctx);
+    const author = agent ? agentActor(agent) : ctx.getUserEmail() ?? "AI agent (MCP)";
+    const entry = agent ? `[${stamp}] ${author}: ${text}` : `[${stamp}] ${author} (AI agent via MCP): ${text}`;
     const existing = String((lead as any).notes || "").trim();
 
     // Idempotent: the exact same note text is not appended twice.
