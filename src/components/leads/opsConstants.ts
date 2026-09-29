@@ -56,6 +56,7 @@ export interface OpsRow {
   netValue: number;
   realCost: number | null;
   scheduleTime: string;
+  scheduleEndTime?: string;
   bookingStatus: string;
   paymentStatus: string;
   invoiceStatus: string;
