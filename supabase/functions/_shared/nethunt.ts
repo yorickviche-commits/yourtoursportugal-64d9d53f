@@ -458,6 +458,10 @@ export function taskAction(f: string, v: unknown): FieldAction | null {
   return null;
 }
 
+/** Baseline the TCC value is compared against (separate for 'name'). */
+export const tccBaseline = (base: Map<string, unknown>, f: string) =>
+  base.has(`${f}@tcc`) ? base.get(`${f}@tcc`) : base.get(f);
+
 export async function getBaselines(sb: SupabaseClient, entity: "lead" | "task", id: string) {
   const { data } = await sb.from("nethunt_field_state").select("field, value").eq("entity", entity).eq("entity_id", id);
   return new Map(((data as { field: string; value: unknown }[] | null) ?? []).map((r) => [r.field, r.value]));
@@ -465,6 +469,8 @@ export async function getBaselines(sb: SupabaseClient, entity: "lead" | "task", 
 
 export async function setBaselines(sb: SupabaseClient, entity: "lead" | "task", id: string, vals: Vals) {
   const now = new Date().toISOString();
+  // 'name' keeps a separate TCC-side baseline (deal names ≠ client names): mirror it unless given explicitly.
+  if (vals.name !== undefined && !("name@tcc" in vals)) vals = { ...vals, "name@tcc": vals.name };
   const rows = Object.entries(vals).filter(([, v]) => v !== undefined)
     .map(([f, v]) => ({ entity, entity_id: id, field: f, value: normVal(v) ?? null, synced_at: now }));
   if (!rows.length) return;
@@ -481,7 +487,8 @@ export async function pushDiff(
   const sent: Vals = {};
   for (const [f, v] of Object.entries(vals)) {
     if (v === undefined) continue;
-    if (base.has(f) && same(v, base.get(f))) continue;
+    const tb = base.has(`${f}@tcc`) ? base.get(`${f}@tcc`) : base.get(f);
+    if ((base.has(f) || base.has(`${f}@tcc`)) && same(v, tb)) continue;
     const a = entity === "lead" ? leadAction(f, v) : taskAction(f, v);
     if (!a) continue;
     actions.push(a); sent[f] = v;

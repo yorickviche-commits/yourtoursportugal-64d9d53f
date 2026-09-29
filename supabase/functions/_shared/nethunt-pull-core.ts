@@ -6,7 +6,7 @@ import {
   pageRecords, fetchRecord, nhSoft, recId, recUpdatedAt, field,
   stageToStatus, toClientType, toSource, toDate, toIso, ytKey, canonicalStage,
   type LogRow, type NHRecord,
-  dealValues, leadValues, taskNhValues, taskRowValues, getBaselines, setBaselines, same,
+  dealValues, leadValues, taskNhValues, taskRowValues, getBaselines, setBaselines, same, tccBaseline,
   LEAD_SYNC_COLS, type LeadForSync, type Vals,
 } from "./nethunt.ts";
 import { syncTimeline } from "./nethunt-timeline.ts";
@@ -42,6 +42,7 @@ async function mergeFields(
     const tv = tccVals[f];
     const has = base.has(f);
     const bv = base.get(f);
+    const tbv = tccBaseline(base, f);
     if (tccAuthority.has(f)) {
       if (!same(nv, tv)) {
         if (has && !same(nv, bv)) conflicts.push({ entity, entity_id: id, field: f, tcc_value: tv ?? null, nethunt_value: nv ?? null, winner: "tcc" });
@@ -50,9 +51,13 @@ async function mergeFields(
       newBase[f] = nv;
       continue;
     }
-    if (!has) { if (!same(nv, tv)) apply.push(f); newBase[f] = nv; continue; }
+    if (!has) {
+      // First sight: NetHunt wins — except the deal Name, which never overwrites the client name.
+      if (f === "name") { newBase.name = nv; newBase["name@tcc"] = tv ?? null; continue; }
+      if (!same(nv, tv)) apply.push(f); newBase[f] = nv; continue;
+    }
     if (same(nv, bv)) continue;
-    if (same(tv, bv) || same(tv, nv)) { if (!same(tv, nv)) apply.push(f); newBase[f] = nv; continue; }
+    if (same(tv, tbv) || same(tv, nv)) { if (!same(tv, nv)) apply.push(f); newBase[f] = nv; continue; }
     const nhWins = nhUpdatedAt >= tccTime(f);
     conflicts.push({ entity, entity_id: id, field: f, tcc_value: tv ?? null, nethunt_value: nv ?? null, winner: nhWins ? "nethunt" : "tcc" });
     if (nhWins) apply.push(f); else push = true;
