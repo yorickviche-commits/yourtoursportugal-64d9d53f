@@ -488,6 +488,7 @@ const LeadDetailPage = ({ mode = 'lead' }: { mode?: 'lead' | 'booking' } = {}) =
     numberOfDays: 0, datesType: 'estimated' as 'concrete' | 'estimated' | 'flexible',
     pax: 2, paxChildren: 0, paxInfants: 0, budgetLevel: '', notes: '', salesOwner: '',
     clientType: 'B2C' as 'B2C' | 'B2B',
+    serviceLanguage: '', bookingOrigin: '', externalBookingRef: '',
   });
   const [leadStatus, setLeadStatus] = useState<LeadStatus>('new');
   const [categoria, setCategoria] = useState<string[]>([]);
@@ -575,6 +576,9 @@ const LeadDetailPage = ({ mode = 'lead' }: { mode?: 'lead' | 'booking' } = {}) =
       notes: g.notes || '',
       salesOwner: g.sales_owner || '',
       clientType: normalizeClientType(g.client_type),
+      serviceLanguage: g.service_language || '',
+      bookingOrigin: g.booking_origin || '',
+      externalBookingRef: g.external_booking_ref || '',
     });
     setLeadStatus((g.status as LeadStatus) || 'new');
     setCategoria(g.comfort_level ? [g.comfort_level] : []);
@@ -606,6 +610,9 @@ const LeadDetailPage = ({ mode = 'lead' }: { mode?: 'lead' | 'booking' } = {}) =
     budget_level: formState.budgetLevel,
     notes: formState.notes,
     sales_owner: formState.salesOwner,
+    service_language: formState.serviceLanguage || null,
+    booking_origin: formState.bookingOrigin || null,
+    external_booking_ref: formState.externalBookingRef || null,
     status: leadStatus,
     comfort_level: categoria[0] || '',
     travel_style: travelStyles,
@@ -670,6 +677,9 @@ const LeadDetailPage = ({ mode = 'lead' }: { mode?: 'lead' | 'booking' } = {}) =
     if ((l.notes || '') !== formState.notes) return true;
     if ((l.sales_owner || '') !== formState.salesOwner) return true;
     if (normalizeClientType(l.client_type) !== formState.clientType) return true;
+    if ((l.service_language || '') !== formState.serviceLanguage) return true;
+    if ((l.booking_origin || '') !== formState.bookingOrigin) return true;
+    if ((l.external_booking_ref || '') !== formState.externalBookingRef) return true;
     if ((l.comfort_level || '') !== (categoria[0] || '')) return true;
     const savedDest = (l.destination ? String(l.destination).split(', ').filter(Boolean) : []).join('|');
     if (savedDest !== destino.join('|')) return true;
@@ -1069,6 +1079,11 @@ const LeadDetailPage = ({ mode = 'lead' }: { mode?: 'lead' | 'booking' } = {}) =
                 <div><label className="text-[10px] text-muted-foreground uppercase">Nº de jovens</label><Input className="h-8 text-xs mt-1" type="number" value={formState.paxChildren} onChange={e => updateFormField('paxChildren', parseInt(e.target.value) || 0)} /></div>
                 <div><label className="text-[10px] text-muted-foreground uppercase">Nº de crianças</label><Input className="h-8 text-xs mt-1" type="number" value={formState.paxInfants} onChange={e => updateFormField('paxInfants', parseInt(e.target.value) || 0)} /></div>
                 <TagSelect label="Idioma" value={idioma} options={IDIOMAS} onChange={setIdioma} />
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-3">
+                <div><label className="text-[10px] text-muted-foreground uppercase">Idioma do serviço</label><Input className="h-8 text-xs mt-1" value={formState.serviceLanguage} onChange={e => updateFormField('serviceLanguage', e.target.value.toUpperCase())} placeholder="PT / EN / FR / ES…" /></div>
+                <div><label className="text-[10px] text-muted-foreground uppercase">Origem da reserva</label><Input className="h-8 text-xs mt-1" value={formState.bookingOrigin} onChange={e => updateFormField('bookingOrigin', e.target.value)} placeholder="YT, Viator, GetYourGuide…" /></div>
+                <div><label className="text-[10px] text-muted-foreground uppercase">Nº reserva externa</label><Input className="h-8 text-xs mt-1" value={formState.externalBookingRef} onChange={e => updateFormField('externalBookingRef', e.target.value)} placeholder="FareHarbor / OTA" /></div>
               </div>
               <div className="grid grid-cols-3 gap-4 mt-3">
                 <div><label className="text-[10px] text-muted-foreground uppercase">Budget total (€)</label><Input className="h-8 text-xs mt-1" value={formState.budgetLevel} onChange={e => updateFormField('budgetLevel', e.target.value)} /></div>
