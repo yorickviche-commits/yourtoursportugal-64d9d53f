@@ -363,10 +363,10 @@ var list_leads_default = defineTool({
       (costing.data ?? []).forEach((row) => {
         if (row.version !== (live.get(row.lead_id) ?? 0)) return;
         const agg = totals.get(row.lead_id) ?? { pvp: 0, net: 0 };
-        (Array.isArray(row.items) ? row.items : []).forEach((it) => {
-          if (it?.status === "eliminar") return;
-          agg.pvp += Number(it?.pvpTotal) || 0;
-          agg.net += Number(it?.netTotal) || 0;
+        (Array.isArray(row.items) ? row.items : []).forEach((it4) => {
+          if (it4?.status === "eliminar") return;
+          agg.pvp += Number(it4?.pvpTotal) || 0;
+          agg.net += Number(it4?.netTotal) || 0;
         });
         totals.set(row.lead_id, agg);
       });
@@ -461,17 +461,17 @@ var list_upcoming_trips_default = defineTool3({
   annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
   handler: async ({ days: days2, limit }, ctx) => {
     if (!ctx.isAuthenticated()) throw new ToolError6("Not authenticated");
-    const window = Math.min(Math.max(days2 ?? 7, 1), 365);
+    const window2 = Math.min(Math.max(days2 ?? 7, 1), 365);
     const take = Math.min(Math.max(limit ?? 50, 1), 100);
     const from = /* @__PURE__ */ new Date();
     const until = /* @__PURE__ */ new Date();
-    until.setDate(until.getDate() + window);
+    until.setDate(until.getDate() + window2);
     const supabase = supabaseForUser(ctx);
     const { data, error } = await supabase.from("trips").select(
       "id,trip_code,client_name,destination,start_date,end_date,status,pax,total_value,urgency,has_blocker,blocker_note,sales_owner,lead_id"
     ).gte("start_date", from.toISOString().slice(0, 10)).lte("start_date", until.toISOString().slice(0, 10)).order("start_date", { ascending: true }).limit(take);
     if (error) throw new ToolError6(error.message);
-    const payload = { days_ahead: window, total: data?.length ?? 0, trips: data ?? [] };
+    const payload = { days_ahead: window2, total: data?.length ?? 0, trips: data ?? [] };
     return {
       content: [{ type: "text", text: JSON.stringify(payload, null, 2) }],
       structuredContent: payload
@@ -743,8 +743,23 @@ var assign_lead_agents_default = defineTool9({
 import { defineTool as defineTool10, ToolError as ToolError13 } from "npm:@lovable.dev/mcp-js@0.26.1";
 import { z as z9 } from "npm:zod@^3.25.76";
 
+// src/lib/participantsLabel.ts
+var PARTICIPANT_LABELS = {
+  en: { adult: "adult", adults: "adults", child: "child", children: "children" },
+  fr: { adult: "adulte", adults: "adultes", child: "enfant", children: "enfants" },
+  es: { adult: "adulto", adults: "adultos", child: "ni\xF1o", children: "ni\xF1os" },
+  pt: { adult: "adulto", adults: "adultos", child: "crian\xE7a", children: "crian\xE7as" },
+  it: { adult: "adulto", adults: "adulti", child: "bambino", children: "bambini" },
+  de: { adult: "Erwachsener", adults: "Erwachsene", child: "Kind", children: "Kinder" }
+};
+var participantLabelsFor = (language) => PARTICIPANT_LABELS[(language || "en").toLowerCase().slice(0, 2)] || PARTICIPANT_LABELS.en;
+var buildParticipantsLabel = (pax, paxChildren, language) => {
+  const l = participantLabelsFor(language);
+  const kids = paxChildren || 0;
+  return `${pax} ${pax === 1 ? l.adult : l.adults}${kids ? ` + ${kids} ${kids === 1 ? l.child : l.children}` : ""}`;
+};
+
 // src/lib/mcp/generalSync.ts
-import { buildParticipantsLabel } from "npm:@/lib/participantsLabel";
 async function syncGeneralToProposalServer(supabase, args) {
   const { data: planRow } = await supabase.from("travel_plans").select("id, days").eq("lead_id", args.leadId).eq("version", args.version).order("updated_at", { ascending: false }).limit(1).maybeSingle();
   const days2 = Array.isArray(planRow?.days) ? planRow.days : [];
@@ -963,11 +978,430 @@ import { z as z12 } from "npm:zod@^3.25.76";
 
 // src/lib/mcp/pdf.ts
 import jsPDF from "npm:jspdf@^4.2.1";
-import { getPdfDict } from "npm:@/lib/proposalPdfI18n";
-import { resolveClosingText } from "npm:@/lib/closingTermsI18n";
-import { getHotelsDict, mergeProposalHotels } from "npm:@/lib/proposalHotelsI18n";
-import { stripBoldMarkers } from "npm:@/lib/richText";
-import { eur } from "npm:@/lib/money";
+
+// src/lib/proposalPdfI18n.ts
+var en = {
+  headerSubtitle: "Tailored Travel Plan",
+  travelPlanFallback: "Travel Plan",
+  interactiveVersion: "Interactive version:",
+  interactiveLead: "\u2014 Interactive Travel Plan (mobile-friendly):",
+  attachedNote: "The full PDF version is attached for your records.",
+  summaryDayByDay: "Summary & Day-by-Day",
+  day: "Day",
+  itineraryIncluded: "ITINERARY & INCLUDED:",
+  night: "Night",
+  nights: "Nights",
+  accommodation: "Accommodation",
+  routeMap: "Route map",
+  openRoute: "Open route in Google Maps  \u2192",
+  totalPrice: "TOTAL PRICE",
+  totalPriceNet: "TOTAL NET PRICE",
+  bookNow: "BOOK NOW",
+  included: "What's Included",
+  paymentConditions: "Reservation & Payment Conditions",
+  paymentDefault: "\u2022 Deposit: 25% of the total amount to formalize the booking.\n\u2022 Final Payment: The remaining 75% must be settled up to 30 days before the tour date.",
+  cancellationConditions: "Cancellations & Refund Conditions",
+  cancellationDefault: "\u2022 Free cancellation with 100% refund up to 7 days prior to the tour date.\n\u2022 For cancellations made less than 30 days before the tour date, the total amount is non-refundable.",
+  importantNotes: "Important Notes",
+  importantDefault: "\u2022 The rates presented include all the itinerary and experiences mentioned in the proposition.\n\u2022 Rates are valid on the date this proposal is sent and may change until final confirmation.\n\u2022 The rates include all taxes and personal accident insurance.",
+  reviewsTitle: "What Our Clients Say",
+  reviewsSubtitle: "Trusted by hundreds of travellers exploring Portugal.",
+  seeAllReviews: "See All Reviews  \u2192",
+  aboutTitle: "About Your Tours Portugal",
+  aboutBody: "Your Tours Portugal is a bespoke travel agency specialised in authentic Portuguese experiences. We craft tailor-made itineraries that reveal the very best of local culture, gastronomy and craftsmanship with passionate local guides.",
+  foundersBody: "Founded in 2016 by professional tour guides, Your Tours Portugal remains a 100% locally owned operator. Our founders still lead the team today, working with authentic local partners to deliver private, personalised experiences across the very best of Portugal and Spain."
+};
+var pt = {
+  headerSubtitle: "Plano de Viagem Personalizado",
+  travelPlanFallback: "Plano de Viagem",
+  interactiveVersion: "Vers\xE3o interativa:",
+  interactiveLead: "\u2014 Plano de Viagem interativo (otimizado para telem\xF3vel):",
+  attachedNote: "A vers\xE3o completa em PDF segue em anexo.",
+  summaryDayByDay: "Resumo e Programa dia a dia",
+  day: "Dia",
+  itineraryIncluded: "ITINER\xC1RIO E INCLU\xCDDO:",
+  night: "Noite",
+  nights: "Noites",
+  accommodation: "Alojamento",
+  routeMap: "Mapa da rota",
+  openRoute: "Abrir rota no Google Maps  \u2192",
+  totalPrice: "PRE\xC7O TOTAL",
+  totalPriceNet: "PRE\xC7O TOTAL NET",
+  bookNow: "RESERVAR",
+  included: "O que est\xE1 inclu\xEDdo",
+  paymentConditions: "Condi\xE7\xF5es de Reserva e Pagamento",
+  paymentDefault: "\u2022 Sinal: 25% do valor total para formalizar a reserva.\n\u2022 Pagamento final: os restantes 75% devem ser liquidados at\xE9 30 dias antes da data do programa.",
+  cancellationConditions: "Condi\xE7\xF5es de Cancelamento e Reembolso",
+  cancellationDefault: "\u2022 Cancelamento gratuito com reembolso de 100% at\xE9 7 dias antes da data do programa.\n\u2022 Em cancelamentos com menos de 30 dias de anteced\xEAncia, o valor total n\xE3o \xE9 reembols\xE1vel.",
+  importantNotes: "Notas Importantes",
+  importantDefault: "\u2022 Os valores apresentados incluem todo o itiner\xE1rio e experi\xEAncias mencionados nesta proposta.\n\u2022 Os valores s\xE3o v\xE1lidos na data de envio da proposta e podem alterar at\xE9 \xE0 confirma\xE7\xE3o final.\n\u2022 Os valores incluem todos os impostos e seguro de acidentes pessoais.",
+  reviewsTitle: "O que dizem os nossos clientes",
+  reviewsSubtitle: "A confian\xE7a de centenas de viajantes que descobriram Portugal.",
+  seeAllReviews: "Ver todas as avalia\xE7\xF5es  \u2192",
+  aboutTitle: "Sobre a Your Tours Portugal",
+  aboutBody: "A Your Tours Portugal \xE9 uma ag\xEAncia de viagens \xE0 medida especializada em experi\xEAncias aut\xEAnticas em Portugal. Criamos itiner\xE1rios personalizados que revelam o melhor da cultura, gastronomia e artesanato portugu\xEAs, com guias locais apaixonados.",
+  foundersBody: "Fundada em 2016 por guias tur\xEDsticos profissionais, a Your Tours Portugal continua a ser um operador 100% local. Os nossos fundadores lideram ainda hoje a equipa, trabalhando com parceiros locais aut\xEAnticos para criar experi\xEAncias privadas e personalizadas pelo melhor de Portugal e Espanha."
+};
+var es = {
+  headerSubtitle: "Plan de Viaje Personalizado",
+  travelPlanFallback: "Plan de Viaje",
+  interactiveVersion: "Versi\xF3n interactiva:",
+  interactiveLead: "\u2014 Plan de Viaje interactivo (optimizado para m\xF3vil):",
+  attachedNote: "La versi\xF3n completa en PDF se adjunta para su archivo.",
+  summaryDayByDay: "Resumen y Programa d\xEDa a d\xEDa",
+  day: "D\xEDa",
+  itineraryIncluded: "ITINERARIO E INCLUIDO:",
+  night: "Noche",
+  nights: "Noches",
+  accommodation: "Alojamiento",
+  routeMap: "Mapa de la ruta",
+  openRoute: "Abrir ruta en Google Maps  \u2192",
+  totalPrice: "PRECIO TOTAL",
+  totalPriceNet: "PRECIO TOTAL NETO",
+  bookNow: "RESERVAR",
+  included: "Qu\xE9 incluye",
+  paymentConditions: "Condiciones de Reserva y Pago",
+  paymentDefault: "\u2022 Se\xF1al: 25% del importe total para formalizar la reserva.\n\u2022 Pago final: el 75% restante debe abonarse hasta 30 d\xEDas antes de la fecha del programa.",
+  cancellationConditions: "Condiciones de Cancelaci\xF3n y Reembolso",
+  cancellationDefault: "\u2022 Cancelaci\xF3n gratuita con reembolso del 100% hasta 7 d\xEDas antes de la fecha del programa.\n\u2022 En cancelaciones con menos de 30 d\xEDas de antelaci\xF3n, el importe total no es reembolsable.",
+  importantNotes: "Notas Importantes",
+  importantDefault: "\u2022 Las tarifas presentadas incluyen todo el itinerario y las experiencias mencionadas en esta propuesta.\n\u2022 Las tarifas son v\xE1lidas en la fecha de env\xEDo de la propuesta y pueden cambiar hasta la confirmaci\xF3n final.\n\u2022 Las tarifas incluyen todos los impuestos y el seguro de accidentes personales.",
+  reviewsTitle: "Lo que dicen nuestros clientes",
+  reviewsSubtitle: "La confianza de cientos de viajeros que descubrieron Portugal.",
+  seeAllReviews: "Ver todas las opiniones  \u2192",
+  aboutTitle: "Sobre Your Tours Portugal",
+  aboutBody: "Your Tours Portugal es una agencia de viajes a medida especializada en experiencias aut\xE9nticas en Portugal. Creamos itinerarios personalizados que revelan lo mejor de la cultura, la gastronom\xEDa y la artesan\xEDa portuguesa, con gu\xEDas locales apasionados.",
+  foundersBody: "Fundada en 2016 por gu\xEDas tur\xEDsticos profesionales, Your Tours Portugal sigue siendo un operador 100% local. Nuestros fundadores contin\xFAan liderando el equipo, trabajando con socios locales aut\xE9nticos para ofrecer experiencias privadas y personalizadas por lo mejor de Portugal y Espa\xF1a."
+};
+var fr = {
+  headerSubtitle: "Plan de Voyage Personnalis\xE9",
+  travelPlanFallback: "Plan de Voyage",
+  interactiveVersion: "Version interactive :",
+  interactiveLead: "\u2014 Plan de Voyage interactif (adapt\xE9 au mobile) :",
+  attachedNote: "La version compl\xE8te en PDF est joint \xE0 cet e-mail.",
+  summaryDayByDay: "R\xE9sum\xE9 et Programme jour par jour",
+  day: "Jour",
+  itineraryIncluded: "ITIN\xC9RAIRE & INCLUS :",
+  night: "Nuit",
+  nights: "Nuits",
+  accommodation: "H\xE9bergement",
+  routeMap: "Carte de l\u2019itin\xE9raire",
+  openRoute: "Ouvrir l\u2019itin\xE9raire dans Google Maps  \u2192",
+  totalPrice: "PRIX TOTAL",
+  totalPriceNet: "PRIX TOTAL NET",
+  bookNow: "R\xC9SERVER",
+  included: "Ce qui est inclus",
+  paymentConditions: "Conditions de R\xE9servation et de Paiement",
+  paymentDefault: "\u2022 Acompte : 25% du montant total pour confirmer la r\xE9servation.\n\u2022 Solde : les 75% restants doivent \xEAtre r\xE9gl\xE9s jusqu\u2019\xE0 30 jours avant la date du programme.",
+  cancellationConditions: "Conditions d\u2019Annulation et de Remboursement",
+  cancellationDefault: "\u2022 Annulation gratuite avec remboursement \xE0 100% jusqu\u2019\xE0 7 jours avant la date du programme.\n\u2022 Pour toute annulation \xE0 moins de 30 jours, le montant total n\u2019est pas remboursable.",
+  importantNotes: "Notes Importantes",
+  importantDefault: "\u2022 Les tarifs pr\xE9sent\xE9s comprennent l\u2019ensemble de l\u2019itin\xE9raire et des exp\xE9riences mentionn\xE9s dans cette proposition.\n\u2022 Les tarifs sont valables \xE0 la date d\u2019envoi de la proposition et peuvent \xE9voluer jusqu\u2019\xE0 la confirmation finale.\n\u2022 Les tarifs incluent toutes les taxes et l\u2019assurance accidents personnels.",
+  reviewsTitle: "Ce que disent nos clients",
+  reviewsSubtitle: "La confiance de centaines de voyageurs au Portugal.",
+  seeAllReviews: "Voir tous les avis  \u2192",
+  aboutTitle: "\xC0 propos de Your Tours Portugal",
+  aboutBody: "Your Tours Portugal est une agence de voyages sur mesure sp\xE9cialis\xE9e dans les exp\xE9riences authentiques au Portugal. Nous cr\xE9ons des itin\xE9raires personnalis\xE9s qui r\xE9v\xE8lent le meilleur de la culture, de la gastronomie et de l\u2019artisanat portugais, avec des guides locaux passionn\xE9s.",
+  foundersBody: "Fond\xE9e en 2016 par des guides touristiques professionnels, Your Tours Portugal reste un op\xE9rateur 100% local. Nos fondateurs dirigent toujours l\u2019\xE9quipe et travaillent avec des partenaires locaux authentiques pour proposer des exp\xE9riences priv\xE9es et personnalis\xE9es au meilleur du Portugal et de l\u2019Espagne."
+};
+var it = {
+  headerSubtitle: "Piano di Viaggio Personalizzato",
+  travelPlanFallback: "Piano di Viaggio",
+  interactiveVersion: "Versione interattiva:",
+  interactiveLead: "\u2014 Piano di Viaggio interattivo (ottimizzato per mobile):",
+  attachedNote: "La versione completa in PDF \xE8 allegata.",
+  summaryDayByDay: "Riepilogo e Programma giorno per giorno",
+  day: "Giorno",
+  itineraryIncluded: "ITINERARIO E INCLUSO:",
+  night: "Notte",
+  nights: "Notti",
+  accommodation: "Alloggio",
+  routeMap: "Mappa del percorso",
+  openRoute: "Apri il percorso su Google Maps  \u2192",
+  totalPrice: "PREZZO TOTALE",
+  totalPriceNet: "PREZZO TOTALE NETTO",
+  bookNow: "PRENOTA ORA",
+  included: "Cosa \xE8 incluso",
+  paymentConditions: "Condizioni di Prenotazione e Pagamento",
+  paymentDefault: "\u2022 Acconto: 25% dell\u2019importo totale per confermare la prenotazione.\n\u2022 Saldo: il restante 75% deve essere versato fino a 30 giorni prima della data del programma.",
+  cancellationConditions: "Condizioni di Cancellazione e Rimborso",
+  cancellationDefault: "\u2022 Cancellazione gratuita con rimborso del 100% fino a 7 giorni prima della data del programma.\n\u2022 Per cancellazioni con meno di 30 giorni di preavviso, l\u2019importo totale non \xE8 rimborsabile.",
+  importantNotes: "Note Importanti",
+  importantDefault: "\u2022 Le tariffe indicate includono l\u2019intero itinerario e le esperienze menzionate in questa proposta.\n\u2022 Le tariffe sono valide alla data di invio della proposta e possono variare fino alla conferma finale.\n\u2022 Le tariffe includono tutte le tasse e l\u2019assicurazione infortuni.",
+  reviewsTitle: "Cosa dicono i nostri clienti",
+  reviewsSubtitle: "La fiducia di centinaia di viaggiatori in Portogallo.",
+  seeAllReviews: "Vedi tutte le recensioni  \u2192",
+  aboutTitle: "Chi \xE8 Your Tours Portugal",
+  aboutBody: "Your Tours Portugal \xE8 un\u2019agenzia di viaggi su misura specializzata in esperienze autentiche in Portogallo. Creiamo itinerari personalizzati che rivelano il meglio della cultura, della gastronomia e dell\u2019artigianato portoghese, con guide locali appassionate.",
+  foundersBody: "Fondata nel 2016 da guide turistiche professioniste, Your Tours Portugal \xE8 ancora un operatore 100% locale. I nostri fondatori guidano oggi il team e collaborano con partner locali autentici per offrire esperienze private e personalizzate nel meglio del Portogallo e della Spagna."
+};
+var de = {
+  headerSubtitle: "Individueller Reiseplan",
+  travelPlanFallback: "Reiseplan",
+  interactiveVersion: "Interaktive Version:",
+  interactiveLead: "\u2014 Interaktiver Reiseplan (mobiloptimiert):",
+  attachedNote: "Die vollst\xE4ndige PDF-Version finden Sie im Anhang.",
+  summaryDayByDay: "\xDCberblick & Programm Tag f\xFCr Tag",
+  day: "Tag",
+  itineraryIncluded: "PROGRAMM & INKLUSIVE:",
+  night: "\xDCbernachtung",
+  nights: "N\xE4chte",
+  accommodation: "Unterkunft",
+  routeMap: "Routenkarte",
+  openRoute: "Route in Google Maps \xF6ffnen  \u2192",
+  totalPrice: "GESAMTPREIS",
+  totalPriceNet: "GESAMTPREIS NETTO",
+  bookNow: "JETZT BUCHEN",
+  included: "Was inklusive ist",
+  paymentConditions: "Buchungs- und Zahlungsbedingungen",
+  paymentDefault: "\u2022 Anzahlung: 25% des Gesamtbetrags zur Best\xE4tigung der Buchung.\n\u2022 Restzahlung: die verbleibenden 75% sind bis 30 Tage vor Reisebeginn zu zahlen.",
+  cancellationConditions: "Storno- und R\xFCckerstattungsbedingungen",
+  cancellationDefault: "\u2022 Kostenlose Stornierung mit 100% R\xFCckerstattung bis 7 Tage vor Reisebeginn.\n\u2022 Bei Stornierungen weniger als 30 Tage vor Reisebeginn ist der Gesamtbetrag nicht r\xFCckerstattbar.",
+  importantNotes: "Wichtige Hinweise",
+  importantDefault: "\u2022 Die genannten Preise umfassen das gesamte Programm und alle in diesem Angebot genannten Erlebnisse.\n\u2022 Die Preise gelten zum Versanddatum dieses Angebots und k\xF6nnen sich bis zur endg\xFCltigen Best\xE4tigung \xE4ndern.\n\u2022 Die Preise beinhalten alle Steuern sowie eine Unfallversicherung.",
+  reviewsTitle: "Was unsere Kunden sagen",
+  reviewsSubtitle: "Das Vertrauen von hunderten Reisenden in Portugal.",
+  seeAllReviews: "Alle Bewertungen ansehen  \u2192",
+  aboutTitle: "\xDCber Your Tours Portugal",
+  aboutBody: "Your Tours Portugal ist eine Reiseagentur f\xFCr individuelle Reisen mit Fokus auf authentische Erlebnisse in Portugal. Wir gestalten ma\xDFgeschneiderte Reiseverl\xE4ufe, die das Beste aus Kultur, Gastronomie und Handwerk zeigen \u2013 mit leidenschaftlichen lokalen Guides.",
+  foundersBody: "Your Tours Portugal wurde 2016 von professionellen Reiseleitern gegr\xFCndet und ist bis heute ein 100% lokaler Anbieter. Unsere Gr\xFCnder leiten das Team weiterhin pers\xF6nlich und arbeiten mit authentischen lokalen Partnern zusammen, um private, individuelle Erlebnisse im Besten von Portugal und Spanien zu erm\xF6glichen."
+};
+var DICTS = { en, pt, es, fr, it, de };
+function getPdfDict(language) {
+  const key = String(language || "en").slice(0, 2).toLowerCase();
+  return DICTS[key] || en;
+}
+
+// src/lib/closingTermsI18n.ts
+var en2 = {
+  payment: "\u2022 Deposit: 25% of the total amount to formalize the booking.\n\u2022 Final Payment: The remaining 75% must be settled up to 30 days before the tour date.",
+  cancellation: "\u2022 Free cancellation with 100% refund up to 7 days prior to the tour date.\n\u2022 For cancellations made less than 30 days before the tour date, the total amount is non-refundable.",
+  importantNotes: "\u2022 The rates presented include all the itinerary and experiences mentioned in the proposition.\n\u2022 The presented rates are valid on the date this proposal is sent. Up until your final confirmation, there's the possibility of price/availability/conditions changes beyond our process.\n\u2022 The rates include all taxes and personal accident insurance.\n\u2022 Terms and Conditions referring to all our products/services are available publicly on our website.",
+  closingMessage: "That said, we await your feedback and your thoughts on the program and proposal.\n\nIf helpful, we suggest scheduling a short video call with our team to walk through the experience together, clarify any details, and fine-tune the plan according to your vision.\n\nPlease let us know if the proposal aligns with your expectations so we can move confidently to the next steps."
+};
+var pt2 = {
+  payment: "\u2022 Sinal: 25% do valor total para formalizar a reserva.\n\u2022 Pagamento final: os restantes 75% devem ser liquidados at\xE9 30 dias antes da data do programa.",
+  cancellation: "\u2022 Cancelamento gratuito com reembolso de 100% at\xE9 7 dias antes da data do programa.\n\u2022 Em cancelamentos com menos de 30 dias de anteced\xEAncia, o valor total n\xE3o \xE9 reembols\xE1vel.",
+  importantNotes: "\u2022 Os valores apresentados incluem todo o itiner\xE1rio e experi\xEAncias mencionados nesta proposta.\n\u2022 Os valores s\xE3o v\xE1lidos na data de envio desta proposta. At\xE9 \xE0 confirma\xE7\xE3o final, existe a possibilidade de altera\xE7\xF5es de pre\xE7o/disponibilidade/condi\xE7\xF5es fora do nosso controlo.\n\u2022 Os valores incluem todos os impostos e seguro de acidentes pessoais.\n\u2022 Os Termos e Condi\xE7\xF5es aplic\xE1veis a todos os nossos produtos/servi\xE7os est\xE3o dispon\xEDveis publicamente no nosso website.",
+  closingMessage: "Dito isto, aguardamos o seu feedback e a sua opini\xE3o sobre o programa e a proposta.\n\nSe for \xFAtil, sugerimos agendar uma breve videochamada com a nossa equipa para percorrermos a experi\xEAncia em conjunto, esclarecer detalhes e ajustar o plano \xE0 sua vis\xE3o.\n\nDiga-nos se a proposta corresponde \xE0s suas expectativas para avan\xE7armos com confian\xE7a para os pr\xF3ximos passos."
+};
+var es2 = {
+  payment: "\u2022 Se\xF1al: 25% del importe total para formalizar la reserva.\n\u2022 Pago final: el 75% restante debe abonarse hasta 30 d\xEDas antes de la fecha del programa.",
+  cancellation: "\u2022 Cancelaci\xF3n gratuita con reembolso del 100% hasta 7 d\xEDas antes de la fecha del programa.\n\u2022 En cancelaciones con menos de 30 d\xEDas de antelaci\xF3n, el importe total no es reembolsable.",
+  importantNotes: "\u2022 Las tarifas presentadas incluyen todo el itinerario y las experiencias mencionadas en esta propuesta.\n\u2022 Las tarifas son v\xE1lidas en la fecha de env\xEDo de esta propuesta. Hasta la confirmaci\xF3n final existe la posibilidad de cambios de precio/disponibilidad/condiciones ajenos a nuestro proceso.\n\u2022 Las tarifas incluyen todos los impuestos y el seguro de accidentes personales.\n\u2022 Los T\xE9rminos y Condiciones aplicables a todos nuestros productos/servicios est\xE1n disponibles p\xFAblicamente en nuestra web.",
+  closingMessage: "Dicho esto, esperamos sus comentarios y su opini\xF3n sobre el programa y la propuesta.\n\nSi resulta \xFAtil, sugerimos agendar una breve videollamada con nuestro equipo para repasar juntos la experiencia, aclarar detalles y ajustar el plan a su visi\xF3n.\n\nD\xEDganos si la propuesta se ajusta a sus expectativas para avanzar con confianza a los siguientes pasos."
+};
+var fr2 = {
+  payment: "\u2022 Acompte : 25% du montant total pour confirmer la r\xE9servation.\n\u2022 Solde : les 75% restants doivent \xEAtre r\xE9gl\xE9s jusqu\u2019\xE0 30 jours avant la date du programme.",
+  cancellation: "\u2022 Annulation gratuite avec remboursement \xE0 100% jusqu\u2019\xE0 7 jours avant la date du programme.\n\u2022 Pour toute annulation \xE0 moins de 30 jours, le montant total n\u2019est pas remboursable.",
+  importantNotes: "\u2022 Les tarifs pr\xE9sent\xE9s comprennent l\u2019ensemble de l\u2019itin\xE9raire et des exp\xE9riences mentionn\xE9s dans cette proposition.\n\u2022 Les tarifs sont valables \xE0 la date d\u2019envoi de cette proposition. Jusqu\u2019\xE0 la confirmation finale, des changements de prix/disponibilit\xE9/conditions ind\xE9pendants de notre process restent possibles.\n\u2022 Les tarifs incluent toutes les taxes et l\u2019assurance accidents personnels.\n\u2022 Les Conditions G\xE9n\xE9rales applicables \xE0 tous nos produits/services sont disponibles publiquement sur notre site.",
+  closingMessage: "Cela dit, nous attendons vos retours et votre avis sur le programme et la proposition.\n\nSi cela peut aider, nous sugg\xE9rons de planifier un court appel vid\xE9o avec notre \xE9quipe pour parcourir l\u2019exp\xE9rience ensemble, clarifier les d\xE9tails et affiner le plan selon votre vision.\n\nDites-nous si la proposition correspond \xE0 vos attentes afin d\u2019avancer sereinement vers les prochaines \xE9tapes."
+};
+var it2 = {
+  payment: "\u2022 Acconto: 25% dell\u2019importo totale per confermare la prenotazione.\n\u2022 Saldo: il restante 75% deve essere versato fino a 30 giorni prima della data del programma.",
+  cancellation: "\u2022 Cancellazione gratuita con rimborso del 100% fino a 7 giorni prima della data del programma.\n\u2022 Per cancellazioni con meno di 30 giorni di preavviso, l\u2019importo totale non \xE8 rimborsabile.",
+  importantNotes: "\u2022 Le tariffe indicate includono l\u2019intero itinerario e le esperienze menzionate in questa proposta.\n\u2022 Le tariffe sono valide alla data di invio della proposta. Fino alla conferma finale sono possibili variazioni di prezzo/disponibilit\xE0/condizioni al di fuori del nostro controllo.\n\u2022 Le tariffe includono tutte le tasse e l\u2019assicurazione infortuni.\n\u2022 I Termini e le Condizioni relativi a tutti i nostri prodotti/servizi sono disponibili pubblicamente sul nostro sito.",
+  closingMessage: "Detto questo, attendiamo il vostro riscontro e la vostra opinione sul programma e sulla proposta.\n\nSe utile, suggeriamo di fissare una breve videochiamata con il nostro team per rivedere insieme l\u2019esperienza, chiarire i dettagli e perfezionare il piano secondo la vostra visione.\n\nFateci sapere se la proposta corrisponde alle vostre aspettative per procedere con fiducia ai passi successivi."
+};
+var de2 = {
+  payment: "\u2022 Anzahlung: 25% des Gesamtbetrags zur Best\xE4tigung der Buchung.\n\u2022 Restzahlung: die verbleibenden 75% sind bis 30 Tage vor Reisebeginn zu zahlen.",
+  cancellation: "\u2022 Kostenlose Stornierung mit 100% R\xFCckerstattung bis 7 Tage vor Reisebeginn.\n\u2022 Bei Stornierungen weniger als 30 Tage vor Reisebeginn ist der Gesamtbetrag nicht r\xFCckerstattbar.",
+  importantNotes: "\u2022 Die genannten Preise umfassen das gesamte Programm und alle in diesem Angebot genannten Erlebnisse.\n\u2022 Die Preise gelten zum Versanddatum dieses Angebots. Bis zur endg\xFCltigen Best\xE4tigung sind \xC4nderungen von Preis/Verf\xFCgbarkeit/Bedingungen au\xDFerhalb unseres Einflusses m\xF6glich.\n\u2022 Die Preise beinhalten alle Steuern sowie eine Unfallversicherung.\n\u2022 Die Allgemeinen Gesch\xE4ftsbedingungen f\xFCr alle unsere Produkte/Leistungen sind \xF6ffentlich auf unserer Website verf\xFCgbar.",
+  closingMessage: "Wir freuen uns auf Ihr Feedback und Ihre Gedanken zum Programm und zum Angebot.\n\nGerne stimmen wir die Reise in einem kurzen Videocall mit unserem Team gemeinsam ab, kl\xE4ren Details und passen den Plan an Ihre Vorstellungen an.\n\nTeilen Sie uns mit, ob das Angebot Ihren Erwartungen entspricht, damit wir die n\xE4chsten Schritte sicher gehen k\xF6nnen."
+};
+var SETS = { en: en2, pt: pt2, es: es2, fr: fr2, it: it2, de: de2 };
+function normalizeClosingLang(language) {
+  const key = String(language || "en").slice(0, 2).toLowerCase();
+  return SETS[key] ? key : "en";
+}
+function getClosingDefaults(language) {
+  return SETS[normalizeClosingLang(language)];
+}
+var norm = (s) => s.replace(/\*\*/g, "").replace(/\s+/g, " ").trim().toLowerCase();
+var LEGACY_DEFAULTS = {
+  payment: [en2.payment],
+  cancellation: [en2.cancellation],
+  importantNotes: [
+    en2.importantNotes,
+    "\u2022 The rates presented include all the itinerary and experiences mentioned in the proposition.\n\u2022 Rates are valid on the date this proposal is sent and may change until final confirmation.\n\u2022 The rates include all taxes and personal accident insurance."
+  ],
+  closingMessage: [en2.closingMessage]
+};
+function isDefaultClosingText(field, text) {
+  if (!text || !String(text).trim()) return true;
+  const n = norm(String(text));
+  if (LEGACY_DEFAULTS[field].some((d) => norm(d) === n)) return true;
+  return Object.keys(SETS).some((l) => norm(SETS[l][field]) === n);
+}
+function resolveClosingText(field, stored, language) {
+  if (isDefaultClosingText(field, stored)) return getClosingDefaults(language)[field];
+  return String(stored);
+}
+
+// src/lib/proposalHotelsI18n.ts
+var en3 = {
+  hotelsIncluded: "Hotels Included",
+  hotel: "Hotel",
+  checkIn: "Check-in",
+  checkOut: "Check-out",
+  nights: "Nights",
+  rooms: "Rooms",
+  rate: "Rate",
+  hotelsTableNote: "Rates include accommodation with breakfast and all applicable taxes.",
+  mapsLinkNote: "Click the hotel name to open its exact location in Google Maps.",
+  programmePrice: "Private programme \u2014 itinerary & experiences",
+  hotelsPrice: (n, r) => `Hotels \u2014 ${n} night${n === 1 ? "" : "s"}${r ? `, ${r} room${r === 1 ? "" : "s"}` : ""}, breakfast included`,
+  total: "Total",
+  perPerson: "Per person",
+  optionals: "Optionals",
+  optionalsNote: "Optional experiences \u2014 not included in the total price.",
+  notIncluded: "What's Not Included",
+  nextSteps: "Your next steps",
+  notIncludedDefault: "\u2022 International flights and airport taxes.\n\u2022 Travel and medical insurance.\n\u2022 Meals and drinks not mentioned in the programme.\n\u2022 Personal expenses, tips and anything not explicitly listed as included.",
+  nextStepsDefault: "1. Review the programme and share any adjustments you would like.\n2. Confirm the proposal so we can secure hotels, guides and experiences.\n3. Pay the deposit to formalise the booking \u2014 we handle everything else."
+};
+var pt3 = {
+  hotelsIncluded: "Hot\xE9is Inclu\xEDdos",
+  hotel: "Hotel",
+  checkIn: "Check-in",
+  checkOut: "Check-out",
+  nights: "Noites",
+  rooms: "Quartos",
+  rate: "Valor",
+  hotelsTableNote: "Os valores incluem alojamento com pequeno-almo\xE7o e todos os impostos aplic\xE1veis.",
+  mapsLinkNote: "Clique no nome do hotel para abrir a localiza\xE7\xE3o exata no Google Maps.",
+  programmePrice: "Programa privado \u2014 itiner\xE1rio e experi\xEAncias",
+  hotelsPrice: (n, r) => `Hot\xE9is \u2014 ${n} noite${n === 1 ? "" : "s"}${r ? `, ${r} quarto${r === 1 ? "" : "s"}` : ""}, pequeno-almo\xE7o inclu\xEDdo`,
+  total: "Total",
+  perPerson: "Por pessoa",
+  optionals: "Opcionais",
+  optionalsNote: "Experi\xEAncias opcionais \u2014 n\xE3o inclu\xEDdas no pre\xE7o total.",
+  notIncluded: "O Que N\xE3o Est\xE1 Inclu\xEDdo",
+  nextSteps: "Pr\xF3ximos passos",
+  notIncludedDefault: "\u2022 Voos internacionais e taxas de aeroporto.\n\u2022 Seguro de viagem e de sa\xFAde.\n\u2022 Refei\xE7\xF5es e bebidas n\xE3o mencionadas no programa.\n\u2022 Despesas pessoais, gratifica\xE7\xF5es e tudo o que n\xE3o esteja expressamente indicado como inclu\xEDdo.",
+  nextStepsDefault: "1. Reveja o programa e diga-nos que ajustes gostaria de fazer.\n2. Confirme a proposta para garantirmos hot\xE9is, guias e experi\xEAncias.\n3. Efetue o sinal para formalizar a reserva \u2014 n\xF3s tratamos de todo o resto."
+};
+var es3 = {
+  hotelsIncluded: "Hoteles Incluidos",
+  hotel: "Hotel",
+  checkIn: "Check-in",
+  checkOut: "Check-out",
+  nights: "Noches",
+  rooms: "Habitaciones",
+  rate: "Importe",
+  hotelsTableNote: "Los importes incluyen alojamiento con desayuno y todos los impuestos aplicables.",
+  mapsLinkNote: "Haga clic en el nombre del hotel para abrir su ubicaci\xF3n exacta en Google Maps.",
+  programmePrice: "Programa privado \u2014 itinerario y experiencias",
+  hotelsPrice: (n, r) => `Hoteles \u2014 ${n} noche${n === 1 ? "" : "s"}${r ? `, ${r} habitaci\xF3n${r === 1 ? "" : "es"}` : ""}, desayuno incluido`,
+  total: "Total",
+  perPerson: "Por persona",
+  optionals: "Opcionales",
+  optionalsNote: "Experiencias opcionales \u2014 no incluidas en el precio total.",
+  notIncluded: "Qu\xE9 No Est\xE1 Incluido",
+  nextSteps: "Pr\xF3ximos pasos",
+  notIncludedDefault: "\u2022 Vuelos internacionales y tasas de aeropuerto.\n\u2022 Seguro de viaje y m\xE9dico.\n\u2022 Comidas y bebidas no mencionadas en el programa.\n\u2022 Gastos personales, propinas y todo lo que no figure expresamente como incluido.",
+  nextStepsDefault: "1. Revise el programa e ind\xEDquenos los ajustes que desee.\n2. Confirme la propuesta para reservar hoteles, gu\xEDas y experiencias.\n3. Abone la se\xF1al para formalizar la reserva \u2014 nosotros nos encargamos del resto."
+};
+var fr3 = {
+  hotelsIncluded: "H\xF4tels Inclus",
+  hotel: "H\xF4tel",
+  checkIn: "Arriv\xE9e",
+  checkOut: "D\xE9part",
+  nights: "Nuits",
+  rooms: "Chambres",
+  rate: "Montant",
+  hotelsTableNote: "Les montants comprennent l\u2019h\xE9bergement avec petit-d\xE9jeuner et toutes les taxes applicables.",
+  mapsLinkNote: "Cliquez sur le nom de l\u2019h\xF4tel pour ouvrir sa localisation exacte dans Google Maps.",
+  programmePrice: "Programme priv\xE9 \u2014 itin\xE9raire et exp\xE9riences",
+  hotelsPrice: (n, r) => `H\xF4tels \u2014 ${n} nuit${n === 1 ? "" : "s"}${r ? `, ${r} chambre${r === 1 ? "" : "s"}` : ""}, petit-d\xE9jeuner inclus`,
+  total: "Total",
+  perPerson: "Par personne",
+  optionals: "Options",
+  optionalsNote: "Exp\xE9riences optionnelles \u2014 non incluses dans le prix total.",
+  notIncluded: "Ce Qui N\u2019Est Pas Inclus",
+  nextSteps: "Prochaines \xE9tapes",
+  notIncludedDefault: "\u2022 Vols internationaux et taxes d\u2019a\xE9roport.\n\u2022 Assurance voyage et sant\xE9.\n\u2022 Repas et boissons non mentionn\xE9s dans le programme.\n\u2022 D\xE9penses personnelles, pourboires et tout ce qui n\u2019est pas express\xE9ment indiqu\xE9 comme inclus.",
+  nextStepsDefault: "1. Parcourez le programme et indiquez-nous les ajustements souhait\xE9s.\n2. Confirmez la proposition pour r\xE9server h\xF4tels, guides et exp\xE9riences.\n3. R\xE9glez l\u2019acompte pour formaliser la r\xE9servation \u2014 nous g\xE9rons le reste."
+};
+var it3 = {
+  hotelsIncluded: "Hotel Inclusi",
+  hotel: "Hotel",
+  checkIn: "Check-in",
+  checkOut: "Check-out",
+  nights: "Notti",
+  rooms: "Camere",
+  rate: "Importo",
+  hotelsTableNote: "Gli importi includono il soggiorno con colazione e tutte le tasse applicabili.",
+  mapsLinkNote: "Clicca sul nome dell\u2019hotel per aprire la posizione esatta su Google Maps.",
+  programmePrice: "Programma privato \u2014 itinerario ed esperienze",
+  hotelsPrice: (n, r) => `Hotel \u2014 ${n} nott${n === 1 ? "e" : "i"}${r ? `, ${r} camer${r === 1 ? "a" : "e"}` : ""}, colazione inclusa`,
+  total: "Totale",
+  perPerson: "Per persona",
+  optionals: "Opzionali",
+  optionalsNote: "Esperienze opzionali \u2014 non incluse nel prezzo totale.",
+  notIncluded: "Cosa Non \xC8 Incluso",
+  nextSteps: "Prossimi passi",
+  notIncludedDefault: "\u2022 Voli internazionali e tasse aeroportuali.\n\u2022 Assicurazione di viaggio e sanitaria.\n\u2022 Pasti e bevande non menzionati nel programma.\n\u2022 Spese personali, mance e tutto ci\xF2 che non \xE8 espressamente indicato come incluso.",
+  nextStepsDefault: "1. Rivedi il programma e indicaci le modifiche desiderate.\n2. Confermaci la proposta per bloccare hotel, guide ed esperienze.\n3. Versa l\u2019acconto per formalizzare la prenotazione \u2014 al resto pensiamo noi."
+};
+var de3 = {
+  hotelsIncluded: "Inkludierte Hotels",
+  hotel: "Hotel",
+  checkIn: "Check-in",
+  checkOut: "Check-out",
+  nights: "N\xE4chte",
+  rooms: "Zimmer",
+  rate: "Betrag",
+  hotelsTableNote: "Die Betr\xE4ge beinhalten \xDCbernachtung mit Fr\xFChst\xFCck sowie alle anfallenden Steuern.",
+  mapsLinkNote: "Klicken Sie auf den Hotelnamen, um die genaue Lage in Google Maps zu \xF6ffnen.",
+  programmePrice: "Privates Programm \u2014 Route und Erlebnisse",
+  hotelsPrice: (n, r) => `Hotels \u2014 ${n} Nacht${n === 1 ? "" : "e"}${r ? `, ${r} Zimmer` : ""}, Fr\xFChst\xFCck inklusive`,
+  total: "Gesamt",
+  perPerson: "Pro Person",
+  optionals: "Optionen",
+  optionalsNote: "Optionale Erlebnisse \u2014 nicht im Gesamtpreis enthalten.",
+  notIncluded: "Nicht Inkludiert",
+  nextSteps: "Ihre n\xE4chsten Schritte",
+  notIncludedDefault: "\u2022 Internationale Fl\xFCge und Flughafensteuern.\n\u2022 Reise- und Krankenversicherung.\n\u2022 Mahlzeiten und Getr\xE4nke, die nicht im Programm genannt sind.\n\u2022 Pers\xF6nliche Ausgaben, Trinkgelder und alles, was nicht ausdr\xFCcklich als inkludiert aufgef\xFChrt ist.",
+  nextStepsDefault: "1. Pr\xFCfen Sie das Programm und teilen Sie uns gew\xFCnschte Anpassungen mit.\n2. Best\xE4tigen Sie das Angebot, damit wir Hotels, Guides und Erlebnisse sichern.\n3. Zahlen Sie die Anzahlung zur Buchungsbest\xE4tigung \u2014 um alles Weitere k\xFCmmern wir uns."
+};
+var SETS2 = { en: en3, pt: pt3, es: es3, fr: fr3, it: it3, de: de3 };
+function getHotelsDict(language) {
+  const key = String(language || "en").slice(0, 2).toLowerCase();
+  return SETS2[key] || en3;
+}
+function mergeProposalHotels(fromCosting = [], edited = []) {
+  const key = (s) => (s || "").trim().toLowerCase();
+  return (fromCosting || []).map((row) => {
+    const match = (edited || []).find((h) => key(h.name) === key(row.name)) || {};
+    return {
+      ...match,
+      name: row.name,
+      // Manually edited nights (in the planner) win over the Costing value
+      nights: Number(match.nights) > 0 ? Number(match.nights) : row.nights ?? 0,
+      value: row.value ?? match.value ?? 0
+    };
+  });
+}
+
+// src/lib/richText.tsx
+import { useEffect } from "npm:react@^18.3.1";
+function stripBoldMarkers(text) {
+  return String(text ?? "").replace(/\*\*(.+?)\*\*/gs, "$1");
+}
+
+// src/lib/money.ts
+var nf2 = new Intl.NumberFormat("de-DE", {
+  minimumFractionDigits: 2,
+  maximumFractionDigits: 2,
+  useGrouping: true
+});
+var eur = (n) => {
+  const v = Number(n);
+  return `${nf2.format(isFinite(v) ? v : 0)}\u20AC`;
+};
+
+// src/lib/mcp/pdf.ts
 var YT_BLUE = [10, 37, 64];
 var TERMS_URL = "https://drive.google.com/file/d/12AkvW2Ob0LtcooaciWY4e-nEx7hlOnQC/view?usp=sharing";
 var dayItems = (d) => {
@@ -1124,7 +1558,7 @@ async function buildTravelPlanPdf(p, opts = {}) {
     const items = dayItems(d);
     if (items.length) {
       text(t.itineraryIncluded, 10, "bold", YT_BLUE);
-      items.forEach((it) => text(`\u2022  ${it}`, 10));
+      items.forEach((it4) => text(`\u2022  ${it4}`, 10));
       y += 4;
     }
     const acc = accommodationLabel(d);
@@ -1447,7 +1881,16 @@ import { z as z15 } from "npm:zod@^3.25.76";
 
 // src/lib/mcp/costing.ts
 import { ToolError as ToolError20 } from "npm:@lovable.dev/mcp-js@0.26.1";
-import { BUSINESS_CONFIG } from "npm:@/lib/businessConfig";
+
+// src/lib/businessConfig.ts
+var BUSINESS_CONFIG = {
+  CEO_APPROVAL_THRESHOLD_EUR: 8e3,
+  MIN_MARGIN_PERCENT: 20,
+  DEFAULT_MARGIN_PERCENT: 30,
+  LUXURY_MARGIN_PERCENT: 35
+};
+
+// src/lib/mcp/costing.ts
 var ACCOMMODATION_DAY = 0;
 function calcLine(line) {
   let netTotal;
@@ -1746,7 +2189,6 @@ import { z as z18 } from "npm:zod@^3.25.76";
 
 // src/lib/mcp/travelPlan.ts
 import { ToolError as ToolError24 } from "npm:@lovable.dev/mcp-js@0.26.1";
-import { buildParticipantsLabel as buildParticipantsLabel2 } from "npm:@/lib/participantsLabel";
 var bulletText = (b) => typeof b === "string" ? b : String(b?.text ?? "");
 async function loadPlan(supabase, lead, version) {
   const { data, error } = await supabase.from("travel_plans").select("id, trip_title, narrative, days, extra_instructions").eq("lead_id", lead.id).eq("version", version).order("updated_at", { ascending: false }).limit(1).maybeSingle();
@@ -1786,7 +2228,7 @@ async function savePlan(supabase, lead, version, plan, meta, sc) {
   const startDate = plan.days[0]?.date || sc.travelDates || null;
   const endDate = plan.days[plan.days.length - 1]?.date || sc.travelEndDate || null;
   const lang = (meta.language || sc.language || "EN").toLowerCase().slice(0, 2);
-  const paxStr = buildParticipantsLabel2(sc.pax, sc.paxChildren, lang);
+  const paxStr = buildParticipantsLabel(sc.pax, sc.paxChildren, lang);
   const metadata = JSON.stringify({
     cover_image: plan.cover_image || null,
     brand_logo: plan.brand_logo || null,
@@ -1990,7 +2432,51 @@ var autofill_costing_from_plan_default = defineTool19({
 // src/lib/mcp/tools/get-operations.ts
 import { defineTool as defineTool20, ToolError as ToolError26 } from "npm:@lovable.dev/mcp-js@0.26.1";
 import { z as z19 } from "npm:zod@^3.25.76";
-import { BOOKING_OPTIONS, INVOICE_OPTIONS, PAYMENT_OPTIONS, normalizeBookingStatus, normalizeInvoiceStatus, normalizePaymentStatus } from "npm:@/components/leads/opsConstants";
+
+// src/components/leads/opsConstants.ts
+var BOOKING_OPTIONS = [
+  { value: "neutral", label: "Neutro", className: "bg-muted text-muted-foreground" },
+  { value: "sent", label: "Enviado", className: "bg-[hsl(var(--info))]/15 text-[hsl(var(--info))]" },
+  { value: "booked", label: "Reservado", className: "bg-[hsl(var(--success))]/15 text-[hsl(var(--success))]" }
+];
+var PAYMENT_OPTIONS = [
+  { value: "neutral", label: "Neutro", className: "bg-muted text-muted-foreground" },
+  { value: "paid", label: "Pago", className: "bg-[hsl(var(--success))]/15 text-[hsl(var(--success))]" },
+  { value: "partially_paid", label: "Pago Parcialmente", className: "bg-[hsl(var(--warning))]/15 text-[hsl(var(--warning))]" },
+  { value: "monthly_account", label: "Conta Mensal", className: "bg-[hsl(var(--info))]/15 text-[hsl(var(--info))]" },
+  { value: "guide_to_pay", label: "A Pagar pelo Guia", className: "bg-purple-100 text-purple-700" },
+  { value: "not_paid", label: "N\xE3o Pago", className: "bg-destructive/15 text-destructive" }
+];
+var INVOICE_OPTIONS = [
+  { value: "not_received", label: "N\xE3o Recebida", className: "bg-muted text-muted-foreground" },
+  { value: "guide_pickup", label: "A Levantar pelo Guia", className: "bg-[hsl(var(--warning))]/15 text-[hsl(var(--warning))]" },
+  { value: "received", label: "Recebida", className: "bg-[hsl(var(--success))]/15 text-[hsl(var(--success))]" }
+];
+var normalizeBookingStatus = (status) => {
+  if (!status) return "neutral";
+  const s = status.toLowerCase();
+  if (s === "confirmed") return "booked";
+  if (s === "requested") return "sent";
+  if (["declined", "cancelled", "waitlisted"].includes(s)) return "neutral";
+  if (BOOKING_OPTIONS.some((o) => o.value === s)) return s;
+  return "neutral";
+};
+var normalizePaymentStatus = (status) => {
+  if (!status) return "neutral";
+  const s = status.toLowerCase();
+  if (s === "refunded") return "neutral";
+  if (PAYMENT_OPTIONS.some((o) => o.value === s)) return s;
+  return "neutral";
+};
+var normalizeInvoiceStatus = (status) => {
+  if (!status) return "not_received";
+  const s = status.toLowerCase();
+  if (["invoice_requested", "invoice_approved", "invoice_paid"].includes(s)) return "received";
+  if (INVOICE_OPTIONS.some((o) => o.value === s)) return s;
+  return "not_received";
+};
+
+// src/lib/mcp/tools/get-operations.ts
 var get_operations_default = defineTool20({
   name: "get_operations",
   title: "Get operations board",
@@ -2046,7 +2532,6 @@ var get_operations_default = defineTool20({
 // src/lib/mcp/tools/update-operation-item.ts
 import { defineTool as defineTool21, ToolError as ToolError27 } from "npm:@lovable.dev/mcp-js@0.26.1";
 import { z as z20 } from "npm:zod@^3.25.76";
-import { BOOKING_OPTIONS as BOOKING_OPTIONS2, INVOICE_OPTIONS as INVOICE_OPTIONS2, PAYMENT_OPTIONS as PAYMENT_OPTIONS2 } from "npm:@/components/leads/opsConstants";
 var values = (opts) => opts.map((o) => o.value);
 var update_operation_item_default = defineTool21({
   name: "update_operation_item",
@@ -2080,14 +2565,14 @@ var update_operation_item_default = defineTool21({
         `Service "${item_key}" not found on ${leadLabel(lead)}. Valid keys: ${(keys ?? []).map((k) => k.item_key).join(", ") || "(no services yet)"}`
       );
     }
-    if (rest.booking_status && !values(BOOKING_OPTIONS2).includes(rest.booking_status)) {
-      throw new ToolError27(`Invalid booking_status. Valid: ${values(BOOKING_OPTIONS2).join(", ")}`);
+    if (rest.booking_status && !values(BOOKING_OPTIONS).includes(rest.booking_status)) {
+      throw new ToolError27(`Invalid booking_status. Valid: ${values(BOOKING_OPTIONS).join(", ")}`);
     }
-    if (rest.payment_status && !values(PAYMENT_OPTIONS2).includes(rest.payment_status)) {
-      throw new ToolError27(`Invalid payment_status. Valid: ${values(PAYMENT_OPTIONS2).join(", ")}`);
+    if (rest.payment_status && !values(PAYMENT_OPTIONS).includes(rest.payment_status)) {
+      throw new ToolError27(`Invalid payment_status. Valid: ${values(PAYMENT_OPTIONS).join(", ")}`);
     }
-    if (rest.invoice_status && !values(INVOICE_OPTIONS2).includes(rest.invoice_status)) {
-      throw new ToolError27(`Invalid invoice_status. Valid: ${values(INVOICE_OPTIONS2).join(", ")}`);
+    if (rest.invoice_status && !values(INVOICE_OPTIONS).includes(rest.invoice_status)) {
+      throw new ToolError27(`Invalid invoice_status. Valid: ${values(INVOICE_OPTIONS).join(", ")}`);
     }
     if (rest.schedule_time && !/^\d{2}:\d{2}(:\d{2})?$/.test(rest.schedule_time)) {
       throw new ToolError27("schedule_time must be HH:MM");
@@ -2652,8 +3137,6 @@ var request_payment_link_default = defineTool29({
 // src/lib/mcp/tools/draft-fse-requests.ts
 import { defineTool as defineTool30, ToolError as ToolError36 } from "npm:@lovable.dev/mcp-js@0.26.1";
 import { z as z29 } from "npm:zod@^3.25.76";
-import { normalizeBookingStatus as normalizeBookingStatus2 } from "npm:@/components/leads/opsConstants";
-import { eur as eur2 } from "npm:@/lib/money";
 var ptDate = (d) => {
   if (!d) return "a confirmar";
   const dt = new Date(d);
@@ -2684,7 +3167,7 @@ var draft_fse_requests_default = defineTool30({
       pax: Number(r.pax ?? l.pax ?? 0),
       net: Number(r.net_value ?? 0),
       time: r.schedule_time ?? null,
-      booked: normalizeBookingStatus2(r.booking_status) === "booked"
+      booked: normalizeBookingStatus(r.booking_status) === "booked"
     }));
     if (!services.length) {
       const costing = await loadCosting(supabase, lead, ver);
@@ -2712,7 +3195,7 @@ var draft_fse_requests_default = defineTool30({
     const items = [];
     for (const [supplier, list] of bySupplier) {
       const lines = list.map(
-        (s) => `<li><strong>Dia ${s.day}</strong>${s.time ? ` \xB7 ${s.time}` : ""} \u2014 ${s.title} \xB7 ${s.pax} pax${s.net ? ` \xB7 net previsto ${eur2(s.net)}` : ""}</li>`
+        (s) => `<li><strong>Dia ${s.day}</strong>${s.time ? ` \xB7 ${s.time}` : ""} \u2014 ${s.title} \xB7 ${s.pax} pax${s.net ? ` \xB7 net previsto ${eur(s.net)}` : ""}</li>`
       ).join("\n");
       const subject = `${ref} \xB7 Pedido de disponibilidade \u2014 ${ptDate(l.travel_dates)} a ${ptDate(l.travel_end_date)}`;
       const html = `<div style="font-family:'Trebuchet MS',sans-serif;font-size:14px;line-height:1.6;color:#0a2540">

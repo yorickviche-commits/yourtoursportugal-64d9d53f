@@ -2,7 +2,7 @@ import { defineTool, ToolError } from "@lovable.dev/mcp-js";
 import { z } from "zod";
 import { supabaseForUser } from "../supabase";
 import { auditLead, leadLabel, resolveLead } from "../lead";
-import { BOOKING_OPTIONS, INVOICE_OPTIONS, PAYMENT_OPTIONS } from "@/components/leads/opsConstants";
+import { BOOKING_OPTIONS, INVOICE_OPTIONS, PAYMENT_OPTIONS } from "../../../components/leads/opsConstants";
 
 const values = (opts: { value: string }[]) => opts.map((o) => o.value);
 
