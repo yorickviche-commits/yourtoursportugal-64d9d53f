@@ -1,4 +1,3 @@
-import { auth, defineMcp } from "@lovable.dev/mcp-js";
 import listLeadsTool from "./tools/list-leads";
 import getLeadTool from "./tools/get-lead";
 import listUpcomingTripsTool from "./tools/list-upcoming-trips";
