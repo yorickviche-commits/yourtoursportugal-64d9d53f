@@ -26,11 +26,22 @@ export function usePagePermissions() {
 
   const isAdmin = roles.includes('super_admin') || roles.includes('admin');
 
+  const syncAdmin = useQuery({
+    queryKey: ['is_sync_admin', user?.id],
+    queryFn: async () => {
+      const { data } = await (supabase.rpc as any)('is_sync_admin', { _user_id: user!.id });
+      return !!data;
+    },
+    enabled: !!user,
+    staleTime: 5 * 60_000,
+  });
+
   const canAccess = (page: PageKey): boolean => {
     if (authLoading) return false;
     // Reportar problemas está sempre disponível a qualquer utilizador interno.
     if (page === 'my_feedback') return !!user;
     if (page === 'admin_feedback') return isAdmin;
+    if (page === 'admin_sync') return !!syncAdmin.data;
     if (isAdmin) return true;
     if (!query.data) return false;
     const key = permKey(page);
@@ -44,6 +55,6 @@ export function usePagePermissions() {
     canAccess,
     allowedPages,
     isAdmin,
-    loading: authLoading || query.isLoading,
+    loading: authLoading || query.isLoading || syncAdmin.isLoading,
   };
 }

@@ -43,3 +43,7 @@ project_id = "jufqscczzmioauzkqztj"
     verify_jwt = false
   [functions.sync-worker]
     verify_jwt = false
+  [functions.calendar-reconcile]
+    verify_jwt = false
+  [functions.calendar-migrate]
+    verify_jwt = false

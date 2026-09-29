@@ -69,7 +69,7 @@ async function mergeFields(
   return { apply, push, conflicts: conflicts.length };
 }
 
-async function createLeadFromDeal(sb: SupabaseClient, r: NHRecord, logs: LogRow[]) {
+export async function createLeadFromDeal(sb: SupabaseClient, r: NHRecord, logs: LogRow[]) {
   const rid = recId(r);
   const v = dealValues(r);
   const yt = ytKey(field(r, F.ytId));

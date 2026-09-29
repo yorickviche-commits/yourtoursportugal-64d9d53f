@@ -1,7 +1,7 @@
 import { NavLink, useLocation } from 'react-router-dom';
 import {
   Map, MapPin, Users, CreditCard, Sparkles, LayoutDashboard,
-  FileText, Handshake, Grid3x3, Truck, Settings, Shield, Plug, ScrollText,
+  FileText, Handshake, Grid3x3, Truck, Settings, Shield, Plug, ScrollText, RefreshCcw,
   Inbox, PackageSearch, Boxes, Brain, Radar, Bug, MessageSquareWarning, BarChart3,
   LogOut, ChevronDown, ChevronRight, Menu, X,
 } from 'lucide-react';
@@ -50,6 +50,7 @@ const adminItems: NavItem[] = [
   { to: '/admin/permissions', icon: Shield, label: 'Permissões', pageKey: 'admin_permissions' },
   { to: '/admin/settings', icon: Settings, label: 'Configurações', pageKey: 'admin_settings' },
   { to: '/admin/integrations', icon: Plug, label: 'Integrações', pageKey: 'admin_integrations' },
+  { to: '/admin/sync', icon: RefreshCcw, label: 'Sincronização', pageKey: 'admin_sync' },
   { to: '/admin/logs', icon: ScrollText, label: 'Logs', pageKey: 'admin_logs' },
   { to: '/admin/feedback', icon: MessageSquareWarning, label: 'Feedback da Plataforma', pageKey: 'admin_feedback' },
 ];

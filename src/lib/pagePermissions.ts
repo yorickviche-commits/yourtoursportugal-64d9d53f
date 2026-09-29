@@ -2,6 +2,7 @@
 // Keys are stored in the `permissions` table as `page:<slug>`.
 
 export type PageKey =
+  | 'admin_sync'
   | 'dashboard'
   | 'leads'
   | 'trips'
@@ -57,6 +58,7 @@ export const PAGES: PageDef[] = [
   { key: 'admin_permissions',   label: 'Permissões',           path: '/admin/permissions',    group: 'Administração' },
   { key: 'admin_settings',      label: 'Configurações',        path: '/admin/settings',       group: 'Administração' },
   { key: 'admin_integrations',  label: 'Integrações',          path: '/admin/integrations',   group: 'Administração' },
+  { key: 'admin_sync',          label: 'Sincronização',        path: '/admin/sync',           group: 'Administração' },
   { key: 'admin_logs',          label: 'Logs',                 path: '/admin/logs',           group: 'Administração' },
   { key: 'yt_brain',            label: 'YT Brain',             path: '/yt-brain',             group: 'Administração' },
   { key: 'agents',              label: 'Spark · Agents',       path: '/agents',               group: 'AI Agents' },

@@ -10,3 +10,8 @@
 - [x] Migração, Dados do dia, hora fim, template, cores só em eventos novos, sem convidados
 - [x] Pré-visualização no badge, MCP get_operations + update_day_ops
 - [ ] Teste com escrita real no Google (lead confirmada) — após publicar
+
+## Passo 4/4 — Migração + verificação diária + Sincronização
+- [x] Página /admin/sync (Saúde + Migração), calendar-migrate, calendar-reconcile, cron diário 05:00 UTC
+- [ ] Criar calendário "Reservas YT – Manual" (Yorick) para ativar "Mover"
+- [ ] Rever e aprovar eventos migrados um a um
