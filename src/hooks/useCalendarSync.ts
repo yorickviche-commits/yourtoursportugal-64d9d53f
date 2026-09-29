@@ -12,6 +12,8 @@ interface CalendarEventRow {
   last_synced_at: string | null;
   status: string | null;
   sync_error: string | null;
+  protection_status: 'ok' | 'manual_edit' | 'orphan' | null;
+  manual_edit_detected_at: string | null;
 }
 
 // Debounced invoker of the calendar-sync edge function.
@@ -60,6 +62,20 @@ export function useCalendarSyncStatus(leadId: string | undefined) {
     setTimeout(() => queryClient.invalidateQueries({ queryKey: ['calendar_events', leadId] }), (delayMs ?? 2000) + 3000);
   }, [leadId, queryClient]);
 
+  const forceOverwrite = useCallback(async (dayDates: string[]): Promise<{ ok: boolean; error?: string }> => {
+    if (!leadId) return { ok: false, error: 'lead em falta' };
+    const { data, error } = await supabase.functions.invoke('calendar-sync', {
+      body: { lead_id: leadId, mode: 'force_overwrite', day_dates: dayDates },
+    });
+    queryClient.invalidateQueries({ queryKey: ['calendar_events', leadId] });
+    if (error) {
+      let msg = error.message;
+      try { msg = (await (error as any).context?.json())?.error || msg; } catch { /* ignore */ }
+      return { ok: false, error: msg };
+    }
+    return { ok: !!(data as any)?.ok, error: (data as any)?.error };
+  }, [leadId, queryClient]);
+
   const events = query.data || [];
   const hasError = events.some(e => e.sync_error);
   const lastSynced = events.reduce<string | null>((acc, e) => {
@@ -78,6 +94,7 @@ export function useCalendarSyncStatus(leadId: string | undefined) {
     totalDays,
     syncedDays,
     sync,
+    forceOverwrite,
     refetch: query.refetch,
   };
 }

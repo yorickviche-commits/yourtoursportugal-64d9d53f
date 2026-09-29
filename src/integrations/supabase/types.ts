@@ -687,11 +687,15 @@ export type Database = {
         Row: {
           created_at: string
           day_date: string
+          google_etag: string | null
           google_event_id: string | null
+          google_updated_at: string | null
           id: string
           last_payload_hash: string | null
           last_synced_at: string | null
           lead_id: string
+          manual_edit_detected_at: string | null
+          protection_status: string
           status: string | null
           sync_error: string | null
           updated_at: string
@@ -699,11 +703,15 @@ export type Database = {
         Insert: {
           created_at?: string
           day_date: string
+          google_etag?: string | null
           google_event_id?: string | null
+          google_updated_at?: string | null
           id?: string
           last_payload_hash?: string | null
           last_synced_at?: string | null
           lead_id: string
+          manual_edit_detected_at?: string | null
+          protection_status?: string
           status?: string | null
           sync_error?: string | null
           updated_at?: string
@@ -711,11 +719,15 @@ export type Database = {
         Update: {
           created_at?: string
           day_date?: string
+          google_etag?: string | null
           google_event_id?: string | null
+          google_updated_at?: string | null
           id?: string
           last_payload_hash?: string | null
           last_synced_at?: string | null
           lead_id?: string
+          manual_edit_detected_at?: string | null
+          protection_status?: string
           status?: string | null
           sync_error?: string | null
           updated_at?: string
