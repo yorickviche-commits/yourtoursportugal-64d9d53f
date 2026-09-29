@@ -1,7 +1,17 @@
 import { ToolError } from "@lovable.dev/mcp-js";
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { buildProposalToken } from "@/lib/proposalVersion";
-import { GENERAL_FIELDS } from "@/hooks/useLeadVersions";
+// Mirrors GENERAL_FIELDS (useLeadVersions) and buildProposalToken (proposalVersion);
+// kept local so the edge bundle never pulls the browser client.
+const GENERAL_FIELDS = [
+  "yt_id", "client_name", "email", "phone", "client_type", "destination",
+  "travel_dates", "travel_end_date", "number_of_days", "dates_type",
+  "pax", "pax_children", "pax_infants", "budget_level", "notes", "sales_owner",
+  "status", "comfort_level", "travel_style", "source",
+] as const;
+const buildProposalToken = (leadCode: string, version: number) => {
+  const slug = (leadCode || "ytp").toLowerCase().replace(/[^a-z0-9]/g, "-");
+  return `ytp-${slug}-v${version}-${Math.random().toString(36).slice(2, 6)}`;
+};
 import type { LeadRow } from "./lead";
 
 const pickGeneralData = (lead: any): Record<string, unknown> => {

@@ -66,8 +66,32 @@ import { ToolError as ToolError2 } from "npm:@lovable.dev/mcp-js@0.26.1";
 
 // src/lib/mcp/versions.ts
 import { ToolError } from "npm:@lovable.dev/mcp-js@0.26.1";
-import { buildProposalToken } from "npm:@/lib/proposalVersion";
-import { GENERAL_FIELDS } from "npm:@/hooks/useLeadVersions";
+var GENERAL_FIELDS = [
+  "yt_id",
+  "client_name",
+  "email",
+  "phone",
+  "client_type",
+  "destination",
+  "travel_dates",
+  "travel_end_date",
+  "number_of_days",
+  "dates_type",
+  "pax",
+  "pax_children",
+  "pax_infants",
+  "budget_level",
+  "notes",
+  "sales_owner",
+  "status",
+  "comfort_level",
+  "travel_style",
+  "source"
+];
+var buildProposalToken = (leadCode, version) => {
+  const slug = (leadCode || "ytp").toLowerCase().replace(/[^a-z0-9]/g, "-");
+  return `ytp-${slug}-v${version}-${Math.random().toString(36).slice(2, 6)}`;
+};
 var pickGeneralData = (lead) => {
   const out = {};
   GENERAL_FIELDS.forEach((k) => {
