@@ -2753,6 +2753,66 @@ var import_lead_ai_default = defineTool31({
     const email = String(x.email || sender_email || "").trim().toLowerCase();
     const start = x.travelDates || null;
     const end = x.travelEndDate || null;
+    const ytDigits = String(x.ytId || x.yt_id || "").replace(/\D/g, "") || raw_text.match(/\bYT[-\s]?(\d{3,})\b/i)?.[1] || null;
+    let target = null;
+    if (ytDigits) {
+      const { data: byYt } = await supabase.from("leads").select("*").ilike("yt_id", `%${ytDigits}`);
+      target = (byYt ?? []).find((r) => String(r.yt_id || "").replace(/\D/g, "") === ytDigits) ?? null;
+    }
+    if (!target && email) {
+      const since = new Date(Date.now() - 48 * 36e5).toISOString();
+      const { data: auto } = await supabase.from("leads").select("*").eq("created_via", "nethunt_auto").ilike("email", email).gte("created_at", since).order("created_at", { ascending: false }).limit(1);
+      target = auto?.[0] ?? null;
+    }
+    if (!target && email) {
+      const since = new Date(Date.now() - 48 * 36e5).toISOString();
+      const { data: auto } = await supabase.from("leads").select("*").eq("created_via", "nethunt_auto").gte("created_at", since).or("email.is.null,email.eq.");
+      const nm = String(x.clientName || "").trim().toLowerCase();
+      target = nm ? (auto ?? []).find((r) => String(r.client_name || "").trim().toLowerCase() === nm) ?? null : null;
+    }
+    if (target) {
+      const fill = {};
+      const cand = {
+        email,
+        phone: x.phone || "",
+        destination: Array.isArray(x.destination) ? x.destination.join(", ") : x.destination || "",
+        travel_dates: start || "",
+        travel_end_date: end || "",
+        number_of_days: Number(x.numberOfDays) || 0,
+        dates_type: x.datesType || "",
+        pax: Number(x.pax) || 0,
+        budget_level: x.budget || "",
+        notes: [x.request, x.preferences, gmail_thread_id ? `Gmail: ${gmail_thread_id}` : null].filter(Boolean).join("\n"),
+        travel_style: x.travelStyle || "",
+        comfort_level: x.comfortLevel || "",
+        language: language || x.language || ""
+      };
+      const empty = (v) => v == null || v === "" || v === 0 || v === "A definir";
+      for (const [k, v] of Object.entries(cand)) if (!empty(v) && empty(target[k])) fill[k] = v;
+      if (Object.keys(fill).length) {
+        const { error: upErr } = await supabase.from("leads").update(fill).eq("id", target.id);
+        if (upErr) throw new ToolError36(upErr.message);
+      }
+      await auditLead(
+        supabase,
+        ctx,
+        target,
+        "lead_import_merged",
+        Object.fromEntries(Object.entries(fill).map(([k, v]) => [k, { from: target[k] ?? null, to: v }])),
+        { source, gmail_thread_id }
+      );
+      const payload2 = {
+        duplicate: true,
+        merged: true,
+        id: target.id,
+        lead_code: target.yt_id || target.lead_code,
+        url: leadUrl(target),
+        nethunt_record_id: target.nethunt_record_id,
+        filled_fields: Object.keys(fill),
+        note: "Existing lead for this file was updated (empty fields filled) instead of creating a new one. Generate the travel plan on this lead."
+      };
+      return { content: [{ type: "text", text: JSON.stringify(payload2, null, 2) }], structuredContent: payload2 };
+    }
     if (email) {
       const { data: same } = await supabase.from("leads").select("id, lead_code, yt_id, client_name, travel_dates, travel_end_date, nethunt_record_id").ilike("email", email);
       const s = toDate(start), e = toDate(end) ?? s;
@@ -2825,6 +2885,34 @@ var import_lead_ai_default = defineTool31({
   }
 });
 
+// src/lib/mcp/tools/create-nethunt-deal.ts
+import { defineTool as defineTool32, ToolError as ToolError37 } from "npm:@lovable.dev/mcp-js@0.26.1";
+import { z as z31 } from "npm:zod@^3.25.76";
+var create_nethunt_deal_default = defineTool32({
+  name: "create_nethunt_deal",
+  title: "Create the NetHunt file for a lead",
+  description: "Creates the deal in NetHunt CRM for a TCC lead that has no NetHunt record yet, and stores the returned record id and YT ID on the lead. Never runs automatically; idempotent (returns the existing link if already linked).",
+  inputSchema: {
+    lead_id: z31.string().optional().describe("Lead uuid."),
+    lead_code: z31.string().optional().describe("Lead code, e.g. YT5130 / YT-5130.")
+  },
+  annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: true },
+  handler: async ({ lead_id, lead_code }, ctx) => {
+    if (!ctx.isAuthenticated()) throw new ToolError37("Not authenticated");
+    const supabase = supabaseForUser(ctx);
+    const row = await resolveLead(supabase, { lead_id, lead_code });
+    const { data, error } = await supabase.functions.invoke("nethunt-push", {
+      body: { entity: "lead_create_deal", id: row.id }
+    });
+    if (error) throw new ToolError37(`NetHunt: ${error.message}`);
+    if (data?.ok === false) throw new ToolError37(`NetHunt: ${data.error}`);
+    await auditLead(supabase, ctx, row, "nethunt_deal_created", {
+      nethunt_record_id: { from: null, to: data?.nethunt_record_id ?? null }
+    });
+    return { content: [{ type: "text", text: JSON.stringify(data, null, 2) }], structuredContent: data };
+  }
+});
+
 // src/lib/mcp/index.ts
 var projectRef = "jufqscczzmioauzkqztj";
 var mcp_default = defineMcp({
@@ -2867,7 +2955,8 @@ var mcp_default = defineMcp({
     request_payment_link_default,
     draft_fse_requests_default,
     draft_client_email_default,
-    import_lead_ai_default
+    import_lead_ai_default,
+    create_nethunt_deal_default
   ]
 });
 

@@ -110,8 +110,8 @@ const NewLeadDialog = ({ open, onOpenChange }: { open: boolean; onOpenChange: (v
       }
       if (!target && form.email.trim()) {
         const since = new Date(Date.now() - 48 * 3600_000).toISOString();
-        const { data } = await supabase.from('leads').select('*')
-          .eq('created_via' as any, 'nethunt_auto').ilike('email', form.email.trim()).gte('created_at', since)
+        const { data } = await (supabase.from('leads') as any).select('*')
+          .eq('created_via', 'nethunt_auto').ilike('email', form.email.trim()).gte('created_at', since)
           .order('created_at', { ascending: false }).limit(1);
         target = data?.[0] || null;
       }

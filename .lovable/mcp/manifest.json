@@ -1459,6 +1459,33 @@
           "$schema": "http://json-schema.org/draft-07/schema#"
         },
         "outputSchema": null
+      },
+      {
+        "name": "create_nethunt_deal",
+        "title": "Create the NetHunt file for a lead",
+        "description": "Creates the deal in NetHunt CRM for a TCC lead that has no NetHunt record yet, and stores the returned record id and YT ID on the lead. Never runs automatically; idempotent (returns the existing link if already linked).",
+        "annotations": {
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "idempotentHint": true,
+          "openWorldHint": true
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "lead_id": {
+              "type": "string",
+              "description": "Lead uuid."
+            },
+            "lead_code": {
+              "type": "string",
+              "description": "Lead code, e.g. YT5130 / YT-5130."
+            }
+          },
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
       }
     ]
   }

@@ -38,8 +38,8 @@ export default defineTool({
     // Merge into a lead that already exists for this file (NetHunt-first flow):
     // 1) YT#### in the text / extraction matches leads.yt_id, else
     // 2) a 'nethunt_auto' lead created in the last 48 h with the same client email.
-    const ytDigits = (String(x.ytId || x.yt_id || "").match(/\d{3,}/) || raw_text.match(/\bYT[-\s]?(\d{3,})\b/i))?.[1] ??
-      String(x.ytId || x.yt_id || "").replace(/\D/g, "") || null;
+    const ytDigits: string | null =
+      String(x.ytId || x.yt_id || "").replace(/\D/g, "") || raw_text.match(/\bYT[-\s]?(\d{3,})\b/i)?.[1] || null;
     let target: any = null;
     if (ytDigits) {
       const { data: byYt } = await supabase.from("leads").select("*").ilike("yt_id", `%${ytDigits}`);
