@@ -575,3 +575,6 @@ export async function runCalendarSync(
 
   return { status: 200, body: { ok: true, results } };
 }
+
+// Exposed for calendar-migrate / calendar-reconcile (read + mapping helpers only).
+export { gcal, getCalendarId, saveSnapshot, parseTravelStart, ymd, addDays };
