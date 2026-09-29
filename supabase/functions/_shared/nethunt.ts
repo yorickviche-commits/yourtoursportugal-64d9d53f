@@ -279,10 +279,14 @@ export async function fetchRecord(folderId: string, recordId: string): Promise<N
 
 export type FieldAction = { field: string; value: unknown; action?: string };
 
+// NetHunt expects fieldActions as an object keyed by field name: { Field: { overwrite: true, add: value } }
+// (the previous array shape returned HTTP 500 for every update).
 export const updateRecord = (recordId: string, fieldActions: FieldAction[]) =>
   nh(`/actions/update-record/${recordId}?overwrite=true`, {
     method: "POST",
-    body: { fieldActions: fieldActions.map((f) => ({ action: "set", ...f })) },
+    body: {
+      fieldActions: Object.fromEntries(fieldActions.map((f) => [f.field, { overwrite: true, add: f.value }])),
+    },
   });
 
 export const createRecord = (folderId: string, fields: Record<string, unknown>) =>
@@ -347,3 +351,173 @@ export async function setState(sb: SupabaseClient, key: string, since: string) {
 }
 
 export const EPOCH = "2020-01-01T00:00:00Z";
+
+// ── Field-level bidirectional sync (baseline per field in nethunt_field_state) ──
+/** Potential Booking Value (id 84, EUR). Old name kept as read fallback. */
+export const F_VALUE = ["Potential Booking Value", "`Potential Booking Value", "84"] as const;
+
+export const PRIORITY_OUT: Record<string, string> = { high: "High", urgent: "High", medium: "Medium", low: "Low" };
+export const PRIORITY_IN: Record<string, string> = { High: "high", Medium: "medium", Low: "low" };
+
+export type Vals = Record<string, unknown>;
+
+const normVal = (v: unknown): unknown => {
+  if (v === undefined || v === null || v === "") return null;
+  if (typeof v === "number") return Math.round(v * 100) / 100;
+  if (Array.isArray(v)) return v.length ? [...v].map(String).sort() : null;
+  return v;
+};
+export const same = (a: unknown, b: unknown) => JSON.stringify(normVal(a)) === JSON.stringify(normVal(b));
+
+const toNum = (v: unknown): number | null => {
+  if (v == null || v === "") return null;
+  const n = typeof v === "number" ? v : Number(String(v).replace(/[^\d.,-]/g, "").replace(",", "."));
+  return Number.isFinite(n) ? Math.round(n * 100) / 100 : null;
+};
+
+/** NetHunt deal → TCC-shaped values. `undefined` = not comparable (skip). */
+export function dealValues(r: NHRecord): Vals {
+  const nameRaw = field(r, F.name);
+  return {
+    stage: canonicalStage(field(r, F.stage) as string | null),
+    trip_start: toDate(field(r, F.tripStart)),
+    trip_finish: toDate(field(r, F.tripFinish)),
+    close_date: toDate(field(r, F.closeDate)),
+    client_type: toClientType(field(r, F.clientType)) ?? undefined,
+    source: toSource(field(r, F.source)) ?? undefined,
+    name: nameRaw == null || nameRaw === "" ? undefined : String(nameRaw),
+    value: toNum(field(r, F_VALUE)),
+  };
+}
+
+export type LeadForSync = {
+  id: string; status: string | null; nethunt_stage: string | null; trip_start: string | null; trip_finish: string | null;
+  close_date: string | null; client_type: string | null; source: string | null; client_name: string | null;
+  estimated_value: number | null;
+};
+export const LEAD_SYNC_COLS =
+  "id, status, nethunt_stage, trip_start, trip_finish, close_date, client_type, source, client_name, estimated_value, nethunt_record_id, updated_at, yt_id";
+
+/** Current TCC values of a lead. Value = live PVP when there is costing, else estimated_value. */
+export async function leadValues(sb: SupabaseClient, lead: LeadForSync): Promise<{ vals: Vals; hasCosting: boolean }> {
+  const { data: pvp } = await sb.rpc("lead_live_pvp", { p_lead_id: lead.id } as never);
+  const hasCosting = pvp != null;
+  return {
+    hasCosting,
+    vals: {
+      stage: statusToStage(lead.status, lead.nethunt_stage) ?? lead.nethunt_stage,
+      trip_start: lead.trip_start,
+      trip_finish: lead.trip_finish,
+      close_date: lead.close_date,
+      client_type: fromClientType(lead.client_type) ? lead.client_type : undefined,
+      source: fromSource(lead.source) ? lead.source : undefined,
+      name: lead.client_name || undefined,
+      value: hasCosting ? Number(pvp) : (lead.estimated_value == null ? null : Number(lead.estimated_value)),
+    },
+  };
+}
+
+export function leadAction(f: string, v: unknown): FieldAction | null {
+  switch (f) {
+    case "stage": return v ? { field: wkey(F.stage), value: rawStage(String(v)) } : null;
+    case "trip_start": return { field: wkey(F.tripStart), value: fromDate(v as string) };
+    case "trip_finish": return { field: wkey(F.tripFinish), value: fromDate(v as string) };
+    case "close_date": return { field: wkey(F.closeDate), value: fromDate(v as string) };
+    case "client_type": { const o = fromClientType(v as string); return { field: wkey(F.clientType), value: o ? [o] : [] }; }
+    case "source": { const o = fromSource(v as string); return { field: wkey(F.source), value: o ? [o] : [] }; }
+    case "name": return v ? { field: wkey(F.name), value: String(v) } : null;
+    case "value": return { field: F_VALUE[0], value: v == null ? null : Number(v) };
+  }
+  return null;
+}
+
+/** NetHunt task → TCC-shaped values. */
+export function taskNhValues(r: NHRecord): Vals {
+  const assignee = field(r, TF.assignee);
+  return {
+    title: String(field(r, TF.name) ?? "(sem título)"),
+    description: field(r, TF.description) ? String(field(r, TF.description)) : "",
+    priority: PRIORITY_IN[String(field(r, TF.priority) ?? "")] ?? "medium",
+    completed: Boolean(field(r, TF.completed)),
+    due_at: toIso(field(r, TF.dueDate)),
+    all_day: Boolean(field(r, TF.allDay)),
+    assignee_emails: Array.isArray(assignee) ? assignee.map(String) : assignee ? [String(assignee)] : [],
+  };
+}
+export const taskRowValues = (t: Record<string, any>): Vals => ({
+  title: t.title ?? "", description: t.description ?? "", priority: t.priority ?? "medium",
+  completed: Boolean(t.completed), due_at: t.due_at ? new Date(t.due_at).toISOString() : null,
+  all_day: Boolean(t.all_day), assignee_emails: t.assignee_emails ?? [],
+});
+export function taskAction(f: string, v: unknown): FieldAction | null {
+  switch (f) {
+    case "title": return { field: wkey(TF.name), value: v };
+    case "description": return { field: wkey(TF.description), value: v ?? "" };
+    case "priority": return { field: wkey(TF.priority), value: PRIORITY_OUT[String(v)] ?? "Medium" };
+    case "completed": return { field: wkey(TF.completed), value: Boolean(v) };
+    case "due_at": return { field: wkey(TF.dueDate), value: fromDateTime(v as string) };
+    case "all_day": return { field: wkey(TF.allDay), value: Boolean(v) };
+    case "assignee_emails": return { field: wkey(TF.assignee), value: v ?? [] };
+  }
+  return null;
+}
+
+/** Baseline the TCC value is compared against (separate for 'name'). */
+export const tccBaseline = (base: Map<string, unknown>, f: string) =>
+  base.has(`${f}@tcc`) ? base.get(`${f}@tcc`) : base.get(f);
+
+export async function getBaselines(sb: SupabaseClient, entity: "lead" | "task", id: string) {
+  const { data } = await sb.from("nethunt_field_state").select("field, value").eq("entity", entity).eq("entity_id", id);
+  return new Map(((data as { field: string; value: unknown }[] | null) ?? []).map((r) => [r.field, r.value]));
+}
+
+export async function setBaselines(sb: SupabaseClient, entity: "lead" | "task", id: string, vals: Vals) {
+  const now = new Date().toISOString();
+  // 'name' keeps a separate TCC-side baseline (deal names ≠ client names): mirror it unless given explicitly.
+  if (vals.name !== undefined && !("name@tcc" in vals)) vals = { ...vals, "name@tcc": vals.name };
+  const rows = Object.entries(vals).filter(([, v]) => v !== undefined)
+    .map(([f, v]) => ({ entity, entity_id: id, field: f, value: normVal(v) ?? null, synced_at: now }));
+  if (!rows.length) return;
+  const { error } = await sb.from("nethunt_field_state").upsert(rows as never, { onConflict: "entity,entity_id,field" });
+  if (error) throw new Error(`baseline save failed: ${error.message}`);
+}
+
+/** Pushes TCC fields that differ from the baseline (worker path). Returns fields sent. */
+export async function pushDiff(
+  sb: SupabaseClient, entity: "lead" | "task", id: string, recordId: string, vals: Vals,
+): Promise<string[]> {
+  const base = await getBaselines(sb, entity, id);
+  const actions: FieldAction[] = [];
+  const sent: Vals = {};
+  for (const [f, v] of Object.entries(vals)) {
+    if (v === undefined) continue;
+    const tb = base.has(`${f}@tcc`) ? base.get(`${f}@tcc`) : base.get(f);
+    if ((base.has(f) || base.has(`${f}@tcc`)) && same(v, tb)) continue;
+    const a = entity === "lead" ? leadAction(f, v) : taskAction(f, v);
+    if (!a) continue;
+    actions.push(a); sent[f] = v;
+  }
+  if (!actions.length) return [];
+  try {
+    await updateRecord(recordId, actions);
+  } catch (e) {
+    // One bad field must not block the others: retry field by field and report the failing ones.
+    if (actions.length === 1) throw e;
+    const failed: string[] = [];
+    for (const [f] of Object.entries(sent)) {
+      const a = actions.find((x) => x.field === (entity === "lead" ? leadAction(f, sent[f]) : taskAction(f, sent[f]))?.field);
+      try { if (a) await updateRecord(recordId, [a]); } catch (err) { failed.push(`${f}: ${(err as Error).message}`); delete sent[f]; }
+    }
+    await setBaselines(sb, entity, id, sent);
+    if (failed.length) throw new Error(failed.join(" | "));
+    return Object.keys(sent);
+  }
+  await setBaselines(sb, entity, id, sent);
+  const fresh = await fetchRecord(entity === "lead" ? DEALS_FOLDER : TASKS_FOLDER, recordId);
+  await sb.from(entity === "lead" ? "leads" : "tasks").update({
+    nethunt_updated_at: fresh ? recUpdatedAt(fresh) : new Date().toISOString(),
+    nethunt_synced_at: new Date().toISOString(),
+  } as never).eq("id", id);
+  await logSync(sb, [{ direction: "push", entity, entity_id: id, nethunt_record_id: recordId, action: "update", detail: { fields: Object.keys(sent), via: "sync-worker" } }]);
+  return Object.keys(sent);
+}

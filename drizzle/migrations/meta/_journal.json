@@ -57,6 +57,13 @@
       "when": 1790646627858,
       "tag": "0007_sync_queue_and_calendar_snapshots",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1790647381605,
+      "tag": "0008_nethunt_bidirectional_field_sync",
+      "breakpoints": true
     }
   ]
 }
