@@ -292,6 +292,33 @@ async function saveSnapshot(supabase: any, leadId: string, dayDate: string, ev: 
 
 export interface CoreResult { status: number; body: any }
 
+// Looks for non-TCC events on `dayDate` that belong to `lead` (YT digits, booking ref, surname).
+async function findManualEvent(calPath: string, dayDate: string, lead: any): Promise<{ candidates: any[] }> {
+  const tMin = new Date(dayDate + 'T00:00:00Z'); tMin.setUTCHours(-2);
+  const tMax = new Date(dayDate + 'T00:00:00Z'); tMax.setUTCHours(26);
+  const r = await gcal(`${calPath}?singleEvents=true&maxResults=250&timeMin=${encodeURIComponent(tMin.toISOString())}&timeMax=${encodeURIComponent(tMax.toISOString())}`, { method: 'GET' });
+  if (!r.ok) throw new Error(`Google Calendar API ${r.status}: ${r.text}`);
+  const ytDigits = String(lead.yt_id || lead.lead_code || '').match(/\d{3,}/g)?.pop() || '';
+  const bookRef = String(lead.external_booking_ref || '').replace(/^#/, '').trim().toLowerCase();
+  const surname = String(lead.client_name || '').trim().split(/\s+/).filter(w => w.length >= 3).pop()?.toLowerCase() || '';
+  const norm = (x: string) => x.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+  const out: any[] = [];
+  for (const ev of (r.data?.items || [])) {
+    if (ev.status === 'cancelled') continue;
+    const priv = ev.extendedProperties?.private || {};
+    if (priv.yt_lead_id || priv.source === 'tcc' || String(ev.id || '').startsWith('tcc')) continue;
+    const evDay = (ev.start?.date || ev.start?.dateTime || '').slice(0, 10);
+    if (evDay && evDay !== dayDate) continue;
+    const text = norm(`${ev.summary || ''}\n${ev.description || ''}`);
+    const refRe = ytDigits ? new RegExp(`(ref\\.?\\s*interna|file\\s*(nr|id)|yt)[^\\d]{0,12}${ytDigits}\\b`) : null;
+    const hit = (ytDigits && (refRe!.test(text) || new RegExp(`\\b${ytDigits}\\b`).test(text)))
+      || (bookRef.length >= 4 && text.includes(bookRef))
+      || (surname && new RegExp(`\\b${norm(surname).replace(/[.*+?^${}()|[\]\\]/g, '')}\\b`).test(text));
+    if (hit) out.push(ev);
+  }
+  return { candidates: out };
+}
+
 export async function runCalendarSync(
   supabase: any,
   opts: { lead_id: string; mode: NonNullable<SyncRequest['mode']>; forceDates?: Set<string> },
