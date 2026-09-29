@@ -494,7 +494,20 @@ export async function pushDiff(
     actions.push(a); sent[f] = v;
   }
   if (!actions.length) return [];
-  await updateRecord(recordId, actions);
+  try {
+    await updateRecord(recordId, actions);
+  } catch (e) {
+    // One bad field must not block the others: retry field by field and report the failing ones.
+    if (actions.length === 1) throw e;
+    const failed: string[] = [];
+    for (const [f] of Object.entries(sent)) {
+      const a = actions.find((x) => x.field === (entity === "lead" ? leadAction(f, sent[f]) : taskAction(f, sent[f]))?.field);
+      try { if (a) await updateRecord(recordId, [a]); } catch (err) { failed.push(`${f}: ${(err as Error).message}`); delete sent[f]; }
+    }
+    await setBaselines(sb, entity, id, sent);
+    if (failed.length) throw new Error(failed.join(" | "));
+    return Object.keys(sent);
+  }
   await setBaselines(sb, entity, id, sent);
   const fresh = await fetchRecord(entity === "lead" ? DEALS_FOLDER : TASKS_FOLDER, recordId);
   await sb.from(entity === "lead" ? "leads" : "tasks").update({
