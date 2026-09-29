@@ -10,7 +10,8 @@ import { useToast } from '@/hooks/use-toast';
 import { Settings, Save, Building2, DollarSign, Wrench } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import YTBrainSettings from '@/components/ytbrain/YTBrainSettings';
-import { Brain } from 'lucide-react';
+import { Brain, Bot } from 'lucide-react';
+import AgentKeysPanel from '@/components/admin/AgentKeysPanel';
 
 interface SettingRow {
   id: string;
@@ -141,6 +142,7 @@ const AdminSettingsPage = () => {
               <TabsTrigger value="pricing" className="gap-1.5"><DollarSign className="h-3.5 w-3.5" />Preços</TabsTrigger>
               <TabsTrigger value="operations" className="gap-1.5"><Wrench className="h-3.5 w-3.5" />Operações</TabsTrigger>
               <TabsTrigger value="ytbrain" className="gap-1.5"><Brain className="h-3.5 w-3.5" />YT Brain</TabsTrigger>
+              {isAdmin && <TabsTrigger value="agents" className="gap-1.5"><Bot className="h-3.5 w-3.5" />Agentes AI</TabsTrigger>}
             </TabsList>
 
             <TabsContent value="general">
@@ -163,6 +165,11 @@ const AdminSettingsPage = () => {
             <TabsContent value="ytbrain">
               <YTBrainSettings />
             </TabsContent>
+            {isAdmin && (
+              <TabsContent value="agents">
+                <AgentKeysPanel />
+              </TabsContent>
+            )}
           </Tabs>
         )}
       </div>
