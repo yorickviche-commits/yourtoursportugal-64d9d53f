@@ -605,6 +605,9 @@ var update_lead_stage_default = defineTool8({
     const supabase = supabaseForUser(ctx);
     const lead = await resolveLead(supabase, { lead_id, lead_code });
     const target = resolveStage(stage);
+    if (target.group === "OPERATIONS" && await agentIdentity(supabase, ctx)) {
+      throw new ToolError11("AI agents cannot move a lead to an OPERATIONS stage \u2014 a person must do it in the TCC.");
+    }
     const previous = {
       stage: lead.nethunt_stage ?? null,
       status: lead.status,
@@ -2256,7 +2259,7 @@ import { z as z24 } from "npm:zod@^3.25.76";
 var generate_travel_plan_default = defineTool25({
   name: "generate_travel_plan",
   title: "Generate the travel plan with AI",
-  description: "Generate the day-by-day programme of a lead with the same AI generator used by 'Regenerar Tudo' in the Travel Planner. If the LIVE version already has a programme, a NEW version is created and becomes LIVE \u2014 the previous one stays readable, nothing is overwritten. Returns the programme plus the warnings to fix before sending it to the client.",
+  description: "Generate the day-by-day programme of a lead with the same AI generator used by 'Regenerar Tudo' in the Travel Planner. If the LIVE version already has a programme, a NEW version is created and becomes LIVE (for agent keys: always a new 'Proposta AI' version that stays non-LIVE until a person promotes it) \u2014 the previous one stays readable, nothing is overwritten. Returns the programme plus the warnings to fix before sending it to the client.",
   inputSchema: {
     lead_id: z24.string().optional().describe("Lead uuid."),
     lead_code: z24.string().optional().describe("Lead code such as YT5130."),
@@ -2271,9 +2274,10 @@ var generate_travel_plan_default = defineTool25({
     const lead = await resolveLead(supabase, { lead_id, lead_code });
     const l = lead;
     const liveVer = liveVersion(lead);
+    const agent = await agentIdentity(supabase, ctx);
     const current = await loadPlan(supabase, lead, liveVer);
-    const newVersionNeeded = force_new_version === true || !current.isEmpty;
-    const targetVersion = newVersionNeeded ? await createLeadVersion(supabase, lead, liveVer) : liveVer;
+    const newVersionNeeded = agent !== null || force_new_version === true || !current.isEmpty;
+    const targetVersion = agent ? await createLeadVersion(supabase, lead, liveVer, { agent }) : newVersionNeeded ? await createLeadVersion(supabase, lead, liveVer) : liveVer;
     const extra = [
       briefing?.trim(),
       catalogue_products?.length ? `Include these catalogue products: ${catalogue_products.join("; ")}` : null
@@ -2328,13 +2332,14 @@ var generate_travel_plan_default = defineTool25({
       lead,
       "travel_plan_generated",
       { travel_plan: { from: `V${liveVer} (${current.plan.days.length} days)`, to: `V${targetVersion} (${plan.days.length} days)` } },
-      { new_version_created: newVersionNeeded }
+      { new_version_created: newVersionNeeded, version: targetVersion, ai_proposal: agent !== null }
     );
     const payload = {
       ...await planPayload(supabase, lead, targetVersion, plan),
       new_version_created: newVersionNeeded,
       previous_version: liveVer,
-      live_version: targetVersion
+      live_version: agent ? liveVer : targetVersion,
+      ai_proposal_version: agent ? targetVersion : null
     };
     return {
       content: [{ type: "text", text: JSON.stringify(payload, null, 2) }],
