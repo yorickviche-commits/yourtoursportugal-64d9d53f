@@ -2499,7 +2499,7 @@ var normalizeInvoiceStatus = (status) => {
 var PERIOD_ORDER = ["morning", "lunch", "afternoon", "night"];
 var slug = (s) => (s || "item").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 48);
 var norm2 = (s) => (s || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]+/g, "");
-async function buildOpsRows2(supabase, lead) {
+async function buildOpsRows(supabase, lead) {
   const version = liveVersion(lead);
   const [planner, costing, ops] = await Promise.all([
     supabase.from("lead_planner_data").select("*").eq("lead_id", lead.id).eq("version", version).order("day_number"),
@@ -2604,7 +2604,7 @@ var get_operations_default = defineTool20({
     const lead = await resolveLead(supabase, { lead_id, lead_code });
     let built;
     try {
-      built = await buildOpsRows2(supabase, lead);
+      built = await buildOpsRows(supabase, lead);
     } catch (e) {
       throw new ToolError26(e.message);
     }
@@ -2657,7 +2657,7 @@ var values = (opts) => opts.map((o) => o.value);
 var update_operation_item_default = defineTool21({
   name: "update_operation_item",
   title: "Update an operations service",
-  description: "Update one service on the operations board of a lead: booking status, payment status, invoice status, schedule, supplier, pax, net value, the supplier confirmation number and notes. Uses the same states as the Opera\xE7\xF5es tab.",
+  description: "Update one service on the operations board of a lead: booking status, payment status, invoice status, schedule, supplier, pax, net value, real cost, the supplier confirmation number and notes. Rows not yet saved (built from planner/costing) are created in the operations table on first update. Uses the same states as the Opera\xE7\xF5es tab.",
   inputSchema: {
     lead_id: z20.string().optional().describe("Lead uuid."),
     lead_code: z20.string().optional().describe("Lead code such as YT5130."),
@@ -2740,7 +2740,7 @@ var update_operation_item_default = defineTool21({
     });
     if (error) throw new ToolError27(error.message);
     await auditLead(supabase, ctx, lead, "operation_updated", changes, { item_key });
-    const payload = { lead: leadLabel(lead), lead_id: lead.id, item_key, updated_fields: changes };
+    const payload = { lead: leadLabel(lead), lead_id: lead.id, item_key, updated_fields: changes, materialized: !target.op };
     return { content: [{ type: "text", text: JSON.stringify(payload, null, 2) }], structuredContent: payload };
   }
 });

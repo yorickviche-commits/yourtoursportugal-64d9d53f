@@ -2,6 +2,7 @@ import { defineTool, ToolError } from "@lovable.dev/mcp-js";
 import { z } from "zod";
 import { supabaseForUser } from "../supabase";
 import { auditLead, leadLabel, resolveLead } from "../lead";
+import { buildOpsRows } from "../operations";
 import { BOOKING_OPTIONS, INVOICE_OPTIONS, PAYMENT_OPTIONS } from "../../../components/leads/opsConstants";
 
 const values = (opts: { value: string }[]) => opts.map((o) => o.value);
@@ -10,7 +11,7 @@ export default defineTool({
   name: "update_operation_item",
   title: "Update an operations service",
   description:
-    "Update one service on the operations board of a lead: booking status, payment status, invoice status, schedule, supplier, pax, net value, the supplier confirmation number and notes. Uses the same states as the Operações tab.",
+    "Update one service on the operations board of a lead: booking status, payment status, invoice status, schedule, supplier, pax, net value, real cost, the supplier confirmation number and notes. Rows not yet saved (built from planner/costing) are created in the operations table on first update. Uses the same states as the Operações tab.",
   inputSchema: {
     lead_id: z.string().optional().describe("Lead uuid."),
     lead_code: z.string().optional().describe("Lead code such as YT5130."),
@@ -98,7 +99,7 @@ export default defineTool({
 
     await auditLead(supabase, ctx, lead, "operation_updated", changes, { item_key });
 
-    const payload = { lead: leadLabel(lead), lead_id: lead.id, item_key, updated_fields: changes };
+    const payload = { lead: leadLabel(lead), lead_id: lead.id, item_key, updated_fields: changes, materialized: !target.op };
     return { content: [{ type: "text", text: JSON.stringify(payload, null, 2) }], structuredContent: payload };
   },
 });
