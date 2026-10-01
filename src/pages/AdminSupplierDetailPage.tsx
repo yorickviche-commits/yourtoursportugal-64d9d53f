@@ -97,10 +97,11 @@ const AdminSupplierDetailPage = () => {
 
   // File upload
   const [uploading, setUploading] = useState(false);
+  const [activeTab, setActiveTab] = useState('profile');
 
-  const fetchAll = async () => {
+  const fetchAll = async (initial = false) => {
     if (!id) return;
-    setLoading(true);
+    if (initial) setLoading(true);
     const [sRes, servRes, fRes, lRes] = await Promise.all([
       supabase.from('suppliers').select('*').eq('id', id).single(),
       supabase.from('supplier_services').select('*').eq('supplier_id', id).order('name') as any,
@@ -137,22 +138,48 @@ const AdminSupplierDetailPage = () => {
     setServiceForm({ ...s });
     setServiceDialogOpen(true);
   };
-  const handleSaveService = async () => {
-    const { id: sid, supplier_id, created_at, updated_at, created_by, ...payload } = serviceForm;
-    if (editingService) {
-      await (supabase.from('supplier_services') as any).update(payload).eq('id', editingService.id);
-      toast({ title: 'Serviço atualizado' });
-    } else {
-      await (supabase.from('supplier_services') as any).insert({ ...payload, supplier_id: id });
-      toast({ title: 'Serviço criado' });
+  const SERVICE_COLS = ['name','description','category','duration','price','price_child','price_unit','currency','payment_conditions','cancellation_policy','refund_policy','booking_conditions','notes','status','validity_start','validity_end','image_url'];
+  const cleanService = (f: any) => {
+    const out: any = {};
+    for (const k of SERVICE_COLS) {
+      let v = f[k];
+      if (typeof v === 'string') v = v.trim();
+      if (v === '' || v === undefined) v = null;
+      out[k] = v;
     }
+    out.price = Number(out.price) || 0;
+    out.price_child = Number(out.price_child) || 0;
+    out.category = out.category || 'activity';
+    out.status = out.status || 'active';
+    return out;
+  };
+  const refreshServices = async () => {
+    const { data } = await (supabase.from('supplier_services') as any).select('*').eq('supplier_id', id).order('name');
+    setServices((data as any[]) || []);
+  };
+  const handleSaveService = async () => {
+    const payload = cleanService(serviceForm);
+    if (!payload.name) { toast({ title: 'Nome obrigatório', variant: 'destructive' }); return; }
+    const res = editingService
+      ? await (supabase.from('supplier_services') as any).update(payload).eq('id', editingService.id).select()
+      : await (supabase.from('supplier_services') as any).insert({ ...payload, supplier_id: id }).select();
+    if (res.error || !res.data?.length) {
+      toast({ title: 'Erro ao gravar serviço', description: res.error?.message || 'Sem permissão para gravar.', variant: 'destructive' });
+      return;
+    }
+    toast({ title: editingService ? 'Serviço atualizado' : 'Serviço criado' });
     setServiceDialogOpen(false);
-    fetchAll();
+    setActiveTab('services');
+    refreshServices();
   };
   const handleDeleteService = async (sid: string) => {
-    await (supabase.from('supplier_services') as any).delete().eq('id', sid);
+    const { error, data } = await (supabase.from('supplier_services') as any).delete().eq('id', sid).select();
+    if (error || !data?.length) {
+      toast({ title: 'Erro ao remover', description: error?.message || 'Sem permissão.', variant: 'destructive' });
+      return;
+    }
     toast({ title: 'Serviço removido' });
-    fetchAll();
+    refreshServices();
   };
 
   // File upload
