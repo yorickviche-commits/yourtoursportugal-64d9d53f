@@ -89,8 +89,8 @@ var GENERAL_FIELDS = [
   "source"
 ];
 var buildProposalToken = (leadCode, version) => {
-  const slug = (leadCode || "ytp").toLowerCase().replace(/[^a-z0-9]/g, "-");
-  return `ytp-${slug}-v${version}-${Math.random().toString(36).slice(2, 6)}`;
+  const slug2 = (leadCode || "ytp").toLowerCase().replace(/[^a-z0-9]/g, "-");
+  return `ytp-${slug2}-v${version}-${Math.random().toString(36).slice(2, 6)}`;
 };
 var pickGeneralData = (lead) => {
   const out = {};
@@ -2495,11 +2495,104 @@ var normalizeInvoiceStatus = (status) => {
   return "not_received";
 };
 
+// src/lib/mcp/operations.ts
+var PERIOD_ORDER = ["morning", "lunch", "afternoon", "night"];
+var slug = (s) => (s || "item").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 48);
+var norm2 = (s) => (s || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]+/g, "");
+async function buildOpsRows(supabase, lead) {
+  const version = liveVersion(lead);
+  const [planner, costing, ops] = await Promise.all([
+    supabase.from("lead_planner_data").select("*").eq("lead_id", lead.id).eq("version", version).order("day_number"),
+    supabase.from("lead_costing_data").select("*").eq("lead_id", lead.id).eq("version", version).order("day_number"),
+    supabase.from("lead_operations").select("*").eq("lead_id", lead.id)
+  ]);
+  for (const r of [planner, costing, ops]) if (r.error) throw new Error(r.error.message);
+  const plannerDays = planner.data ?? [];
+  const costingDays = costing.data ?? [];
+  const operations = ops.data ?? [];
+  const costingLookup = {};
+  costingDays.forEach((day) => {
+    (Array.isArray(day.items) ? day.items : []).forEach((it4) => {
+      costingLookup[`${day.day_number}|${norm2(it4.description || it4.activity || "")}`] = {
+        supplier: it4.supplier || "",
+        pax: Number(it4.numAdults ?? it4.num_adults ?? 0) || 0,
+        net: Number(it4.netTotal ?? it4.unitCost ?? it4.unit_cost ?? 0) || 0
+      };
+    });
+  });
+  const opsMap = {};
+  operations.forEach((op) => {
+    opsMap[op.item_key] = op;
+  });
+  const rows = [];
+  const used = /* @__PURE__ */ new Set();
+  const fromOp = (op, base) => ({
+    item_key: base.item_key,
+    day_number: base.day_number,
+    source: base.source ?? "planner",
+    activity_title: op?.activity_title ?? base.activity_title ?? "\u2014",
+    supplier: op?.supplier ?? base.supplier ?? "",
+    pax: op?.pax ?? base.pax ?? 0,
+    net_value: base.net_value ?? Number(op?.net_value ?? 0),
+    real_cost: op?.real_cost != null ? Number(op.real_cost) : null,
+    schedule_time: op?.schedule_time || "",
+    schedule_end_time: op?.schedule_end_time?.slice(0, 5) || "",
+    booking_status: normalizeBookingStatus(op?.booking_status),
+    payment_status: normalizePaymentStatus(op?.payment_status),
+    invoice_status: normalizeInvoiceStatus(op?.invoice_status),
+    invoice_file_name: op?.invoice_file_name ?? null,
+    confirmation_number: op?.confirmation_number ?? null,
+    notes: op?.notes ?? null,
+    sort_order: rows.length,
+    saved: !!op,
+    op
+  });
+  const push = (day, title) => {
+    const baseKey = `d${day}-${slug(title)}`;
+    let key = baseKey;
+    let n = 2;
+    while (used.has(key)) key = `${baseKey}-${n++}`;
+    used.add(key);
+    const cost = costingLookup[`${day}|${norm2(title)}`];
+    rows.push(fromOp(opsMap[key], {
+      item_key: key,
+      day_number: day,
+      activity_title: title,
+      supplier: cost?.supplier,
+      pax: cost?.pax,
+      net_value: cost?.net
+    }));
+  };
+  plannerDays.forEach((day) => {
+    const periods = day.activities || {};
+    PERIOD_ORDER.forEach((pk) => (periods?.[pk]?.items || []).forEach((it4) => {
+      const t = (it4?.title || "").trim();
+      if (t) push(day.day_number, t);
+    }));
+  });
+  if (rows.length === 0) {
+    costingDays.forEach((day) => (Array.isArray(day.items) ? day.items : []).forEach((it4) => {
+      const t = (it4.description || it4.activity || "").trim();
+      if (t) push(day.day_number, t);
+    }));
+  }
+  operations.filter((op) => !used.has(op.item_key)).sort((a, b) => a.day_number - b.day_number || a.sort_order - b.sort_order).forEach((op) => {
+    used.add(op.item_key);
+    rows.push(fromOp(op, {
+      item_key: op.item_key,
+      day_number: op.day_number,
+      source: op.source === "manual" ? "manual" : "planner",
+      net_value: Number(op.net_value ?? 0)
+    }));
+  });
+  return { version, rows };
+}
+
 // src/lib/mcp/tools/get-operations.ts
 var get_operations_default = defineTool20({
   name: "get_operations",
   title: "Get operations board",
-  description: "Read the operations board of a lead: services per day with supplier/FSE, booking status, payment status, invoice status, schedule, pax, net value, and the operational trip briefing (pickup hotel, flights, on-site contacts, special requests).",
+  description: "Read the operations board of a lead exactly as the Opera\xE7\xF5es tab shows it (LIVE version planner items, falling back to costing lines, merged with saved operations): services per day with stable item_key, supplier/FSE, schedule, pax, net and real cost, booking/payment/invoice status, confirmation number, notes, plus the trip briefing and per-day ops.",
   inputSchema: {
     lead_id: z19.string().optional().describe("Lead uuid."),
     lead_code: z19.string().optional().describe("Lead code such as YT5130.")
@@ -2509,33 +2602,42 @@ var get_operations_default = defineTool20({
     if (!ctx.isAuthenticated()) throw new ToolError26("Not authenticated");
     const supabase = supabaseForUser(ctx);
     const lead = await resolveLead(supabase, { lead_id, lead_code });
-    const { data, error } = await supabase.from("lead_operations").select("*").eq("lead_id", lead.id).order("day_number", { ascending: true }).order("sort_order", { ascending: true });
-    if (error) throw new ToolError26(error.message);
+    let built;
+    try {
+      built = await buildOpsRows(supabase, lead);
+    } catch (e) {
+      throw new ToolError26(e.message);
+    }
     const { data: dayOps } = await supabase.from("lead_day_ops").select("day_number, guide_name, vehicle, vehicle_pickup, pickup_time, pickup_location, pickup_maps_url, dropoff_location, dropoff_maps_url, notes_backoffice, notes_guide, guide_payment_amount").eq("lead_id", lead.id).order("day_number", { ascending: true });
-    const services = (data ?? []).map((r) => ({
+    const services = built.rows.map(({ op: _op, ...r }) => ({
       item_key: r.item_key,
       day_number: r.day_number,
-      schedule_time: r.schedule_time,
-      schedule_end_time: r.schedule_end_time ?? null,
+      schedule_time: r.schedule_time || null,
+      schedule_end_time: r.schedule_end_time || null,
       service: r.activity_title,
-      supplier: r.supplier,
+      supplier: r.supplier || null,
       pax: r.pax,
       net_value_eur: r.net_value,
       real_cost_eur: r.real_cost,
-      booking_status: normalizeBookingStatus(r.booking_status),
-      payment_status: normalizePaymentStatus(r.payment_status),
-      invoice_status: normalizeInvoiceStatus(r.invoice_status),
+      booking_status: r.booking_status,
+      payment_status: r.payment_status,
+      invoice_status: r.invoice_status,
       invoice_file: r.invoice_file_name,
-      source: r.source
+      confirmation_number: r.confirmation_number,
+      notes: r.notes,
+      source: r.source,
+      saved: r.saved
     }));
     const payload = {
       lead: leadLabel(lead),
       lead_id: lead.id,
+      version: built.version,
       trip_briefing: lead.trip_briefing ?? null,
       service_language: lead.service_language ?? null,
       booking_origin: lead.booking_origin ?? null,
       external_booking_ref: lead.external_booking_ref ?? null,
       day_ops: dayOps ?? [],
+      total_services: services.length,
       services,
       pending_bookings: services.filter((s) => s.booking_status !== "booked").length,
       valid_statuses: {
@@ -2555,7 +2657,7 @@ var values = (opts) => opts.map((o) => o.value);
 var update_operation_item_default = defineTool21({
   name: "update_operation_item",
   title: "Update an operations service",
-  description: "Update one service on the operations board of a lead: booking status, payment status, invoice status, schedule, supplier, pax, net value, the supplier confirmation number and notes. Uses the same states as the Opera\xE7\xF5es tab.",
+  description: "Update one service on the operations board of a lead: booking status, payment status, invoice status, schedule, supplier, pax, net value, real cost, the supplier confirmation number and notes. Rows not yet saved (built from planner/costing) are created in the operations table on first update. Uses the same states as the Opera\xE7\xF5es tab.",
   inputSchema: {
     lead_id: z20.string().optional().describe("Lead uuid."),
     lead_code: z20.string().optional().describe("Lead code such as YT5130."),
@@ -2567,6 +2669,7 @@ var update_operation_item_default = defineTool21({
     supplier: z20.string().optional().describe("Supplier / FSE name."),
     pax: z20.number().int().min(0).optional().describe("Number of participants."),
     net_value: z20.number().optional().describe("Agreed net value in EUR."),
+    real_cost: z20.number().nullable().optional().describe("Final supplier price in EUR (the 'Real (\u20AC)' column). Does not change Custos."),
     confirmation_number: z20.string().optional().describe("Supplier booking confirmation reference."),
     notes: z20.string().optional().describe("Operational note for this service.")
   },
@@ -2576,14 +2679,30 @@ var update_operation_item_default = defineTool21({
     const { lead_id, lead_code, item_key, confirmation_number, notes, ...rest } = args;
     const supabase = supabaseForUser(ctx);
     const lead = await resolveLead(supabase, { lead_id, lead_code });
-    const { data: row, error: readErr } = await supabase.from("lead_operations").select("*").eq("lead_id", lead.id).eq("item_key", item_key).maybeSingle();
-    if (readErr) throw new ToolError27(readErr.message);
-    if (!row) {
-      const { data: keys } = await supabase.from("lead_operations").select("item_key").eq("lead_id", lead.id);
+    let built;
+    try {
+      built = await buildOpsRows(supabase, lead);
+    } catch (e) {
+      throw new ToolError27(e.message);
+    }
+    const target = built.rows.find((r) => r.item_key === item_key);
+    if (!target) {
       throw new ToolError27(
-        `Service "${item_key}" not found on ${leadLabel(lead)}. Valid keys: ${(keys ?? []).map((k) => k.item_key).join(", ") || "(no services yet)"}`
+        `Service "${item_key}" not found on ${leadLabel(lead)}. Valid keys: ${built.rows.map((k) => k.item_key).join(", ") || "(no services yet)"}`
       );
     }
+    const row = target.op ?? {
+      supplier: target.supplier || null,
+      pax: target.pax,
+      net_value: target.net_value,
+      real_cost: null,
+      schedule_time: null,
+      booking_status: target.booking_status,
+      payment_status: target.payment_status,
+      invoice_status: target.invoice_status,
+      confirmation_number: null,
+      notes: null
+    };
     if (rest.booking_status && !values(BOOKING_OPTIONS).includes(rest.booking_status)) {
       throw new ToolError27(`Invalid booking_status. Valid: ${values(BOOKING_OPTIONS).join(", ")}`);
     }
@@ -2602,10 +2721,26 @@ var update_operation_item_default = defineTool21({
     if (notes !== void 0) updates.notes = notes;
     const changes = {};
     for (const key of Object.keys(updates)) changes[key] = { from: row[key] ?? null, to: updates[key] };
-    const { error } = await supabase.from("lead_operations").update({ ...updates, updated_at: (/* @__PURE__ */ new Date()).toISOString() }).eq("id", row.id);
+    const now = (/* @__PURE__ */ new Date()).toISOString();
+    const { error } = target.op ? await supabase.from("lead_operations").update({ ...updates, updated_at: now }).eq("id", target.op.id) : await supabase.from("lead_operations").insert({
+      lead_id: lead.id,
+      item_key,
+      day_number: target.day_number,
+      activity_title: target.activity_title,
+      supplier: target.supplier || null,
+      pax: target.pax || 0,
+      net_value: target.net_value || 0,
+      booking_status: target.booking_status,
+      payment_status: target.payment_status,
+      invoice_status: target.invoice_status,
+      sort_order: target.sort_order,
+      source: target.source,
+      ...updates,
+      updated_at: now
+    });
     if (error) throw new ToolError27(error.message);
     await auditLead(supabase, ctx, lead, "operation_updated", changes, { item_key });
-    const payload = { lead: leadLabel(lead), lead_id: lead.id, item_key, updated_fields: changes };
+    const payload = { lead: leadLabel(lead), lead_id: lead.id, item_key, updated_fields: changes, materialized: !target.op };
     return { content: [{ type: "text", text: JSON.stringify(payload, null, 2) }], structuredContent: payload };
   }
 });

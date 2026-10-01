@@ -2,6 +2,7 @@ import { defineTool, ToolError } from "@lovable.dev/mcp-js";
 import { z } from "zod";
 import { supabaseForUser } from "../supabase";
 import { auditLead, leadLabel, resolveLead } from "../lead";
+import { buildOpsRows } from "../operations";
 import { BOOKING_OPTIONS, INVOICE_OPTIONS, PAYMENT_OPTIONS } from "../../../components/leads/opsConstants";
 
 const values = (opts: { value: string }[]) => opts.map((o) => o.value);
@@ -10,7 +11,7 @@ export default defineTool({
   name: "update_operation_item",
   title: "Update an operations service",
   description:
-    "Update one service on the operations board of a lead: booking status, payment status, invoice status, schedule, supplier, pax, net value, the supplier confirmation number and notes. Uses the same states as the Operações tab.",
+    "Update one service on the operations board of a lead: booking status, payment status, invoice status, schedule, supplier, pax, net value, real cost, the supplier confirmation number and notes. Rows not yet saved (built from planner/costing) are created in the operations table on first update. Uses the same states as the Operações tab.",
   inputSchema: {
     lead_id: z.string().optional().describe("Lead uuid."),
     lead_code: z.string().optional().describe("Lead code such as YT5130."),
@@ -25,6 +26,7 @@ export default defineTool({
     supplier: z.string().optional().describe("Supplier / FSE name."),
     pax: z.number().int().min(0).optional().describe("Number of participants."),
     net_value: z.number().optional().describe("Agreed net value in EUR."),
+    real_cost: z.number().nullable().optional().describe("Final supplier price in EUR (the 'Real (€)' column). Does not change Custos."),
     confirmation_number: z.string().optional().describe("Supplier booking confirmation reference."),
     notes: z.string().optional().describe("Operational note for this service."),
   },
@@ -35,21 +37,22 @@ export default defineTool({
     const supabase = supabaseForUser(ctx);
     const lead = await resolveLead(supabase, { lead_id, lead_code });
 
-    const { data: row, error: readErr } = await supabase
-      .from("lead_operations")
-      .select("*")
-      .eq("lead_id", lead.id)
-      .eq("item_key", item_key)
-      .maybeSingle();
-    if (readErr) throw new ToolError(readErr.message);
-    if (!row) {
-      const { data: keys } = await supabase.from("lead_operations").select("item_key").eq("lead_id", lead.id);
+    let built;
+    try { built = await buildOpsRows(supabase, lead); } catch (e: any) { throw new ToolError(e.message); }
+    const target = built.rows.find((r) => r.item_key === item_key);
+    if (!target) {
       throw new ToolError(
         `Service "${item_key}" not found on ${leadLabel(lead)}. Valid keys: ${
-          ((keys ?? []) as any[]).map((k) => k.item_key).join(", ") || "(no services yet)"
+          built.rows.map((k) => k.item_key).join(", ") || "(no services yet)"
         }`,
       );
     }
+    const row: any = target.op ?? {
+      supplier: target.supplier || null, pax: target.pax, net_value: target.net_value,
+      real_cost: null, schedule_time: null, booking_status: target.booking_status,
+      payment_status: target.payment_status, invoice_status: target.invoice_status,
+      confirmation_number: null, notes: null,
+    };
 
     if (rest.booking_status && !values(BOOKING_OPTIONS).includes(rest.booking_status)) {
       throw new ToolError(`Invalid booking_status. Valid: ${values(BOOKING_OPTIONS).join(", ")}`);
@@ -71,17 +74,32 @@ export default defineTool({
     if (notes !== undefined) updates.notes = notes;
 
     const changes: Record<string, { from: unknown; to: unknown }> = {};
-    for (const key of Object.keys(updates)) changes[key] = { from: (row as any)[key] ?? null, to: updates[key] };
+    for (const key of Object.keys(updates)) changes[key] = { from: row[key] ?? null, to: updates[key] };
 
-    const { error } = await supabase
-      .from("lead_operations")
-      .update({ ...updates, updated_at: new Date().toISOString() } as never)
-      .eq("id", (row as any).id);
+    const now = new Date().toISOString();
+    const { error } = target.op
+      ? await supabase.from("lead_operations").update({ ...updates, updated_at: now } as never).eq("id", target.op.id)
+      : await supabase.from("lead_operations").insert({
+          lead_id: lead.id,
+          item_key,
+          day_number: target.day_number,
+          activity_title: target.activity_title,
+          supplier: target.supplier || null,
+          pax: target.pax || 0,
+          net_value: target.net_value || 0,
+          booking_status: target.booking_status,
+          payment_status: target.payment_status,
+          invoice_status: target.invoice_status,
+          sort_order: target.sort_order,
+          source: target.source,
+          ...updates,
+          updated_at: now,
+        } as never);
     if (error) throw new ToolError(error.message);
 
     await auditLead(supabase, ctx, lead, "operation_updated", changes, { item_key });
 
-    const payload = { lead: leadLabel(lead), lead_id: lead.id, item_key, updated_fields: changes };
+    const payload = { lead: leadLabel(lead), lead_id: lead.id, item_key, updated_fields: changes, materialized: !target.op };
     return { content: [{ type: "text", text: JSON.stringify(payload, null, 2) }], structuredContent: payload };
   },
 });
