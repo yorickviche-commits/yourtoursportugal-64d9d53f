@@ -164,9 +164,32 @@ export function assertMinimumMargin(totals: CostingTotals) {
     throw new ToolError(
       `Minimum margin violated: ${totals.margin_percent.toFixed(1)}% is below the required ${totals.min_margin_percent}% ` +
         `(net ${totals.net_eur.toFixed(2)} EUR, PVP ${totals.pvp_eur.toFixed(2)} EUR). ` +
-        `Raise the selling price or lower the net cost — the costing was not saved.`,
+        `Raise the selling price or lower the net cost — the costing was not saved. ` +
+        `For leads already sold, pass allow_below_min_margin=true with a reason.`,
     );
   }
+}
+
+/**
+ * A lead counts as sold when it has a payment registered, sits in an
+ * OPERATIONS stage, or has a won/confirmed status. Sold files keep their real
+ * margin: the minimum-margin rule only blocks while selling.
+ */
+export async function soldLeadReason(supabase: SupabaseClient, lead: LeadRow): Promise<string | null> {
+  const stage = String(lead.nethunt_stage ?? "");
+  if (stage.toUpperCase().startsWith("OPERATIONS")) return `stage ${stage}`;
+  const status = String(lead.status ?? "").toLowerCase();
+  if (["won", "confirmed", "confirmada", "ganho"].includes(status)) return `status ${status}`;
+  const deposited = await paymentsSummary(supabase, lead);
+  if (deposited > 0) return `payment registered (${deposited.toFixed(2)} EUR)`;
+  return null;
+}
+
+export function marginWarning(totals: CostingTotals): string | null {
+  if (totals.pvp_eur > 0 && totals.margin_percent < totals.min_margin_percent) {
+    return `margem ${totals.margin_percent.toFixed(1)}% abaixo do mínimo ${totals.min_margin_percent}%`;
+  }
+  return null;
 }
 
 export async function paymentsSummary(supabase: SupabaseClient, lead: LeadRow) {
