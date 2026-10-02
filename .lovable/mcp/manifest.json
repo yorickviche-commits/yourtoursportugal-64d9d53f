@@ -856,7 +856,7 @@
       {
         "name": "get_operations",
         "title": "Get operations board",
-        "description": "Read the operations board of a lead exactly as the Operações tab shows it (LIVE version planner items, falling back to costing lines, merged with saved operations): services per day with stable item_key, supplier/FSE, schedule, pax, net and real cost, booking/payment/invoice status, confirmation number, notes, plus the trip briefing and per-day ops.",
+        "description": "Read the operations board of a lead exactly as the Operações tab shows it (LIVE version planner items, falling back to costing lines, merged with saved operations): services per day with stable item_key, supplier/FSE, schedule, pax, net value, real_cost (Real € = net total confirmed by the FSE, post-confirmation margin control; does not change Custos) and deviation net_value − real_cost, booking/payment/invoice status, confirmation number, notes, plus the trip briefing, per-day ops and lead totals (net budgeted, real confirmed, deviation).",
         "annotations": {
           "readOnlyHint": true,
           "idempotentHint": true,
@@ -882,7 +882,7 @@
       {
         "name": "update_operation_item",
         "title": "Update an operations service",
-        "description": "Update one service on the operations board of a lead: booking status, payment status, invoice status, schedule, supplier, pax, net value, real cost, the supplier confirmation number and notes. Rows not yet saved (built from planner/costing) are created in the operations table on first update. Uses the same states as the Operações tab.",
+        "description": "Update one service on the operations board of a lead: booking status, payment status, invoice status, schedule, supplier, pax, net value, real_cost (Real € = valor net total confirmado pelo FSE — controlo de margem pós-confirmação; não altera Custos), the supplier confirmation number and notes. Rows not yet saved (built from planner/costing) are created in the operations table on first update. Uses the same states as the Operações tab.",
         "annotations": {
           "readOnlyHint": false,
           "destructiveHint": false,
@@ -956,7 +956,7 @@
                 "number",
                 "null"
               ],
-              "description": "Final supplier price in EUR (the 'Real (€)' column). Does not change Custos."
+              "description": "Valor net total confirmado pelo FSE (coluna Real €), em EUR — controlo de margem pós-confirmação; não altera Custos. null limpa o valor."
             },
             "confirmation_number": {
               "type": "string",
