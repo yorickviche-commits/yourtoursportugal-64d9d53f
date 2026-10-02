@@ -2592,7 +2592,7 @@ async function buildOpsRows(supabase, lead) {
 var get_operations_default = defineTool20({
   name: "get_operations",
   title: "Get operations board",
-  description: "Read the operations board of a lead exactly as the Opera\xE7\xF5es tab shows it (LIVE version planner items, falling back to costing lines, merged with saved operations): services per day with stable item_key, supplier/FSE, schedule, pax, net and real cost, booking/payment/invoice status, confirmation number, notes, plus the trip briefing and per-day ops.",
+  description: "Read the operations board of a lead exactly as the Opera\xE7\xF5es tab shows it (LIVE version planner items, falling back to costing lines, merged with saved operations): services per day with stable item_key, supplier/FSE, schedule, pax, net value, real_cost (Real \u20AC = net total confirmed by the FSE, post-confirmation margin control; does not change Custos) and deviation net_value \u2212 real_cost, booking/payment/invoice status, confirmation number, notes, plus the trip briefing, per-day ops and lead totals (net budgeted, real confirmed, deviation).",
   inputSchema: {
     lead_id: z19.string().optional().describe("Lead uuid."),
     lead_code: z19.string().optional().describe("Lead code such as YT5130.")
@@ -2619,6 +2619,7 @@ var get_operations_default = defineTool20({
       pax: r.pax,
       net_value_eur: r.net_value,
       real_cost_eur: r.real_cost,
+      deviation_eur: r.real_cost != null ? Math.round(((r.net_value || 0) - r.real_cost) * 100) / 100 : null,
       booking_status: r.booking_status,
       payment_status: r.payment_status,
       invoice_status: r.invoice_status,
@@ -2628,6 +2629,15 @@ var get_operations_default = defineTool20({
       source: r.source,
       saved: r.saved
     }));
+    const r2 = (n) => Math.round(n * 100) / 100;
+    const confirmed = services.filter((s) => s.real_cost_eur != null);
+    const totals = {
+      net_budgeted_eur: r2(services.reduce((a, s) => a + (s.net_value_eur || 0), 0)),
+      real_confirmed_eur: r2(confirmed.reduce((a, s) => a + s.real_cost_eur, 0)),
+      net_budgeted_confirmed_items_eur: r2(confirmed.reduce((a, s) => a + (s.net_value_eur || 0), 0)),
+      deviation_eur: r2(confirmed.reduce((a, s) => a + s.deviation_eur, 0)),
+      services_with_real_cost: confirmed.length
+    };
     const payload = {
       lead: leadLabel(lead),
       lead_id: lead.id,
@@ -2638,6 +2648,7 @@ var get_operations_default = defineTool20({
       external_booking_ref: lead.external_booking_ref ?? null,
       day_ops: dayOps ?? [],
       total_services: services.length,
+      totals,
       services,
       pending_bookings: services.filter((s) => s.booking_status !== "booked").length,
       valid_statuses: {
@@ -2657,7 +2668,7 @@ var values = (opts) => opts.map((o) => o.value);
 var update_operation_item_default = defineTool21({
   name: "update_operation_item",
   title: "Update an operations service",
-  description: "Update one service on the operations board of a lead: booking status, payment status, invoice status, schedule, supplier, pax, net value, real cost, the supplier confirmation number and notes. Rows not yet saved (built from planner/costing) are created in the operations table on first update. Uses the same states as the Opera\xE7\xF5es tab.",
+  description: "Update one service on the operations board of a lead: booking status, payment status, invoice status, schedule, supplier, pax, net value, real_cost (Real \u20AC = valor net total confirmado pelo FSE \u2014 controlo de margem p\xF3s-confirma\xE7\xE3o; n\xE3o altera Custos), the supplier confirmation number and notes. Rows not yet saved (built from planner/costing) are created in the operations table on first update. Uses the same states as the Opera\xE7\xF5es tab.",
   inputSchema: {
     lead_id: z20.string().optional().describe("Lead uuid."),
     lead_code: z20.string().optional().describe("Lead code such as YT5130."),
@@ -2669,7 +2680,7 @@ var update_operation_item_default = defineTool21({
     supplier: z20.string().optional().describe("Supplier / FSE name."),
     pax: z20.number().int().min(0).optional().describe("Number of participants."),
     net_value: z20.number().optional().describe("Agreed net value in EUR."),
-    real_cost: z20.number().nullable().optional().describe("Final supplier price in EUR (the 'Real (\u20AC)' column). Does not change Custos."),
+    real_cost: z20.number().nullable().optional().describe("Valor net total confirmado pelo FSE (coluna Real \u20AC), em EUR \u2014 controlo de margem p\xF3s-confirma\xE7\xE3o; n\xE3o altera Custos. null limpa o valor."),
     confirmation_number: z20.string().optional().describe("Supplier booking confirmation reference."),
     notes: z20.string().optional().describe("Operational note for this service.")
   },

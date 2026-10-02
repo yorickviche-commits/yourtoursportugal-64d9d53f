@@ -9,7 +9,7 @@ export default defineTool({
   name: "get_operations",
   title: "Get operations board",
   description:
-    "Read the operations board of a lead exactly as the Operações tab shows it (LIVE version planner items, falling back to costing lines, merged with saved operations): services per day with stable item_key, supplier/FSE, schedule, pax, net and real cost, booking/payment/invoice status, confirmation number, notes, plus the trip briefing and per-day ops.",
+    "Read the operations board of a lead exactly as the Operações tab shows it (LIVE version planner items, falling back to costing lines, merged with saved operations): services per day with stable item_key, supplier/FSE, schedule, pax, net value, real_cost (Real € = net total confirmed by the FSE, post-confirmation margin control; does not change Custos) and deviation net_value − real_cost, booking/payment/invoice status, confirmation number, notes, plus the trip briefing, per-day ops and lead totals (net budgeted, real confirmed, deviation).",
   inputSchema: {
     lead_id: z.string().optional().describe("Lead uuid."),
     lead_code: z.string().optional().describe("Lead code such as YT5130."),
@@ -39,6 +39,7 @@ export default defineTool({
       pax: r.pax,
       net_value_eur: r.net_value,
       real_cost_eur: r.real_cost,
+      deviation_eur: r.real_cost != null ? Math.round(((r.net_value || 0) - r.real_cost) * 100) / 100 : null,
       booking_status: r.booking_status,
       payment_status: r.payment_status,
       invoice_status: r.invoice_status,
@@ -48,6 +49,16 @@ export default defineTool({
       source: r.source,
       saved: r.saved,
     }));
+
+    const r2 = (n: number) => Math.round(n * 100) / 100;
+    const confirmed = services.filter((s) => s.real_cost_eur != null);
+    const totals = {
+      net_budgeted_eur: r2(services.reduce((a, s) => a + (s.net_value_eur || 0), 0)),
+      real_confirmed_eur: r2(confirmed.reduce((a, s) => a + (s.real_cost_eur as number), 0)),
+      net_budgeted_confirmed_items_eur: r2(confirmed.reduce((a, s) => a + (s.net_value_eur || 0), 0)),
+      deviation_eur: r2(confirmed.reduce((a, s) => a + (s.deviation_eur as number), 0)),
+      services_with_real_cost: confirmed.length,
+    };
 
     const payload = {
       lead: leadLabel(lead),
@@ -59,6 +70,7 @@ export default defineTool({
       external_booking_ref: (lead as any).external_booking_ref ?? null,
       day_ops: dayOps ?? [],
       total_services: services.length,
+      totals,
       services,
       pending_bookings: services.filter((s) => s.booking_status !== "booked").length,
       valid_statuses: {

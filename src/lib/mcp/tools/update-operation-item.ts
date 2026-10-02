@@ -11,7 +11,7 @@ export default defineTool({
   name: "update_operation_item",
   title: "Update an operations service",
   description:
-    "Update one service on the operations board of a lead: booking status, payment status, invoice status, schedule, supplier, pax, net value, real cost, the supplier confirmation number and notes. Rows not yet saved (built from planner/costing) are created in the operations table on first update. Uses the same states as the Operações tab.",
+    "Update one service on the operations board of a lead: booking status, payment status, invoice status, schedule, supplier, pax, net value, real_cost (Real € = valor net total confirmado pelo FSE — controlo de margem pós-confirmação; não altera Custos), the supplier confirmation number and notes. Rows not yet saved (built from planner/costing) are created in the operations table on first update. Uses the same states as the Operações tab.",
   inputSchema: {
     lead_id: z.string().optional().describe("Lead uuid."),
     lead_code: z.string().optional().describe("Lead code such as YT5130."),
@@ -26,7 +26,7 @@ export default defineTool({
     supplier: z.string().optional().describe("Supplier / FSE name."),
     pax: z.number().int().min(0).optional().describe("Number of participants."),
     net_value: z.number().optional().describe("Agreed net value in EUR."),
-    real_cost: z.number().nullable().optional().describe("Final supplier price in EUR (the 'Real (€)' column). Does not change Custos."),
+    real_cost: z.number().nullable().optional().describe("Valor net total confirmado pelo FSE (coluna Real €), em EUR — controlo de margem pós-confirmação; não altera Custos. null limpa o valor."),
     confirmation_number: z.string().optional().describe("Supplier booking confirmation reference."),
     notes: z.string().optional().describe("Operational note for this service."),
   },
