@@ -1988,9 +1988,24 @@ function costingTotals(days2) {
 function assertMinimumMargin(totals) {
   if (totals.pvp_eur > 0 && totals.margin_percent < totals.min_margin_percent) {
     throw new ToolError20(
-      `Minimum margin violated: ${totals.margin_percent.toFixed(1)}% is below the required ${totals.min_margin_percent}% (net ${totals.net_eur.toFixed(2)} EUR, PVP ${totals.pvp_eur.toFixed(2)} EUR). Raise the selling price or lower the net cost \u2014 the costing was not saved.`
+      `Minimum margin violated: ${totals.margin_percent.toFixed(1)}% is below the required ${totals.min_margin_percent}% (net ${totals.net_eur.toFixed(2)} EUR, PVP ${totals.pvp_eur.toFixed(2)} EUR). Raise the selling price or lower the net cost \u2014 the costing was not saved. For leads already sold, pass allow_below_min_margin=true with a reason.`
     );
   }
+}
+async function soldLeadReason(supabase, lead) {
+  const stage = String(lead.nethunt_stage ?? "");
+  if (stage.toUpperCase().startsWith("OPERATIONS")) return `stage ${stage}`;
+  const status = String(lead.status ?? "").toLowerCase();
+  if (["won", "confirmed", "confirmada", "ganho"].includes(status)) return `status ${status}`;
+  const deposited = await paymentsSummary(supabase, lead);
+  if (deposited > 0) return `payment registered (${deposited.toFixed(2)} EUR)`;
+  return null;
+}
+function marginWarning(totals) {
+  if (totals.pvp_eur > 0 && totals.margin_percent < totals.min_margin_percent) {
+    return `margem ${totals.margin_percent.toFixed(1)}% abaixo do m\xEDnimo ${totals.min_margin_percent}%`;
+  }
+  return null;
 }
 async function paymentsSummary(supabase, lead) {
   const { data } = await supabase.from("lead_payments").select("amount").eq("lead_id", lead.id);
@@ -2074,15 +2089,17 @@ var lineSchema = z16.object({
 var upsert_costing_lines_default = defineTool17({
   name: "upsert_costing_lines",
   title: "Create or update costing lines",
-  description: "Create or update costing lines of a lead, exactly like editing the Custos table in the TCC. Totals and profit are recalculated with the same arithmetic. The save is refused when the resulting margin drops below the company minimum, and the answer flags when the file needs CEO approval because it is above the approval threshold.",
+  description: "Create or update costing lines of a lead, exactly like editing the Custos table in the TCC. Totals and profit are recalculated with the same arithmetic. While selling, the save is refused when the margin drops below the company minimum. For leads already sold (payment registered, OPERATIONS stage or won status) the save goes through and returns a 'warning' with the margin instead. The answer also flags when the file needs CEO approval.",
   inputSchema: {
     lead_id: z16.string().optional().describe("Lead uuid."),
     lead_code: z16.string().optional().describe("Lead code such as YT5130."),
     version: z16.number().int().optional().describe("Version to edit (default: LIVE version)."),
-    lines: z16.array(lineSchema).min(1).describe("Lines to create or update.")
+    lines: z16.array(lineSchema).min(1).describe("Lines to create or update."),
+    allow_below_min_margin: z16.boolean().optional().describe("Explicit override to save below the minimum margin (e.g. migrating sold files). Requires below_min_margin_reason."),
+    below_min_margin_reason: z16.string().optional().describe("Reason for the override; logged in the lead history.")
   },
   annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false },
-  handler: async ({ lead_id, lead_code, version, lines }, ctx) => {
+  handler: async ({ lead_id, lead_code, version, lines, allow_below_min_margin, below_min_margin_reason }, ctx) => {
     if (!ctx.isAuthenticated()) throw new ToolError22("Not authenticated");
     const supabase = supabaseForUser(ctx);
     const lead = await resolveLead(supabase, { lead_id, lead_code });
@@ -2133,7 +2150,20 @@ var upsert_costing_lines_default = defineTool17({
     }
     const allDays = [...byDay.values()].sort((a, b) => a.day_number - b.day_number);
     const totals = costingTotals(allDays);
-    assertMinimumMargin(totals);
+    const warning = marginWarning(totals);
+    let marginException = null;
+    if (warning) {
+      if (allow_below_min_margin) {
+        if (!below_min_margin_reason?.trim()) {
+          throw new ToolError22("allow_below_min_margin=true requires below_min_margin_reason");
+        }
+        marginException = `explicit override: ${below_min_margin_reason.trim()}`;
+      } else {
+        const sold = await soldLeadReason(supabase, lead);
+        if (sold) marginException = `lead already sold \u2014 ${sold}`;
+        else assertMinimumMargin(totals);
+      }
+    }
     for (const dayNumber of touched) await saveCostingDay(supabase, lead, ver, byDay.get(dayNumber));
     await auditLead(
       supabase,
@@ -2141,7 +2171,7 @@ var upsert_costing_lines_default = defineTool17({
       lead,
       "costing_updated",
       { costing_lines: { from: `${days2.flatMap((d) => d.items).length} lines`, to: `${allDays.flatMap((d) => d.items).length} lines` } },
-      { version: ver, created_line_ids: created, updated_line_ids: updated }
+      { version: ver, created_line_ids: created, updated_line_ids: updated, margin_warning: warning, margin_exception: marginException }
     );
     const payload = {
       lead: leadLabel(lead),
@@ -2150,6 +2180,8 @@ var upsert_costing_lines_default = defineTool17({
       created_line_ids: created,
       updated_line_ids: updated,
       totals,
+      warning,
+      margin_exception: marginException,
       requires_ceo_approval: totals.requires_ceo_approval,
       note: totals.requires_ceo_approval ? `Total above ${totals.ceo_threshold_eur} EUR \u2014 needs CEO approval before going to the client.` : null
     };
