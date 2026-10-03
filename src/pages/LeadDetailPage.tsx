@@ -556,6 +556,13 @@ const LeadDetailPage = ({ mode = 'lead' }: { mode?: 'lead' | 'booking' } = {}) =
     return lead as any;
   }, [lead, isArchivedVersion, selectedVersionMeta]);
 
+  // Rotas Google Maps, Exact Itinerary PDF e PVP manual — sempre da versão selecionada.
+  const versionCtx = useMemo(() => {
+    const row: any = selectedVersionMeta;
+    if (row) return pickVersionContext(row);
+    return isArchivedVersion ? pickVersionContext(null) : pickVersionContext(lead);
+  }, [lead, isArchivedVersion, selectedVersionMeta]);
+
   // Sync form from the selected version's general data
   useEffect(() => {
     if (!lead || !generalSource) return;
