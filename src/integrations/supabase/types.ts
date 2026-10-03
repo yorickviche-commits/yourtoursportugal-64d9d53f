@@ -2178,6 +2178,7 @@ export type Database = {
         Row: {
           created_at: string
           created_by: string | null
+          exact_itinerary_pdf_path: string | null
           general_data: Json
           id: string
           is_ai_proposal: boolean
@@ -2188,12 +2189,17 @@ export type Database = {
           proposed_at: string | null
           proposed_by_key_id: string | null
           proposed_by_label: string | null
+          pvp_override: number | null
+          route_day_maps: Json
+          route_map_path: string | null
+          route_map_url: string | null
           updated_at: string
           version: number
         }
         Insert: {
           created_at?: string
           created_by?: string | null
+          exact_itinerary_pdf_path?: string | null
           general_data?: Json
           id?: string
           is_ai_proposal?: boolean
@@ -2204,12 +2210,17 @@ export type Database = {
           proposed_at?: string | null
           proposed_by_key_id?: string | null
           proposed_by_label?: string | null
+          pvp_override?: number | null
+          route_day_maps?: Json
+          route_map_path?: string | null
+          route_map_url?: string | null
           updated_at?: string
           version?: number
         }
         Update: {
           created_at?: string
           created_by?: string | null
+          exact_itinerary_pdf_path?: string | null
           general_data?: Json
           id?: string
           is_ai_proposal?: boolean
@@ -2220,6 +2231,10 @@ export type Database = {
           proposed_at?: string | null
           proposed_by_key_id?: string | null
           proposed_by_label?: string | null
+          pvp_override?: number | null
+          route_day_maps?: Json
+          route_map_path?: string | null
+          route_map_url?: string | null
           updated_at?: string
           version?: number
         }

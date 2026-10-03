@@ -65,6 +65,7 @@ export interface ProposalDay {
   mapUrl?: string;
 }
 
+import { routeForDay } from '@/lib/versionRouteMaps';
 import { toMapEmbedSrc, parseGoogleMapsUrl } from '@/lib/mapEmbed';
 import { buildRouteMapImage } from '@/lib/staticRouteMap';
 import { downloadProposalPdf } from '@/lib/proposalPdf';
@@ -873,7 +874,7 @@ const TravelPlanProposal = ({
       const dayLabelByLang: Record<string, string> = { en: 'Day', fr: 'Jour', es: 'Día', pt: 'Dia', it: 'Giorno', de: 'Tag' };
       const startDate = plan.days[0]?.date || travelDates || '';
       const endDate = plan.days[plan.days.length - 1]?.date || travelEndDate || '';
-      const days = plan.days.map(d => ({
+      const days = plan.days.map((d, i) => ({
         day_number: d.day_number,
         date_label: d.date || `${dayLabelByLang[proposalLang] || 'Day'} ${d.day_number}`,
         title: d.title,
@@ -882,7 +883,7 @@ const TravelPlanProposal = ({
         images: (d.images || []).map(img => ({ url: img.url, caption: img.caption || '' })),
         items: d.bullets.map(b => (typeof b === 'string' ? b : b.text)),
         accommodation: d.overnight ? { label: d.overnight, hotel_name: d.overnight, note: '' } : null,
-        map_url: d.mapUrl || '',
+        map_url: d.mapUrl || routeForDay(i, { routeMapUrl, routeDayMaps }),
       }));
       const token = `ytp-${leadCode.toLowerCase().replace(/[^a-z0-9]/g, '-')}`;
       const name = await downloadProposalPdf(
@@ -1315,7 +1316,7 @@ const TravelPlanProposal = ({
         images: (d.images || []).map(img => ({ url: img.url, caption: img.caption || '' })),
         items: d.bullets.map(b => typeof b === 'string' ? b : b.text),
         accommodation: d.overnight ? { label: d.overnight, hotel_name: d.overnight, note: '' } : null,
-        map_url: d.mapUrl || '',
+        map_url: d.mapUrl || routeForDay(i, { routeMapUrl, routeDayMaps }),
       }));
 
       // Uma proposta por (lead, versão) — gravar a versão N nunca toca nos
@@ -2255,11 +2256,12 @@ const TravelPlanProposal = ({
                           {day.day_number === displayPlan.days.length ? t.departureFrom(day.overnight) : t.nightIn(day.overnight)}
                         </p>
                       )}
-                      {day.mapUrl && (() => {
-                        const embed = toMapEmbedSrc(day.mapUrl);
+                      {(() => {
+                        const effMap = day.mapUrl || routeForDay(dayIdx, { routeMapUrl, routeDayMaps });
+                        const embed = effMap ? toMapEmbedSrc(effMap) : null;
                         if (!embed) return null;
                         return (
-                          <div className="mt-4 rounded-lg overflow-hidden border border-slate-200 aspect-[16/9]" data-map-embed={day.mapUrl}>
+                          <div className="mt-4 rounded-lg overflow-hidden border border-slate-200 aspect-[16/9]" data-map-embed={effMap}>
                             <iframe
                               src={embed}
                               className="w-full h-full"

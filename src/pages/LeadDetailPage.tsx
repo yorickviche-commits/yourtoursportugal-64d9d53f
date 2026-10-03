@@ -48,7 +48,7 @@ import { displayLeadCode } from '@/lib/leadCode';
 import { useUnsavedChangesGuard } from '@/hooks/useUnsavedChangesGuard';
 import LeadCrmTab from '@/components/crm/LeadCrmTab';
 import LeadVersionBar from '@/components/leads/LeadVersionBar';
-import { useLeadVersionsQuery, pickGeneralData, saveVersionGeneralData } from '@/hooks/useLeadVersions';
+import { useLeadVersionsQuery, pickGeneralData, saveVersionGeneralData, pickVersionContext, saveVersionContext } from '@/hooks/useLeadVersions';
 import { syncGeneralToProposal } from '@/lib/syncGeneralToProposal';
 import { triggerCalendarSync } from '@/hooks/useCalendarSync';
 import CalendarSyncBadge from '@/components/CalendarSyncBadge';
@@ -556,6 +556,13 @@ const LeadDetailPage = ({ mode = 'lead' }: { mode?: 'lead' | 'booking' } = {}) =
     return lead as any;
   }, [lead, isArchivedVersion, selectedVersionMeta]);
 
+  // Rotas Google Maps, Exact Itinerary PDF e PVP manual — sempre da versão selecionada.
+  const versionCtx = useMemo(() => {
+    const row: any = selectedVersionMeta;
+    if (row) return pickVersionContext(row);
+    return isArchivedVersion ? pickVersionContext(null) : pickVersionContext(lead);
+  }, [lead, isArchivedVersion, selectedVersionMeta]);
+
   // Sync form from the selected version's general data
   useEffect(() => {
     if (!lead || !generalSource) return;
@@ -585,9 +592,9 @@ const LeadDetailPage = ({ mode = 'lead' }: { mode?: 'lead' | 'booking' } = {}) =
     setDestino(g.destination ? String(g.destination).split(', ').filter(Boolean) : []);
     setOrigem(g.source === 'ai_simulation' ? ['AI Simulation'] : g.source ? [g.source] : []);
     setTravelStyles(Array.isArray(g.travel_style) ? g.travel_style : []);
-    const savedOverride = (lead as any).pvp_override;
+    const savedOverride = versionCtx.pvp_override;
     setPvpOverride(savedOverride != null ? Number(savedOverride) : null);
-  }, [lead, generalSource]);
+  }, [lead, generalSource, versionCtx.pvp_override]);
 
   const updateFormField = (key: string, value: any) => {
     setFormState(prev => ({ ...prev, [key]: value }));
@@ -1115,11 +1122,13 @@ const LeadDetailPage = ({ mode = 'lead' }: { mode?: 'lead' | 'booking' } = {}) =
 
             <LeadContextAttachments
               leadId={lead.id}
-              routeMapPath={(lead as any).route_map_path}
-              routeMapUrl={(lead as any).route_map_url}
-              routeDayMaps={(lead as any).route_day_maps}
+              version={selectedVersion}
+              isLive={!isArchivedVersion}
+              routeMapPath={versionCtx.route_map_path}
+              routeMapUrl={versionCtx.route_map_url}
+              routeDayMaps={versionCtx.route_day_maps}
               numberOfDays={Number(formState.numberOfDays) || undefined}
-              exactItineraryPdfPath={(lead as any).exact_itinerary_pdf_path}
+              exactItineraryPdfPath={versionCtx.exact_itinerary_pdf_path}
             />
             </fieldset>
 
@@ -1159,11 +1168,11 @@ const LeadDetailPage = ({ mode = 'lead' }: { mode?: 'lead' | 'booking' } = {}) =
             magicQuestion={lead.magic_question || undefined}
             notes={formState.notes}
             defaultLanguage={idioma[0]}
-            routeMapPath={(lead as any).route_map_path || undefined}
-            routeMapUrl={(lead as any).route_map_url || undefined}
-            routeDayMaps={(lead as any).route_day_maps || undefined}
+            routeMapPath={versionCtx.route_map_path || undefined}
+            routeMapUrl={versionCtx.route_map_url || undefined}
+            routeDayMaps={versionCtx.route_day_maps || undefined}
 
-            exactItineraryPdfPath={(lead as any).exact_itinerary_pdf_path || undefined}
+            exactItineraryPdfPath={versionCtx.exact_itinerary_pdf_path || undefined}
             accommodation={proposalAccommodation}
             netPricing={(lead as any).client_type === 'B2B'}
             version={selectedVersion}
@@ -1208,8 +1217,9 @@ const LeadDetailPage = ({ mode = 'lead' }: { mode?: 'lead' | 'booking' } = {}) =
                 setPvpOverride(v);
                 if (lead?.id) {
                   try {
-                    await supabase.from('leads').update({ pvp_override: v } as any).eq('id', lead.id);
+                    await saveVersionContext(lead.id, selectedVersion, { pvp_override: v }, !isArchivedVersion);
                     queryClient.invalidateQueries({ queryKey: ['lead', lead.id] });
+                    queryClient.invalidateQueries({ queryKey: ['lead_versions', lead.id] });
                   } catch (e) { console.error('Failed to persist pvp_override', e); }
                 }
               }}

@@ -79,10 +79,13 @@ export const useCreateLeadVersion = () => {
           ...rest, lead_id: leadId, version: newVersion,
         }));
 
+      const { data: srcVersionRow } = await supabase.from('lead_versions').select('*')
+        .eq('lead_id', leadId).eq('version', fromVersion).maybeSingle();
       const ins = await Promise.all([
         supabase.from('lead_versions').insert({
           lead_id: leadId, version: newVersion, name: `V${newVersion}`,
           general_data: pickGeneralData(leadRow) as any,
+          ...pickVersionContext(srcVersionRow || leadRow),
         } as any),
         strip(planner.data).length ? supabase.from('lead_planner_data').insert(strip(planner.data) as any) : Promise.resolve({ error: null } as any),
         strip(costing.data).length ? supabase.from('lead_costing_data').insert(strip(costing.data) as any) : Promise.resolve({ error: null } as any),
@@ -171,11 +174,11 @@ export const useDeleteLeadVersion = () => {
 
       // Restore the general fields of the lead from the version that becomes live.
       const { data: prevRow } = await supabase
-        .from('lead_versions').select('general_data')
+        .from('lead_versions').select('*')
         .eq('lead_id', leadId).eq('version', prev).maybeSingle();
       const general = ((prevRow as any)?.general_data ?? {}) as Record<string, any>;
       if (isProposal) return prev;
-      const restore: Record<string, any> = { active_version: prev };
+      const restore: Record<string, any> = { active_version: prev, ...(prevRow ? pickVersionContext(prevRow) : {}) };
       GENERAL_FIELDS.forEach(k => {
         if (general[k] !== undefined && general[k] !== null) restore[k] = general[k];
       });
@@ -188,6 +191,28 @@ export const useDeleteLeadVersion = () => {
       qc.invalidateQueries({ queryKey: ['leads', vars.leadId] });
     },
   });
+};
+
+/** Per-version context fields (routes, exact PDF, manual PVP). `lead_versions` is the source of truth; `leads` mirrors the LIVE version. */
+export const VERSION_CONTEXT_FIELDS = ['route_map_url', 'route_day_maps', 'route_map_path', 'exact_itinerary_pdf_path', 'pvp_override'] as const;
+
+export const pickVersionContext = (row: any): Record<string, any> => {
+  const out: Record<string, any> = {};
+  VERSION_CONTEXT_FIELDS.forEach(k => { out[k] = (row ?? {})[k] ?? (k === 'route_day_maps' ? [] : null); });
+  return out;
+};
+
+/** Saves context fields of ONE version; mirrors to `leads` only when it is the LIVE version. */
+export const saveVersionContext = async (leadId: string, version: number, patch: Record<string, any>, isLive: boolean) => {
+  const { data: row } = await supabase.from('lead_versions').select('id').eq('lead_id', leadId).eq('version', version).maybeSingle();
+  const { error } = row
+    ? await supabase.from('lead_versions').update(patch as any).eq('id', (row as any).id)
+    : await supabase.from('lead_versions').insert({ lead_id: leadId, version, name: `V${version}`, general_data: {}, ...patch } as any);
+  if (error) throw error;
+  if (isLive) {
+    const { error: lErr } = await supabase.from('leads').update(patch as any).eq('id', leadId);
+    if (lErr) throw lErr;
+  }
 };
 
 /** Writes the general-data snapshot of a specific version. */
@@ -211,6 +236,8 @@ export const usePromoteAiProposal = () => {
     mutationFn: async ({ leadId, version }: { leadId: string; version: number }) => {
       const { error } = await supabase.rpc('promote_ai_proposal' as any, { p_lead_id: leadId, p_version: version } as any);
       if (error) throw error;
+      const { data: vRow } = await supabase.from('lead_versions').select('*').eq('lead_id', leadId).eq('version', version).maybeSingle();
+      if (vRow) await supabase.from('leads').update(pickVersionContext(vRow) as any).eq('id', leadId);
     },
     onSuccess: (_d, vars) => {
       invalidateLead(qc, vars.leadId);
