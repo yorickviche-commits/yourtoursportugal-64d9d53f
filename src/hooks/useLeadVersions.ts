@@ -236,6 +236,8 @@ export const usePromoteAiProposal = () => {
     mutationFn: async ({ leadId, version }: { leadId: string; version: number }) => {
       const { error } = await supabase.rpc('promote_ai_proposal' as any, { p_lead_id: leadId, p_version: version } as any);
       if (error) throw error;
+      const { data: vRow } = await supabase.from('lead_versions').select('*').eq('lead_id', leadId).eq('version', version).maybeSingle();
+      if (vRow) await supabase.from('leads').update(pickVersionContext(vRow) as any).eq('id', leadId);
     },
     onSuccess: (_d, vars) => {
       invalidateLead(qc, vars.leadId);
