@@ -4,11 +4,15 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useQueryClient } from '@tanstack/react-query';
 import { parseGoogleMapsUrl } from '@/lib/mapEmbed';
+import { saveVersionContext } from '@/hooks/useLeadVersions';
+import { syncVersionRoutes } from '@/lib/versionRouteMaps';
 
 export interface RouteDayMap { day: number; url: string }
 
 interface Props {
   leadId: string;
+  version: number;
+  isLive: boolean;
   routeMapPath?: string | null;
   exactItineraryPdfPath?: string | null;
   routeMapUrl?: string | null;
@@ -32,7 +36,7 @@ function filenameFromPath(path?: string | null) {
 
 const MAPS_RE = /^https?:\/\/(www\.)?(google\.[a-z.]+\/maps|maps\.google\.[a-z.]+|maps\.app\.goo\.gl|goo\.gl\/maps)/i;
 
-export function LeadContextAttachments({ leadId, routeMapPath, exactItineraryPdfPath, routeMapUrl, routeDayMaps, numberOfDays }: Props) {
+export function LeadContextAttachments({ leadId, version, isLive, routeMapPath, exactItineraryPdfPath, routeMapUrl, routeDayMaps, numberOfDays }: Props) {
   const { toast } = useToast();
   const qc = useQueryClient();
   const mapInputRef = useRef<HTMLInputElement>(null);
@@ -52,10 +56,12 @@ export function LeadContextAttachments({ leadId, routeMapPath, exactItineraryPdf
   const [dayDrafts, setDayDrafts] = useState<string[]>(initialDayDrafts);
   const [daysSaving, setDaysSaving] = useState(false);
 
-  useEffect(() => { setDayDrafts(initialDayDrafts()); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [JSON.stringify(savedDayMaps), numberOfDays]);
+  useEffect(() => { setDayDrafts(initialDayDrafts()); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [JSON.stringify(savedDayMaps), numberOfDays, version]);
 
   const dayDirty = JSON.stringify(dayDrafts.map((url, i) => ({ day: i + 1, url: url.trim() })).filter(d => d.url))
     !== JSON.stringify(savedDayMaps.filter(d => d.url).map(d => ({ day: d.day, url: d.url.trim() })));
+
+  const save = (patch: Record<string, any>) => saveVersionContext(leadId, version, patch, isLive);
 
   const saveDayMaps = async () => {
     const payload = dayDrafts.map((url, i) => ({ day: i + 1, url: url.trim() })).filter(d => d.url);
@@ -66,33 +72,33 @@ export function LeadContextAttachments({ leadId, routeMapPath, exactItineraryPdf
     }
     setDaysSaving(true);
     try {
-      const { error } = await supabase.from('leads').update({ route_day_maps: payload } as any).eq('id', leadId);
-      if (error) throw error;
-      toast({ title: '🧭 Rotas por dia guardadas', description: `${payload.length} dia(s) com rota — o Travel Planner vai seguir cada rota no dia respetivo.` });
+      await save({ route_day_maps: payload });
+      await syncVersionRoutes(leadId, version, { routeMapUrl, routeDayMaps: savedDayMaps }, { routeMapUrl, routeDayMaps: payload });
+      toast({ title: '🧭 Rotas por dia guardadas', description: `${payload.length} dia(s) com rota — só nesta versão (V${version}).` });
       refresh();
     } catch (e: any) {
       toast({ title: 'Erro', description: e.message, variant: 'destructive' });
     } finally { setDaysSaving(false); }
   };
 
-  useEffect(() => { setLinkDraft(routeMapUrl || ''); }, [routeMapUrl]);
+  useEffect(() => { setLinkDraft(routeMapUrl || ''); }, [routeMapUrl, version]);
 
 
   const parsedLink = parseGoogleMapsUrl(routeMapUrl || '');
 
   const saveLink = async (value: string | null) => {
     const clean = value?.trim() || null;
-    if (clean && !/^https?:\/\/(www\.)?(google\.[a-z.]+\/maps|maps\.google\.[a-z.]+|maps\.app\.goo\.gl|goo\.gl\/maps)/i.test(clean)) {
+    if (clean && !MAPS_RE.test(clean)) {
       toast({ title: 'Link inválido', description: 'Cola um link do Google Maps (google.com/maps/... ou maps.app.goo.gl/...).', variant: 'destructive' });
       return;
     }
     setLinkSaving(true);
     try {
-      const { error } = await supabase.from('leads').update({ route_map_url: clean } as any).eq('id', leadId);
-      if (error) throw error;
+      await save({ route_map_url: clean });
+      await syncVersionRoutes(leadId, version, { routeMapUrl, routeDayMaps: savedDayMaps }, { routeMapUrl: clean, routeDayMaps: savedDayMaps });
       toast({
         title: clean ? '🧭 Rota Google Maps guardada' : 'Rota removida',
-        description: clean ? 'O Travel Planner vai seguir esta rota como base do programa.' : undefined,
+        description: clean ? `Só nesta versão (V${version}). O Travel Planner vai seguir esta rota.` : undefined,
       });
       refresh();
     } catch (e: any) {
@@ -103,6 +109,9 @@ export function LeadContextAttachments({ leadId, routeMapPath, exactItineraryPdf
   const refresh = () => {
     qc.invalidateQueries({ queryKey: ['leads'] });
     qc.invalidateQueries({ queryKey: ['lead', leadId] });
+    qc.invalidateQueries({ queryKey: ['lead_versions', leadId] });
+    qc.invalidateQueries({ queryKey: ['travel_plan', leadId] });
+    qc.invalidateQueries({ queryKey: ['proposals'] });
   };
 
   // fetch signed thumbnail for map preview
@@ -118,14 +127,14 @@ export function LeadContextAttachments({ leadId, routeMapPath, exactItineraryPdf
 
   const uploadFile = async (file: File, kind: 'map' | 'pdf') => {
     const ext = file.name.split('.').pop()?.toLowerCase() || (kind === 'pdf' ? 'pdf' : 'png');
-    const path = `${leadId}/${kind === 'map' ? 'route-map' : 'exact-itinerary'}.${ext}`;
+    // Ficheiro próprio por versão — nunca sobrescreve o de outra versão.
+    const path = `${leadId}/v${version}/${kind === 'map' ? 'route-map' : 'exact-itinerary'}-${Date.now()}.${ext}`;
     const { error: upErr } = await supabase.storage.from(BUCKET).upload(path, file, {
       upsert: true, contentType: file.type,
     });
     if (upErr) throw upErr;
     const column = kind === 'map' ? 'route_map_path' : 'exact_itinerary_pdf_path';
-    const { error: updErr } = await supabase.from('leads').update({ [column]: path }).eq('id', leadId);
-    if (updErr) throw updErr;
+    await save({ [column]: path });
     return path;
   };
 
@@ -179,12 +188,12 @@ export function LeadContextAttachments({ leadId, routeMapPath, exactItineraryPdf
     const path = kind === 'map' ? routeMapPath : exactItineraryPdfPath;
     if (!path) return;
     try {
-      await supabase.storage.from(BUCKET).remove([path]);
+      // O ficheiro não é apagado do armazenamento: outra versão copiada pode usá-lo.
       const column = kind === 'map' ? 'route_map_path' : 'exact_itinerary_pdf_path';
-      await supabase.from('leads').update({ [column]: null }).eq('id', leadId);
+      await save({ [column]: null });
       if (kind === 'map') setMapUrl(null);
       if (kind === 'pdf') setPdfSizeLabel('');
-      toast({ title: 'Removido' });
+      toast({ title: 'Removido desta versão' });
       refresh();
     } catch (e: any) {
       toast({ title: 'Erro', description: e.message, variant: 'destructive' });
