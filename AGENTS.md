@@ -1,2 +1,3 @@
 - Agent keys: scheduled agents use `/functions/v1/mcp-agent` (hand-written gateway, verifies `ytp_agent_` key) which forwards to the SDK-generated `mcp-agent-core` (src/lib/mcp/agent-entry.ts, same tools via toolset.ts). Why: @lovable.dev/mcp-js only supports OAuth issuer auth.
 - src/lib/mcp must use relative imports only (no `@/`). Why: the edge bundler turns `@/` into broken `npm:` specifiers.
+- Per-version context (Google Maps routes, Exact Itinerary PDF, pvp_override) lives in `lead_versions`; `leads` only mirrors the LIVE version. Why: versions must be fully independent while agents/KPIs still read `leads`.
