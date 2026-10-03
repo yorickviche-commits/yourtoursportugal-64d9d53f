@@ -115,12 +115,22 @@ async function createLeadVersion(supabase, lead, fromVersion, opts) {
     lead_id: leadId,
     version: newVersion
   }));
+  const { data: srcVer } = await supabase.from("lead_versions").select("*").eq("lead_id", leadId).eq("version", fromVersion).maybeSingle();
+  const ctxSrc = srcVer || lead;
+  const context = {
+    route_map_url: ctxSrc.route_map_url ?? null,
+    route_day_maps: ctxSrc.route_day_maps ?? [],
+    route_map_path: ctxSrc.route_map_path ?? null,
+    exact_itinerary_pdf_path: ctxSrc.exact_itinerary_pdf_path ?? null,
+    pvp_override: ctxSrc.pvp_override ?? null
+  };
   const writes = await Promise.all([
     supabase.from("lead_versions").insert({
       lead_id: leadId,
       version: newVersion,
       name: agent ? `Proposta AI V${newVersion}` : `V${newVersion}`,
       general_data: pickGeneralData(lead),
+      ...context,
       ...agent ? {
         is_ai_proposal: true,
         proposed_by_label: `${agent.agent_label}${agent.model ? ` \xB7 ${agent.model}` : ""}`,
