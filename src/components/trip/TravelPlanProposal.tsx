@@ -2545,21 +2545,21 @@ const TravelPlanProposal = ({
             </div>
             {viewMode === 'edit' && closing.inclusionsOverride !== undefined && closing.inclusionsOverride !== '' ? (
               <RichTextarea
-                className="text-xs font-mono min-h-[180px]"
+                className="text-xs min-h-[180px]"
                 value={closing.inclusionsOverride}
                 onChange={v => setClosing(c => ({ ...c, inclusionsOverride: v }))}
               />
             ) : closing.inclusionsOverride ? (
-              <div className="text-xs text-slate-700 whitespace-pre-wrap">{closing.inclusionsOverride}</div>
+              <RichText as="div" className="text-xs text-slate-700 whitespace-pre-wrap" value={closing.inclusionsOverride} preserveNewlines />
             ) : (
               <div className="space-y-2.5">
                 {displayPlan.days.map(d => (
                   <div key={d.day_number} className="text-xs text-slate-700">
-                    <p className="font-semibold text-slate-800">{t.day} {d.day_number} — {d.title}</p>
+                    <p className="font-semibold text-slate-800">{t.day} {d.day_number} — <RichText value={d.title} /></p>
                     <ul className="mt-1 ml-3 space-y-0.5">
                       {d.bullets.slice(0, 6).map((b, i) => {
                         const obj = toBulletObj(b);
-                        return <li key={i} className="text-slate-600">• {obj.text}</li>;
+                        return <li key={i} className="text-slate-600">• <RichText value={obj.text} /></li>;
                       })}
                     </ul>
                   </div>

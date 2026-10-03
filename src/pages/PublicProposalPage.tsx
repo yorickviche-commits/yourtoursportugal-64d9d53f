@@ -939,7 +939,7 @@ const PricingConditions = ({ proposal, lang }: { proposal: any; lang: string }) 
   const days: ProposalDay[] = Array.isArray(proposal.days) ? proposal.days : [];
   const dayLabel = PRICING_LABELS[lang] ? ({ en: 'Day', fr: 'Jour', es: 'Día', pt: 'Dia', it: 'Giorno', de: 'Tag' } as any)[lang] : 'Day';
   const autoIncluded = days
-    .map(d => `**${dayLabel} ${d.day_number} — ${stripBoldMarkers(d.title || '')}**\n${(d.items || []).slice(0, 6).map(b => `• ${stripBoldMarkers(b)}`).join('\n')}`)
+    .map(d => `**${dayLabel} ${d.day_number} — ${stripBoldMarkers(d.title || '')}**\n${(d.items || []).slice(0, 6).map(b => `• ${b}`).join('\n')}`)
     .join('\n\n');
   const includedText: string = closing.inclusionsOverride?.trim() || autoIncluded;
   const dict = getPdfDict(lang);

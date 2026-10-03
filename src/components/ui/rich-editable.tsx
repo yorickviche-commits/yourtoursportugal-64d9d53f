@@ -13,13 +13,11 @@
  */
 import { forwardRef, useEffect, useRef, useCallback } from 'react';
 import { cn } from '@/lib/utils';
-import { escapeHtml } from '@/lib/richText';
+import { mdBoldToHtml } from '@/lib/richText';
 
 // ─── Conversion ─────────────────────────────────────────────────────────────
 function mdToHtml(md: string, singleLine = false): string {
-  const escaped = escapeHtml(md ?? '');
-  const withBold = escaped.replace(/\*\*(.+?)\*\*/gs, '<strong>$1</strong>');
-  return singleLine ? withBold : withBold.replace(/\n/g, '<br />');
+  return mdBoldToHtml(md ?? '', { preserveNewlines: !singleLine });
 }
 
 function serialize(node: Node): string {
@@ -39,6 +37,7 @@ function serialize(node: Node): string {
     // Block elements introduced by the browser (e.g. Enter key in contenteditable)
     return '\n' + inner;
   }
+  if (tag === 'EM' || tag === 'I') return inner;
   return isBold ? `**${inner}**` : inner;
 }
 
