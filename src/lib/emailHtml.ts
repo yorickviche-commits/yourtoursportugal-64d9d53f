@@ -187,7 +187,7 @@ export function buildProgramHtml(p: ProgramLite, opts: { includePrice: boolean }
       p.importantNotes
         .split('\n')
         .filter(l => l.trim())
-        .map(l => `<p style="margin:0 0 4px;font-size:13px;color:#334155">• ${escapeHtmlText(l.replace(/^[•\-\s]+/, ''))}</p>`)
+        .map(l => `<p style="margin:0 0 4px;font-size:13px;color:#334155">• ${mdBoldToHtml(l.replace(/^[•\-\s]+/, ''))}</p>`)
         .join(''),
     );
   }
