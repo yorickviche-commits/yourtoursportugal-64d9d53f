@@ -1,3 +1,4 @@
+import { mdBoldToHtml, stripBoldMarkers } from '@/lib/richText';
 import { money as fmtMoney } from './money';
 /**
  * "Casa YT" email HTML builder.
@@ -156,7 +157,7 @@ export function buildProgramHtml(p: ProgramLite, opts: { includePrice: boolean }
   (p.days || []).forEach((d, i) => {
     const items = dayItems(d);
     parts.push(
-      `<p style="margin:14px 0 2px;font-size:14px;font-weight:bold;color:${YT_BLUE}">Day ${d.day_number ?? i + 1} — ${escapeHtmlText(d.title || '')}</p>`,
+      `<p style="margin:14px 0 2px;font-size:14px;font-weight:bold;color:${YT_BLUE}">Day ${d.day_number ?? i + 1} — ${escapeHtmlText(stripBoldMarkers(d.title || ''))}</p>`,
     );
     const dl = d.date_label || d.date;
     if (dl) parts.push(`<p style="margin:0;font-size:12px;color:${MUTED}">${escapeHtmlText(String(dl))}</p>`);
@@ -166,7 +167,7 @@ export function buildProgramHtml(p: ProgramLite, opts: { includePrice: boolean }
       const rows = items.map(raw => {
         const { text, time } = splitTime(raw);
         return `<tr>
-          <td style="padding:2px 8px 2px 0;font-size:13px;color:#334155;vertical-align:top">• ${escapeHtmlText(text)}</td>
+          <td style="padding:2px 8px 2px 0;font-size:13px;color:#334155;vertical-align:top">• ${mdBoldToHtml(text)}</td>
           <td style="padding:2px 0;font-size:12px;color:${MUTED};text-align:right;white-space:nowrap;vertical-align:top">${escapeHtmlText(time)}</td>
         </tr>`;
       }).join('');
@@ -186,7 +187,7 @@ export function buildProgramHtml(p: ProgramLite, opts: { includePrice: boolean }
       p.importantNotes
         .split('\n')
         .filter(l => l.trim())
-        .map(l => `<p style="margin:0 0 4px;font-size:13px;color:#334155">• ${escapeHtmlText(l.replace(/^[•\-\s]+/, ''))}</p>`)
+        .map(l => `<p style="margin:0 0 4px;font-size:13px;color:#334155">• ${mdBoldToHtml(l.replace(/^[•\-\s]+/, ''))}</p>`)
         .join(''),
     );
   }

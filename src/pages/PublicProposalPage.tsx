@@ -881,7 +881,7 @@ const DayAnnotationSection = ({ day, dayIdx, isOpen, onToggle, annotations, note
             {day.items.map((item: string, i: number) => (
               <div key={i}>
                 <div className="flex items-center gap-2 text-xs text-slate-500 py-1">
-                  <span className="flex-1 truncate">{item}</span>
+                  <RichText className="flex-1 truncate" value={item} />
                   <button onClick={() => setItemComment(itemComment === i ? null : i)} className="shrink-0 p-1 hover:bg-sky-50 rounded">
                     <MessageSquare className="h-3 w-3" />
                   </button>
@@ -939,7 +939,7 @@ const PricingConditions = ({ proposal, lang }: { proposal: any; lang: string }) 
   const days: ProposalDay[] = Array.isArray(proposal.days) ? proposal.days : [];
   const dayLabel = PRICING_LABELS[lang] ? ({ en: 'Day', fr: 'Jour', es: 'Día', pt: 'Dia', it: 'Giorno', de: 'Tag' } as any)[lang] : 'Day';
   const autoIncluded = days
-    .map(d => `**${dayLabel} ${d.day_number} — ${stripBoldMarkers(d.title || '')}**\n${(d.items || []).slice(0, 6).map(b => `• ${stripBoldMarkers(b)}`).join('\n')}`)
+    .map(d => `**${dayLabel} ${d.day_number} — ${stripBoldMarkers(d.title || '')}**\n${(d.items || []).slice(0, 6).map(b => `• ${b}`).join('\n')}`)
     .join('\n\n');
   const includedText: string = closing.inclusionsOverride?.trim() || autoIncluded;
   const dict = getPdfDict(lang);
@@ -1029,7 +1029,7 @@ const PricingConditions = ({ proposal, lang }: { proposal: any; lang: string }) 
                       <tr key={`${o.day}-${i}`} className="border-b border-slate-100 last:border-0">
                         <td className="px-3 py-2 text-slate-700">
                           {Number(o.day) > 0 && <span className="text-slate-500">{dayLabel} {o.day} — </span>}
-                          {o.description}
+                          <RichText value={o.description} />
                         </td>
                         <td className="px-3 py-2 text-right font-medium text-slate-800 whitespace-nowrap">
                           {eur(o.pvp)}

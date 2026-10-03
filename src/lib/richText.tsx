@@ -22,16 +22,58 @@ export function escapeHtml(s: string): string {
     .replace(/'/g, '&#39;');
 }
 
-/** Convert `**bold**` markers into <strong>. Preserves newlines as <br />. */
+const ITALIC_OPEN = '\u0001';
+const ITALIC_CLOSE = '\u0002';
+
+function decodeEntities(s: string): string {
+  return s
+    .replace(/&nbsp;/gi, ' ')
+    .replace(/&lt;/gi, '<')
+    .replace(/&gt;/gi, '>')
+    .replace(/&quot;/gi, '"')
+    .replace(/&#39;|&apos;/gi, "'")
+    .replace(/&amp;/gi, '&');
+}
+
+/**
+ * Normalise any stored rich text (HTML from editors — b/strong/i/em/br — or
+ * legacy markdown `**bold**`) into the canonical markdown-bold form.
+ * All other HTML tags are stripped (sanitised). Italic becomes private markers.
+ */
+export function normalizeRichText(text: string | null | undefined): string {
+  let s = String(text ?? '');
+  if (!/[<&]/.test(s)) return s;
+  if (/<\/?[a-z][^>]*>/i.test(s)) {
+    s = s
+      .replace(/<br\s*\/?>/gi, '\n')
+      .replace(/<\/(p|div|li)>/gi, '\n')
+      .replace(/<\s*(b|strong)(\s[^>]*)?>/gi, '**')
+      .replace(/<\s*\/\s*(b|strong)\s*>/gi, '**')
+      .replace(/<\s*(i|em)(\s[^>]*)?>/gi, ITALIC_OPEN)
+      .replace(/<\s*\/\s*(i|em)\s*>/gi, ITALIC_CLOSE)
+      .replace(/<[^>]*>/g, '')
+      .replace(/\*\*\*\*/g, ''); // adjacent bold runs: </b><b>
+  }
+  return decodeEntities(s);
+}
+
+/** Convert rich text (HTML or `**bold**`) into safe HTML with <strong>/<em>. */
 export function mdBoldToHtml(text: string | null | undefined, opts?: { preserveNewlines?: boolean }): string {
-  const escaped = escapeHtml(text ?? '');
-  const withBold = escaped.replace(/\*\*(.+?)\*\*/gs, '<strong>$1</strong>');
+  const escaped = escapeHtml(normalizeRichText(text));
+  const withBold = escaped
+    .replace(/\*\*([\s\S]+?)\*\*/g, '<strong>$1</strong>')
+    .replace(/\*\*/g, '') // never show a dangling marker
+    .replace(new RegExp(`${ITALIC_OPEN}([\\s\\S]*?)${ITALIC_CLOSE}`, 'g'), '<em>$1</em>')
+    .replace(new RegExp(`[${ITALIC_OPEN}${ITALIC_CLOSE}]`, 'g'), '');
   return opts?.preserveNewlines ? withBold.replace(/\n/g, '<br />') : withBold;
 }
 
-/** Strip **markers** to plain text (for alt text, exports, etc). */
+/** Strip bold/italic markers and HTML to plain text (for alt text, exports, etc). */
 export function stripBoldMarkers(text: string | null | undefined): string {
-  return String(text ?? '').replace(/\*\*(.+?)\*\*/gs, '$1');
+  return normalizeRichText(text)
+    .replace(/\*\*([\s\S]+?)\*\*/g, '$1')
+    .replace(/\*\*/g, '')
+    .replace(new RegExp(`[${ITALIC_OPEN}${ITALIC_CLOSE}]`, 'g'), '');
 }
 
 interface RichTextProps {
@@ -128,7 +170,8 @@ interface DrawRichOpts {
 
 interface Segment { text: string; bold: boolean }
 
-function parseSegments(text: string): Segment[] {
+function parseSegments(raw: string): Segment[] {
+  const text = normalizeRichText(raw).replace(new RegExp(`[${ITALIC_OPEN}${ITALIC_CLOSE}]`, 'g'), '');
   const out: Segment[] = [];
   const re = /\*\*(.+?)\*\*/gs;
   let last = 0;
@@ -138,7 +181,7 @@ function parseSegments(text: string): Segment[] {
     out.push({ text: m[1], bold: true });
     last = m.index + m[0].length;
   }
-  if (last < text.length) out.push({ text: text.slice(last), bold: false });
+  if (last < text.length) out.push({ text: text.slice(last).replace(/\*\*/g, ''), bold: false });
   return out;
 }
 

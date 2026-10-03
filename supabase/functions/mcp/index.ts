@@ -1415,8 +1415,21 @@ function mergeProposalHotels(fromCosting = [], edited = []) {
 
 // src/lib/richText.tsx
 import { useEffect } from "npm:react@^18.3.1";
+var ITALIC_OPEN = "";
+var ITALIC_CLOSE = "";
+function decodeEntities(s) {
+  return s.replace(/&nbsp;/gi, " ").replace(/&lt;/gi, "<").replace(/&gt;/gi, ">").replace(/&quot;/gi, '"').replace(/&#39;|&apos;/gi, "'").replace(/&amp;/gi, "&");
+}
+function normalizeRichText(text) {
+  let s = String(text ?? "");
+  if (!/[<&]/.test(s)) return s;
+  if (/<\/?[a-z][^>]*>/i.test(s)) {
+    s = s.replace(/<br\s*\/?>/gi, "\n").replace(/<\/(p|div|li)>/gi, "\n").replace(/<\s*(b|strong)(\s[^>]*)?>/gi, "**").replace(/<\s*\/\s*(b|strong)\s*>/gi, "**").replace(/<\s*(i|em)(\s[^>]*)?>/gi, ITALIC_OPEN).replace(/<\s*\/\s*(i|em)\s*>/gi, ITALIC_CLOSE).replace(/<[^>]*>/g, "").replace(/\*\*\*\*/g, "");
+  }
+  return decodeEntities(s);
+}
 function stripBoldMarkers(text) {
-  return String(text ?? "").replace(/\*\*(.+?)\*\*/gs, "$1");
+  return normalizeRichText(text).replace(/\*\*([\s\S]+?)\*\*/g, "$1").replace(/\*\*/g, "").replace(new RegExp(`[${ITALIC_OPEN}${ITALIC_CLOSE}]`, "g"), "");
 }
 
 // src/lib/money.ts
