@@ -201,8 +201,10 @@ export const pickVersionContext = (row: any): Record<string, any> => {
 
 /** Saves context fields of ONE version; mirrors to `leads` only when it is the LIVE version. */
 export const saveVersionContext = async (leadId: string, version: number, patch: Record<string, any>, isLive: boolean) => {
-  const { error } = await supabase.from('lead_versions')
-    .upsert({ lead_id: leadId, version, ...patch } as any, { onConflict: 'lead_id,version', ignoreDuplicates: false });
+  const { data: row } = await supabase.from('lead_versions').select('id').eq('lead_id', leadId).eq('version', version).maybeSingle();
+  const { error } = row
+    ? await supabase.from('lead_versions').update(patch as any).eq('id', (row as any).id)
+    : await supabase.from('lead_versions').insert({ lead_id: leadId, version, name: `V${version}`, general_data: {}, ...patch } as any);
   if (error) throw error;
   if (isLive) {
     const { error: lErr } = await supabase.from('leads').update(patch as any).eq('id', leadId);
