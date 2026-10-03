@@ -2509,7 +2509,7 @@ const TravelPlanProposal = ({
                       <tr key={`${o.day}-${i}`} className="border-b border-slate-100 last:border-0">
                         <td className="px-3 py-2 text-slate-700">
                           {o.day > 0 && <span className="text-slate-500">{d.day} {o.day} — </span>}
-                          {o.description}
+                          <RichText value={o.description} />
                         </td>
                         <td className="px-3 py-2 text-right text-slate-800 font-medium whitespace-nowrap">
                           {eur(o.pvp)}
