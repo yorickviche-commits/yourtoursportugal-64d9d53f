@@ -646,7 +646,7 @@ const LeadOperationsEditor = ({ activeVersion, leadId, leadCode, pvpTotal = 0, s
 
                             {/* Notas */}
                             <div className="flex items-center justify-center pt-1.5">
-                              <ItemNotesDialog entityType="lead_cost_item" entityId={row.itemKey} label={row.activityTitle} />
+                              <ItemNotesDialog entityType="lead_operation" entityId={`${leadId}:${row.itemKey}`} label={row.activityTitle} />
                             </div>
 
                             {/* Pedido de reserva */}

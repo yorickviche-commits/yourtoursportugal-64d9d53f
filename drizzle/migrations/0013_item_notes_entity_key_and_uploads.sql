@@ -1,0 +1,10 @@
+alter table public.item_notes add column if not exists entity_key text;
+alter table public.item_notes add column if not exists updated_at timestamptz;
+alter table public.item_notes alter column entity_id drop not null;
+comment on column public.item_notes.entity_id is 'DEPRECATED: use entity_key (text, supports non-uuid line keys)';
+update public.item_notes set entity_key = entity_id::text where entity_key is null;
+grant select, insert, update, delete on public.item_notes to authenticated, service_role;
+create index if not exists item_notes_entity_key_idx on public.item_notes(entity_type, entity_key);
+create policy "Internal read item-notes files" on storage.objects for select to authenticated using (bucket_id='item-notes' and public.is_internal_user(auth.uid()));
+create policy "Internal upload item-notes files" on storage.objects for insert to authenticated with check (bucket_id='item-notes' and public.is_internal_user(auth.uid()));
+create policy "Internal delete item-notes files" on storage.objects for delete to authenticated using (bucket_id='item-notes' and public.is_internal_user(auth.uid()));

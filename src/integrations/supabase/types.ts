@@ -1481,30 +1481,36 @@ export type Database = {
           attachment_url: string | null
           created_at: string
           created_by: string | null
-          entity_id: string
+          entity_id: string | null
+          entity_key: string | null
           entity_type: string
           id: string
           note_text: string | null
+          updated_at: string | null
         }
         Insert: {
           attachment_name?: string | null
           attachment_url?: string | null
           created_at?: string
           created_by?: string | null
-          entity_id: string
+          entity_id?: string | null
+          entity_key?: string | null
           entity_type: string
           id?: string
           note_text?: string | null
+          updated_at?: string | null
         }
         Update: {
           attachment_name?: string | null
           attachment_url?: string | null
           created_at?: string
           created_by?: string | null
-          entity_id?: string
+          entity_id?: string | null
+          entity_key?: string | null
           entity_type?: string
           id?: string
           note_text?: string | null
+          updated_at?: string | null
         }
         Relationships: []
       }
