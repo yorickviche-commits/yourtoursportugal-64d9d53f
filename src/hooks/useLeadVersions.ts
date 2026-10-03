@@ -190,6 +190,26 @@ export const useDeleteLeadVersion = () => {
   });
 };
 
+/** Per-version context fields (routes, exact PDF, manual PVP). `lead_versions` is the source of truth; `leads` mirrors the LIVE version. */
+export const VERSION_CONTEXT_FIELDS = ['route_map_url', 'route_day_maps', 'route_map_path', 'exact_itinerary_pdf_path', 'pvp_override'] as const;
+
+export const pickVersionContext = (row: any): Record<string, any> => {
+  const out: Record<string, any> = {};
+  VERSION_CONTEXT_FIELDS.forEach(k => { out[k] = (row ?? {})[k] ?? (k === 'route_day_maps' ? [] : null); });
+  return out;
+};
+
+/** Saves context fields of ONE version; mirrors to `leads` only when it is the LIVE version. */
+export const saveVersionContext = async (leadId: string, version: number, patch: Record<string, any>, isLive: boolean) => {
+  const { error } = await supabase.from('lead_versions')
+    .upsert({ lead_id: leadId, version, ...patch } as any, { onConflict: 'lead_id,version', ignoreDuplicates: false });
+  if (error) throw error;
+  if (isLive) {
+    const { error: lErr } = await supabase.from('leads').update(patch as any).eq('id', leadId);
+    if (lErr) throw lErr;
+  }
+};
+
 /** Writes the general-data snapshot of a specific version. */
 export const saveVersionGeneralData = async (leadId: string, version: number, general: Record<string, any>) => {
   const { data } = await supabase
