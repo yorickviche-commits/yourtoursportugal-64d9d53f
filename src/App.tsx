@@ -52,6 +52,7 @@ import AdminIntegrationsPage from "./pages/AdminIntegrationsPage";
 import AdminSyncPage from "./pages/AdminSyncPage";
 import AdminActivityLogsPage from "./pages/AdminActivityLogsPage";
 import AgentDashboardPage from "./pages/AgentDashboardPage";
+import JarvisLiveMapPage from "./pages/JarvisLiveMapPage";
 import ProfilePage from "./pages/ProfilePage";
 import CatalogPage from "./pages/CatalogPage";
 import ProductsPage from "./pages/ProductsPage";
@@ -107,7 +108,8 @@ const App = () => (
             <Route path="/mobile" element={<ProtectedRoute><MobilePage /></ProtectedRoute>} />
             <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
             <Route path="/ai-office" element={<ProtectedRoute><AIWorkOfficePage /></ProtectedRoute>} />
-            <Route path="/agents/dashboard" element={<ProtectedRoute><AgentDashboardPage /></ProtectedRoute>} />
+            <Route path="/agents/dashboard" element={<ProtectedRoute><JarvisLiveMapPage /></ProtectedRoute>} />
+            <Route path="/agents/spark-legacy" element={<ProtectedRoute><AgentDashboardPage /></ProtectedRoute>} />
             <Route path="/agents/approvals" element={<ProtectedRoute><AiApprovalsPage /></ProtectedRoute>} />
             <Route path="/approvals" element={<ProtectedRoute><ApprovalsPage /></ProtectedRoute>} />
             <Route path="/tasks" element={<ProtectedRoute><TasksPage /></ProtectedRoute>} />
