@@ -4,8 +4,8 @@
  * original Google Maps route).
  *
  * The real driving route comes from the Google Routes API (via the
- * `route-map-image` edge function); tiles come from the CARTO Voyager basemap
- * (Google-Maps-like look, CORS-enabled, retina @2x).
+ * `route-map-image` edge function); tiles come from OpenStreetMap
+ * (CORS-enabled, rendered onto the existing high-density canvas).
  */
 
 import { parseGoogleMapsUrl } from '@/lib/mapEmbed';
@@ -209,13 +209,11 @@ export async function buildRouteMapImage(
     for (let ty = tileMin.y; ty <= tileMax.y; ty++) {
       if (ty < 0 || ty > maxTile) continue;
       const wrapX = ((tx % (maxTile + 1)) + maxTile + 1) % (maxTile + 1);
-      const url = `https://basemaps.cartocdn.com/rastertiles/voyager/${zoom}/${wrapX}/${ty}@2x.png`;
-      const fallback = `https://tile.openstreetmap.org/${zoom}/${wrapX}/${ty}.png`;
+      const url = `https://tile.openstreetmap.org/${zoom}/${wrapX}/${ty}.png`;
       const dx = tx * TILE - originX;
       const dy = ty * TILE - originY;
       jobs.push(
         loadImage(url)
-          .then(img => img || loadImage(fallback))
           .then(img => {
             if (img) ctx.drawImage(img, Math.round(dx), Math.round(dy), TILE, TILE);
           }),
@@ -261,11 +259,11 @@ export async function buildRouteMapImage(
 
   // Attribution
   ctx.fillStyle = 'rgba(255,255,255,0.8)';
-  ctx.fillRect(width - 205, height - 20, 205, 20);
+  ctx.fillRect(width - 235, height - 20, 235, 20);
   ctx.fillStyle = '#334155';
   ctx.font = '11px Arial';
   ctx.textAlign = 'right';
-  ctx.fillText('© OpenStreetMap · CARTO · Google routes', width - 5, height - 6);
+  ctx.fillText('© OpenStreetMap contributors · Google routes', width - 5, height - 6);
 
   try {
     return { dataUrl: canvas.toDataURL('image/jpeg', 0.85), width: width * scale, height: height * scale, stops: labels };
