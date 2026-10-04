@@ -178,6 +178,14 @@ export default function SupplierSearchDropdown({ value, onChange, className }: S
                 <option key={category.value} value={category.value}>{category.label}</option>
               ))}
             </select>
+            <select className="w-full h-8 text-xs border rounded-md px-2 bg-background" value={newRegion} onChange={e => setNewRegion(e.target.value)}>
+              <option value="">Região de operação (opcional)</option>
+              {(['PT', 'ES'] as const).map(c => (
+                <optgroup key={c} label={COUNTRY_LABELS[c]}>
+                  {regions.filter(r => r.country === c).map(r => <option key={r.id} value={r.name}>{r.name}</option>)}
+                </optgroup>
+              ))}
+            </select>
             <Button size="sm" className="w-full text-xs" onClick={handleAddFSE} disabled={adding || !newName.trim()}>
               {adding ? 'A adicionar...' : 'Criar FSE'}
             </Button>
