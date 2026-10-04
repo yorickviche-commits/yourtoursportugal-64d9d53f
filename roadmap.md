@@ -3,7 +3,7 @@
 ## Correções atuais
 - [x] Remover CARTO dos mapas impressos/PDF e validar OpenStreetMap sem marcas de água
 - [x] Corrigir criação rápida e completa de FSE a partir das linhas de Costing
-- [ ] Validar no browser a criação, prevenção de duplicados, atualização da lista e seleção na linha
+- [x] Validar no browser a criação, prevenção de duplicados, atualização da lista e seleção na linha
 
 ## FASE 2 do MCP
 - [x] Fila de aprovações + 18 ferramentas novas (31 no total)
