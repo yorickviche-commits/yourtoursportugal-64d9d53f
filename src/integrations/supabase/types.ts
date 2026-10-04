@@ -4609,29 +4609,73 @@ export type Database = {
         }
         Relationships: []
       }
-      regions: {
+      region_destinations: {
         Row: {
-          code: string
           created_at: string
           id: string
           is_active: boolean
           name: string
+          region_id: string
           sort_order: number
         }
         Insert: {
-          code: string
           created_at?: string
           id?: string
           is_active?: boolean
           name: string
+          region_id: string
           sort_order?: number
         }
         Update: {
-          code?: string
           created_at?: string
           id?: string
           is_active?: boolean
           name?: string
+          region_id?: string
+          sort_order?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "region_destinations_region_id_fkey"
+            columns: ["region_id"]
+            isOneToOne: false
+            referencedRelation: "regions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      regions: {
+        Row: {
+          code: string
+          country: string
+          created_at: string
+          hero_image_url: string | null
+          id: string
+          is_active: boolean
+          name: string
+          slug: string | null
+          sort_order: number
+        }
+        Insert: {
+          code: string
+          country?: string
+          created_at?: string
+          hero_image_url?: string | null
+          id?: string
+          is_active?: boolean
+          name: string
+          slug?: string | null
+          sort_order?: number
+        }
+        Update: {
+          code?: string
+          country?: string
+          created_at?: string
+          hero_image_url?: string | null
+          id?: string
+          is_active?: boolean
+          name?: string
+          slug?: string | null
           sort_order?: number
         }
         Relationships: []
@@ -4870,6 +4914,39 @@ export type Database = {
           },
         ]
       }
+      supplier_regions: {
+        Row: {
+          created_at: string
+          region_id: string
+          supplier_id: string
+        }
+        Insert: {
+          created_at?: string
+          region_id: string
+          supplier_id: string
+        }
+        Update: {
+          created_at?: string
+          region_id?: string
+          supplier_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "supplier_regions_region_id_fkey"
+            columns: ["region_id"]
+            isOneToOne: false
+            referencedRelation: "regions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "supplier_regions_supplier_id_fkey"
+            columns: ["supplier_id"]
+            isOneToOne: false
+            referencedRelation: "suppliers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       supplier_scores: {
         Row: {
           classification: string | null
@@ -5015,6 +5092,7 @@ export type Database = {
           contact_name: string | null
           contact_phone: string | null
           contract_type: string | null
+          country: string | null
           created_at: string
           created_by: string | null
           currency: string | null
@@ -5037,6 +5115,7 @@ export type Database = {
           contact_name?: string | null
           contact_phone?: string | null
           contract_type?: string | null
+          country?: string | null
           created_at?: string
           created_by?: string | null
           currency?: string | null
@@ -5059,6 +5138,7 @@ export type Database = {
           contact_name?: string | null
           contact_phone?: string | null
           contract_type?: string | null
+          country?: string | null
           created_at?: string
           created_by?: string | null
           currency?: string | null

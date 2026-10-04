@@ -141,6 +141,13 @@
       "when": 1791122809386,
       "tag": "0019_jarvis_agent_registry",
       "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "7",
+      "when": 1791151999978,
+      "tag": "0020_regions_spain_support",
+      "breakpoints": true
     }
   ]
 }
