@@ -550,7 +550,6 @@ const FSEDatabasePage = () => {
         onOpenChange={setModalOpen}
         prefillDestination={prefillDest}
         prefillCategory={prefillCat}
-        onSave={(data: any) => console.log("FSE saved:", data)}
       />
     </AppLayout>
   );
