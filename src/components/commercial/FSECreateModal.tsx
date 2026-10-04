@@ -15,16 +15,36 @@ import { useToast } from '@/hooks/use-toast';
 import { useQueryClient } from '@tanstack/react-query';
 import { createOrFindFSE, type FSECreateData } from '@/lib/createFSE';
 import { FSE_CATEGORIES } from '@/data/fseDatabase';
+import { useRegions, COUNTRY_LABELS } from '@/hooks/useRegions';
 import {
   Sparkles, Upload, FileText, Loader2, ClipboardPaste,
   AlertTriangle, CheckCircle2, Pencil, Trash2, Plus,
   Globe, MapPin, ExternalLink, Link2,
 } from 'lucide-react';
 
-// ─── Constants ───
-const FSE_DESTINATIONS = [
-  'Açores', 'Alentejo', 'Algarve', 'Centro', 'Douro', 'Lisboa', 'Madeira', 'Norte', 'Porto',
-];
+// ─── Regions (from Admin → Regiões, PT + ES) ───
+function RegionChips({ selected, onToggle }: { selected: string[]; onToggle: (d: string) => void }) {
+  const { data: regions = [] } = useRegions();
+  return (
+    <div className="space-y-1">
+      {(['PT', 'ES'] as const).map(c => {
+        const list = regions.filter(r => r.country === c);
+        if (!list.length) return null;
+        return (
+          <div key={c} className="flex flex-wrap items-center gap-1.5">
+            <span className="w-14 text-[10px] font-medium text-muted-foreground">{COUNTRY_LABELS[c]}</span>
+            {list.map(r => (
+              <button key={r.id} type="button" onClick={() => onToggle(r.name)}
+                className={`px-2.5 py-1 rounded-md text-xs font-medium border transition-colors ${
+                  selected.includes(r.name) ? 'bg-primary text-primary-foreground border-primary' : 'bg-muted/50 text-muted-foreground border-border hover:border-primary/50'
+                }`}>{r.name}</button>
+            ))}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
 
 const SUB_CATEGORIES: Record<string, string[]> = {
   aloj: ['5★', '4★', '3★', 'Villas', 'Apartments', 'Rural', 'Boutique'],
@@ -431,20 +451,7 @@ function ReviewForm({
               <MapPin className="h-3 w-3" /> Destinos (ponto de saída)
               {form.multi_destination && <Badge className="h-4 px-1 text-[9px] bg-amber-100 text-amber-700 border-amber-300">Multi-Destino</Badge>}
             </Label>
-            <div className="flex flex-wrap gap-1.5">
-              {FSE_DESTINATIONS.map(d => (
-                <button key={d}
-                  onClick={() => toggleDestination(d)}
-                  className={`px-2.5 py-1 rounded-md text-xs font-medium border transition-colors ${
-                    form.destinations.includes(d)
-                      ? 'bg-primary text-primary-foreground border-primary'
-                      : 'bg-muted/50 text-muted-foreground border-border hover:border-primary/50'
-                  }`}
-                >
-                  {d}
-                </button>
-              ))}
-            </div>
+            <RegionChips selected={form.destinations} onToggle={toggleDestination} />
           </div>
 
           {/* Contact */}
