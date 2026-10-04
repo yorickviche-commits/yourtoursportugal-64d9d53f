@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { requireInternalUser } from "../_shared/require-auth.ts";
+import { loadRegions, countryFor } from "../_shared/regions.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -201,15 +202,18 @@ serve(async (req) => {
 
 
   try {
+    const body = await req.json();
+    let query: string = String(body.query || '');
+    const country = countryFor(query, await loadRegions());
+    if (country && !query.toLowerCase().includes(country.toLowerCase())) query = `${query}, ${country}`;
     const {
-      query,
       count = 20,
       page = 1,
       mode = 'search',
       excludePhotoIds = [],
       prompt: customPrompt,
       programContext,
-    } = await req.json();
+    } = body;
 
     if (mode === 'generate') {
       const result = await generateWithAI(query, customPrompt, programContext);
