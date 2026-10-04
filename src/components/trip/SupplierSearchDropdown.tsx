@@ -5,8 +5,11 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
-import { supabase } from '@/integrations/supabase/client';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
+import { useToast } from '@/hooks/use-toast';
+import { createOrFindFSE } from '@/lib/createFSE';
+import { FSE_CATEGORIES } from '@/data/fseDatabase';
 
 interface SupplierSearchDropdownProps {
   value: string;
@@ -34,10 +37,11 @@ export default function SupplierSearchDropdown({ value, onChange, className }: S
   const [search, setSearch] = useState('');
   const [addOpen, setAddOpen] = useState(false);
   const [newName, setNewName] = useState('');
-  const [newCategory, setNewCategory] = useState('other');
+  const [newCategory, setNewCategory] = useState('anim');
   const [adding, setAdding] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const queryClient = useQueryClient();
+  const { toast } = useToast();
 
   const { data: suppliers = [] } = useSuppliersList();
 
@@ -55,18 +59,22 @@ export default function SupplierSearchDropdown({ value, onChange, className }: S
     if (!newName.trim()) return;
     setAdding(true);
     try {
-      const { error } = await supabase
-        .from('suppliers')
-        .insert({ name: newName.trim(), category: newCategory });
-      if (error) throw error;
-      await queryClient.invalidateQueries({ queryKey: ['suppliers_list'] });
-      onChange(newName.trim());
+      const result = await createOrFindFSE({ supplier_name: newName, category: newCategory });
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['suppliers_list'] }),
+        queryClient.invalidateQueries({ queryKey: ['supplier_experience_catalog'] }),
+      ]);
+      onChange(result.supplier.name);
+      toast(result.existed
+        ? { title: 'FSE já existente', description: `${result.supplier.name} foi selecionado.` }
+        : { title: 'FSE criado', description: `${result.supplier.name} foi criado e selecionado.` });
       setNewName('');
-      setNewCategory('other');
+      setNewCategory('anim');
       setAddOpen(false);
       setOpen(false);
-    } catch (e) {
+    } catch (e: any) {
       console.error('Error adding supplier:', e);
+      toast({ title: 'Erro ao criar FSE', description: e?.message || String(e), variant: 'destructive' });
     } finally {
       setAdding(false);
     }
@@ -163,12 +171,9 @@ export default function SupplierSearchDropdown({ value, onChange, className }: S
               value={newCategory}
               onChange={e => setNewCategory(e.target.value)}
             >
-              <option value="hotel">Hotel</option>
-              <option value="restaurant">Restaurante</option>
-              <option value="guide">Guia</option>
-              <option value="transport">Transporte</option>
-              <option value="activity">Atividade</option>
-              <option value="other">Outro</option>
+              {FSE_CATEGORIES.map(category => (
+                <option key={category.value} value={category.value}>{category.label}</option>
+              ))}
             </select>
             <Button size="sm" className="w-full text-xs" onClick={handleAddFSE} disabled={adding || !newName.trim()}>
               {adding ? 'A adicionar...' : 'Criar FSE'}

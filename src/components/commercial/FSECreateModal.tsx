@@ -12,6 +12,8 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
 import { useToast } from '@/hooks/use-toast';
+import { useQueryClient } from '@tanstack/react-query';
+import { createOrFindFSE, type FSECreateData } from '@/lib/createFSE';
 import {
   Sparkles, Upload, FileText, Loader2, ClipboardPaste,
   AlertTriangle, CheckCircle2, Pencil, Trash2, Plus,
@@ -40,7 +42,7 @@ const SUB_CATEGORIES: Record<string, string[]> = {
 
 interface ExtraLink { name: string; url: string }
 
-interface FSEFormData {
+interface FSEFormData extends FSECreateData {
   supplier_name: string;
   category: string;
   sub_category: string;
@@ -72,17 +74,19 @@ interface FSECreateModalProps {
   onOpenChange: (open: boolean) => void;
   prefillDestination?: string;
   prefillCategory?: string;
-  onSave?: (data: FSEFormData) => void;
+  onSave?: (data: FSEFormData, supplier: { id: string; name: string; category: string }) => void | Promise<void>;
 }
 
 export default function FSECreateModal({ open, onOpenChange, prefillDestination, prefillCategory, onSave }: FSECreateModalProps) {
   const { toast } = useToast();
+  const queryClient = useQueryClient();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const dropRef = useRef<HTMLDivElement>(null);
 
   const [tab, setTab] = useState<string>('smart');
   const [step, setStep] = useState<'input' | 'review'>('input');
   const [extracting, setExtracting] = useState(false);
+  const [saving, setSaving] = useState(false);
   const [pasteText, setPasteText] = useState('');
   const [pdfFile, setPdfFile] = useState<File | null>(null);
   const [form, setForm] = useState<FSEFormData>(() => {
@@ -256,17 +260,32 @@ export default function FSECreateModal({ open, onOpenChange, prefillDestination,
     setForm(prev => ({ ...prev, services: prev.services.filter((_, i) => i !== idx) }));
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!form.supplier_name.trim()) {
       toast({ title: 'Nome obrigatório', description: 'Preencha o nome do fornecedor', variant: 'destructive' });
       return;
     }
-    onSave?.(form);
-    handleClose(false);
-    toast({
-      title: 'Parceiro FSE guardado',
-      description: `${form.supplier_name} — ${form.services.length} serviço(s)`,
-    });
+    setSaving(true);
+    try {
+      const result = await createOrFindFSE(form);
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['suppliers_list'] }),
+        queryClient.invalidateQueries({ queryKey: ['supplier_experience_catalog'] }),
+      ]);
+      await onSave?.(form, result.supplier);
+      handleClose(false);
+      toast(result.existed ? {
+        title: 'FSE já existente',
+        description: `${result.supplier.name} foi selecionado sem criar um duplicado.`,
+      } : {
+        title: 'Parceiro FSE guardado',
+        description: `${result.supplier.name} — ${form.services.length} serviço(s)`,
+      });
+    } catch (err: any) {
+      toast({ title: 'Erro ao guardar FSE', description: err?.message || String(err), variant: 'destructive' });
+    } finally {
+      setSaving(false);
+    }
   };
 
   const showSubCats = form.category && SUB_CATEGORIES[form.category];
@@ -339,7 +358,7 @@ export default function FSECreateModal({ open, onOpenChange, prefillDestination,
               toggleDestination={toggleDestination} addExtraLink={addExtraLink}
               updateExtraLink={updateExtraLink} removeExtraLink={removeExtraLink}
               updateService={updateService} removeService={removeService}
-              showSubCats={showSubCats} onBack={() => setStep('input')} onSave={handleSave} />}
+              showSubCats={showSubCats} onBack={() => setStep('input')} onSave={handleSave} saving={saving} />}
           </TabsContent>
 
           {/* ─── Manual Entry Tab ─── */}
@@ -349,7 +368,7 @@ export default function FSECreateModal({ open, onOpenChange, prefillDestination,
               toggleDestination={toggleDestination} addExtraLink={addExtraLink}
               updateExtraLink={updateExtraLink} removeExtraLink={removeExtraLink}
               updateService={updateService} removeService={removeService}
-              showSubCats={showSubCats} onSave={handleSave} />
+              showSubCats={showSubCats} onSave={handleSave} saving={saving} />
           </TabsContent>
         </Tabs>
       </DialogContent>
@@ -361,7 +380,7 @@ export default function FSECreateModal({ open, onOpenChange, prefillDestination,
 function ReviewForm({
   form, setForm, updateForm, editingSvcIdx, setEditingSvcIdx,
   toggleDestination, addExtraLink, updateExtraLink, removeExtraLink,
-  updateService, removeService, showSubCats, onBack, onSave,
+  updateService, removeService, showSubCats, onBack, onSave, saving,
 }: {
   form: FSEFormData; setForm: any; updateForm: (k: keyof FSEFormData, v: any) => void;
   editingSvcIdx: number | null; setEditingSvcIdx: (i: number | null) => void;
@@ -371,7 +390,7 @@ function ReviewForm({
   updateService: (i: number, k: string, v: any) => void;
   removeService: (i: number) => void;
   showSubCats: string[] | false | undefined;
-  onBack?: () => void; onSave: () => void;
+  onBack?: () => void; onSave: () => void; saving: boolean;
 }) {
   return (
     <div className="space-y-4">
@@ -576,9 +595,9 @@ function ReviewForm({
         {onBack && (
           <Button variant="outline" onClick={onBack} className="flex-1 text-xs">Voltar</Button>
         )}
-        <Button onClick={onSave} disabled={!form.supplier_name.trim()} className="flex-1 text-xs">
-          <CheckCircle2 className="h-3.5 w-3.5 mr-1.5" />
-          Guardar Parceiro
+        <Button onClick={onSave} disabled={!form.supplier_name.trim() || saving} className="flex-1 text-xs">
+          {saving ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : <CheckCircle2 className="h-3.5 w-3.5 mr-1.5" />}
+          {saving ? 'A guardar...' : 'Guardar Parceiro'}
         </Button>
       </div>
     </div>
