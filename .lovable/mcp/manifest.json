@@ -113,6 +113,22 @@
         "outputSchema": null
       },
       {
+        "name": "list_regions",
+        "title": "List regions (Portugal + Spain)",
+        "description": "List the active regions YTP sells (country PT or ES) with their cities/sub-destinations, as configured in Admin → Regiões. Use these exact names for lead destinations, FSE regions and per-day country/region in travel plans.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "type": "object",
+          "properties": {}
+        },
+        "outputSchema": null
+      },
+      {
         "name": "update_lead_stage",
         "title": "Update lead stage",
         "description": "Move a lead to another pipeline stage, exactly like the stage dropdown in the lead header. Mirrors the stage to NetHunt when the lead is linked and records the change in the lead history. Use list_lead_stages for valid values.",
