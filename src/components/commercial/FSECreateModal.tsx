@@ -14,6 +14,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { useToast } from '@/hooks/use-toast';
 import { useQueryClient } from '@tanstack/react-query';
 import { createOrFindFSE, type FSECreateData } from '@/lib/createFSE';
+import { FSE_CATEGORIES } from '@/data/fseDatabase';
 import {
   Sparkles, Upload, FileText, Loader2, ClipboardPaste,
   AlertTriangle, CheckCircle2, Pencil, Trash2, Plus,
@@ -21,17 +22,6 @@ import {
 } from 'lucide-react';
 
 // ─── Constants ───
-const FSE_CATEGORIES = [
-  { value: 'mon', label: '0 - Monumentos Nacionais' },
-  { value: 'aloj', label: '1 - Alojamento' },
-  { value: 'anim', label: '2 - Animação Turística' },
-  { value: 'guias', label: '3 - Guias Externos' },
-  { value: 'quintas', label: '4 - Quintas & Caves' },
-  { value: 'rest', label: '5 - Restauração' },
-  { value: 'mar', label: '6 - Transp. Marítimos' },
-  { value: 'terr', label: '7 - Transp. Terrestres' },
-];
-
 const FSE_DESTINATIONS = [
   'Açores', 'Alentejo', 'Algarve', 'Centro', 'Douro', 'Lisboa', 'Madeira', 'Norte', 'Porto',
 ];

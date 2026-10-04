@@ -64,3 +64,17 @@ export interface OpsRow {
   invoiceName: string | null;
   opId?: string;
 }
+
+/** Compara valores monetários aos cêntimos, evitando falsos desvios de floating point. */
+export const roundMoney = (value: number) => Math.round((value + Number.EPSILON) * 100) / 100;
+
+export type CostComparison = 'neutral' | 'over' | 'equal' | 'under';
+
+export const compareRealToNet = (realCost: number | null, netValue: number): CostComparison => {
+  if (realCost == null) return 'neutral';
+  const real = roundMoney(realCost);
+  const net = roundMoney(netValue || 0);
+  if (real > net) return 'over';
+  if (real < net) return 'under';
+  return 'equal';
+};

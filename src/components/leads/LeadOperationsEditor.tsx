@@ -32,6 +32,7 @@ import LeadDayOpsBlock from '@/components/leads/LeadDayOpsBlock';
 import {
   BOOKING_OPTIONS, PAYMENT_OPTIONS, INVOICE_OPTIONS,
   normalizeBookingStatus, normalizePaymentStatus, normalizeInvoiceStatus,
+  compareRealToNet,
   type OpsRow,
 } from '@/components/leads/opsConstants';
 
@@ -454,7 +455,12 @@ const LeadOperationsEditor = ({ activeVersion, leadId, leadCode, pvpTotal = 0, s
           const expanded = expandedDays.has(day);
           const dayConfirmed = dayItems.filter(r => r.bookingStatus === 'booked').length;
           const dayNet = dayItems.reduce((s, r) => s + (r.netValue || 0), 0);
-          const dayReal = dayItems.reduce((s, r) => s + (r.realCost ?? 0), 0);
+          const dayRowsWithReal = dayItems.filter(r => r.realCost != null);
+          const dayReal = dayRowsWithReal.reduce((s, r) => s + Number(r.realCost), 0);
+          const dayNetForReal = dayRowsWithReal.reduce((s, r) => s + (r.netValue || 0), 0);
+          const dayRealComparison = dayRowsWithReal.length === 0
+            ? 'neutral'
+            : compareRealToNet(dayReal, dayNetForReal);
 
           return (
             <div key={day} className="border-b last:border-b-0">
@@ -471,7 +477,14 @@ const LeadOperationsEditor = ({ activeVersion, leadId, leadCode, pvpTotal = 0, s
                     )}
                   </div>
                   <span className="text-[10px] text-muted-foreground mr-3">
-                    NET {eur(dayNet)} · Real {eur(dayReal)}
+                    NET {eur(dayNet)} ·{' '}
+                    <span className={cn(
+                      dayRealComparison === 'over' && 'text-destructive',
+                      dayRealComparison === 'equal' && 'text-info',
+                      dayRealComparison === 'under' && 'text-success',
+                    )}>
+                      Real {dayRowsWithReal.length > 0 ? eur(dayReal) : '—'}
+                    </span>
                   </span>
                   <span className="text-[10px] text-muted-foreground mr-3">{dayItems.length} rubricas</span>
                   <span className="text-[10px] text-muted-foreground">{dayConfirmed}/{dayItems.length} confirmados</span>
@@ -504,9 +517,7 @@ const LeadOperationsEditor = ({ activeVersion, leadId, leadCode, pvpTotal = 0, s
                         const bookingOpt = BOOKING_OPTIONS.find(o => o.value === row.bookingStatus);
                         const paymentOpt = PAYMENT_OPTIONS.find(o => o.value === row.paymentStatus);
                         const invoiceOpt = INVOICE_OPTIONS.find(o => o.value === row.invoiceStatus);
-                        // Qualquer custo real acima do NET previsto é desvio —
-                        // incluindo linhas não orçamentadas (NET 0).
-                        const overBudget = row.realCost != null && row.realCost > (row.netValue || 0);
+                        const realComparison = compareRealToNet(row.realCost, row.netValue);
 
                         return (
                           <div key={row.itemKey} className={cn(GRID, 'px-2 py-2 items-start text-xs hover:bg-muted/10')}>
@@ -572,7 +583,10 @@ const LeadOperationsEditor = ({ activeVersion, leadId, leadCode, pvpTotal = 0, s
                                 step="0.01"
                                 className={cn(
                                   'h-7 text-xs text-center font-semibold',
-                                  overBudget ? 'text-destructive' : 'text-[hsl(var(--success))]'
+                                   realComparison === 'over' && 'text-destructive',
+                                   realComparison === 'equal' && 'text-info',
+                                   realComparison === 'under' && 'text-success',
+                                   realComparison === 'neutral' && 'text-foreground',
                                 )}
                                 value={row.realCost ?? ''}
                                 placeholder="—"
