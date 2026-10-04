@@ -162,13 +162,13 @@ export default function JarvisLiveMapPage() {
         </div>
 
         <div className="grid items-start gap-3 xl:grid-cols-[minmax(0,1fr)_310px]">
-          <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+          <div className="grid gap-3 md:grid-cols-2">
           {agents.map(a => {
             const ts = tasks.filter(t => t.agent_id === a.id);
             const shown = ts.filter(visible);
             if (!shown.length && (statusFilter !== 'all' || onlyMine)) return null;
             return (
-              <div key={a.id} className={cn('overflow-hidden rounded-lg border bg-card shadow-sm', a.code === 'A0' && 'md:col-span-2 xl:col-span-3')}>
+              <div key={a.id} className={cn('overflow-hidden rounded-lg border bg-card shadow-sm', a.code === 'A0' && 'md:col-span-2')}>
                 <div className="flex items-center justify-between border-b px-3 py-2">
                   <div className="flex min-w-0 items-center gap-2">
                     <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-secondary text-secondary-foreground"><Bot className="h-4 w-4" /></div>
@@ -179,7 +179,7 @@ export default function JarvisLiveMapPage() {
                   </div>
                   <Badge variant="outline">{ts.filter(t => t.status === 'ativo').length}/{ts.length}</Badge>
                 </div>
-                <div className={cn('p-2 grid gap-1.5', a.code === 'A0' && 'sm:grid-cols-2 xl:grid-cols-3')}>
+                <div className={cn('p-2 grid gap-1.5', a.code === 'A0' && 'sm:grid-cols-2')}>
                   {shown.map(t => {
                     const st = runState(runsByTask[t.code] ?? []);
                     return (
