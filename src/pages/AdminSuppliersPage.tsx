@@ -1,4 +1,6 @@
 import { useEffect, useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import { useRegions } from '@/hooks/useRegions';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
@@ -43,6 +45,17 @@ const AdminSuppliersPage = () => {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [filterCat, setFilterCat] = useState('all');
+  const [filterCountry, setFilterCountry] = useState('all');
+  const [filterRegion, setFilterRegion] = useState('all');
+  const { data: regions = [] } = useRegions();
+  const { data: supplierRegions = [] } = useQuery({
+    queryKey: ['supplier_regions_all'],
+    queryFn: async () => {
+      const { data, error } = await supabase.from('supplier_regions').select('supplier_id, region_id');
+      if (error) throw error;
+      return data || [];
+    },
+  });
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingSupplier, setEditingSupplier] = useState<any>(null);
   const [form, setForm] = useState<any>({ ...emptySupplier });
@@ -115,6 +128,12 @@ const AdminSuppliersPage = () => {
 
   const filtered = suppliers.filter(s => {
     if (filterCat !== 'all' && s.category !== filterCat) return false;
+    const sRegs = supplierRegions.filter(x => x.supplier_id === s.id).map(x => x.region_id);
+    if (filterRegion !== 'all' && !sRegs.includes(filterRegion)) return false;
+    if (filterCountry !== 'all') {
+      const c = String((s as any).country || '') + regions.filter(r => sRegs.includes(r.id)).map(r => r.country).join(',');
+      if (!c.includes(filterCountry)) return false;
+    }
     if (search && !s.name.toLowerCase().includes(search.toLowerCase())) return false;
     return true;
   });
@@ -156,6 +175,21 @@ const AdminSuppliersPage = () => {
             <SelectContent>
               <SelectItem value="all">Todas</SelectItem>
               {CATEGORIES.map(c => <SelectItem key={c} value={c}>{c.charAt(0).toUpperCase() + c.slice(1)}</SelectItem>)}
+            </SelectContent>
+          </Select>
+          <Select value={filterCountry} onValueChange={v => { setFilterCountry(v); setFilterRegion('all'); }}>
+            <SelectTrigger className="w-[120px] h-9"><SelectValue placeholder="País" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todos os países</SelectItem>
+              <SelectItem value="PT">Portugal</SelectItem>
+              <SelectItem value="ES">Espanha</SelectItem>
+            </SelectContent>
+          </Select>
+          <Select value={filterRegion} onValueChange={setFilterRegion}>
+            <SelectTrigger className="w-[150px] h-9"><SelectValue placeholder="Região" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todas as regiões</SelectItem>
+              {regions.filter(r => filterCountry === 'all' || r.country === filterCountry).map(r => <SelectItem key={r.id} value={r.id}>{r.name}</SelectItem>)}
             </SelectContent>
           </Select>
         </div>

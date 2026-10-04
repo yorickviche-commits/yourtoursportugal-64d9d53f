@@ -51,6 +51,7 @@ const adminItems: NavItem[] = [
   { to: '/admin/settings', icon: Settings, label: 'Configurações', pageKey: 'admin_settings' },
   { to: '/admin/integrations', icon: Plug, label: 'Integrações', pageKey: 'admin_integrations' },
   { to: '/admin/sync', icon: RefreshCcw, label: 'Sincronização', pageKey: 'admin_sync' },
+  { to: '/admin/regions', icon: Map, label: 'Regiões', pageKey: 'admin_regions' },
   { to: '/admin/logs', icon: ScrollText, label: 'Logs', pageKey: 'admin_logs' },
   { to: '/admin/feedback', icon: MessageSquareWarning, label: 'Feedback da Plataforma', pageKey: 'admin_feedback' },
 ];

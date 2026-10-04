@@ -10,6 +10,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { createOrFindFSE } from '@/lib/createFSE';
 import { FSE_CATEGORIES } from '@/data/fseDatabase';
+import { useRegions, COUNTRY_LABELS } from '@/hooks/useRegions';
 
 interface SupplierSearchDropdownProps {
   value: string;
@@ -39,6 +40,8 @@ export default function SupplierSearchDropdown({ value, onChange, className }: S
   const [newName, setNewName] = useState('');
   const [newCategory, setNewCategory] = useState('anim');
   const [adding, setAdding] = useState(false);
+  const [newRegion, setNewRegion] = useState('');
+  const { data: regions = [] } = useRegions();
   const inputRef = useRef<HTMLInputElement>(null);
   const queryClient = useQueryClient();
   const { toast } = useToast();
@@ -59,7 +62,7 @@ export default function SupplierSearchDropdown({ value, onChange, className }: S
     if (!newName.trim()) return;
     setAdding(true);
     try {
-      const result = await createOrFindFSE({ supplier_name: newName, category: newCategory });
+      const result = await createOrFindFSE({ supplier_name: newName, category: newCategory, destinations: newRegion ? [newRegion] : [] });
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ['suppliers_list'] }),
         queryClient.invalidateQueries({ queryKey: ['supplier_experience_catalog'] }),
@@ -173,6 +176,14 @@ export default function SupplierSearchDropdown({ value, onChange, className }: S
             >
               {FSE_CATEGORIES.map(category => (
                 <option key={category.value} value={category.value}>{category.label}</option>
+              ))}
+            </select>
+            <select className="w-full h-8 text-xs border rounded-md px-2 bg-background" value={newRegion} onChange={e => setNewRegion(e.target.value)}>
+              <option value="">Região de operação (opcional)</option>
+              {(['PT', 'ES'] as const).map(c => (
+                <optgroup key={c} label={COUNTRY_LABELS[c]}>
+                  {regions.filter(r => r.country === c).map(r => <option key={r.id} value={r.name}>{r.name}</option>)}
+                </optgroup>
               ))}
             </select>
             <Button size="sm" className="w-full text-xs" onClick={handleAddFSE} disabled={adding || !newName.trim()}>

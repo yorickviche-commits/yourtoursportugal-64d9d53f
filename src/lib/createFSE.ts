@@ -110,5 +110,16 @@ export async function createOrFindFSE(input: FSECreateData): Promise<FSECreateRe
     if (error) throw error;
   }
 
+  if (input.destinations?.length) {
+    const { data: regs, error: regErr } = await supabase.from('regions').select('id, name, country').in('name', input.destinations);
+    if (regErr) throw regErr;
+    if (regs?.length) {
+      const { error } = await supabase.from('supplier_regions').insert(regs.map(r => ({ supplier_id: supplier.id, region_id: r.id })));
+      if (error) throw error;
+      const countries = Array.from(new Set(regs.map(r => (r as any).country)));
+      await supabase.from('suppliers').update({ country: countries.join(',') } as any).eq('id', supplier.id);
+    }
+  }
+
   return { supplier, existed: false };
 }

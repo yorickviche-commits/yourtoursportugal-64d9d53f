@@ -5,6 +5,7 @@ import listTasksTool from "./tools/list-tasks";
 import createTaskTool from "./tools/create-task";
 import updateTaskTool from "./tools/update-task";
 import listLeadStagesTool from "./tools/list-lead-stages";
+import listRegionsTool from "./tools/list-regions";
 import updateLeadStageTool from "./tools/update-lead-stage";
 import assignLeadAgentsTool from "./tools/assign-lead-agents";
 import updateLeadGeneralDataTool from "./tools/update-lead-general-data";
@@ -40,6 +41,7 @@ export const ALL_TOOLS = [
     listLeadsTool,
     getLeadTool,
     listLeadStagesTool,
+    listRegionsTool,
     updateLeadStageTool,
     assignLeadAgentsTool,
     updateLeadGeneralDataTool,

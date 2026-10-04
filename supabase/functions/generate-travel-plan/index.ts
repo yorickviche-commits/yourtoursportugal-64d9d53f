@@ -2,6 +2,7 @@ import { knowledgeBlock } from "../_shared/ytb-knowledge.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { encodeBase64 } from "https://deno.land/std@0.224.0/encoding/base64.ts";
 import { requireInternalUser } from "../_shared/require-auth.ts";
+import { loadRegions, regionsDirective } from "../_shared/regions.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -563,7 +564,7 @@ This overrides rules 3, 4, 5, 6, 7, 14, 15, 16, 17 in the base style guide whene
 
     const systemWithExtra = (extraInstructions
       ? `${SYSTEM_PROMPT}\n\nIMPORTANT ADDITIONAL INSTRUCTIONS: ${extraInstructions}`
-      : SYSTEM_PROMPT) + exactDirective + routeDirective + languageDirective + brain;
+      : SYSTEM_PROMPT) + regionsDirective(await loadRegions()) + exactDirective + routeDirective + languageDirective + brain;
 
     const raw = await callAI(systemWithExtra, userPrompt, finalAttachments, {
       maxTokens: FINAL_MAX_TOKENS,

@@ -55,9 +55,9 @@ export default function LeadClassificationPanel({ leadId, legacy }: Props) {
   const { data: regionsList } = useQuery({
     queryKey: ['regions_list'],
     queryFn: async () => {
-      const { data, error } = await supabase.from('regions').select('id, name, sort_order').eq('is_active', true).order('sort_order');
+      const { data, error } = await supabase.from('regions').select('id, name, sort_order, country').eq('is_active', true).order('sort_order');
       if (error) throw error;
-      return (data || []) as { id: string; name: string }[];
+      return (data || []) as { id: string; name: string; country?: string }[];
     },
     staleTime: 5 * 60_000,
   });
@@ -267,7 +267,7 @@ export default function LeadClassificationPanel({ leadId, legacy }: Props) {
                   active ? 'bg-primary text-primary-foreground border-primary' : 'border-border text-muted-foreground hover:bg-muted'
                 )}
               >
-                {r.name}
+                {r.name}{r.country === 'ES' && <span className="ml-1 opacity-60">ES</span>}
               </button>
             );
           })}
