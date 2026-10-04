@@ -2,3 +2,4 @@
 - src/lib/mcp must use relative imports only (no `@/`). Why: the edge bundler turns `@/` into broken `npm:` specifiers.
 - Per-version context (Google Maps routes, Exact Itinerary PDF, pvp_override) lives in `lead_versions`; `leads` only mirrors the LIVE version. Why: versions must be fully independent while agents/KPIs still read `leads`.
 - All FSE creation surfaces persist through `createOrFindFSE` before reporting success or selecting the supplier. Why: Costing and the FSE database must share duplicate-safe supplier, service, and link creation.
+- JARVIS Live Map is a DB registry (agent_departments/agents/agent_tasks/agent_runs) rendered at /agents/dashboard; old Spark at /agents/spark-legacy. Why: one registry feeds map, counters and escalation; level ceiling enforced by trigger.
