@@ -9,7 +9,7 @@ export default defineTool({
   name: "get_operations",
   title: "Get operations board",
   description:
-    "Read the operations board of a lead exactly as the Operações tab shows it (LIVE version planner items, falling back to costing lines, merged with saved operations): services per day with stable item_key, supplier/FSE, schedule, pax, net value, real_cost (Real € = net total confirmed by the FSE, post-confirmation margin control; does not change Custos) and deviation net_value − real_cost, booking/payment/invoice status, confirmation number, notes, plus the trip briefing, per-day ops and lead totals (net budgeted, real confirmed, deviation).",
+    "Read the operations board of a lead exactly as the Operações tab shows it (LIVE version planner items, falling back to costing lines, merged with saved operations): services per day with stable item_key, supplier/FSE, schedule, pax, net value, real_cost (Real € = net total confirmed by the FSE, post-confirmation margin control; does not change Custos) and cost deviation real_cost − net_value, booking/payment/invoice status, confirmation number, notes, plus the trip briefing, per-day ops and lead totals (net budgeted, real confirmed, cost deviation). Positive deviation means over budget; negative means under budget.",
   inputSchema: {
     lead_id: z.string().optional().describe("Lead uuid."),
     lead_code: z.string().optional().describe("Lead code such as YT5130."),
@@ -39,7 +39,7 @@ export default defineTool({
       pax: r.pax,
       net_value_eur: r.net_value,
       real_cost_eur: r.real_cost,
-      deviation_eur: r.real_cost != null ? Math.round(((r.net_value || 0) - r.real_cost) * 100) / 100 : null,
+      deviation_eur: r.real_cost != null ? Math.round((r.real_cost - (r.net_value || 0)) * 100) / 100 : null,
       booking_status: r.booking_status,
       payment_status: r.payment_status,
       invoice_status: r.invoice_status,

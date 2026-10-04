@@ -8,6 +8,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/component
 import { cn } from '@/lib/utils';
 import { BUSINESS_CONFIG } from '@/lib/businessConfig';
 import type { OpsRow } from '@/components/leads/opsConstants';
+import { compareRealToNet, roundMoney } from '@/components/leads/opsConstants';
 import { eur as fmtEur } from '@/lib/money';
 
 const eur = (n: number) =>
@@ -19,11 +20,12 @@ interface Props {
   dayTitles?: Record<number, string>;
 }
 
-const KPI = ({ label, value, hint, tone }: { label: string; value: string; hint?: string; tone?: 'good' | 'warn' | 'bad' }) => (
+const KPI = ({ label, value, hint, tone }: { label: string; value: string; hint?: string; tone?: 'good' | 'info' | 'warn' | 'bad' }) => (
   <Card className="p-3">
     <p className="text-[10px] uppercase text-muted-foreground tracking-wider">{label}</p>
     <p className={cn('text-lg font-bold mt-0.5',
       tone === 'good' && 'text-[hsl(var(--success))]',
+      tone === 'info' && 'text-[hsl(var(--info))]',
       tone === 'bad' && 'text-destructive',
       tone === 'warn' && 'text-[hsl(var(--warning))]',
     )}>{value}</p>
@@ -35,16 +37,20 @@ export default function LeadOpsAnalyticsPanel({ rows, pvpTotal, dayTitles = {} }
   const [open, setOpen] = useState(false);
 
   const m = useMemo(() => {
-    const net = rows.reduce((s, r) => s + (r.netValue || 0), 0);
-    // Custo real: usa o real quando preenchido, senão assume o NET previsto.
-    const real = rows.reduce((s, r) => s + (r.realCost ?? r.netValue ?? 0), 0);
-    const filled = rows.filter(r => r.realCost != null).length;
-    const deviation = real - net;
+    const net = roundMoney(rows.reduce((s, r) => s + (r.netValue || 0), 0));
+    const confirmedRows = rows.filter(r => r.realCost != null);
+    const real = roundMoney(confirmedRows.reduce((s, r) => s + Number(r.realCost), 0));
+    const comparedNet = roundMoney(confirmedRows.reduce((s, r) => s + (r.netValue || 0), 0));
+    const filled = confirmedRows.length;
+    const deviation = roundMoney(real - comparedNet);
     // Se não havia NET previsto (linhas extra não orçamentadas), qualquer custo
     // real é 100% de desvio — não 0%.
-    const deviationPct = net > 0 ? (deviation / net) * 100 : (real > 0 ? 100 : 0);
+    const deviationPct = comparedNet > 0 ? (deviation / comparedNet) * 100 : (real > 0 ? 100 : 0);
     const plannedMargin = pvpTotal - net;
-    const realMargin = pvpTotal - real;
+    // Linhas sem Real permanecem neutras: conservam o NET previsto e não criam variação.
+    const projectedRealCost = roundMoney(net + deviation);
+    const realMargin = roundMoney(pvpTotal - projectedRealCost);
+    const marginVariation = roundMoney(realMargin - plannedMargin);
     const plannedMarginPct = pvpTotal > 0 ? (plannedMargin / pvpTotal) * 100 : 0;
     const realMarginPct = pvpTotal > 0 ? (realMargin / pvpTotal) * 100 : 0;
 
@@ -62,7 +68,8 @@ export default function LeadOpsAnalyticsPanel({ rows, pvpTotal, dayTitles = {} }
     const supMap = new Map<string, number>();
     rows.forEach(r => {
       const key = (r.supplier || '(sem FSE)').trim() || '(sem FSE)';
-      const dev = (r.realCost ?? r.netValue ?? 0) - (r.netValue || 0);
+      if (r.realCost == null) return;
+      const dev = roundMoney(r.realCost - (r.netValue || 0));
       supMap.set(key, (supMap.get(key) || 0) + dev);
     });
     const bySupplier = Array.from(supMap.entries())
@@ -77,22 +84,21 @@ export default function LeadOpsAnalyticsPanel({ rows, pvpTotal, dayTitles = {} }
     ];
 
     return {
-      net, real, filled, deviation, deviationPct, plannedMargin, realMargin,
+      net, real, comparedNet, filled, deviation, deviationPct, plannedMargin, realMargin, marginVariation,
       plannedMarginPct, realMarginPct, byDay, bySupplier, marginCompare,
     };
   }, [rows, pvpTotal, dayTitles]);
 
   // Sem PVP definido não há margem calculável — evita mostrar 0% a vermelho.
   const hasPvp = pvpTotal > 0;
+  const hasReal = m.filled > 0;
+  const costComparison = hasReal ? compareRealToNet(m.real, m.comparedNet) : 'neutral';
+  const marginIsPositive = hasReal && m.marginVariation >= 0;
+  const signedMarginVariation = `${m.marginVariation >= 0 ? '+' : '−'}${eur(Math.abs(m.marginVariation))}`;
   const marginTone = (pct: number): 'good' | 'warn' | 'bad' =>
     !hasPvp ? 'warn'
       : pct > BUSINESS_CONFIG.DEFAULT_MARGIN_PERCENT ? 'good'
         : pct >= 25 ? 'warn' : 'bad';
-
-  const marginAlert = !hasPvp ? 'PVP não definido — margem indisponível'
-    : m.realMarginPct > BUSINESS_CONFIG.DEFAULT_MARGIN_PERCENT ? 'Margem saudável (> 30%)'
-      : m.realMarginPct >= 25 ? 'Aviso: margem entre 25% e 30%'
-        : 'Risco: margem abaixo de 25%';
 
   return (
     <Collapsible open={open} onOpenChange={setOpen} className="mt-4">
@@ -101,14 +107,20 @@ export default function LeadOpsAnalyticsPanel({ rows, pvpTotal, dayTitles = {} }
         <span className="text-sm font-semibold">Análise de Custos &amp; Margem</span>
         <div className="ml-auto flex items-center gap-4 text-[11px] flex-wrap justify-end">
           <span className={cn('flex items-center gap-1 font-medium',
-            m.deviation > 0 ? 'text-destructive' : 'text-[hsl(var(--success))]')}>
-            {m.deviation > 0 ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
-            Desvio {eur(m.deviation)} ({m.deviationPct.toFixed(1)}%)
+            costComparison === 'over' && 'text-destructive',
+            costComparison === 'equal' && 'text-info',
+            costComparison === 'under' && 'text-success',
+            costComparison === 'neutral' && 'text-muted-foreground',
+          )}>
+            {costComparison === 'over' ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
+            Desvio {hasReal ? `${m.deviation >= 0 ? '+' : '−'}${eur(Math.abs(m.deviation))} (${m.deviationPct.toFixed(1)}%)` : '—'}
           </span>
           <span className={cn('font-medium',
-            marginTone(m.realMarginPct) === 'good' ? 'text-[hsl(var(--success))]'
-              : marginTone(m.realMarginPct) === 'warn' ? 'text-[hsl(var(--warning))]' : 'text-destructive')}>
-            Margem real {m.realMarginPct.toFixed(1)}%
+            !hasReal && 'text-muted-foreground',
+            marginIsPositive && 'text-success',
+            hasReal && !marginIsPositive && 'text-destructive',
+          )}>
+            Margem real {hasReal ? `${m.realMarginPct.toFixed(1)}% (${signedMarginVariation})` : '—'}
           </span>
         </div>
       </CollapsibleTrigger>
@@ -117,18 +129,19 @@ export default function LeadOpsAnalyticsPanel({ rows, pvpTotal, dayTitles = {} }
         <div className="border border-t-0 rounded-b-lg p-4 space-y-4">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
             <KPI label="NET previsto" value={eur(m.net)} hint="Custos do Costing" />
-            <KPI label="Custo real" value={eur(m.real)} hint={`${m.filled}/${rows.length} linhas confirmadas`} />
-            <KPI label="Desvio" value={`${eur(m.deviation)} (${m.deviationPct.toFixed(1)}%)`}
-              tone={m.deviation > 0 ? 'bad' : 'good'} />
+            <KPI label="Custo real" value={hasReal ? eur(m.real) : '—'} hint={`${m.filled}/${rows.length} linhas confirmadas`}
+              tone={costComparison === 'over' ? 'bad' : costComparison === 'under' ? 'good' : costComparison === 'equal' ? 'info' : undefined} />
+            <KPI label="Desvio" value={hasReal ? `${m.deviation >= 0 ? '+' : '−'}${eur(Math.abs(m.deviation))} (${m.deviationPct.toFixed(1)}%)` : '—'}
+              tone={costComparison === 'over' ? 'bad' : costComparison === 'under' ? 'good' : costComparison === 'equal' ? 'info' : undefined} />
             <KPI label="PVP" value={eur(pvpTotal)} hint="Total do Costing" />
             <KPI label="Margem prevista" value={eur(m.plannedMargin)} hint={`${m.plannedMarginPct.toFixed(1)}%`}
               tone={marginTone(m.plannedMarginPct)} />
-            <KPI label="Margem real" value={eur(m.realMargin)} hint={`${m.realMarginPct.toFixed(1)}%`}
-              tone={marginTone(m.realMarginPct)} />
+            <KPI label="Margem real" value={hasReal ? eur(m.realMargin) : '—'} hint={hasReal ? `${m.realMarginPct.toFixed(1)}% · ${signedMarginVariation}` : 'Sem custos reais'}
+              tone={hasReal ? (marginIsPositive ? 'good' : 'bad') : undefined} />
             <KPI label="Cobertura de custos" value={`${rows.length ? Math.round((m.filled / rows.length) * 100) : 0}%`}
               hint={`${m.filled} de ${rows.length} itens`} />
-            <KPI label="Estado da margem" value={marginAlert.split(':')[0]} hint={marginAlert}
-              tone={marginTone(m.realMarginPct)} />
+            <KPI label="Variação da margem" value={hasReal ? signedMarginVariation : '—'} hint={hasReal ? 'Margem real − margem prevista' : 'Sem custos reais'}
+              tone={hasReal ? (marginIsPositive ? 'good' : 'bad') : undefined} />
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
@@ -186,7 +199,7 @@ export default function LeadOpsAnalyticsPanel({ rows, pvpTotal, dayTitles = {} }
                     <Tooltip formatter={(v: any) => eur(Number(v))} />
                     <Bar dataKey="Margem" radius={[2, 2, 0, 0]}>
                       {m.marginCompare.map((d, i) => (
-                        <Cell key={i} fill={i === 0 ? 'hsl(var(--info))' : (m.realMargin < m.plannedMargin ? 'hsl(var(--warning))' : 'hsl(var(--success))')} />
+                        <Cell key={i} fill={i === 0 ? 'hsl(var(--info))' : (m.realMargin < m.plannedMargin ? 'hsl(var(--destructive))' : 'hsl(var(--success))')} />
                       ))}
                     </Bar>
                   </BarChart>
@@ -197,7 +210,7 @@ export default function LeadOpsAnalyticsPanel({ rows, pvpTotal, dayTitles = {} }
 
           <p className="text-[10px] text-muted-foreground">
             Valores calculados a partir do conteúdo atual da tabela (inclui alterações ainda não gravadas).
-            Linhas sem Custo Real assumem o NET previsto.
+            Linhas sem Custo Real ficam neutras e não alteram a margem prevista.
           </p>
         </div>
       </CollapsibleContent>
