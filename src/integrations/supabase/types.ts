@@ -162,6 +162,33 @@ export type Database = {
           },
         ]
       }
+      agent_departments: {
+        Row: {
+          code: string
+          created_at: string
+          id: string
+          mailbox: string | null
+          name: string
+          sort_order: number
+        }
+        Insert: {
+          code: string
+          created_at?: string
+          id?: string
+          mailbox?: string | null
+          name: string
+          sort_order?: number
+        }
+        Update: {
+          code?: string
+          created_at?: string
+          id?: string
+          mailbox?: string | null
+          name?: string
+          sort_order?: number
+        }
+        Relationships: []
+      }
       agent_notifications: {
         Row: {
           agent_name: string
@@ -212,6 +239,62 @@ export type Database = {
           user_id?: string | null
         }
         Relationships: []
+      }
+      agent_runs: {
+        Row: {
+          agent_label: string | null
+          created_by: string | null
+          error: string | null
+          finished_at: string | null
+          id: string
+          lead_code: string | null
+          lead_id: string | null
+          started_at: string
+          status: string
+          summary: string | null
+          task_code: string | null
+          task_id: string | null
+          tool_name: string | null
+        }
+        Insert: {
+          agent_label?: string | null
+          created_by?: string | null
+          error?: string | null
+          finished_at?: string | null
+          id?: string
+          lead_code?: string | null
+          lead_id?: string | null
+          started_at?: string
+          status?: string
+          summary?: string | null
+          task_code?: string | null
+          task_id?: string | null
+          tool_name?: string | null
+        }
+        Update: {
+          agent_label?: string | null
+          created_by?: string | null
+          error?: string | null
+          finished_at?: string | null
+          id?: string
+          lead_code?: string | null
+          lead_id?: string | null
+          started_at?: string
+          status?: string
+          summary?: string | null
+          task_code?: string | null
+          task_id?: string | null
+          tool_name?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agent_runs_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "agent_tasks"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       agent_status: {
         Row: {
@@ -405,6 +488,163 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "v_agent_task_queue"
             referencedColumns: ["task_id"]
+          },
+        ]
+      }
+      agent_task_tools: {
+        Row: {
+          access: string
+          id: string
+          task_id: string
+          tool: string
+        }
+        Insert: {
+          access?: string
+          id?: string
+          task_id: string
+          tool: string
+        }
+        Update: {
+          access?: string
+          id?: string
+          task_id?: string
+          tool?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agent_task_tools_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "agent_tasks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      agent_tasks: {
+        Row: {
+          agent_id: string
+          cadence: string | null
+          code: string
+          created_at: string
+          human_role: string | null
+          id: string
+          last_run_at: string | null
+          level_ceiling: number
+          level_current: number
+          name: string
+          replaces: string | null
+          skill: string | null
+          sop_url: string | null
+          sort_order: number
+          status: string
+          tools: string[]
+          updated_at: string
+        }
+        Insert: {
+          agent_id: string
+          cadence?: string | null
+          code: string
+          created_at?: string
+          human_role?: string | null
+          id?: string
+          last_run_at?: string | null
+          level_ceiling?: number
+          level_current?: number
+          name: string
+          replaces?: string | null
+          skill?: string | null
+          sop_url?: string | null
+          sort_order?: number
+          status?: string
+          tools?: string[]
+          updated_at?: string
+        }
+        Update: {
+          agent_id?: string
+          cadence?: string | null
+          code?: string
+          created_at?: string
+          human_role?: string | null
+          id?: string
+          last_run_at?: string | null
+          level_ceiling?: number
+          level_current?: number
+          name?: string
+          replaces?: string | null
+          skill?: string | null
+          sop_url?: string | null
+          sort_order?: number
+          status?: string
+          tools?: string[]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agent_tasks_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "agents"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      agents: {
+        Row: {
+          backup_name: string | null
+          code: string
+          created_at: string
+          department_id: string | null
+          id: string
+          kind: string
+          name: string
+          objective: string | null
+          owner_name: string | null
+          parent_agent_id: string | null
+          sort_order: number
+          updated_at: string
+        }
+        Insert: {
+          backup_name?: string | null
+          code: string
+          created_at?: string
+          department_id?: string | null
+          id?: string
+          kind?: string
+          name: string
+          objective?: string | null
+          owner_name?: string | null
+          parent_agent_id?: string | null
+          sort_order?: number
+          updated_at?: string
+        }
+        Update: {
+          backup_name?: string | null
+          code?: string
+          created_at?: string
+          department_id?: string | null
+          id?: string
+          kind?: string
+          name?: string
+          objective?: string | null
+          owner_name?: string | null
+          parent_agent_id?: string | null
+          sort_order?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agents_department_id_fkey"
+            columns: ["department_id"]
+            isOneToOne: false
+            referencedRelation: "agent_departments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "agents_parent_agent_id_fkey"
+            columns: ["parent_agent_id"]
+            isOneToOne: false
+            referencedRelation: "agents"
+            referencedColumns: ["id"]
           },
         ]
       }
