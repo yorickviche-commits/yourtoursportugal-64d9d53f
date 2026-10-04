@@ -20,11 +20,12 @@ interface Props {
   dayTitles?: Record<number, string>;
 }
 
-const KPI = ({ label, value, hint, tone }: { label: string; value: string; hint?: string; tone?: 'good' | 'warn' | 'bad' }) => (
+const KPI = ({ label, value, hint, tone }: { label: string; value: string; hint?: string; tone?: 'good' | 'info' | 'warn' | 'bad' }) => (
   <Card className="p-3">
     <p className="text-[10px] uppercase text-muted-foreground tracking-wider">{label}</p>
     <p className={cn('text-lg font-bold mt-0.5',
       tone === 'good' && 'text-[hsl(var(--success))]',
+      tone === 'info' && 'text-[hsl(var(--info))]',
       tone === 'bad' && 'text-destructive',
       tone === 'warn' && 'text-[hsl(var(--warning))]',
     )}>{value}</p>
@@ -99,11 +100,6 @@ export default function LeadOpsAnalyticsPanel({ rows, pvpTotal, dayTitles = {} }
       : pct > BUSINESS_CONFIG.DEFAULT_MARGIN_PERCENT ? 'good'
         : pct >= 25 ? 'warn' : 'bad';
 
-  const marginAlert = !hasPvp ? 'PVP não definido — margem indisponível'
-    : m.realMarginPct > BUSINESS_CONFIG.DEFAULT_MARGIN_PERCENT ? 'Margem saudável (> 30%)'
-      : m.realMarginPct >= 25 ? 'Aviso: margem entre 25% e 30%'
-        : 'Risco: margem abaixo de 25%';
-
   return (
     <Collapsible open={open} onOpenChange={setOpen} className="mt-4">
       <CollapsibleTrigger className="w-full border rounded-lg px-4 py-3 bg-muted/20 hover:bg-muted/40 transition-colors flex items-center gap-3 text-left">
@@ -134,9 +130,9 @@ export default function LeadOpsAnalyticsPanel({ rows, pvpTotal, dayTitles = {} }
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
             <KPI label="NET previsto" value={eur(m.net)} hint="Custos do Costing" />
             <KPI label="Custo real" value={hasReal ? eur(m.real) : '—'} hint={`${m.filled}/${rows.length} linhas confirmadas`}
-              tone={costComparison === 'over' ? 'bad' : costComparison === 'under' ? 'good' : undefined} />
+              tone={costComparison === 'over' ? 'bad' : costComparison === 'under' ? 'good' : costComparison === 'equal' ? 'info' : undefined} />
             <KPI label="Desvio" value={hasReal ? `${m.deviation >= 0 ? '+' : '−'}${eur(Math.abs(m.deviation))} (${m.deviationPct.toFixed(1)}%)` : '—'}
-              tone={costComparison === 'over' ? 'bad' : costComparison === 'under' ? 'good' : undefined} />
+              tone={costComparison === 'over' ? 'bad' : costComparison === 'under' ? 'good' : costComparison === 'equal' ? 'info' : undefined} />
             <KPI label="PVP" value={eur(pvpTotal)} hint="Total do Costing" />
             <KPI label="Margem prevista" value={eur(m.plannedMargin)} hint={`${m.plannedMarginPct.toFixed(1)}%`}
               tone={marginTone(m.plannedMarginPct)} />
