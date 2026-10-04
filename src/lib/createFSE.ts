@@ -58,7 +58,19 @@ export async function createOrFindFSE(input: FSECreateData): Promise<FSECreateRe
     })
     .select('id, name, category')
     .single();
-  if (supplierError) throw supplierError;
+  if (supplierError) {
+    if (supplierError.code === '23505') {
+      const { data: concurrentMatch, error: retryError } = await supabase
+        .from('suppliers')
+        .select('id, name, category')
+        .ilike('name', name)
+        .limit(1)
+        .maybeSingle();
+      if (retryError) throw retryError;
+      if (concurrentMatch) return { supplier: concurrentMatch, existed: true };
+    }
+    throw supplierError;
+  }
 
   const services = (input.services || [])
     .filter(service => String(service.name || '').trim())
