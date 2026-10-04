@@ -10,6 +10,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { createOrFindFSE } from '@/lib/createFSE';
 import { FSE_CATEGORIES } from '@/data/fseDatabase';
+import { useRegions, COUNTRY_LABELS } from '@/hooks/useRegions';
 
 interface SupplierSearchDropdownProps {
   value: string;
@@ -39,6 +40,8 @@ export default function SupplierSearchDropdown({ value, onChange, className }: S
   const [newName, setNewName] = useState('');
   const [newCategory, setNewCategory] = useState('anim');
   const [adding, setAdding] = useState(false);
+  const [newRegion, setNewRegion] = useState('');
+  const { data: regions = [] } = useRegions();
   const inputRef = useRef<HTMLInputElement>(null);
   const queryClient = useQueryClient();
   const { toast } = useToast();
@@ -59,7 +62,7 @@ export default function SupplierSearchDropdown({ value, onChange, className }: S
     if (!newName.trim()) return;
     setAdding(true);
     try {
-      const result = await createOrFindFSE({ supplier_name: newName, category: newCategory });
+      const result = await createOrFindFSE({ supplier_name: newName, category: newCategory, destinations: newRegion ? [newRegion] : [] });
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ['suppliers_list'] }),
         queryClient.invalidateQueries({ queryKey: ['supplier_experience_catalog'] }),
