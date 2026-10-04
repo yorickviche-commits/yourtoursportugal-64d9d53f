@@ -127,6 +127,13 @@
       "when": 1791075991924,
       "tag": "0017_grant_supplier_api_access",
       "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1791076004400,
+      "tag": "0018_prevent_duplicate_suppliers_by_name",
+      "breakpoints": true
     }
   ]
 }
