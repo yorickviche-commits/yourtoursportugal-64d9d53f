@@ -167,7 +167,7 @@ const DesktopSidebar = () => {
               </div>
               {expanded && <><span className="truncate text-xs">Aprovações AI</span>{aiPending > 0 && <span className="ml-auto text-[10px] bg-destructive text-destructive-foreground px-1.5 py-0.5 rounded-full font-bold">{aiPending}</span>}</>}
             </NavLink>
-            <NavLink to="/agents" title="Spark Agent Center"
+            <NavLink to="/agents" title="JARVIS Live Map"
               className={cn(
                 'flex items-center gap-3 rounded-md text-sm transition-colors relative',
                 expanded ? 'px-3 py-2' : 'justify-center px-2 py-2',
@@ -176,7 +176,7 @@ const DesktopSidebar = () => {
               )}
             >
               <div className="relative shrink-0">
-                <Sparkles className="h-4 w-4 text-violet-400" />
+                <Sparkles className="h-4 w-4 text-info" />
                 {!expanded && totalBadge > 0 && (
                   <span className="absolute -top-1 -right-1 h-3.5 w-3.5 rounded-full bg-violet-500 text-white text-[8px] font-bold flex items-center justify-center">
                     {totalBadge > 9 ? '9+' : totalBadge}
@@ -185,7 +185,7 @@ const DesktopSidebar = () => {
               </div>
               {expanded && (
                 <>
-                  <span className="truncate text-xs">Spark · Agents</span>
+                  <span className="truncate text-xs">JARVIS · Live Map</span>
                   {totalBadge > 0 && (
                     <span className="ml-auto text-[10px] bg-violet-500 text-white px-1.5 py-0.5 rounded-full font-bold">
                       {totalBadge}
@@ -309,8 +309,8 @@ const MobileMenu = ({ open, onClose }: { open: boolean; onClose: () => void }) =
                 isActive('/agents') ? 'bg-primary/10 text-primary font-medium' : 'text-foreground hover:bg-muted'
               )}
             >
-              <Sparkles className="h-5 w-5 shrink-0 text-violet-500" />
-              <span>Spark · Agents</span>
+              <Sparkles className="h-5 w-5 shrink-0 text-info" />
+              <span>JARVIS · Live Map</span>
               {totalBadge > 0 && (
                 <span className="ml-auto px-2 py-0.5 text-xs font-bold bg-violet-500 text-white rounded-full">{totalBadge}</span>
               )}

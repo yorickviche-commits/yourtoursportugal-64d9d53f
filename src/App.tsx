@@ -51,7 +51,6 @@ import AdminSettingsPage from "./pages/AdminSettingsPage";
 import AdminIntegrationsPage from "./pages/AdminIntegrationsPage";
 import AdminSyncPage from "./pages/AdminSyncPage";
 import AdminActivityLogsPage from "./pages/AdminActivityLogsPage";
-import AgentDashboardPage from "./pages/AgentDashboardPage";
 import JarvisLiveMapPage from "./pages/JarvisLiveMapPage";
 import ProfilePage from "./pages/ProfilePage";
 import CatalogPage from "./pages/CatalogPage";
@@ -99,7 +98,7 @@ const App = () => (
             <Route path="/bookings/:id" element={<ProtectedRoute><LeadDetailPage mode="booking" /></ProtectedRoute>} />
             <Route path="/payments" element={<ProtectedRoute><PaymentsPage /></ProtectedRoute>} />
             <Route path="/proposals/:id" element={<ProtectedRoute><ProposalDetailPage /></ProtectedRoute>} />
-            <Route path="/agents" element={<ProtectedRoute><AgentControlPage /></ProtectedRoute>} />
+            <Route path="/agents" element={<ProtectedRoute><JarvisLiveMapPage /></ProtectedRoute>} />
             <Route path="/agents/qualification" element={<ProtectedRoute><QualificationAgentPage /></ProtectedRoute>} />
             <Route path="/agents/itinerary" element={<ProtectedRoute><ItineraryAgentPage /></ProtectedRoute>} />
             <Route path="/agents/followup" element={<ProtectedRoute><FollowupAgentPage /></ProtectedRoute>} />
@@ -108,8 +107,8 @@ const App = () => (
             <Route path="/mobile" element={<ProtectedRoute><MobilePage /></ProtectedRoute>} />
             <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
             <Route path="/ai-office" element={<ProtectedRoute><AIWorkOfficePage /></ProtectedRoute>} />
-            <Route path="/agents/dashboard" element={<ProtectedRoute><JarvisLiveMapPage /></ProtectedRoute>} />
-            <Route path="/agents/spark-legacy" element={<ProtectedRoute><AgentDashboardPage /></ProtectedRoute>} />
+            <Route path="/agents/dashboard" element={<Navigate to="/agents" replace />} />
+            <Route path="/agents/spark-legacy" element={<ProtectedRoute><AgentControlPage /></ProtectedRoute>} />
             <Route path="/agents/approvals" element={<ProtectedRoute><AiApprovalsPage /></ProtectedRoute>} />
             <Route path="/approvals" element={<ProtectedRoute><ApprovalsPage /></ProtectedRoute>} />
             <Route path="/tasks" element={<ProtectedRoute><TasksPage /></ProtectedRoute>} />

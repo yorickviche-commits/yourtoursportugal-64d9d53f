@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
+import { Activity, AlertTriangle, Bot, CheckCircle2, Clock3, Radio, ShieldCheck, Workflow } from 'lucide-react';
 import AppLayout from '@/components/AppLayout';
 import { supabase } from '@/integrations/supabase/client';
 import { Badge } from '@/components/ui/badge';
@@ -28,6 +29,13 @@ const STATUS_TONE: Record<string, string> = {
 };
 
 const today = () => new Date().toISOString().slice(0, 10);
+
+const RUN_TONE: Record<string, string> = {
+  failed: 'border-destructive/40 bg-destructive/10 text-destructive',
+  running: 'border-info/40 bg-info/10 text-info',
+  completed: 'border-success/40 bg-success/10 text-success',
+  success: 'border-success/40 bg-success/10 text-success',
+};
 
 function runState(runs: Run[]): 'falhou' | 'a correr' | 'feito hoje' | null {
   const r = runs[0];
@@ -62,8 +70,10 @@ export default function JarvisLiveMapPage() {
   });
 
   useEffect(() => {
-    const ch = supabase.channel('jarvis_runs')
+    const ch = supabase.channel('jarvis_live_map')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'agent_runs' }, () => qc.invalidateQueries({ queryKey: ['jarvis_runs'] }))
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'agent_tasks' }, () => qc.invalidateQueries({ queryKey: ['jarvis_tasks'] }))
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'ai_action_queue' }, () => qc.invalidateQueries({ queryKey: ['jarvis_pending'] }))
       .subscribe();
     return () => { supabase.removeChannel(ch); };
   }, [qc]);
@@ -86,6 +96,8 @@ export default function JarvisLiveMapPage() {
   const active = tasks.filter(t => t.status === 'ativo').length;
   const partial = tasks.filter(t => t.status === 'parcial').length;
   const failedToday = runs.filter(r => r.status === 'failed' && r.started_at.slice(0, 10) === today()).length;
+  const runningNow = runs.filter(r => r.status === 'running').length;
+  const latestRuns = runs.slice(0, 12);
 
   const saveTask = async (patch: Partial<Task>) => {
     if (!selected) return;
@@ -99,14 +111,29 @@ export default function JarvisLiveMapPage() {
   return (
     <AppLayout>
       <div className="space-y-4">
-        <div className="flex flex-wrap items-end justify-between gap-3">
+        <div className="rounded-lg border bg-card px-4 py-3 shadow-sm">
+          <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <h1 className="text-lg sm:text-xl font-semibold">JARVIS · YTP AI Agent Live Map</h1>
-            <p className="text-sm text-muted-foreground">Departamento → Agente → Tarefa → Ferramenta. Silêncio nunca aprova.</p>
+            <div className="flex items-center gap-2">
+              <div className="relative flex h-9 w-9 items-center justify-center rounded-md border border-info/30 bg-info/10 text-info">
+                <Bot className="h-5 w-5" />
+                <span className="absolute -right-1 -top-1 h-2.5 w-2.5 rounded-full border-2 border-card bg-success urgency-pulse" />
+              </div>
+              <div>
+                <h1 className="text-lg font-semibold sm:text-xl">JARVIS · Live Operations Map</h1>
+                <p className="text-sm text-muted-foreground">Estado real dos agentes, tarefas e decisões humanas.</p>
+              </div>
+            </div>
           </div>
-          <Button asChild variant={pending ? 'destructive' : 'outline'} size="sm">
-            <Link to="/agents/approvals">Fila de aprovações · {pending}</Link>
-          </Button>
+          <div className="flex items-center gap-2">
+            <div className="flex h-9 items-center gap-2 rounded-md border bg-background px-3 text-xs font-medium">
+              <Radio className="h-3.5 w-3.5 text-success urgency-pulse" /> LIVE · {runningNow} em execução
+            </div>
+            <Button asChild variant={pending ? 'destructive' : 'outline'} size="sm">
+              <Link to="/agents/approvals"><ShieldCheck className="mr-1.5 h-4 w-4" />Aprovações · {pending}</Link>
+            </Button>
+          </div>
+          </div>
         </div>
 
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
@@ -116,7 +143,7 @@ export default function JarvisLiveMapPage() {
             ['Falhas hoje', String(failedToday), failedToday ? 'text-destructive' : 'text-muted-foreground'],
             ['À espera de aprovação', String(pending), pending ? 'text-destructive' : 'text-muted-foreground'],
           ].map(([l, v, c]) => (
-            <div key={l} className="rounded-md border bg-card p-3">
+            <div key={l} className="rounded-md border bg-card p-3 shadow-sm">
               <div className="text-xs text-muted-foreground">{l}</div>
               <div className={cn('text-xl font-semibold', c)}>{v}</div>
             </div>
@@ -134,17 +161,21 @@ export default function JarvisLiveMapPage() {
           <Button size="sm" variant={onlyMine ? 'default' : 'outline'} onClick={() => setOnlyMine(v => !v)}>Só o que precisa de mim</Button>
         </div>
 
-        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+        <div className="grid items-start gap-3 xl:grid-cols-[minmax(0,1fr)_310px]">
+          <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
           {agents.map(a => {
             const ts = tasks.filter(t => t.agent_id === a.id);
             const shown = ts.filter(visible);
             if (!shown.length && (statusFilter !== 'all' || onlyMine)) return null;
             return (
-              <div key={a.id} className={cn('rounded-lg border bg-card', a.code === 'A0' && 'md:col-span-2 xl:col-span-4')}>
+              <div key={a.id} className={cn('overflow-hidden rounded-lg border bg-card shadow-sm', a.code === 'A0' && 'md:col-span-2 xl:col-span-3')}>
                 <div className="flex items-center justify-between border-b px-3 py-2">
-                  <div>
+                  <div className="flex min-w-0 items-center gap-2">
+                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-secondary text-secondary-foreground"><Bot className="h-4 w-4" /></div>
+                    <div className="min-w-0">
                     <div className="text-sm font-semibold">{a.code} · {a.name}</div>
-                    <div className="text-xs text-muted-foreground">{a.owner_name ?? '—'}{a.backup_name ? ` · subst. ${a.backup_name}` : ''}</div>
+                    <div className="truncate text-xs text-muted-foreground">{a.owner_name ?? '—'}{a.backup_name ? ` · subst. ${a.backup_name}` : ''}</div>
+                    </div>
                   </div>
                   <Badge variant="outline">{ts.filter(t => t.status === 'ativo').length}/{ts.length}</Badge>
                 </div>
@@ -152,19 +183,45 @@ export default function JarvisLiveMapPage() {
                   {shown.map(t => {
                     const st = runState(runsByTask[t.code] ?? []);
                     return (
-                      <button key={t.id} onClick={() => setSelected(t)}
-                        className="text-left rounded-md border px-2.5 py-2 hover:bg-accent min-h-11 flex items-center gap-2">
+                      <Button key={t.id} variant="ghost" onClick={() => setSelected(t)}
+                        className="h-auto min-h-11 justify-start rounded-md border px-2.5 py-2 text-left hover:bg-accent">
                         <span className="text-xs font-mono text-muted-foreground w-10 shrink-0">{t.code}</span>
                         <span className="text-sm flex-1 leading-tight">{t.name}</span>
                         {st && <span className={cn('text-[10px] px-1.5 rounded', st === 'falhou' ? 'bg-destructive/15 text-destructive' : st === 'a correr' ? 'bg-info/15 text-info' : 'bg-success/15 text-success')}>{st}</span>}
                         <span className={cn('text-[10px] px-1.5 py-0.5 rounded border shrink-0', STATUS_TONE[t.status])}>N{t.level_current}→N{t.level_ceiling}</span>
-                      </button>
+                      </Button>
                     );
                   })}
                 </div>
               </div>
             );
           })}
+          {!agents.length && <div className="col-span-full rounded-md border border-warning/30 bg-warning/10 p-4 text-sm text-warning"><AlertTriangle className="mr-2 inline h-4 w-4" />Sem agentes disponíveis.</div>}
+          </div>
+
+          <aside className="overflow-hidden rounded-lg border bg-card shadow-sm xl:sticky xl:top-4">
+            <div className="flex items-center justify-between border-b px-3 py-2.5">
+              <div className="flex items-center gap-2 text-sm font-semibold"><Activity className="h-4 w-4 text-info" />Atividade em direto</div>
+              <Badge variant="outline">{latestRuns.length}</Badge>
+            </div>
+            <div className="max-h-[560px] divide-y overflow-y-auto">
+              {latestRuns.map(run => (
+                <div key={run.id} className="p-3 text-xs">
+                  <div className="mb-1 flex items-center justify-between gap-2">
+                    <span className={cn('rounded border px-1.5 py-0.5 font-medium', RUN_TONE[run.status] ?? 'border-border text-muted-foreground')}>{run.status}</span>
+                    <span className="text-muted-foreground">{new Date(run.started_at).toLocaleTimeString('pt-PT', { hour: '2-digit', minute: '2-digit' })}</span>
+                  </div>
+                  <div className="font-medium">{run.agent_label ?? run.task_code ?? 'JARVIS'}</div>
+                  <div className="mt-0.5 line-clamp-2 text-muted-foreground">{run.lead_code ? `${run.lead_code} · ` : ''}{run.summary ?? run.error ?? 'Execução registada'}</div>
+                </div>
+              ))}
+              {!latestRuns.length && <div className="p-6 text-center text-xs text-muted-foreground"><Clock3 className="mx-auto mb-2 h-5 w-5" />À espera da primeira execução.</div>}
+            </div>
+            <div className="grid grid-cols-2 border-t bg-muted/30 p-2 text-center text-xs">
+              <div><CheckCircle2 className="mx-auto mb-1 h-4 w-4 text-success" /><strong>{active}</strong><br /><span className="text-muted-foreground">ativas</span></div>
+              <div><Workflow className="mx-auto mb-1 h-4 w-4 text-info" /><strong>{tasks.length}</strong><br /><span className="text-muted-foreground">tarefas</span></div>
+            </div>
+          </aside>
         </div>
       </div>
 
