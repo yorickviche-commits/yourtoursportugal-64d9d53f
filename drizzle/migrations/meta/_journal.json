@@ -113,6 +113,13 @@
       "when": 1791075496896,
       "tag": "0015_grant_supplier_api_access",
       "breakpoints": true
+    },
+    {
+      "idx": 16,
+      "version": "7",
+      "when": 1791075609477,
+      "tag": "0016_prevent_duplicate_suppliers_by_name",
+      "breakpoints": true
     }
   ]
 }
