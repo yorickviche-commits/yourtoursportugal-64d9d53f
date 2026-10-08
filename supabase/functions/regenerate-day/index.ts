@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { requireInternalUser } from "../_shared/require-auth.ts";
+import { aiFetch } from "../_shared/ai-usage.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -34,7 +35,7 @@ async function callAI(system: string, user: string): Promise<string> {
   const LOVABLE_KEY = Deno.env.get('LOVABLE_API_KEY');
   if (LOVABLE_KEY) {
     try {
-      const res = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+      const res = await aiFetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
         method: 'POST',
         headers: { Authorization: `Bearer ${LOVABLE_KEY}`, 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -55,7 +56,7 @@ async function callAI(system: string, user: string): Promise<string> {
   }
   const GEMINI = Deno.env.get('GEMINI_API_KEY');
   if (GEMINI) {
-    const res = await fetch(
+    const res = await aiFetch(
       `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI}`,
       {
         method: 'POST',

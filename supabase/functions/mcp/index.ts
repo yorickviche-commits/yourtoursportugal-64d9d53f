@@ -3776,6 +3776,124 @@ var create_nethunt_deal_default = defineTool34({
   }
 });
 
+// src/lib/mcp/tools/log-ai-session.ts
+import { defineTool as defineTool35, ToolError as ToolError41 } from "npm:@lovable.dev/mcp-js@0.26.1";
+import { z as z33 } from "npm:zod@^3.25.76";
+
+// src/lib/mcp/usage.ts
+var env = (n) => {
+  const g = globalThis;
+  return (g.Deno?.env?.get?.(n) ?? g.process?.env?.[n])?.trim() || void 0;
+};
+function heartbeat(args) {
+  const url = env("SUPABASE_URL") ?? env("VITE_SUPABASE_URL");
+  const key = env("SUPABASE_SERVICE_ROLE_KEY");
+  if (!url || !key) return Promise.resolve();
+  return fetch(`${url}/rest/v1/rpc/ai_usage_heartbeat`, {
+    method: "POST",
+    headers: { apikey: key, Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
+    body: JSON.stringify(args)
+  }).then(async (r) => {
+    if (!r.ok) console.warn("ai_usage_heartbeat", r.status, (await r.text()).slice(0, 200));
+  }).catch((e) => console.warn("ai_usage_heartbeat", e.message));
+}
+function bg(p) {
+  try {
+    const er = globalThis.EdgeRuntime;
+    if (er?.waitUntil) er.waitUntil(p);
+  } catch {
+  }
+}
+function jwtClaims(token2) {
+  try {
+    const part = String(token2).split(".")[1];
+    const b64 = part.replace(/-/g, "+").replace(/_/g, "/");
+    return JSON.parse(atob(b64 + "=".repeat((4 - b64.length % 4) % 4)));
+  } catch {
+    return {};
+  }
+}
+function trackToolCall(ctx, toolName, args) {
+  try {
+    const p = (async () => {
+      const claims = jwtClaims(ctx.getToken());
+      const agent = await agentIdentity(supabaseForUser(ctx), ctx).catch(() => null);
+      const sid = claims.session_id ?? agent?.id ?? "nosession";
+      const leadCode = args?.lead_code ?? null;
+      await heartbeat({
+        p_session_key: `mcp-${claims.sub ?? "anon"}-${sid}`,
+        p_source: "claude_mcp",
+        p_surface: "TCC MCP (Your Travel 2.0)",
+        p_agent_label: agent?.agent_label ?? "Claude via MCP",
+        p_status: "running",
+        p_summary: leadCode ? `${toolName} \xB7 ${leadCode}` : toolName,
+        p_lead_code: leadCode,
+        p_model: agent?.model ?? null,
+        p_actor_email: ctx.getUserEmail?.() ?? claims.email ?? null,
+        p_calls_inc: 1,
+        p_meta: { last_tool: toolName, ...agent ? { agent_key_id: agent.id } : {} }
+      });
+    })().catch(() => {
+    });
+    bg(p);
+  } catch {
+  }
+}
+function withUsage(tools) {
+  return tools.map((tool) => {
+    const t = tool;
+    return {
+      ...t,
+      handler: async (args, ctx) => {
+        if (t.name !== "log_ai_session") trackToolCall(ctx, t.name, args);
+        return t.handler(args, ctx);
+      }
+    };
+  });
+}
+
+// src/lib/mcp/tools/log-ai-session.ts
+var log_ai_session_default = defineTool35({
+  name: "log_ai_session",
+  title: "Log AI session (telemetry)",
+  description: "Report usage of a Claude session running outside the TCC (Chrome extension, scheduled task, chat, cowork). Call it at start, periodically while working (status 'running') and at the end ('ok' / 'error'). Tokens and cost are added to the session totals. Telemetry only \u2014 no approval needed, no business data changes.",
+  inputSchema: {
+    session_key: z33.string().trim().min(3).max(200).describe("Stable id for this session; reuse it on every report."),
+    source: z33.enum(["claude_scheduled", "claude_chrome", "claude_chat", "claude_cowork", "claude_mcp", "other"]).optional(),
+    surface: z33.string().max(200).optional().describe("Where it runs, e.g. 'Chrome extension'."),
+    status: z33.enum(["running", "ok", "error", "abandoned"]).optional(),
+    summary: z33.string().max(1e3).optional(),
+    lead_code: z33.string().max(50).optional(),
+    model: z33.string().max(100).optional(),
+    input_tokens: z33.number().int().min(0).optional(),
+    output_tokens: z33.number().int().min(0).optional(),
+    cost_usd: z33.number().min(0).optional()
+  },
+  annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
+  handler: async (a, ctx) => {
+    if (!ctx.isAuthenticated()) throw new ToolError41("Not authenticated");
+    await heartbeat({
+      p_session_key: a.session_key,
+      p_source: a.source ?? "other",
+      p_surface: a.surface ?? null,
+      p_agent_label: "Claude",
+      p_status: a.status ?? "running",
+      p_summary: a.summary ?? null,
+      p_lead_code: a.lead_code ?? null,
+      p_provider: "anthropic",
+      p_model: a.model ?? null,
+      p_actor_email: ctx.getUserEmail?.() ?? null,
+      p_calls_inc: 1,
+      p_input_tokens: a.input_tokens ?? null,
+      p_output_tokens: a.output_tokens ?? null,
+      p_cost_usd: a.cost_usd ?? null,
+      p_meta: {}
+    });
+    const payload = { logged: true, session_key: a.session_key, status: a.status ?? "running" };
+    return { content: [{ type: "text", text: JSON.stringify(payload) }], structuredContent: payload };
+  }
+});
+
 // src/lib/mcp/toolset.ts
 var INSTRUCTIONS = "Operations tools for Your Tours Portugal (TCC). Read the pipeline with `list_leads` / `get_lead`, the programme with `get_travel_plan`, departures with `list_upcoming_trips`, and follow-up with `list_tasks` / `create_task` / `update_task`. Prepare sales files with `update_lead_stage` (stages from `list_lead_stages`), `assign_lead_agents`, `update_lead_general_data`, `add_lead_note` and `export_travel_plan_pdf`. Leads accept the everyday code format such as YT5130. Every write is logged in the lead history as 'AI agent (MCP)' and mirrored to NetHunt when the lead is linked. These tools never send emails, never create payment links and never delete leads or versions. Client emails, supplier emails and payment links are only proposed into the 'Aprova\xE7\xF5es AI' queue (list_pending_approvals / get_approval_status); a person approves before anything is executed. Create leads with `import_lead_ai`, check them with `validate_lead`, build the programme with `generate_travel_plan` and the update_travel_plan_* tools, and the budget with the costing tools. Scheduled agents (Grok Worker, Claude Supervisor) connect to /functions/v1/mcp-agent with a personal `ytp_agent_` key: each key only runs its allowed tools within a daily limit, every write is stamped with the agent label and model, and agents work in proposal mode \u2014 generate_travel_plan and the travel plan / costing edits land on a non-LIVE 'Proposta AI' version that a person promotes with 'Tornar LIVE'; agents can never approve queue items, move a lead to OPERATIONS or create payment links.";
 var ALL_TOOLS = [
@@ -3812,7 +3930,8 @@ var ALL_TOOLS = [
   draft_fse_requests_default,
   draft_client_email_default,
   import_lead_ai_default,
-  create_nethunt_deal_default
+  create_nethunt_deal_default,
+  log_ai_session_default
 ];
 
 // src/lib/mcp/index.ts
@@ -3826,7 +3945,7 @@ var mcp_default = defineMcp({
     issuer: `https://${projectRef}.supabase.co/auth/v1`,
     acceptedAudiences: "authenticated"
   }),
-  tools: ALL_TOOLS
+  tools: withUsage(ALL_TOOLS)
 });
 
 // lovable-mcp-supabase-entry.ts

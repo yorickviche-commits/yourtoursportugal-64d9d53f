@@ -2,6 +2,7 @@ import { knowledgeBlock } from "../_shared/ytb-knowledge.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient, SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
 import { requireInternalUser } from "../_shared/require-auth.ts";
+import { aiFetch } from "../_shared/ai-usage.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -339,7 +340,7 @@ serve(async (req) => {
     ];
 
     for (let step = 0; step < 6; step++) {
-      const res = await fetch(GATEWAY, {
+      const res = await aiFetch(GATEWAY, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

@@ -1,6 +1,7 @@
 // Shared auth helpers for edge functions.
 // Verifies the caller is an internal user (has a role in user_roles) and optionally an admin.
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
+import { bindAiRequest } from "./ai-usage.ts";
 
 export const corsHeadersAuth = {
   "Access-Control-Allow-Origin": "*",
@@ -57,5 +58,6 @@ export async function requireInternalUser(
   if (opts.adminOnly && !isAdmin) {
     return { ok: false, response: unauthorized("Forbidden — admin only", 403) };
   }
+  bindAiRequest(req, userData.user.email ?? null);
   return { ok: true, userId, isAdmin };
 }

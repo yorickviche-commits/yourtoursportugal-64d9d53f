@@ -32,6 +32,7 @@ import draftFseRequestsTool from "./tools/draft-fse-requests";
 import draftClientEmailTool from "./tools/draft-client-email";
 import importLeadAiTool from "./tools/import-lead-ai";
 import createNethuntDealTool from "./tools/create-nethunt-deal";
+import logAiSessionTool from "./tools/log-ai-session";
 
 
 export const INSTRUCTIONS =
@@ -72,4 +73,5 @@ export const ALL_TOOLS = [
     draftClientEmailTool,
     importLeadAiTool,
     createNethuntDealTool,
+    logAiSessionTool,
 ];

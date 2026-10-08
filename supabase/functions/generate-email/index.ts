@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
 import { requireInternalUser } from "../_shared/require-auth.ts";
+import { aiFetch } from "../_shared/ai-usage.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -324,7 +325,7 @@ Use the extract_email tool to return the result.`;
     const callGeminiDirect = async () => {
       if (!GEMINI_API_KEY) throw new Error("GEMINI_API_KEY not configured");
       const fallbackPrompt = `${systemPrompt}\n\n${userPrompt}\n\nIMPORTANT: Return ONLY a valid JSON object with keys "subject", "body", and "internal_notes". No markdown, no extra text.`;
-      const r = await fetch(
+      const r = await aiFetch(
         `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key=${GEMINI_API_KEY}`,
         {
           method: "POST",
@@ -351,7 +352,7 @@ Use the extract_email tool to return the result.`;
     };
 
     const callLovableGateway = async () => {
-      const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+      const response = await aiFetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
         method: "POST",
         headers: { Authorization: `Bearer ${LOVABLE_API_KEY}`, "Content-Type": "application/json" },
         body: JSON.stringify({

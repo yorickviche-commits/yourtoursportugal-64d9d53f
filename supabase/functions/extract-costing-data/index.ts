@@ -1,4 +1,5 @@
 import { requireInternalUser } from "../_shared/require-auth.ts";
+import { aiFetch } from "../_shared/ai-usage.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -49,7 +50,7 @@ ${input}`;
 }
 
 async function callGateway(prompt: string, apiKey: string) {
-  return await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+  return await aiFetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
     method: 'POST',
     headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
     body: JSON.stringify({
@@ -66,7 +67,7 @@ async function callGeminiDirect(prompt: string, pdfBase64?: string) {
   if (pdfBase64) parts.push({ inline_data: { mime_type: 'application/pdf', data: pdfBase64 } });
   parts.push({ text: prompt });
 
-  const res = await fetch(
+  const res = await aiFetch(
     `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${key}`,
     {
       method: 'POST',
@@ -84,7 +85,7 @@ async function callGeminiDirect(prompt: string, pdfBase64?: string) {
 async function callOpenAI(prompt: string) {
   const key = Deno.env.get('OPENAI_API_KEY');
   if (!key) throw new Error('OPENAI_API_KEY não configurada');
-  const res = await fetch('https://api.openai.com/v1/chat/completions', {
+  const res = await aiFetch('https://api.openai.com/v1/chat/completions', {
     method: 'POST',
     headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' },
     body: JSON.stringify({

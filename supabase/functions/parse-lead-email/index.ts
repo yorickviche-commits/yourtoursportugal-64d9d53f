@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { requireInternalUser } from "../_shared/require-auth.ts";
+import { aiFetch } from "../_shared/ai-usage.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -54,7 +55,7 @@ async function fetchWithRetry(url: string, init: RequestInit, label: string, max
   let lastStatus = 0;
   let lastText = "";
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
-    const res = await fetch(url, init);
+    const res = await aiFetch(url, init);
     if (res.ok) return res;
     lastStatus = res.status;
     // Only retry transient errors

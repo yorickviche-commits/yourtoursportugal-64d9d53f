@@ -3,6 +3,7 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
 import { corsHeadersAuth, requireInternalUser } from "../_shared/require-auth.ts";
 import { embedText } from "../_shared/ytb-knowledge.ts";
+import { aiFetch } from "../_shared/ai-usage.ts";
 
 const json = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), {
@@ -40,7 +41,7 @@ async function pdfToText(svc: any, filePath: string): Promise<string> {
     const b64 = btoa(bin);
     const useGemini = !!Deno.env.get("GEMINI_API_KEY");
     if (useGemini) {
-      const res = await fetch(
+      const res = await aiFetch(
         `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${Deno.env.get("GEMINI_API_KEY")}`,
         {
           method: "POST",

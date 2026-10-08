@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { requireInternalUser } from "../_shared/require-auth.ts";
 import { loadRegions, countryFor } from "../_shared/regions.ts";
+import { aiFetch } from "../_shared/ai-usage.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -78,7 +79,7 @@ async function tryGeminiDirect(query: string, prompt: string, failures: Provider
 
   for (const model of models) {
     try {
-    const res = await fetch(
+    const res = await aiFetch(
       `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
       {
         method: 'POST',
@@ -117,7 +118,7 @@ async function tryOpenAI(query: string, prompt: string, failures: ProviderFailur
   const key = Deno.env.get('OPENAI_API_KEY');
   if (!key) return null;
   try {
-    const res = await fetch('https://api.openai.com/v1/images/generations', {
+    const res = await aiFetch('https://api.openai.com/v1/images/generations', {
       method: 'POST',
       headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' },
       body: JSON.stringify({ model: 'gpt-image-1', prompt, size: '1536x1024', n: 1 }),
@@ -142,7 +143,7 @@ async function tryLovableGateway(query: string, prompt: string, failures: Provid
   const key = Deno.env.get('LOVABLE_API_KEY');
   if (!key) return null;
   try {
-    const res = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+    const res = await aiFetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
       method: 'POST',
       headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' },
       body: JSON.stringify({

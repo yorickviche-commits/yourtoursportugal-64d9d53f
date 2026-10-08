@@ -3,6 +3,7 @@ import type { ToolContext } from "@lovable.dev/mcp-js";
 import { ALL_TOOLS, INSTRUCTIONS } from "./toolset";
 import { supabaseForUser } from "./supabase";
 import { agentIdentity } from "./agent";
+import { withUsage } from "./usage";
 
 /**
  * Internal core behind the `mcp-agent` gateway. The gateway verifies the
@@ -36,5 +37,5 @@ export default defineMcp({
     acceptedAudiences: "authenticated",
     requireOAuthClientClaim: false,
   }),
-  tools: guarded,
+  tools: withUsage(guarded),
 });
