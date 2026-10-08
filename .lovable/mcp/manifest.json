@@ -1609,6 +1609,83 @@
           "$schema": "http://json-schema.org/draft-07/schema#"
         },
         "outputSchema": null
+      },
+      {
+        "name": "log_ai_session",
+        "title": "Log AI session (telemetry)",
+        "description": "Report usage of a Claude session running outside the TCC (Chrome extension, scheduled task, chat, cowork). Call it at start, periodically while working (status 'running') and at the end ('ok' / 'error'). Tokens and cost are added to the session totals. Telemetry only — no approval needed, no business data changes.",
+        "annotations": {
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "idempotentHint": false,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "session_key": {
+              "type": "string",
+              "minLength": 3,
+              "maxLength": 200,
+              "description": "Stable id for this session; reuse it on every report."
+            },
+            "source": {
+              "type": "string",
+              "enum": [
+                "claude_scheduled",
+                "claude_chrome",
+                "claude_chat",
+                "claude_cowork",
+                "claude_mcp",
+                "other"
+              ]
+            },
+            "surface": {
+              "type": "string",
+              "maxLength": 200,
+              "description": "Where it runs, e.g. 'Chrome extension'."
+            },
+            "status": {
+              "type": "string",
+              "enum": [
+                "running",
+                "ok",
+                "error",
+                "abandoned"
+              ]
+            },
+            "summary": {
+              "type": "string",
+              "maxLength": 1000
+            },
+            "lead_code": {
+              "type": "string",
+              "maxLength": 50
+            },
+            "model": {
+              "type": "string",
+              "maxLength": 100
+            },
+            "input_tokens": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "output_tokens": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "cost_usd": {
+              "type": "number",
+              "minimum": 0
+            }
+          },
+          "required": [
+            "session_key"
+          ],
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
       }
     ]
   }
