@@ -2,7 +2,7 @@ import { knowledgeBlock } from "../_shared/ytb-knowledge.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
 import { requireInternalUser } from "../_shared/require-auth.ts";
-import { aiFetch } from "../_shared/ai-usage.ts";
+import { aiFetch, setAiLeadCode } from "../_shared/ai-usage.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -59,6 +59,7 @@ serve(async (req) => {
 
     if (leadId) {
       lead = (await sb.from("leads").select("*").eq("id", leadId).maybeSingle()).data;
+      setAiLeadCode(lead?.yt_id || lead?.lead_code);
       proposal = (
         await sb
           .from("proposals")
