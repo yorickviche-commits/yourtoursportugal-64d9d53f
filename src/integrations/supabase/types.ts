@@ -780,6 +780,75 @@ export type Database = {
         }
         Relationships: []
       }
+      ai_usage_events: {
+        Row: {
+          actor_email: string | null
+          agent_label: string | null
+          calls: number
+          cost_usd: number | null
+          created_at: string
+          ended_at: string | null
+          id: string
+          input_tokens: number | null
+          last_heartbeat_at: string
+          lead_code: string | null
+          meta: Json
+          model: string | null
+          output_tokens: number | null
+          provider: string | null
+          session_key: string | null
+          source: string
+          started_at: string
+          status: string
+          summary: string | null
+          surface: string | null
+        }
+        Insert: {
+          actor_email?: string | null
+          agent_label?: string | null
+          calls?: number
+          cost_usd?: number | null
+          created_at?: string
+          ended_at?: string | null
+          id?: string
+          input_tokens?: number | null
+          last_heartbeat_at?: string
+          lead_code?: string | null
+          meta?: Json
+          model?: string | null
+          output_tokens?: number | null
+          provider?: string | null
+          session_key?: string | null
+          source: string
+          started_at?: string
+          status?: string
+          summary?: string | null
+          surface?: string | null
+        }
+        Update: {
+          actor_email?: string | null
+          agent_label?: string | null
+          calls?: number
+          cost_usd?: number | null
+          created_at?: string
+          ended_at?: string | null
+          id?: string
+          input_tokens?: number | null
+          last_heartbeat_at?: string
+          lead_code?: string | null
+          meta?: Json
+          model?: string | null
+          output_tokens?: number | null
+          provider?: string | null
+          session_key?: string | null
+          source?: string
+          started_at?: string
+          status?: string
+          summary?: string | null
+          surface?: string | null
+        }
+        Relationships: []
+      }
       app_roles: {
         Row: {
           code: string
@@ -6454,6 +6523,81 @@ export type Database = {
         }
         Relationships: []
       }
+      v_ai_usage: {
+        Row: {
+          actor_email: string | null
+          agent_label: string | null
+          calls: number | null
+          cost_usd: number | null
+          created_at: string | null
+          duration_s: number | null
+          ended_at: string | null
+          id: string | null
+          input_tokens: number | null
+          last_heartbeat_at: string | null
+          lead_code: string | null
+          live_status: string | null
+          meta: Json | null
+          model: string | null
+          output_tokens: number | null
+          provider: string | null
+          session_key: string | null
+          source: string | null
+          started_at: string | null
+          status: string | null
+          summary: string | null
+          surface: string | null
+        }
+        Insert: {
+          actor_email?: string | null
+          agent_label?: string | null
+          calls?: number | null
+          cost_usd?: number | null
+          created_at?: string | null
+          duration_s?: never
+          ended_at?: string | null
+          id?: string | null
+          input_tokens?: number | null
+          last_heartbeat_at?: string | null
+          lead_code?: string | null
+          live_status?: never
+          meta?: Json | null
+          model?: string | null
+          output_tokens?: number | null
+          provider?: string | null
+          session_key?: string | null
+          source?: string | null
+          started_at?: string | null
+          status?: string | null
+          summary?: string | null
+          surface?: string | null
+        }
+        Update: {
+          actor_email?: string | null
+          agent_label?: string | null
+          calls?: number | null
+          cost_usd?: number | null
+          created_at?: string | null
+          duration_s?: never
+          ended_at?: string | null
+          id?: string | null
+          input_tokens?: number | null
+          last_heartbeat_at?: string | null
+          lead_code?: string | null
+          live_status?: never
+          meta?: Json | null
+          model?: string | null
+          output_tokens?: number | null
+          provider?: string | null
+          session_key?: string | null
+          source?: string | null
+          started_at?: string | null
+          status?: string | null
+          summary?: string | null
+          surface?: string | null
+        }
+        Relationships: []
+      }
       v_conversion_by_segment: {
         Row: {
           abaixo_do_minimo: number | null
@@ -6599,6 +6743,26 @@ export type Database = {
       }
     }
     Functions: {
+      ai_usage_heartbeat: {
+        Args: {
+          p_actor_email?: string
+          p_agent_label?: string
+          p_calls_inc?: number
+          p_cost_usd?: number
+          p_input_tokens?: number
+          p_lead_code?: string
+          p_meta?: Json
+          p_model?: string
+          p_output_tokens?: number
+          p_provider?: string
+          p_session_key: string
+          p_source: string
+          p_status?: string
+          p_summary?: string
+          p_surface?: string
+        }
+        Returns: string
+      }
       audit_api_grants: {
         Args: never
         Returns: {
