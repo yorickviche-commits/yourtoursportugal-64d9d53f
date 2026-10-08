@@ -1,4 +1,5 @@
 import { requireInternalUser } from "../_shared/require-auth.ts";
+import { aiFetch } from "../_shared/ai-usage.ts";
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
@@ -31,7 +32,7 @@ Deno.serve(async (req) => {
     async function callAI(prompt: string, maxTokens: number): Promise<string> {
       if (lovableApiKey) {
         try {
-          const res = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+          const res = await aiFetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${lovableApiKey}` },
             body: JSON.stringify({ model: 'google/gemini-2.5-flash', messages: [{ role: 'user', content: prompt }], temperature: 0.2, max_tokens: maxTokens }),
@@ -44,7 +45,7 @@ Deno.serve(async (req) => {
         } catch (e) { console.log('Lovable fallback triggered:', e); }
       }
       if (!geminiApiKey) throw new Error('AI credits exhausted. Please add credits at Settings > Workspace > Usage.');
-      const gRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${geminiApiKey}`, {
+      const gRes = await aiFetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${geminiApiKey}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }], generationConfig: { temperature: 0.2, maxOutputTokens: maxTokens } }),

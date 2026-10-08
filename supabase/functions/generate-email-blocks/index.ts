@@ -2,6 +2,7 @@ import { knowledgeBlock } from "../_shared/ytb-knowledge.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
 import { requireInternalUser } from "../_shared/require-auth.ts";
+import { aiFetch } from "../_shared/ai-usage.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -256,7 +257,7 @@ Return ONLY JSON with this exact shape:
 
     const callGemini = async (model: string) => {
       if (!GEMINI_API_KEY) throw new Error("GEMINI_API_KEY not configured");
-      const r = await fetch(
+      const r = await aiFetch(
         `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${GEMINI_API_KEY}`,
         {
           method: "POST",
@@ -274,7 +275,7 @@ Return ONLY JSON with this exact shape:
 
     const callOpenAI = async (model: string) => {
       if (!OPENAI_API_KEY) throw new Error("OPENAI_API_KEY not configured");
-      const r = await fetch("https://api.openai.com/v1/chat/completions", {
+      const r = await aiFetch("https://api.openai.com/v1/chat/completions", {
         method: "POST",
         headers: { Authorization: `Bearer ${OPENAI_API_KEY}`, "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -293,7 +294,7 @@ Return ONLY JSON with this exact shape:
 
     const callClaude = async (model: string) => {
       if (!ANTHROPIC_API_KEY) throw new Error("ANTHROPIC_API_KEY not configured");
-      const r = await fetch("https://api.anthropic.com/v1/messages", {
+      const r = await aiFetch("https://api.anthropic.com/v1/messages", {
         method: "POST",
         headers: {
           "x-api-key": ANTHROPIC_API_KEY,
@@ -314,7 +315,7 @@ Return ONLY JSON with this exact shape:
 
     const callGateway = async () => {
       if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY not configured");
-      const r = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+      const r = await aiFetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
         method: "POST",
         headers: { Authorization: `Bearer ${LOVABLE_API_KEY}`, "Content-Type": "application/json" },
         body: JSON.stringify({

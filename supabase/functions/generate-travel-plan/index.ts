@@ -3,6 +3,7 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { encodeBase64 } from "https://deno.land/std@0.224.0/encoding/base64.ts";
 import { requireInternalUser } from "../_shared/require-auth.ts";
 import { loadRegions, regionsDirective } from "../_shared/regions.ts";
+import { aiFetch } from "../_shared/ai-usage.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -186,7 +187,7 @@ async function callAI(
       let lastBody = '';
       for (let attempt = 0; attempt < 2; attempt++) {
         try {
-          const res = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+          const res = await aiFetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
             method: 'POST',
             headers: { 'Lovable-API-Key': LOVABLE_KEY, 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -228,7 +229,7 @@ async function callAI(
       let lastBody = '';
       for (let attempt = 0; attempt < 3; attempt++) {
         try {
-          const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${GEMINI_KEY}`, {
+          const res = await aiFetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${GEMINI_KEY}`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -269,7 +270,7 @@ async function callAI(
       let lastBody = '';
       for (let attempt = 0; attempt < 3; attempt++) {
         try {
-          const res = await fetch('https://api.openai.com/v1/chat/completions', {
+          const res = await aiFetch('https://api.openai.com/v1/chat/completions', {
             method: 'POST',
             headers: { 'Authorization': `Bearer ${OPENAI_KEY}`, 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -307,7 +308,7 @@ async function callAI(
       let lastBody = '';
       for (let attempt = 0; attempt < 2; attempt++) {
         try {
-          const res = await fetch('https://api.anthropic.com/v1/messages', {
+          const res = await aiFetch('https://api.anthropic.com/v1/messages', {
             method: 'POST',
             headers: { 'x-api-key': CLAUDE_KEY, 'Content-Type': 'application/json', 'anthropic-version': '2023-06-01' },
             body: JSON.stringify({

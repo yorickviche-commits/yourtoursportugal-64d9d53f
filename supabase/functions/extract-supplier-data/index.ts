@@ -1,4 +1,5 @@
 import { requireInternalUser } from "../_shared/require-auth.ts";
+import { aiFetch } from "../_shared/ai-usage.ts";
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
@@ -90,7 +91,7 @@ ${inputDescription}`;
 }
 
 async function callLovableGateway(messages: any[], apiKey: string): Promise<Response> {
-  return await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+  return await aiFetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
     method: 'POST',
     headers: {
       'Authorization': `Bearer ${apiKey}`,
@@ -124,7 +125,7 @@ async function callGeminiDirect(messages: any[], textContent: string, pdfBase64?
     parts.push({ text: textMsg });
   }
 
-  const response = await fetch(
+  const response = await aiFetch(
     `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`,
     {
       method: 'POST',

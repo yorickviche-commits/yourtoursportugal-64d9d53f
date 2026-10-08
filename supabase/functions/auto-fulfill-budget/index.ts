@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { requireInternalUser } from "../_shared/require-auth.ts";
+import { aiFetch } from "../_shared/ai-usage.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -38,7 +39,7 @@ function getGuideRateForRoute(description: string, isFullDay: boolean): { rate: 
 }
 
 async function callGateway(messages: any[], apiKey: string) {
-  const res = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+  const res = await aiFetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
     method: "POST",
     headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
     body: JSON.stringify({ model: "google/gemini-2.5-flash", messages }),
@@ -57,7 +58,7 @@ async function callGeminiFallback(messages: any[]) {
   const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY");
   if (!GEMINI_API_KEY) throw new Error("No Gemini API key");
   const prompt = messages.map((m: any) => m.content).join("\n\n");
-  const res = await fetch(
+  const res = await aiFetch(
     `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`,
     {
       method: "POST",
@@ -76,7 +77,7 @@ async function callGeminiFallback(messages: any[]) {
 async function callOpenAIFallback(messages: any[]) {
   const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
   if (!OPENAI_API_KEY) throw new Error("No OpenAI API key");
-  const res = await fetch("https://api.openai.com/v1/chat/completions", {
+  const res = await aiFetch("https://api.openai.com/v1/chat/completions", {
     method: "POST",
     headers: { Authorization: `Bearer ${OPENAI_API_KEY}`, "Content-Type": "application/json" },
     body: JSON.stringify({
@@ -103,7 +104,7 @@ async function callAnthropicFallback(messages: any[]) {
   if (!ANTHROPIC_API_KEY) throw new Error("No Anthropic API key");
   const system = messages.find((m: any) => m.role === "system")?.content || "";
   const userMsgs = messages.filter((m: any) => m.role !== "system").map((m: any) => ({ role: m.role, content: m.content }));
-  const res = await fetch("https://api.anthropic.com/v1/messages", {
+  const res = await aiFetch("https://api.anthropic.com/v1/messages", {
     method: "POST",
     headers: {
       "x-api-key": ANTHROPIC_API_KEY,

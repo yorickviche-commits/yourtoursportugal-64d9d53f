@@ -4,6 +4,7 @@
 // excluded IN THE QUERY (never post-filtered), so net prices and supplier data
 // can never reach client-facing output.
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
+import { aiFetch } from "./ai-usage.ts";
 
 export const EMBEDDING_MODEL = "text-embedding-3-small";
 export const EMBEDDING_DIMS = 1536;
@@ -12,7 +13,7 @@ export async function embedText(text: string): Promise<number[] | null> {
   const key = Deno.env.get("OPENAI_API_KEY");
   if (!key) return null;
   try {
-    const res = await fetch("https://api.openai.com/v1/embeddings", {
+    const res = await aiFetch("https://api.openai.com/v1/embeddings", {
       method: "POST",
       headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
       body: JSON.stringify({ model: EMBEDDING_MODEL, input: text.slice(0, 24000) }),
