@@ -1,5 +1,6 @@
 import { auth, defineMcp } from "@lovable.dev/mcp-js";
 import { ALL_TOOLS, INSTRUCTIONS } from "./toolset";
+import { withUsage } from "./usage";
 
 // Issuer must be the direct Supabase host, built from the project ref literal.
 const projectRef = import.meta.env.VITE_SUPABASE_PROJECT_ID ?? "project-ref-unset";
@@ -13,5 +14,5 @@ export default defineMcp({
     issuer: `https://${projectRef}.supabase.co/auth/v1`,
     acceptedAudiences: "authenticated",
   }),
-  tools: ALL_TOOLS,
+  tools: withUsage(ALL_TOOLS),
 });

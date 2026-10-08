@@ -14,6 +14,7 @@ import { Bot, Copy, KeyRound, Loader2, Plus, RotateCw, Ban } from 'lucide-react'
 const READ_TOOLS = [
   'list_leads', 'get_lead', 'list_lead_stages', 'get_travel_plan', 'export_travel_plan_pdf', 'list_upcoming_trips',
   'list_tasks', 'list_pending_approvals', 'get_approval_status', 'get_costing', 'get_operations', 'validate_lead',
+  'log_ai_session',
 ];
 const WRITE_TOOLS = [
   'update_lead_stage', 'assign_lead_agents', 'update_lead_general_data', 'add_lead_note', 'create_task', 'update_task',
