@@ -4818,6 +4818,125 @@ export type Database = {
         }
         Relationships: []
       }
+      sales_agent_items: {
+        Row: {
+          context: Json | null
+          decided_at: string | null
+          decision: string | null
+          first_seen_at: string
+          id: string
+          item_key: string
+          last_seen_at: string
+          next_check_at: string | null
+          notified_at: string | null
+          notify_count: number | null
+          priority: number | null
+          run_id: string | null
+          signal: string
+          snooze_until: string | null
+          source: string
+          stage: string | null
+          status: string
+          suggested_action: string | null
+          title: string
+          trip_start: string | null
+          yt_ref: string | null
+        }
+        Insert: {
+          context?: Json | null
+          decided_at?: string | null
+          decision?: string | null
+          first_seen_at?: string
+          id?: string
+          item_key: string
+          last_seen_at?: string
+          next_check_at?: string | null
+          notified_at?: string | null
+          notify_count?: number | null
+          priority?: number | null
+          run_id?: string | null
+          signal: string
+          snooze_until?: string | null
+          source: string
+          stage?: string | null
+          status?: string
+          suggested_action?: string | null
+          title: string
+          trip_start?: string | null
+          yt_ref?: string | null
+        }
+        Update: {
+          context?: Json | null
+          decided_at?: string | null
+          decision?: string | null
+          first_seen_at?: string
+          id?: string
+          item_key?: string
+          last_seen_at?: string
+          next_check_at?: string | null
+          notified_at?: string | null
+          notify_count?: number | null
+          priority?: number | null
+          run_id?: string | null
+          signal?: string
+          snooze_until?: string | null
+          source?: string
+          stage?: string | null
+          status?: string
+          suggested_action?: string | null
+          title?: string
+          trip_start?: string | null
+          yt_ref?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sales_agent_items_run_id_fkey"
+            columns: ["run_id"]
+            isOneToOne: false
+            referencedRelation: "sales_agent_runs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      sales_agent_runs: {
+        Row: {
+          agent_label: string | null
+          finished_at: string | null
+          id: string
+          inbox_watermark: string | null
+          items_due: number | null
+          items_new: number | null
+          notified: boolean | null
+          run_mode: string
+          started_at: string
+          summary: string | null
+        }
+        Insert: {
+          agent_label?: string | null
+          finished_at?: string | null
+          id?: string
+          inbox_watermark?: string | null
+          items_due?: number | null
+          items_new?: number | null
+          notified?: boolean | null
+          run_mode: string
+          started_at?: string
+          summary?: string | null
+        }
+        Update: {
+          agent_label?: string | null
+          finished_at?: string | null
+          id?: string
+          inbox_watermark?: string | null
+          items_due?: number | null
+          items_new?: number | null
+          notified?: boolean | null
+          run_mode?: string
+          started_at?: string
+          summary?: string | null
+        }
+        Relationships: []
+      }
       saved_reports: {
         Row: {
           category: string
