@@ -80,6 +80,13 @@
     --sidebar-border: 212 26% 83%;
     --sidebar-ring: 200 98% 39%;
     --sidebar-muted: 220 10% 50%;
+    --src-tcc: 173 70% 36%;
+    --src-mcp: 217 80% 52%;
+    --src-scheduled: 38 92% 50%;
+    --src-chrome: 262 70% 58%;
+    --src-chat: 145 60% 40%;
+    --src-cowork: 330 75% 55%;
+    --src-other: 215 14% 55%;
     --chart-1: 198 93% 59%;
     --chart-2: 213 93% 67%;
     --chart-3: 215 20% 65%;
@@ -120,6 +127,13 @@
     --border: 215 19% 34%;
     --input: 215 19% 34%;
     --ring: 198 93% 59%;
+    --src-tcc: 173 70% 50%;
+    --src-mcp: 217 80% 65%;
+    --src-scheduled: 38 92% 50%;
+    --src-chrome: 262 70% 70%;
+    --src-chat: 145 60% 55%;
+    --src-cowork: 330 75% 65%;
+    --src-other: 215 14% 65%;
     --chart-1: 199 95% 73%;
     --chart-2: 211 96% 78%;
     --chart-3: 215 20% 65%;
