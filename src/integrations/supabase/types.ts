@@ -1924,6 +1924,33 @@ export type Database = {
           },
         ]
       }
+      jarvis_state: {
+        Row: {
+          data: Json
+          key: string
+          kind: string
+          ref: string | null
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          data?: Json
+          key: string
+          kind: string
+          ref?: string | null
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          data?: Json
+          key?: string
+          kind?: string
+          ref?: string | null
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
       lead_costing_data: {
         Row: {
           created_at: string

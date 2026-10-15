@@ -162,6 +162,13 @@
       "when": 1792096339371,
       "tag": "0022_add_leads_language",
       "breakpoints": true
+    },
+    {
+      "idx": 23,
+      "version": "7",
+      "when": 1792107474543,
+      "tag": "0023_create_jarvis_state",
+      "breakpoints": true
     }
   ]
 }
