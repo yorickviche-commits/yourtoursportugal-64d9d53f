@@ -52,6 +52,7 @@ import AdminIntegrationsPage from "./pages/AdminIntegrationsPage";
 import AdminSyncPage from "./pages/AdminSyncPage";
 import AdminActivityLogsPage from "./pages/AdminActivityLogsPage";
 import AdminRegionsPage from "./pages/AdminRegionsPage";
+import AdminAiUsagePage from "./pages/AdminAiUsagePage";
 import JarvisLiveMapPage from "./pages/JarvisLiveMapPage";
 import ProfilePage from "./pages/ProfilePage";
 import CatalogPage from "./pages/CatalogPage";
@@ -136,6 +137,7 @@ const App = () => (
             <Route path="/admin/integrations" element={<ProtectedRoute><AdminIntegrationsPage /></ProtectedRoute>} />
             <Route path="/admin/sync" element={<ProtectedRoute><AdminSyncPage /></ProtectedRoute>} />
             <Route path="/admin/regions" element={<ProtectedRoute adminOnly><AdminRegionsPage /></ProtectedRoute>} />
+            <Route path="/admin/consumo" element={<ProtectedRoute><AdminAiUsagePage /></ProtectedRoute>} />
             <Route path="/admin/logs" element={<ProtectedRoute><AdminActivityLogsPage /></ProtectedRoute>} />
             <Route path="/profile" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
             <Route path="/profile/:userId" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />

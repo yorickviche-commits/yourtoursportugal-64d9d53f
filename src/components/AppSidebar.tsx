@@ -3,7 +3,7 @@ import {
   Map, MapPin, Users, CreditCard, Sparkles, LayoutDashboard,
   FileText, Handshake, Grid3x3, Truck, Settings, Shield, Plug, ScrollText, RefreshCcw,
   Inbox, PackageSearch, Boxes, Brain, Radar, Bug, MessageSquareWarning, BarChart3,
-  LogOut, ChevronDown, ChevronRight, Menu, X,
+  Gauge, LogOut, ChevronDown, ChevronRight, Menu, X,
 } from 'lucide-react';
 import { useState } from 'react';
 import { cn } from '@/lib/utils';
@@ -53,6 +53,7 @@ const adminItems: NavItem[] = [
   { to: '/admin/sync', icon: RefreshCcw, label: 'Sincronização', pageKey: 'admin_sync' },
   { to: '/admin/regions', icon: Map, label: 'Regiões', pageKey: 'admin_regions' },
   { to: '/admin/logs', icon: ScrollText, label: 'Logs', pageKey: 'admin_logs' },
+  { to: '/admin/consumo', icon: Gauge, label: 'Consumo AI', pageKey: 'admin_consumo' },
   { to: '/admin/feedback', icon: MessageSquareWarning, label: 'Feedback da Plataforma', pageKey: 'admin_feedback' },
 ];
 
