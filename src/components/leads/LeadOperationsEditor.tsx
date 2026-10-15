@@ -1,3 +1,4 @@
+import { fetchPlanDayTitles } from '@/lib/versionDayTitles';
 import { eur } from '@/lib/money';
 import { useState, useMemo, useCallback, useRef, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
