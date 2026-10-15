@@ -79,6 +79,9 @@ const LeadsFilesPage = () => {
   const [newLeadOpen, setNewLeadOpen] = useState(false);
   const isMobile = useIsMobile();
 
+  // Badge YT de outras páginas (Consumo AI / Jarvis) pode mudar o ?search= com a página já aberta.
+  useEffect(() => { setSearch(urlSearch); }, [urlSearch]);
+
   const leadIds = useMemo(() => leads.map(l => l.id), [leads]);
   const { data: costingMap = {} } = useLeadsCostingSummary(leadIds);
   const { data: paymentsMap = {} } = useLeadsPaymentsSummary(leadIds);
