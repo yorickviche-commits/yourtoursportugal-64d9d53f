@@ -1,3 +1,4 @@
+import { fetchPlanDayTitles, syncCostingTitles } from '@/lib/versionDayTitles';
 import { eur as fmtEur } from '@/lib/money';
 import { useState, useCallback, useEffect, useRef, useMemo } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
