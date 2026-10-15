@@ -1,5 +1,5 @@
-import { useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useEffect, useMemo, useState } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import AppLayout from '@/components/AppLayout';
 import { useLeadsQuery } from '@/hooks/useLeadsQuery';
 import { useLeadsCostingSummary } from '@/hooks/useLeadsCostingSummary';
@@ -68,8 +68,10 @@ const num = (v: string) => (v === '' ? null : Number(v));
 
 const LeadsFilesPage = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const urlSearch = searchParams.get('search') ?? searchParams.get('q') ?? '';
   const { data: leads = [], isLoading } = useLeadsQuery();
-  const [search, setSearch] = useState('');
+  const [search, setSearch] = useState(urlSearch);
   const [filters, setFilters] = useState<LeadFilters>(EMPTY_FILTERS);
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [sort, setSort] = useState<{ key: SortKey; dir: SortDir } | null>(null);
