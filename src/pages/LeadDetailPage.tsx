@@ -1,3 +1,4 @@
+import { fetchPlanDayTitles, syncCostingTitles } from '@/lib/versionDayTitles';
 import { eur as fmtEur } from '@/lib/money';
 import { useState, useCallback, useEffect, useRef, useMemo } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
@@ -400,6 +401,21 @@ const LeadDetailPage = ({ mode = 'lead' }: { mode?: 'lead' | 'booking' } = {}) =
     },
     enabled: !!id && !!lead,
   });
+
+  // Títulos dos dias definidos no Travel Plan desta versão (fonte de verdade).
+  const { data: planDayTitles } = useQuery({
+    queryKey: ['plan_day_titles', id, selectedVersion],
+    queryFn: () => fetchPlanDayTitles(id!, selectedVersion),
+    enabled: !!id && !!lead,
+  });
+  useEffect(() => {
+    if (!planDayTitles || !id) return;
+    const days = costingUndo.state;
+    if (!days.some(d => planDayTitles[d.day] && planDayTitles[d.day] !== d.title)) return;
+    costingUndo.reset(days.map(d => planDayTitles[d.day] ? { ...d, title: planDayTitles[d.day] } : d));
+    syncCostingTitles(id, selectedVersion, planDayTitles).catch(() => {});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [planDayTitles, costingUndo.state, id, selectedVersion]);
 
   // Ao trocar de versão, limpar o estado local para não contaminar a versão nova.
   const plannerHydratedRef = useRef<string>('');
