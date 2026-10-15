@@ -119,12 +119,18 @@ const LeadOperationsEditor = ({ activeVersion, leadId, leadCode, pvpTotal = 0, s
   const [guidePdfOpen, setGuidePdfOpen] = useState(false);
 
 
+  const { data: planTitles = {} } = useQuery({
+    queryKey: ['plan_day_titles', leadId, activeVersion],
+    queryFn: () => fetchPlanDayTitles(leadId, activeVersion),
+    enabled: !!leadId,
+  });
+
   const dayTitles = useMemo(() => {
-    const map: Record<number, string> = {};
-    plannerDays.forEach((d: any) => { map[d.day_number] = d.title || `Dia ${d.day_number}`; });
+    const map: Record<number, string> = { ...planTitles };
+    plannerDays.forEach((d: any) => { if (!map[d.day_number]) map[d.day_number] = d.title || `Dia ${d.day_number}`; });
     costingDays.forEach((d: any) => { if (!map[d.day_number]) map[d.day_number] = d.title || `Dia ${d.day_number}`; });
     return map;
-  }, [plannerDays, costingDays]);
+  }, [planTitles, plannerDays, costingDays]);
 
   // Costing lookup: day + normalized title -> {supplier, pax, net}
   const costingLookup = useMemo(() => {

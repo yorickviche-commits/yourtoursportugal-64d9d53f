@@ -18,6 +18,7 @@ import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { FunctionsHttpError } from '@supabase/supabase-js';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { syncCostingTitles, planDaysToTitles } from '@/lib/versionDayTitles';
 import { cn } from '@/lib/utils';
 import ProposalImagePicker from './ProposalImagePicker';
 import ProductPickerDialog from './ProductPickerDialog';
@@ -1302,6 +1303,11 @@ const TravelPlanProposal = ({
         ? await supabase.from('travel_plans').update(planPayload).eq('id', existingPlanRow.id)
         : await supabase.from('travel_plans').insert(planPayload);
       if (error) throw error;
+      try {
+        await syncCostingTitles(leadId, version, planDaysToTitles(planToSave.days));
+        queryClient.invalidateQueries({ queryKey: ['plan_day_titles', leadId, version] });
+        queryClient.invalidateQueries({ queryKey: ['lead_costing_ops', leadId, version] });
+      } catch (e) { console.warn('syncCostingTitles failed', e); }
 
 
       // Auto-create/update proposal from travel plan
