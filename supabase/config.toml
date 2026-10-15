@@ -47,3 +47,5 @@ project_id = "jufqscczzmioauzkqztj"
     verify_jwt = false
   [functions.calendar-migrate]
     verify_jwt = false
+  [functions.jarvis]
+    verify_jwt = false

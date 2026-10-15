@@ -54,6 +54,7 @@ import AdminActivityLogsPage from "./pages/AdminActivityLogsPage";
 import AdminRegionsPage from "./pages/AdminRegionsPage";
 import AdminAiUsagePage from "./pages/AdminAiUsagePage";
 import JarvisLiveMapPage from "./pages/JarvisLiveMapPage";
+import JarvisPage from "./pages/JarvisPage";
 import ProfilePage from "./pages/ProfilePage";
 import CatalogPage from "./pages/CatalogPage";
 import ProductsPage from "./pages/ProductsPage";
@@ -100,7 +101,8 @@ const App = () => (
             <Route path="/bookings/:id" element={<ProtectedRoute><LeadDetailPage mode="booking" /></ProtectedRoute>} />
             <Route path="/payments" element={<ProtectedRoute><PaymentsPage /></ProtectedRoute>} />
             <Route path="/proposals/:id" element={<ProtectedRoute><ProposalDetailPage /></ProtectedRoute>} />
-            <Route path="/agents" element={<ProtectedRoute><JarvisLiveMapPage /></ProtectedRoute>} />
+            <Route path="/agents" element={<ProtectedRoute><JarvisPage /></ProtectedRoute>} />
+            <Route path="/agents/live-map" element={<ProtectedRoute><JarvisLiveMapPage /></ProtectedRoute>} />
             <Route path="/agents/qualification" element={<ProtectedRoute><QualificationAgentPage /></ProtectedRoute>} />
             <Route path="/agents/itinerary" element={<ProtectedRoute><ItineraryAgentPage /></ProtectedRoute>} />
             <Route path="/agents/followup" element={<ProtectedRoute><FollowupAgentPage /></ProtectedRoute>} />
