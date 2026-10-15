@@ -238,8 +238,6 @@ const MobileMenu = ({ open, onClose }: { open: boolean; onClose: () => void }) =
   const visibleComercial = filter(comercialItems);
   const visibleAdmin = filter(adminItems);
   const showAgents = canAccess('agents');
-  const { data: aiQueue = [] } = useAiQueue();
-  const aiPending = aiQueue.filter(i => i.status === 'pending' || i.status === 'failed').length;
 
   const initials = profile?.full_name
     ? profile.full_name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()
