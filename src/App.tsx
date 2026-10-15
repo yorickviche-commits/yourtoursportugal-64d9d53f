@@ -33,7 +33,6 @@ import NotFound from "./pages/NotFound";
 import Dashboard from "./pages/Dashboard";
 import AIWorkOfficePage from "./pages/AIWorkOfficePage";
 import ApprovalsPage from "./pages/ApprovalsPage";
-import AiApprovalsPage from "./pages/AiApprovalsPage";
 import TasksPage from "./pages/TasksPage";
 import CRMPage from "./pages/CRMPage";
 import CRMRecordDetailPage from "./pages/CRMRecordDetailPage";
@@ -119,7 +118,7 @@ const App = () => (
             <Route path="/ai-office" element={<ProtectedRoute><AIWorkOfficePage /></ProtectedRoute>} />
             <Route path="/agents/dashboard" element={<Navigate to="/agents" replace />} />
             <Route path="/agents/spark-legacy" element={<ProtectedRoute><AgentControlPage /></ProtectedRoute>} />
-            <Route path="/agents/approvals" element={<ProtectedRoute><AiApprovalsPage /></ProtectedRoute>} />
+            <Route path="/agents/approvals" element={<Navigate to="/agents" replace />} />
             <Route path="/approvals" element={<ProtectedRoute><ApprovalsPage /></ProtectedRoute>} />
             <Route path="/tasks" element={<ProtectedRoute><TasksPage /></ProtectedRoute>} />
             <Route path="/crm" element={<ProtectedRoute><CRMPage /></ProtectedRoute>} />
