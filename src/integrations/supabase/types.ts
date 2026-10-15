@@ -2607,6 +2607,7 @@ export type Database = {
           exact_itinerary_pdf_path: string | null
           external_booking_ref: string | null
           id: string
+          language: string | null
           lead_code: string
           magic_question: string | null
           nethunt_record_id: string | null
@@ -2660,6 +2661,7 @@ export type Database = {
           exact_itinerary_pdf_path?: string | null
           external_booking_ref?: string | null
           id?: string
+          language?: string | null
           lead_code: string
           magic_question?: string | null
           nethunt_record_id?: string | null
@@ -2713,6 +2715,7 @@ export type Database = {
           exact_itinerary_pdf_path?: string | null
           external_booking_ref?: string | null
           id?: string
+          language?: string | null
           lead_code?: string
           magic_question?: string | null
           nethunt_record_id?: string | null
