@@ -135,35 +135,54 @@ export async function buildPrintedProposalPdf(
       scrollY: 0,
     });
 
-    const pdf = new jsPDF({ unit: 'mm', format: 'a4', compress: true });
-    const pxPerMm = canvas.width / A4.w;
-    const pageHeightPx = Math.floor(A4.h * pxPerMm);
-    let offset = 0;
-    let first = true;
+    // Size policy: target < 3 MB; fallback ceiling 5 MB; never export above 5 MB.
+    const TARGET = 3 * 1024 * 1024;
+    const CEILING = 5 * 1024 * 1024;
+    const attempts: Array<{ scale: number; q: number }> = [
+      { scale: 1, q: 0.92 }, { scale: 1, q: 0.8 }, { scale: 0.85, q: 0.75 },
+      { scale: 0.75, q: 0.7 }, { scale: 0.65, q: 0.65 }, { scale: 0.55, q: 0.6 },
+      { scale: 0.5, q: 0.55 },
+    ];
 
-    while (offset < canvas.height) {
-      const sliceHeight = Math.min(pageHeightPx, canvas.height - offset);
-      const slice = document.createElement('canvas');
-      slice.width = canvas.width;
-      slice.height = sliceHeight;
-      const ctx = slice.getContext('2d');
-      if (!ctx) throw new Error('Canvas indisponível.');
-      ctx.fillStyle = '#ffffff';
-      ctx.fillRect(0, 0, slice.width, slice.height);
-      ctx.drawImage(canvas, 0, offset, canvas.width, sliceHeight, 0, 0, canvas.width, sliceHeight);
+    const buildPdf = (scale: number, quality: number): jsPDF => {
+      const pdf = new jsPDF({ unit: 'mm', format: 'a4', compress: true });
+      const outW = Math.round(canvas.width * scale);
+      const pxPerMm = canvas.width / A4.w;
+      const pageHeightPx = Math.floor(A4.h * pxPerMm);
+      let offset = 0;
+      let first = true;
+      while (offset < canvas.height) {
+        const sliceHeight = Math.min(pageHeightPx, canvas.height - offset);
+        const slice = document.createElement('canvas');
+        slice.width = outW;
+        slice.height = Math.max(1, Math.round(sliceHeight * scale));
+        const ctx = slice.getContext('2d');
+        if (!ctx) throw new Error('Canvas indisponível.');
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(0, 0, slice.width, slice.height);
+        ctx.imageSmoothingQuality = 'high';
+        ctx.drawImage(canvas, 0, offset, canvas.width, sliceHeight, 0, 0, slice.width, slice.height);
+        if (!first) pdf.addPage();
+        first = false;
+        pdf.addImage(slice.toDataURL('image/jpeg', quality), 'JPEG', 0, 0, A4.w, sliceHeight / pxPerMm, undefined, 'FAST');
+        offset += sliceHeight;
+      }
+      return pdf;
+    };
 
-      if (!first) pdf.addPage();
-      first = false;
-      pdf.addImage(
-        slice.toDataURL('image/jpeg', 0.92),
-        'JPEG',
-        0,
-        0,
-        A4.w,
-        sliceHeight / pxPerMm,
-      );
-      offset += sliceHeight;
+    let best: { pdf: jsPDF; size: number } | null = null;
+    for (const a of attempts) {
+      const candidate = buildPdf(a.scale, a.q);
+      const size = candidate.output('blob').size;
+      if (!best || size < best.size) best = { pdf: candidate, size };
+      if (size < TARGET) break;
     }
+    if (!best) throw new Error('Falha ao gerar o PDF.');
+    if (best.size > CEILING) {
+      throw new Error(`O PDF ficou com ${(best.size / 1048576).toFixed(1)} MB mesmo após compressão (limite 5 MB). Reduza o número de imagens.`);
+    }
+    console.info(`[pdf] tamanho final ${(best.size / 1048576).toFixed(2)} MB`);
+    const pdf = best.pdf;
 
     const safeName = `${filename.replace(/[\\/:*?"<>|]+/g, ' ').trim() || 'Travel Plan'}.pdf`;
     const dataUri = pdf.output('datauristring');
