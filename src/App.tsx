@@ -3,7 +3,7 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import OpsWizardPage from "./pages/OpsWizardPage";
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
 import { AuthProvider } from "@/hooks/useAuth";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import { TourProvider } from "@/components/tour/TourProvider";
@@ -68,6 +68,12 @@ import { BoldShortcutProvider } from "@/lib/richText";
 
 const queryClient = new QueryClient();
 
+/** Mantém o ?q= / ?search= de links externos (ex.: badges YT do Jarvis) ao redirecionar para a lista. */
+const RootRedirect = () => {
+  const { search } = useLocation();
+  return <Navigate to={`/leads${search}`} replace />;
+};
+
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <AuthProvider>
@@ -92,7 +98,7 @@ const App = () => (
             <Route path="/setup-account" element={<ProtectedRoute><SetupAccountPage /></ProtectedRoute>} />
             <Route path="/welcome" element={<Navigate to="/setup-account" replace />} />
 
-            <Route path="/" element={<Navigate to="/leads" replace />} />
+            <Route path="/" element={<RootRedirect />} />
             <Route path="/leads" element={<ProtectedRoute><LeadsFilesPage /></ProtectedRoute>} />
             <Route path="/leads/:id" element={<ProtectedRoute><LeadDetailPage /></ProtectedRoute>} />
             <Route path="/ops" element={<ProtectedRoute><OpsWizardPage /></ProtectedRoute>} />
