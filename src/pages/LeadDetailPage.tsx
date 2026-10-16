@@ -1318,7 +1318,7 @@ const LeadDetailPage = ({ mode = 'lead' }: { mode?: 'lead' | 'booking' } = {}) =
   );
 };
 
-function PaymentSummaryBar({ leadId, totalPVP }: { leadId: string; totalPVP: number }) {
+function PaymentSummaryBar({ leadId, totalPVP, optionalsPVP = 0 }: { leadId: string; totalPVP: number; optionalsPVP?: number }) {
   const { data: pay } = usePaymentsSummary(leadId);
   const { data: prop } = useQuery({
     queryKey: ['lead_proposal_totals', leadId],
@@ -1367,6 +1367,15 @@ function PaymentSummaryBar({ leadId, totalPVP }: { leadId: string; totalPVP: num
           <div className="text-[9px] uppercase tracking-wide opacity-80 leading-none">Em Falta</div>
           <div className="text-sm font-bold leading-tight">{fmt(outstanding)}</div>
         </div>
+        {optionalsPVP > 0.005 && (
+          <div
+            className="px-3 py-1.5 bg-muted/40 text-muted-foreground border-l border-dashed border-muted-foreground/40"
+            title="Valor das experiências opcionais propostas — não entra no Total YT até o cliente as confirmar"
+          >
+            <div className="text-[9px] uppercase tracking-wide opacity-80 leading-none">Opcionais (não incluídos)</div>
+            <div className="text-sm font-semibold leading-tight">{fmt(optionalsPVP)}</div>
+          </div>
+        )}
       </button>
     </PaymentsDialog>
   );
