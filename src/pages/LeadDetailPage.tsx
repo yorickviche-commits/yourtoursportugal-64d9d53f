@@ -331,12 +331,16 @@ const LeadDetailPage = ({ mode = 'lead' }: { mode?: 'lead' | 'booking' } = {}) =
   const costingDays = costingUndo.state;
   const setCostingDays = costingUndo.set;
   const [pvpOverride, setPvpOverride] = useState<number | null>(null);
+  // Same rule as the Costing grand total: optional lines stay OUT of the base price.
   const costingTotalPVP = useMemo(() => {
     if (pvpOverride != null) return pvpOverride;
     return costingDays.reduce((sum, d) => sum + (d.items || [])
-      .filter((i: any) => i.status !== 'eliminar')
+      .filter((i: any) => i.status !== 'eliminar' && i.status !== 'opcionais')
       .reduce((s: number, i: any) => s + (Number(i.pvpTotal) || 0), 0), 0);
   }, [costingDays, pvpOverride]);
+  const costingOptionalsPVP = useMemo(() => costingDays.reduce((sum, d) => sum + (d.items || [])
+    .filter((i: any) => i.status === 'opcionais')
+    .reduce((s: number, i: any) => s + (Number(i.pvpTotal) || 0), 0), 0), [costingDays]);
   // plannerSubTab removed — unified view
   const [finalPrice, setFinalPrice] = useState(0);
   const { toast } = useToast();
@@ -949,7 +953,7 @@ const LeadDetailPage = ({ mode = 'lead' }: { mode?: 'lead' | 'booking' } = {}) =
 
               <div className="mt-1"><CalendarSyncBadge leadId={lead.id} leadStatus={leadStatus} /></div>
             </div>
-            <PaymentSummaryBar leadId={lead.id} totalPVP={costingTotalPVP} />
+            <PaymentSummaryBar leadId={lead.id} totalPVP={costingTotalPVP} optionalsPVP={costingOptionalsPVP} />
 
           </div>
           <div className="mt-2">
