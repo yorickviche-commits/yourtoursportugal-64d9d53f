@@ -374,7 +374,7 @@ var list_leads_default = defineTool({
         if (row.version !== (live.get(row.lead_id) ?? 0)) return;
         const agg = totals.get(row.lead_id) ?? { pvp: 0, net: 0 };
         (Array.isArray(row.items) ? row.items : []).forEach((it4) => {
-          if (it4?.status === "eliminar") return;
+          if (it4?.status === "eliminar" || it4?.status === "opcionais") return;
           agg.pvp += Number(it4?.pvpTotal) || 0;
           agg.net += Number(it4?.netTotal) || 0;
         });

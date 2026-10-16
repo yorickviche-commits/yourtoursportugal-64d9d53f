@@ -331,12 +331,16 @@ const LeadDetailPage = ({ mode = 'lead' }: { mode?: 'lead' | 'booking' } = {}) =
   const costingDays = costingUndo.state;
   const setCostingDays = costingUndo.set;
   const [pvpOverride, setPvpOverride] = useState<number | null>(null);
+  // Same rule as the Costing grand total: optional lines stay OUT of the base price.
   const costingTotalPVP = useMemo(() => {
     if (pvpOverride != null) return pvpOverride;
     return costingDays.reduce((sum, d) => sum + (d.items || [])
-      .filter((i: any) => i.status !== 'eliminar')
+      .filter((i: any) => i.status !== 'eliminar' && i.status !== 'opcionais')
       .reduce((s: number, i: any) => s + (Number(i.pvpTotal) || 0), 0), 0);
   }, [costingDays, pvpOverride]);
+  const costingOptionalsPVP = useMemo(() => costingDays.reduce((sum, d) => sum + (d.items || [])
+    .filter((i: any) => i.status === 'opcionais')
+    .reduce((s: number, i: any) => s + (Number(i.pvpTotal) || 0), 0), 0), [costingDays]);
   // plannerSubTab removed — unified view
   const [finalPrice, setFinalPrice] = useState(0);
   const { toast } = useToast();
@@ -949,7 +953,7 @@ const LeadDetailPage = ({ mode = 'lead' }: { mode?: 'lead' | 'booking' } = {}) =
 
               <div className="mt-1"><CalendarSyncBadge leadId={lead.id} leadStatus={leadStatus} /></div>
             </div>
-            <PaymentSummaryBar leadId={lead.id} totalPVP={costingTotalPVP} />
+            <PaymentSummaryBar leadId={lead.id} totalPVP={costingTotalPVP} optionalsPVP={costingOptionalsPVP} />
 
           </div>
           <div className="mt-2">
@@ -1314,7 +1318,7 @@ const LeadDetailPage = ({ mode = 'lead' }: { mode?: 'lead' | 'booking' } = {}) =
   );
 };
 
-function PaymentSummaryBar({ leadId, totalPVP }: { leadId: string; totalPVP: number }) {
+function PaymentSummaryBar({ leadId, totalPVP, optionalsPVP = 0 }: { leadId: string; totalPVP: number; optionalsPVP?: number }) {
   const { data: pay } = usePaymentsSummary(leadId);
   const { data: prop } = useQuery({
     queryKey: ['lead_proposal_totals', leadId],
@@ -1363,6 +1367,15 @@ function PaymentSummaryBar({ leadId, totalPVP }: { leadId: string; totalPVP: num
           <div className="text-[9px] uppercase tracking-wide opacity-80 leading-none">Em Falta</div>
           <div className="text-sm font-bold leading-tight">{fmt(outstanding)}</div>
         </div>
+        {optionalsPVP > 0.005 && (
+          <div
+            className="px-3 py-1.5 bg-muted/40 text-muted-foreground border-l border-dashed border-muted-foreground/40"
+            title="Valor das experiências opcionais propostas — não entra no Total YT até o cliente as confirmar"
+          >
+            <div className="text-[9px] uppercase tracking-wide opacity-80 leading-none">Opcionais (não incluídos)</div>
+            <div className="text-sm font-semibold leading-tight">{fmt(optionalsPVP)}</div>
+          </div>
+        )}
       </button>
     </PaymentsDialog>
   );

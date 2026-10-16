@@ -37,6 +37,26 @@ export function parseGoogleMapsUrl(rawUrl: string): ParsedMapUrl {
     return { embedSrc: null, waypoints: [], originalUrl: url };
   }
 
+  // Official directions API format: /maps/dir/?api=1&origin=..&destination=..&waypoints=A|B
+  if (/\/maps\/dir\/?\?/i.test(url)) {
+    try {
+      const u = new URL(url);
+      const origin = u.searchParams.get('origin');
+      const destination = u.searchParams.get('destination');
+      const wps = (u.searchParams.get('waypoints') || '').split('|').map(s => s.trim()).filter(Boolean);
+      const stops = [origin, ...wps, destination].filter((s): s is string => !!s && !!s.trim()).map(s => s.trim());
+      if (stops.length >= 2) {
+        const saddr = encodeURIComponent(stops[0]);
+        const daddr = stops.slice(1).map(s => encodeURIComponent(s)).join('+to:');
+        return {
+          embedSrc: `https://maps.google.com/maps?saddr=${saddr}&daddr=${daddr}&output=embed`,
+          waypoints: stops,
+          originalUrl: `https://www.google.com/maps/dir/${stops.map(s => encodeURIComponent(s)).join('/')}`,
+        };
+      }
+    } catch { /* fall through */ }
+  }
+
   // Directions: /maps/dir/A/B/C/@lat,lng/data=...
   const dirMatch = url.match(/\/maps\/dir\/([^@]+?)(?:\/@|\/data=|\?|$)/i);
   if (dirMatch) {

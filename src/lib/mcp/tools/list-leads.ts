@@ -84,7 +84,7 @@ export default defineTool({
         if (row.version !== (live.get(row.lead_id) ?? 0)) return;
         const agg = totals.get(row.lead_id) ?? { pvp: 0, net: 0 };
         (Array.isArray(row.items) ? row.items : []).forEach((it: any) => {
-          if (it?.status === "eliminar") return;
+          if (it?.status === "eliminar" || it?.status === "opcionais") return;
           agg.pvp += Number(it?.pvpTotal) || 0;
           agg.net += Number(it?.netTotal) || 0;
         });
