@@ -30,7 +30,7 @@ export const useLeadsCostingSummary = (leadIds: string[]) => {
         const items = Array.isArray(row.items) ? row.items : [];
         const agg = out[row.lead_id] || { pvp: 0, net: 0, marginPct: 0 };
         for (const it of items) {
-          if (it?.status === 'eliminar') continue;
+          if (it?.status === 'eliminar' || it?.status === 'opcionais') continue;
           agg.pvp += Number(it?.pvpTotal) || 0;
           agg.net += Number(it?.netTotal) || 0;
         }
