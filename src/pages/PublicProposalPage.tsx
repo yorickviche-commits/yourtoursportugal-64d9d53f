@@ -12,6 +12,7 @@ import { resolveClosingText } from '@/lib/closingTermsI18n';
 import { getHotelsDict, resolveHotelsText, mergeProposalHotels } from '@/lib/proposalHotelsI18n';
 import { getPdfDict } from '@/lib/proposalPdfI18n';
 import { eur as fmtEur } from '@/lib/money';
+import { buildIncludedText } from '@/lib/proposalIncluded';
 
 const TERMS_URL = 'https://drive.google.com/file/d/12AkvW2Ob0LtcooaciWY4e-nEx7hlOnQC/view?usp=sharing';
 
@@ -938,10 +939,7 @@ const PricingConditions = ({ proposal, lang }: { proposal: any; lang: string }) 
   const L = PRICING_LABELS[lang] || PRICING_LABELS.en;
   const days: ProposalDay[] = Array.isArray(proposal.days) ? proposal.days : [];
   const dayLabel = PRICING_LABELS[lang] ? ({ en: 'Day', fr: 'Jour', es: 'Día', pt: 'Dia', it: 'Giorno', de: 'Tag' } as any)[lang] : 'Day';
-  const autoIncluded = days
-    .map(d => `**${dayLabel} ${d.day_number} — ${stripBoldMarkers(d.title || '')}**\n${(d.items || []).slice(0, 6).map(b => `• ${b}`).join('\n')}`)
-    .join('\n\n');
-  const includedText: string = closing.inclusionsOverride?.trim() || autoIncluded;
+  const includedText = buildIncludedText(days, dayLabel);
   const dict = getPdfDict(lang);
   const h = getHotelsDict(lang);
   const accommodation: any[] = Array.isArray(closing.accommodation) ? closing.accommodation : [];

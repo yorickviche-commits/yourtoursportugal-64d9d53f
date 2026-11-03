@@ -8,6 +8,7 @@ import { getPdfDict } from '@/lib/proposalPdfI18n';
 import { resolveClosingText } from '@/lib/closingTermsI18n';
 import { getHotelsDict, resolveHotelsText, mergeProposalHotels } from '@/lib/proposalHotelsI18n';
 import { eur as fmtEur } from './money';
+import { buildIncludedText } from './proposalIncluded';
 
 const ALL_REVIEWS_URL = 'https://yourtoursportugal.com/our-reviews/';
 
@@ -506,9 +507,7 @@ export async function buildProposalPdfDoc(
         y += boxH + 18;
       }
 
-      const autoIncluded = days
-        .map((d, i) => `**${t.day} ${d.day_number ?? i + 1} — ${stripBoldMarkers(d.title || '')}**\n${dayItems(d).slice(0, 6).map(b => `• ${b}`).join('\n')}`)
-        .join('\n\n');
+      const autoIncluded = buildIncludedText(days, t.day);
 
       // Hotels Included block (from Costing + details edited in the planner)
       const hd = getHotelsDict(p.language);
@@ -575,7 +574,7 @@ export async function buildProposalPdfDoc(
         ...(hotelsText ? [{ heading: hd.hotelsIncluded, text: hotelsText }] : []),
 
         ...(showTerms ? [
-          { heading: t.included, text: (closing.inclusionsOverride?.trim() || autoIncluded) },
+          { heading: t.included, text: autoIncluded },
           { heading: hd.notIncluded, text: resolveHotelsText('notIncludedDefault', closing.notIncluded, p.language) },
           { heading: t.paymentConditions, text: resolveClosingText('payment', closing.payment, p.language) },
           { heading: t.cancellationConditions, text: resolveClosingText('cancellation', closing.cancellation, p.language) },
