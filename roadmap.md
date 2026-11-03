@@ -1,6 +1,6 @@
 # Roadmap
 
-- [ ] Alinhar cancelamento editável (day tour 7 dias / multi-day 30) e ordem dos serviços nos próximos passos.
+- [x] Alinhar cancelamento editável (day tour 7 dias / multi-day 30) e ordem dos serviços nos próximos passos.
 
 - [x] Página Consumo AI (/admin/consumo)
 - [x] JARVIS: copiar ficheiros prontos (página, HTML, função) + deploy
