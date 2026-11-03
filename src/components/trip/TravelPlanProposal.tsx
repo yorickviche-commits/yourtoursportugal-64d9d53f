@@ -71,6 +71,8 @@ import { routeForDay } from '@/lib/versionRouteMaps';
 import { toMapEmbedSrc, parseGoogleMapsUrl } from '@/lib/mapEmbed';
 import { buildRouteMapImage } from '@/lib/staticRouteMap';
 import { downloadProposalPdf } from '@/lib/proposalPdf';
+import { buildPrintedRootPdf } from '@/lib/printedProposalPdf';
+import { downloadFileUrl } from '@/lib/downloadFile';
 import { getProposalAppUrl } from '@/lib/proposalShare';
 import { uploadDataUrlImage, isDataUrl, uploadImageFile, removeWhiteBackground } from '@/lib/uploadDataUrlImage';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -650,87 +652,47 @@ const TravelPlanProposal = ({
   }, [clientName, destination, language, leadCode, plan, travelDates, travelEndDate, ytId]);
 
   const handlePrintPdf = useCallback(async () => {
-    const filename = buildPdfFilename();
-    if (!filename) return;
-    const printRoot = document.querySelector<HTMLElement>('[data-print-root]');
-
-    // Google Maps iframes never render when printing, so each day's route map is
-    // rasterized to a static image (linked to the original Google Maps route).
-    const mapNodes = printRoot
-      ? Array.from(printRoot.querySelectorAll<HTMLElement>('[data-map-embed]'))
-      : [];
-    const mapImages = await Promise.all(
-      mapNodes.map(async node => {
-        const url = node.getAttribute('data-map-embed') || '';
-        if (!url) return null;
-        try {
-          return await buildRouteMapImage(url);
-        } catch {
-          return null;
-        }
-      }),
-    );
-    const mapReplacements = mapNodes.map((node, i) => {
-      const url = node.getAttribute('data-map-embed') || '';
-      const img = mapImages[i];
-      const link = `<div style="margin-top:6px;font-size:11px;font-weight:600"><a href="${url}" target="_blank" rel="noopener" style="color:#0066cc;text-decoration:none">Open route in Google Maps →</a></div>`;
-      if (!img) {
-        // Never leave an empty framed box in the PDF: keep only the route link.
-        console.warn('Route map image unavailable for', url);
-        return `<div style="margin-top:16px">${link}</div>`;
-      }
-      return `<div style="margin-top:16px"><div style="border:1px solid #e2e8f0;border-radius:8px;overflow:hidden"><a href="${url}" target="_blank" rel="noopener"><img data-route-map="${i}" alt="Route map" style="display:block;width:100%;height:auto" /></a></div>${link}</div>`;
-    });
-
-    // Print the live document in place: the browser keeps the text vectorial
-    // (a hidden iframe gets rasterized => blurry) and derives the suggested
-    // filename from THIS document's title.
-    const previousTitle = document.title;
-    document.title = filename;
-
-    const originals = mapNodes.map((node, i) => {
-      const html = mapReplacements[i];
-      if (!html) return null;
-      const holder = document.createElement('div');
-      holder.innerHTML = html;
-      const replacement = holder.firstElementChild as HTMLElement | null;
-      if (!replacement || !node.parentNode) return null;
-      replacement.querySelectorAll<HTMLImageElement>('img[data-route-map]').forEach(image => {
-        const src = mapImages[Number(image.getAttribute('data-route-map'))]?.dataUrl;
-        if (src) image.src = src;
+    if (downloadingPdf || !plan) return;
+    const previousMode = viewMode;
+    const previousCollapsed = collapsedDays;
+    let frame: HTMLIFrameElement | undefined;
+    setDownloadingPdf(true);
+    setViewMode('preview');
+    setCollapsedDays(new Set());
+    try {
+      // Wait for the full preview, then clone it without changing saved versions.
+      await new Promise(resolve => window.setTimeout(resolve, 150));
+      const root = document.querySelector<HTMLElement>('[data-print-root]');
+      if (!root) throw new Error('Não foi possível abrir o documento PDF.');
+      frame = document.createElement('iframe');
+      frame.setAttribute('aria-hidden', 'true');
+      frame.style.cssText = 'position:fixed;left:-20000px;top:0;width:1024px;height:1400px;border:0;pointer-events:none';
+      document.body.appendChild(frame);
+      const doc = frame.contentDocument;
+      if (!doc) throw new Error('Não foi possível preparar o PDF.');
+      document.querySelectorAll('style,link[rel="stylesheet"]').forEach(style => doc.head.appendChild(style.cloneNode(true)));
+      const clone = root.cloneNode(true) as HTMLElement;
+      clone.querySelectorAll('[class~="print:hidden"],button,[contenteditable]').forEach(node => {
+        if (node.hasAttribute('contenteditable')) node.removeAttribute('contenteditable');
+        else node.remove();
       });
-      node.parentNode.replaceChild(replacement, node);
-      return { node, replacement };
-    });
-
-    // Wait for the injected route maps and webfonts so nothing prints half-drawn.
-    const images = printRoot ? Array.from(printRoot.querySelectorAll('img')) : [];
-    await Promise.all([
-      Promise.all(images.map(image => image.complete
-        ? Promise.resolve()
-        : new Promise<void>(resolve => {
-            image.addEventListener('load', () => resolve(), { once: true });
-            image.addEventListener('error', () => resolve(), { once: true });
-          }))),
-      document.fonts?.ready ?? Promise.resolve(),
-    ]);
-
-    const restore = () => {
-      originals.forEach(entry => {
-        if (entry?.replacement.parentNode) entry.replacement.parentNode.replaceChild(entry.node, entry.replacement);
-      });
-      document.title = previousTitle;
-    };
-
-    window.addEventListener('afterprint', restore, { once: true });
-    window.print();
-    // Safety net for browsers that never fire `afterprint`.
-    window.setTimeout(() => {
-      window.removeEventListener('afterprint', restore);
-      restore();
-    }, 3000);
-  }, [buildPdfFilename]);
-
+      clone.style.cssText = 'width:1024px;max-width:none;margin:0;padding:38px;border:0;border-radius:0;box-shadow:none';
+      doc.body.style.margin = '0';
+      doc.body.appendChild(clone);
+      await new Promise(resolve => window.setTimeout(resolve, 200));
+      frame.style.height = `${clone.scrollHeight + 200}px`;
+      const result = await buildPrintedRootPdf(clone, buildPdfFilename());
+      downloadFileUrl(result.blobUrl, result.filename);
+      toast({ title: 'PDF descarregado', description: result.filename });
+    } catch (error) {
+      toast({ title: 'Erro ao gerar PDF', description: error instanceof Error ? error.message : 'Tente novamente.', variant: 'destructive' });
+    } finally {
+      frame?.remove();
+      setViewMode(previousMode);
+      setCollapsedDays(previousCollapsed);
+      setDownloadingPdf(false);
+    }
+  }, [buildPdfFilename, downloadingPdf, plan, viewMode, collapsedDays, toast]);
 
 
   // Keep the document title aligned with the custom PDF filename while this
@@ -1768,10 +1730,10 @@ const TravelPlanProposal = ({
             size="sm"
             className="text-xs gap-1"
             onClick={handlePrintPdf}
-            disabled={!plan}
-            title="Imprimir / guardar como PDF — é este o documento que segue anexo ao email"
+            disabled={!plan || downloadingPdf}
+            title="Descarregar PDF otimizado"
           >
-            <FileText className="h-3 w-3" /> Imprimir
+            {downloadingPdf ? <Loader2 className="h-3 w-3 animate-spin" /> : <FileText className="h-3 w-3" />} {downloadingPdf ? 'A gerar PDF…' : 'Descarregar PDF'}
           </Button>
           <Button size="sm" className="text-xs gap-1 bg-[hsl(var(--success))] hover:bg-[hsl(var(--success))]/90 text-white" onClick={onGoToCosting}>
             <ArrowRight className="h-3 w-3" /> Costing
