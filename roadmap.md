@@ -2,4 +2,4 @@
 
 - [x] Página Consumo AI (/admin/consumo)
 - [x] JARVIS: copiar ficheiros prontos (página, HTML, função) + deploy
-- [ ] Corrigir inclusões dinâmicas sem limite no Planner, proposta e PDF; verificar YT5171.
+- [x] Corrigir inclusões dinâmicas sem limite no Planner, proposta e PDF; verificar YT5171.
