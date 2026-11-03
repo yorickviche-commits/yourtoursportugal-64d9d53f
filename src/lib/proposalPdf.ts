@@ -5,7 +5,7 @@ import { parseGoogleMapsUrl } from '@/lib/mapEmbed';
 import { buildRouteMapImage, type RouteMapImage } from '@/lib/staticRouteMap';
 import { drawRichTextPdf, stripBoldMarkers } from '@/lib/richText';
 import { getPdfDict } from '@/lib/proposalPdfI18n';
-import { resolveClosingText } from '@/lib/closingTermsI18n';
+import { resolveClosingText, proposalTourDayCount } from '@/lib/closingTermsI18n';
 import { getHotelsDict, resolveHotelsText, mergeProposalHotels } from '@/lib/proposalHotelsI18n';
 import { eur as fmtEur } from './money';
 import { buildIncludedText } from './proposalIncluded';
@@ -577,7 +577,7 @@ export async function buildProposalPdfDoc(
           { heading: t.included, text: autoIncluded },
           { heading: hd.notIncluded, text: resolveHotelsText('notIncludedDefault', closing.notIncluded, p.language) },
           { heading: t.paymentConditions, text: resolveClosingText('payment', closing.payment, p.language) },
-          { heading: t.cancellationConditions, text: resolveClosingText('cancellation', closing.cancellation, p.language) },
+          { heading: t.cancellationConditions, text: resolveClosingText('cancellation', closing.cancellation, p.language, proposalTourDayCount(days)) },
           { heading: t.importantNotes, text: resolveClosingText('importantNotes', closing.importantNotes, p.language) },
           { heading: hd.nextSteps, text: resolveHotelsText('nextStepsDefault', closing.nextSteps, p.language) },
         ] : []),

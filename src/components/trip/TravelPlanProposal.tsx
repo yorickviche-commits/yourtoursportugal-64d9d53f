@@ -9,7 +9,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { RichInput, RichTextarea } from '@/components/ui/rich-editable';
 import { RichText } from '@/lib/richText';
 import { getIncludedDays } from '@/lib/proposalIncluded';
-import { resolveClosingText } from '@/lib/closingTermsI18n';
+import { resolveClosingText, proposalTourDayCount } from '@/lib/closingTermsI18n';
 import { getHotelsDict, resolveHotelsText, mergeProposalHotels, type ProposalHotel } from '@/lib/proposalHotelsI18n';
 import { Switch } from '@/components/ui/switch';
 import { Card, CardContent } from '@/components/ui/card';
@@ -592,19 +592,20 @@ const TravelPlanProposal = ({
   const normalizedDefaultLang = (defaultLanguage || 'EN').toUpperCase();
   const initialLang = LANGUAGE_OPTIONS.some(o => o.value === normalizedDefaultLang) ? normalizedDefaultLang : 'EN';
   const [language, setLanguage] = useState<string>(initialLang);
+  const tourDayCount = proposalTourDayCount(plan?.days || [], numberOfDays || 1);
   // Keep the fixed closing terms (payment / cancellation / notes / closing message)
   // in the proposal language whenever they were never manually customised.
   useEffect(() => {
     setClosing(prev => {
       const next = { ...prev };
       (['payment', 'cancellation', 'importantNotes', 'closingMessage'] as const).forEach(f => {
-        next[f] = resolveClosingText(f, prev[f], language);
+        next[f] = resolveClosingText(f, prev[f], language, tourDayCount);
       });
       next.notIncluded = resolveHotelsText('notIncludedDefault', prev.notIncluded, language);
       next.nextSteps = resolveHotelsText('nextStepsDefault', prev.nextSteps, language);
       return next;
     });
-  }, [language]);
+  }, [language, tourDayCount, leadId, version, plan === null]);
   // Manual mode: product picker target — 'new' appends a new day, number = append into that day
   const [pickerTarget, setPickerTarget] = useState<'new' | number | null>(null);
   const [collapsedDays, setCollapsedDays] = useState<Set<number>>(new Set());
@@ -945,7 +946,7 @@ const TravelPlanProposal = ({
         const metaLang = meta?.language ? String(meta.language) : language;
         const merged = { ...DEFAULT_CLOSING, ...meta.closing } as ClosingTerms;
         (['payment', 'cancellation', 'importantNotes', 'closingMessage'] as const).forEach(f => {
-          merged[f] = resolveClosingText(f, merged[f], metaLang);
+          merged[f] = resolveClosingText(f, merged[f], metaLang, proposalTourDayCount(days, numberOfDays || 1));
         });
         setClosing(merged);
       }

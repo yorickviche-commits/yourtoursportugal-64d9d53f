@@ -8,7 +8,7 @@ import reviewsBanner from '@/assets/our-reviews-banner.png.asset.json';
 import foundersAsset from '@/assets/founders.png.asset.json';
 import { toMapEmbedSrc } from '@/lib/mapEmbed';
 import { RichText, stripBoldMarkers } from '@/lib/richText';
-import { resolveClosingText } from '@/lib/closingTermsI18n';
+import { resolveClosingText, proposalTourDayCount } from '@/lib/closingTermsI18n';
 import { getHotelsDict, resolveHotelsText, mergeProposalHotels } from '@/lib/proposalHotelsI18n';
 import { getPdfDict } from '@/lib/proposalPdfI18n';
 import { eur as fmtEur } from '@/lib/money';
@@ -954,7 +954,7 @@ const PricingConditions = ({ proposal, lang }: { proposal: any; lang: string }) 
   const programmeTotal = Math.max(0, total - hotelsTotal);
   const eur = (n: number) => fmtEur(n);
   const paymentText: string = resolveClosingText('payment', closing.payment, lang);
-  const cancellationText: string = resolveClosingText('cancellation', closing.cancellation, lang);
+  const cancellationText: string = resolveClosingText('cancellation', closing.cancellation, lang, proposalTourDayCount(days));
   const notesText: string = resolveClosingText('importantNotes', closing.importantNotes, lang);
   const notIncludedText: string = resolveHotelsText('notIncludedDefault', closing.notIncluded, lang);
   const nextStepsText: string = resolveHotelsText('nextStepsDefault', closing.nextSteps, lang);

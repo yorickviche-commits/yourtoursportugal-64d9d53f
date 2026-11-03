@@ -81,8 +81,19 @@ export function normalizeClosingLang(language?: string | null): ClosingLang {
   return SETS[key] ? key : 'en';
 }
 
-export function getClosingDefaults(language?: string | null): ClosingSet {
-  return SETS[normalizeClosingLang(language)];
+/** Day 0 is accommodation, not a touring day. */
+export function cancellationDeadlineDays(dayCount: number): 7 | 30 {
+  return dayCount > 1 ? 30 : 7;
+}
+
+export function proposalTourDayCount(days: { day_number?: number }[], fallback = 1): number {
+  return days.filter(day => day.day_number !== 0).length || fallback;
+}
+
+export function getClosingDefaults(language?: string | null, dayCount = 1): ClosingSet {
+  const defaults = SETS[normalizeClosingLang(language)];
+  const deadline = cancellationDeadlineDays(dayCount);
+  return { ...defaults, cancellation: defaults.cancellation.replace(/\b(?:7|30)\b/g, String(deadline)) };
 }
 
 const norm = (s: string) => s.replace(/\*\*/g, '').replace(/\s+/g, ' ').trim().toLowerCase();
@@ -104,11 +115,13 @@ export function isDefaultClosingText(field: ClosingField, text?: string | null):
   if (!text || !String(text).trim()) return true;
   const n = norm(String(text));
   if (LEGACY_DEFAULTS[field].some(d => norm(d) === n)) return true;
-  return (Object.keys(SETS) as ClosingLang[]).some(l => norm(SETS[l][field]) === n);
+  return (Object.keys(SETS) as ClosingLang[]).some(l =>
+    [1, 2].some(days => norm(getClosingDefaults(l, days)[field]) === n) || norm(SETS[l][field]) === n,
+  );
 }
 
 /** Returns the stored text when it was manually customised, otherwise the localized default. */
-export function resolveClosingText(field: ClosingField, stored: string | null | undefined, language?: string | null): string {
-  if (isDefaultClosingText(field, stored)) return getClosingDefaults(language)[field];
+export function resolveClosingText(field: ClosingField, stored: string | null | undefined, language?: string | null, dayCount = 1): string {
+  if (isDefaultClosingText(field, stored)) return getClosingDefaults(language, dayCount)[field];
   return String(stored);
 }
