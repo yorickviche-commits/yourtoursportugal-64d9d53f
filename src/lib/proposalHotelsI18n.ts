@@ -47,7 +47,7 @@ const en: HotelsDict = {
   notIncluded: "What's Not Included",
   nextSteps: 'Your next steps',
   notIncludedDefault: '• International flights and airport taxes.\n• Travel and medical insurance.\n• Meals and drinks not mentioned in the programme.\n• Personal expenses, tips and anything not explicitly listed as included.',
-  nextStepsDefault: '1. Review the programme and share any adjustments you would like.\n2. Confirm the proposal so we can secure hotels, guides and experiences.\n3. Pay the deposit to formalise the booking — we handle everything else.',
+  nextStepsDefault: '1. Review the programme and share any adjustments you would like.\n2. Confirm the proposal so we can secure experiences, guides, transportation and hotels (where applicable).\n3. Pay the deposit to formalise the booking — we handle everything else.',
 };
 
 const pt: HotelsDict = {
@@ -69,7 +69,7 @@ const pt: HotelsDict = {
   notIncluded: 'O Que Não Está Incluído',
   nextSteps: 'Próximos passos',
   notIncludedDefault: '• Voos internacionais e taxas de aeroporto.\n• Seguro de viagem e de saúde.\n• Refeições e bebidas não mencionadas no programa.\n• Despesas pessoais, gratificações e tudo o que não esteja expressamente indicado como incluído.',
-  nextStepsDefault: '1. Reveja o programa e diga-nos que ajustes gostaria de fazer.\n2. Confirme a proposta para garantirmos hotéis, guias e experiências.\n3. Efetue o sinal para formalizar a reserva — nós tratamos de todo o resto.',
+  nextStepsDefault: '1. Reveja o programa e diga-nos que ajustes gostaria de fazer.\n2. Confirme a proposta para garantirmos experiências, guias, transporte e hotéis (quando aplicável).\n3. Efetue o sinal para formalizar a reserva — nós tratamos de todo o resto.',
 };
 
 const es: HotelsDict = {
@@ -91,7 +91,7 @@ const es: HotelsDict = {
   notIncluded: 'Qué No Está Incluido',
   nextSteps: 'Próximos pasos',
   notIncludedDefault: '• Vuelos internacionales y tasas de aeropuerto.\n• Seguro de viaje y médico.\n• Comidas y bebidas no mencionadas en el programa.\n• Gastos personales, propinas y todo lo que no figure expresamente como incluido.',
-  nextStepsDefault: '1. Revise el programa e indíquenos los ajustes que desee.\n2. Confirme la propuesta para reservar hoteles, guías y experiencias.\n3. Abone la señal para formalizar la reserva — nosotros nos encargamos del resto.',
+  nextStepsDefault: '1. Revise el programa e indíquenos los ajustes que desee.\n2. Confirme la propuesta para reservar experiencias, guías, transporte y hoteles (cuando corresponda).\n3. Abone la señal para formalizar la reserva — nosotros nos encargamos del resto.',
 };
 
 const fr: HotelsDict = {
@@ -113,7 +113,7 @@ const fr: HotelsDict = {
   notIncluded: 'Ce Qui N’Est Pas Inclus',
   nextSteps: 'Prochaines étapes',
   notIncludedDefault: '• Vols internationaux et taxes d’aéroport.\n• Assurance voyage et santé.\n• Repas et boissons non mentionnés dans le programme.\n• Dépenses personnelles, pourboires et tout ce qui n’est pas expressément indiqué comme inclus.',
-  nextStepsDefault: '1. Parcourez le programme et indiquez-nous les ajustements souhaités.\n2. Confirmez la proposition pour réserver hôtels, guides et expériences.\n3. Réglez l’acompte pour formaliser la réservation — nous gérons le reste.',
+  nextStepsDefault: '1. Parcourez le programme et indiquez-nous les ajustements souhaités.\n2. Confirmez la proposition pour réserver expériences, guides, transport et hôtels (le cas échéant).\n3. Réglez l’acompte pour formaliser la réservation — nous gérons le reste.',
 };
 
 const it: HotelsDict = {
@@ -135,7 +135,7 @@ const it: HotelsDict = {
   notIncluded: 'Cosa Non È Incluso',
   nextSteps: 'Prossimi passi',
   notIncludedDefault: '• Voli internazionali e tasse aeroportuali.\n• Assicurazione di viaggio e sanitaria.\n• Pasti e bevande non menzionati nel programma.\n• Spese personali, mance e tutto ciò che non è espressamente indicato come incluso.',
-  nextStepsDefault: '1. Rivedi il programma e indicaci le modifiche desiderate.\n2. Confermaci la proposta per bloccare hotel, guide ed esperienze.\n3. Versa l’acconto per formalizzare la prenotazione — al resto pensiamo noi.',
+  nextStepsDefault: '1. Rivedi il programma e indicaci le modifiche desiderate.\n2. Confermaci la proposta per bloccare esperienze, guide, trasporto e hotel (ove applicabile).\n3. Versa l’acconto per formalizzare la prenotazione — al resto pensiamo noi.',
 };
 
 const de: HotelsDict = {
@@ -157,7 +157,7 @@ const de: HotelsDict = {
   notIncluded: 'Nicht Inkludiert',
   nextSteps: 'Ihre nächsten Schritte',
   notIncludedDefault: '• Internationale Flüge und Flughafensteuern.\n• Reise- und Krankenversicherung.\n• Mahlzeiten und Getränke, die nicht im Programm genannt sind.\n• Persönliche Ausgaben, Trinkgelder und alles, was nicht ausdrücklich als inkludiert aufgeführt ist.',
-  nextStepsDefault: '1. Prüfen Sie das Programm und teilen Sie uns gewünschte Anpassungen mit.\n2. Bestätigen Sie das Angebot, damit wir Hotels, Guides und Erlebnisse sichern.\n3. Zahlen Sie die Anzahlung zur Buchungsbestätigung — um alles Weitere kümmern wir uns.',
+  nextStepsDefault: '1. Prüfen Sie das Programm und teilen Sie uns gewünschte Anpassungen mit.\n2. Bestätigen Sie das Angebot, damit wir Erlebnisse, Guides, Transport und Hotels sichern (sofern zutreffend).\n3. Zahlen Sie die Anzahlung zur Buchungsbestätigung — um alles Weitere kümmern wir uns.',
 };
 
 const SETS: Record<HotelsLang, HotelsDict> = { en, pt, es, fr, it, de };
@@ -167,11 +167,21 @@ export function getHotelsDict(language?: string | null): HotelsDict {
   return SETS[key] || en;
 }
 
+const LEGACY_NEXT_STEPS = [
+  '1. Review the programme and share any adjustments you would like.\n2. Confirm the proposal so we can secure hotels, guides and experiences.\n3. Pay the deposit to formalise the booking — we handle everything else.',
+  '1. Reveja o programa e diga-nos que ajustes gostaria de fazer.\n2. Confirme a proposta para garantirmos hotéis, guias e experiências.\n3. Efetue o sinal para formalizar a reserva — nós tratamos de todo o resto.',
+  '1. Revise el programa e indíquenos los ajustes que desee.\n2. Confirme la propuesta para reservar hoteles, guías y experiencias.\n3. Abone la señal para formalizar la reserva — nosotros nos encargamos del resto.',
+  '1. Parcourez le programme et indiquez-nous les ajustements souhaités.\n2. Confirmez la proposition pour réserver hôtels, guides et expériences.\n3. Réglez l’acompte pour formaliser la réservation — nous gérons le reste.',
+  '1. Rivedi il programma e indicaci le modifiche desiderate.\n2. Confermaci la proposta per bloccare hotel, guide ed esperienze.\n3. Versa l’acconto per formalizzare la prenotazione — al resto pensiamo noi.',
+  '1. Prüfen Sie das Programm und teilen Sie uns gewünschte Anpassungen mit.\n2. Bestätigen Sie das Angebot, damit wir Hotels, Guides und Erlebnisse sichern.\n3. Zahlen Sie die Anzahlung zur Buchungsbestätigung — um alles Weitere kümmern wir uns.',
+];
+
 /** True when the stored text is still one of the localized defaults (or empty). */
 export function isDefaultHotelsText(field: 'notIncludedDefault' | 'nextStepsDefault', text?: string | null): boolean {
   if (!text || !String(text).trim()) return true;
   const norm = (s: string) => s.replace(/\*\*/g, '').replace(/\s+/g, ' ').trim().toLowerCase();
   const n = norm(String(text));
+  if (field === 'nextStepsDefault' && LEGACY_NEXT_STEPS.some(value => norm(value) === n)) return true;
   return (Object.keys(SETS) as HotelsLang[]).some(l => norm(SETS[l][field]) === n);
 }
 

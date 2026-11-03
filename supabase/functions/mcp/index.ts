@@ -1270,8 +1270,13 @@ function normalizeClosingLang(language) {
   const key = String(language || "en").slice(0, 2).toLowerCase();
   return SETS[key] ? key : "en";
 }
-function getClosingDefaults(language) {
-  return SETS[normalizeClosingLang(language)];
+function cancellationDeadlineDays(dayCount) {
+  return dayCount > 1 ? 30 : 7;
+}
+function getClosingDefaults(language, dayCount = 1) {
+  const defaults = SETS[normalizeClosingLang(language)];
+  const deadline = cancellationDeadlineDays(dayCount);
+  return { ...defaults, cancellation: defaults.cancellation.replace(/\b(?:7|30)\b/g, String(deadline)) };
 }
 var norm = (s) => s.replace(/\*\*/g, "").replace(/\s+/g, " ").trim().toLowerCase();
 var LEGACY_DEFAULTS = {
@@ -1287,10 +1292,12 @@ function isDefaultClosingText(field, text) {
   if (!text || !String(text).trim()) return true;
   const n = norm(String(text));
   if (LEGACY_DEFAULTS[field].some((d) => norm(d) === n)) return true;
-  return Object.keys(SETS).some((l) => norm(SETS[l][field]) === n);
+  return Object.keys(SETS).some(
+    (l) => [1, 2].some((days2) => norm(getClosingDefaults(l, days2)[field]) === n) || norm(SETS[l][field]) === n
+  );
 }
-function resolveClosingText(field, stored, language) {
-  if (isDefaultClosingText(field, stored)) return getClosingDefaults(language)[field];
+function resolveClosingText(field, stored, language, dayCount = 1) {
+  if (isDefaultClosingText(field, stored)) return getClosingDefaults(language, dayCount)[field];
   return String(stored);
 }
 
@@ -1314,7 +1321,7 @@ var en3 = {
   notIncluded: "What's Not Included",
   nextSteps: "Your next steps",
   notIncludedDefault: "\u2022 International flights and airport taxes.\n\u2022 Travel and medical insurance.\n\u2022 Meals and drinks not mentioned in the programme.\n\u2022 Personal expenses, tips and anything not explicitly listed as included.",
-  nextStepsDefault: "1. Review the programme and share any adjustments you would like.\n2. Confirm the proposal so we can secure hotels, guides and experiences.\n3. Pay the deposit to formalise the booking \u2014 we handle everything else."
+  nextStepsDefault: "1. Review the programme and share any adjustments you would like.\n2. Confirm the proposal so we can secure experiences, guides, transportation and hotels (where applicable).\n3. Pay the deposit to formalise the booking \u2014 we handle everything else."
 };
 var pt3 = {
   hotelsIncluded: "Hot\xE9is Inclu\xEDdos",
@@ -1335,7 +1342,7 @@ var pt3 = {
   notIncluded: "O Que N\xE3o Est\xE1 Inclu\xEDdo",
   nextSteps: "Pr\xF3ximos passos",
   notIncludedDefault: "\u2022 Voos internacionais e taxas de aeroporto.\n\u2022 Seguro de viagem e de sa\xFAde.\n\u2022 Refei\xE7\xF5es e bebidas n\xE3o mencionadas no programa.\n\u2022 Despesas pessoais, gratifica\xE7\xF5es e tudo o que n\xE3o esteja expressamente indicado como inclu\xEDdo.",
-  nextStepsDefault: "1. Reveja o programa e diga-nos que ajustes gostaria de fazer.\n2. Confirme a proposta para garantirmos hot\xE9is, guias e experi\xEAncias.\n3. Efetue o sinal para formalizar a reserva \u2014 n\xF3s tratamos de todo o resto."
+  nextStepsDefault: "1. Reveja o programa e diga-nos que ajustes gostaria de fazer.\n2. Confirme a proposta para garantirmos experi\xEAncias, guias, transporte e hot\xE9is (quando aplic\xE1vel).\n3. Efetue o sinal para formalizar a reserva \u2014 n\xF3s tratamos de todo o resto."
 };
 var es3 = {
   hotelsIncluded: "Hoteles Incluidos",
@@ -1356,7 +1363,7 @@ var es3 = {
   notIncluded: "Qu\xE9 No Est\xE1 Incluido",
   nextSteps: "Pr\xF3ximos pasos",
   notIncludedDefault: "\u2022 Vuelos internacionales y tasas de aeropuerto.\n\u2022 Seguro de viaje y m\xE9dico.\n\u2022 Comidas y bebidas no mencionadas en el programa.\n\u2022 Gastos personales, propinas y todo lo que no figure expresamente como incluido.",
-  nextStepsDefault: "1. Revise el programa e ind\xEDquenos los ajustes que desee.\n2. Confirme la propuesta para reservar hoteles, gu\xEDas y experiencias.\n3. Abone la se\xF1al para formalizar la reserva \u2014 nosotros nos encargamos del resto."
+  nextStepsDefault: "1. Revise el programa e ind\xEDquenos los ajustes que desee.\n2. Confirme la propuesta para reservar experiencias, gu\xEDas, transporte y hoteles (cuando corresponda).\n3. Abone la se\xF1al para formalizar la reserva \u2014 nosotros nos encargamos del resto."
 };
 var fr3 = {
   hotelsIncluded: "H\xF4tels Inclus",
@@ -1377,7 +1384,7 @@ var fr3 = {
   notIncluded: "Ce Qui N\u2019Est Pas Inclus",
   nextSteps: "Prochaines \xE9tapes",
   notIncludedDefault: "\u2022 Vols internationaux et taxes d\u2019a\xE9roport.\n\u2022 Assurance voyage et sant\xE9.\n\u2022 Repas et boissons non mentionn\xE9s dans le programme.\n\u2022 D\xE9penses personnelles, pourboires et tout ce qui n\u2019est pas express\xE9ment indiqu\xE9 comme inclus.",
-  nextStepsDefault: "1. Parcourez le programme et indiquez-nous les ajustements souhait\xE9s.\n2. Confirmez la proposition pour r\xE9server h\xF4tels, guides et exp\xE9riences.\n3. R\xE9glez l\u2019acompte pour formaliser la r\xE9servation \u2014 nous g\xE9rons le reste."
+  nextStepsDefault: "1. Parcourez le programme et indiquez-nous les ajustements souhait\xE9s.\n2. Confirmez la proposition pour r\xE9server exp\xE9riences, guides, transport et h\xF4tels (le cas \xE9ch\xE9ant).\n3. R\xE9glez l\u2019acompte pour formaliser la r\xE9servation \u2014 nous g\xE9rons le reste."
 };
 var it3 = {
   hotelsIncluded: "Hotel Inclusi",
@@ -1398,7 +1405,7 @@ var it3 = {
   notIncluded: "Cosa Non \xC8 Incluso",
   nextSteps: "Prossimi passi",
   notIncludedDefault: "\u2022 Voli internazionali e tasse aeroportuali.\n\u2022 Assicurazione di viaggio e sanitaria.\n\u2022 Pasti e bevande non menzionati nel programma.\n\u2022 Spese personali, mance e tutto ci\xF2 che non \xE8 espressamente indicato come incluso.",
-  nextStepsDefault: "1. Rivedi il programma e indicaci le modifiche desiderate.\n2. Confermaci la proposta per bloccare hotel, guide ed esperienze.\n3. Versa l\u2019acconto per formalizzare la prenotazione \u2014 al resto pensiamo noi."
+  nextStepsDefault: "1. Rivedi il programma e indicaci le modifiche desiderate.\n2. Confermaci la proposta per bloccare esperienze, guide, trasporto e hotel (ove applicabile).\n3. Versa l\u2019acconto per formalizzare la prenotazione \u2014 al resto pensiamo noi."
 };
 var de3 = {
   hotelsIncluded: "Inkludierte Hotels",
@@ -1419,7 +1426,7 @@ var de3 = {
   notIncluded: "Nicht Inkludiert",
   nextSteps: "Ihre n\xE4chsten Schritte",
   notIncludedDefault: "\u2022 Internationale Fl\xFCge und Flughafensteuern.\n\u2022 Reise- und Krankenversicherung.\n\u2022 Mahlzeiten und Getr\xE4nke, die nicht im Programm genannt sind.\n\u2022 Pers\xF6nliche Ausgaben, Trinkgelder und alles, was nicht ausdr\xFCcklich als inkludiert aufgef\xFChrt ist.",
-  nextStepsDefault: "1. Pr\xFCfen Sie das Programm und teilen Sie uns gew\xFCnschte Anpassungen mit.\n2. Best\xE4tigen Sie das Angebot, damit wir Hotels, Guides und Erlebnisse sichern.\n3. Zahlen Sie die Anzahlung zur Buchungsbest\xE4tigung \u2014 um alles Weitere k\xFCmmern wir uns."
+  nextStepsDefault: "1. Pr\xFCfen Sie das Programm und teilen Sie uns gew\xFCnschte Anpassungen mit.\n2. Best\xE4tigen Sie das Angebot, damit wir Erlebnisse, Guides, Transport und Hotels sichern (sofern zutreffend).\n3. Zahlen Sie die Anzahlung zur Buchungsbest\xE4tigung \u2014 um alles Weitere k\xFCmmern wir uns."
 };
 var SETS2 = { en: en3, pt: pt3, es: es3, fr: fr3, it: it3, de: de3 };
 function getHotelsDict(language) {

@@ -5,3 +5,4 @@
 - JARVIS Live Map is a DB registry (agent_departments/agents/agent_tasks/agent_runs) rendered at /agents/dashboard; old Spark at /agents/spark-legacy. Why: one registry feeds map, counters and escalation; level ceiling enforced by trigger.
 - Regions (PT+ES) live in `regions` + `region_destinations`; app reads them via `useRegions`, edge functions via `_shared/regions.ts`, suppliers link via `supplier_regions`. Why: new regions appear everywhere without code changes.
 - Planner, public proposal and PDF derive inclusions through `proposalIncluded` from their current version's itinerary rows, ignoring legacy overrides. Why: one derivation prevents stale or truncated inclusions across outputs.
+- Proposal cancellation defaults are resolved through `closingTermsI18n` using the selected itinerary's touring days, excluding accommodation day zero, while preserving custom terms. Why: editor, public proposal and PDF must share consistent deadlines.
