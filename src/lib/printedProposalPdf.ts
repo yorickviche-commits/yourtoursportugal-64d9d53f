@@ -10,6 +10,7 @@
 import html2canvas from 'html2canvas';
 import jsPDF from 'jspdf';
 import { buildRouteMapImage } from '@/lib/staticRouteMap';
+import { optimizePdf } from '@/lib/pdfOptimization';
 
 const DOC_WIDTH = 1024; // px — matches the desktop layout the print output uses
 const A4 = { w: 210, h: 297 }; // mm
@@ -121,77 +122,69 @@ export async function buildPrintedProposalPdf(
     iframe.style.height = `${root.scrollHeight + 200}px`;
     await wait(300);
 
-    const canvas = await html2canvas(root, {
-      backgroundColor: '#ffffff',
-      scale: 2,
-      useCORS: true,
-      allowTaint: true,
-      imageTimeout: 8000,
-      logging: false,
-      windowWidth: DOC_WIDTH,
-      width: DOC_WIDTH,
-      height: root.scrollHeight,
-      scrollX: 0,
-      scrollY: 0,
-    });
+    return await buildPrintedRootPdf(root, filename);
+  } finally {
+    iframe.remove();
+  }
+}
 
-    // Size policy: target < 3 MB; fallback ceiling 5 MB; never export above 5 MB.
-    const TARGET = 3 * 1024 * 1024;
-    const CEILING = 5 * 1024 * 1024;
-    const attempts: Array<{ scale: number; q: number }> = [
-      { scale: 1, q: 0.92 }, { scale: 1, q: 0.8 }, { scale: 0.85, q: 0.75 },
-      { scale: 0.75, q: 0.7 }, { scale: 0.65, q: 0.65 }, { scale: 0.55, q: 0.6 },
-      { scale: 0.5, q: 0.55 },
-    ];
-
-    const buildPdf = (scale: number, quality: number): jsPDF => {
+/** Capture current Planner content, including unsaved edits, without publishing it. */
+export async function buildPrintedRootPdf(root: HTMLElement, filename: string): Promise<PrintedPdfResult> {
+    await replaceMaps(root.ownerDocument);
+    await waitForImages(root.ownerDocument);
+    await root.ownerDocument.fonts.ready;
+    const width = DOC_WIDTH;
+    const pageHeight = Math.floor(width * A4.h / A4.w);
+    const height = root.scrollHeight;
+    // Capture bounded A4 slices: a 15-day tour must not exceed browser canvas limits.
+    const pages: HTMLCanvasElement[] = [];
+    for (let y = 0; y < height; y += pageHeight) {
+      pages.push(await html2canvas(root, {
+        backgroundColor: '#ffffff', scale: 2, useCORS: true, allowTaint: false,
+        imageTimeout: 8000, logging: false, windowWidth: width,
+        width, height: Math.min(pageHeight, height - y), y,
+        scrollX: 0, scrollY: 0,
+      }));
+    }
+    const best = await optimizePdf(async (scale, quality) => {
       const pdf = new jsPDF({ unit: 'mm', format: 'a4', compress: true });
-      const outW = Math.round(canvas.width * scale);
-      const pxPerMm = canvas.width / A4.w;
-      const pageHeightPx = Math.floor(A4.h * pxPerMm);
-      let offset = 0;
-      let first = true;
-      while (offset < canvas.height) {
-        const sliceHeight = Math.min(pageHeightPx, canvas.height - offset);
+      pages.forEach((canvas, index) => {
         const slice = document.createElement('canvas');
-        slice.width = outW;
-        slice.height = Math.max(1, Math.round(sliceHeight * scale));
+        slice.width = Math.round(canvas.width * scale);
+        slice.height = Math.max(1, Math.round(canvas.height * scale));
         const ctx = slice.getContext('2d');
         if (!ctx) throw new Error('Canvas indisponível.');
         ctx.fillStyle = '#ffffff';
         ctx.fillRect(0, 0, slice.width, slice.height);
         ctx.imageSmoothingQuality = 'high';
-        ctx.drawImage(canvas, 0, offset, canvas.width, sliceHeight, 0, 0, slice.width, slice.height);
-        if (!first) pdf.addPage();
-        first = false;
-        pdf.addImage(slice.toDataURL('image/jpeg', quality), 'JPEG', 0, 0, A4.w, sliceHeight / pxPerMm, undefined, 'FAST');
-        offset += sliceHeight;
-      }
-      return pdf;
-    };
-
-    let best: { pdf: jsPDF; size: number } | null = null;
-    for (const a of attempts) {
-      const candidate = buildPdf(a.scale, a.q);
-      const size = candidate.output('blob').size;
-      if (!best || size < best.size) best = { pdf: candidate, size };
-      if (size < TARGET) break;
-    }
-    if (!best) throw new Error('Falha ao gerar o PDF.');
-    if (best.size > CEILING) {
-      throw new Error(`O PDF ficou com ${(best.size / 1048576).toFixed(1)} MB mesmo após compressão (limite 5 MB). Reduza o número de imagens.`);
-    }
-    console.info(`[pdf] tamanho final ${(best.size / 1048576).toFixed(2)} MB`);
-    const pdf = best.pdf;
-
+        ctx.drawImage(canvas, 0, 0, slice.width, slice.height);
+        if (index) pdf.addPage();
+        pdf.addImage(slice.toDataURL('image/jpeg', quality), 'JPEG', 0, 0, A4.w, canvas.height / canvas.width * A4.w, undefined, 'FAST');
+        slice.width = slice.height = 0;
+      });
+      // Preserve clickable links, including daily Google Maps routes.
+      const box = root.getBoundingClientRect();
+      root.querySelectorAll<HTMLAnchorElement>('a[href]').forEach(anchor => {
+        for (const rect of Array.from(anchor.getClientRects())) {
+          const top = rect.top - box.top;
+          if (rect.width <= 0 || rect.height <= 0 || top < 0) continue;
+          const page = Math.floor(top / pageHeight) + 1;
+          if (page > pdf.getNumberOfPages()) continue;
+          pdf.setPage(page);
+          pdf.link((rect.left - box.left) / width * A4.w, (top % pageHeight) / width * A4.w,
+            rect.width / width * A4.w, rect.height / width * A4.w, { url: anchor.href });
+        }
+      });
+      const blob = pdf.output('blob');
+      return { value: { pdf, blob }, size: blob.size };
+    });
+    pages.forEach(canvas => { canvas.width = canvas.height = 0; });
+    const { pdf, blob } = best.value;
     const safeName = `${filename.replace(/[\\/:*?"<>|]+/g, ' ').trim() || 'Travel Plan'}.pdf`;
     const dataUri = pdf.output('datauristring');
     const base64 = dataUri.slice(dataUri.indexOf(',') + 1);
-    const blobUrl = URL.createObjectURL(pdf.output('blob'));
+    const blobUrl = URL.createObjectURL(blob);
     return { base64, filename: safeName, blobUrl };
-  } finally {
-    iframe.remove();
-  }
 }
 
 /** "YT#### - Client - Programme - Dates" (same convention as the print output). */
