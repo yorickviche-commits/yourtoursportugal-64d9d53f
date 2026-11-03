@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { RichInput, RichTextarea } from '@/components/ui/rich-editable';
 import { RichText } from '@/lib/richText';
+import { getIncludedDays } from '@/lib/proposalIncluded';
 import { resolveClosingText } from '@/lib/closingTermsI18n';
 import { getHotelsDict, resolveHotelsText, mergeProposalHotels, type ProposalHotel } from '@/lib/proposalHotelsI18n';
 import { Switch } from '@/components/ui/switch';
@@ -2535,43 +2536,23 @@ const TravelPlanProposal = ({
 
           {(viewMode === 'edit' || closing.showTerms !== false) && (
           <div className={cn('space-y-6', closing.showTerms === false && 'opacity-50 print:hidden')}>
-          {/* What's Included — Day by Day Summary or override */}
+          {/* What's Included — derived from all current itinerary rows */}
           <div>
             <div className="flex items-center justify-between mb-2">
               <h3 className="text-base font-serif font-bold text-slate-800">{t.whatsIncluded}</h3>
-              {viewMode === 'edit' && (
-                <button
-                  type="button"
-                  className="text-[10px] text-[hsl(var(--info))] underline print:hidden"
-                  onClick={() => setClosing(c => ({ ...c, inclusionsOverride: c.inclusionsOverride ? '' : displayPlan.days.map(d => `Day ${d.day_number} — ${d.title}\n${d.bullets.slice(0, 6).map(b => `• ${toBulletObj(b).text}`).join('\n')}`).join('\n\n') }))}
-                >
-                  {closing.inclusionsOverride ? 'Voltar ao auto (dias)' : 'Editar manualmente'}
-                </button>
-              )}
             </div>
-            {viewMode === 'edit' && closing.inclusionsOverride !== undefined && closing.inclusionsOverride !== '' ? (
-              <RichTextarea
-                className="text-xs min-h-[180px]"
-                value={closing.inclusionsOverride}
-                onChange={v => setClosing(c => ({ ...c, inclusionsOverride: v }))}
-              />
-            ) : closing.inclusionsOverride ? (
-              <RichText as="div" className="text-xs text-slate-700 whitespace-pre-wrap" value={closing.inclusionsOverride} preserveNewlines />
-            ) : (
               <div className="space-y-2.5">
-                {displayPlan.days.map(d => (
+                {getIncludedDays(displayPlan.days).map(d => (
                   <div key={d.day_number} className="text-xs text-slate-700">
                     <p className="font-semibold text-slate-800">{t.day} {d.day_number} — <RichText value={d.title} /></p>
                     <ul className="mt-1 ml-3 space-y-0.5">
-                      {d.bullets.slice(0, 6).map((b, i) => {
-                        const obj = toBulletObj(b);
-                        return <li key={i} className="text-slate-600">• <RichText value={obj.text} /></li>;
-                      })}
+                      {d.items.map((text, i) => (
+                        <li key={i} className="text-slate-600">• <RichText value={text} /></li>
+                      ))}
                     </ul>
                   </div>
                 ))}
               </div>
-            )}
           </div>
 
           {/* What's Not Included */}
