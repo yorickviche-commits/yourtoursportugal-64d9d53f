@@ -107,7 +107,7 @@ export const useCreateLeadVersion = () => {
           ...rest,
           lead_id: leadId,
           version: newVersion,
-          public_token: buildProposalToken((leadRow as any)?.yt_id || (leadRow as any)?.lead_code || 'ytp', newVersion),
+          public_token: buildProposalToken((leadRow as any)?.yt_id || (leadRow as any)?.lead_code || 'ytp', newVersion, { client: (leadRow as any)?.client_name }),
           status: 'draft',
           sent_at: null,
           approved_at: null,

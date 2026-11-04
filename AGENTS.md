@@ -7,3 +7,4 @@
 - Planner, public proposal and PDF derive inclusions through `proposalIncluded` from their current version's itinerary rows, ignoring legacy overrides. Why: one derivation prevents stale or truncated inclusions across outputs.
 - Proposal cancellation defaults are resolved through `closingTermsI18n` using the selected itinerary's touring days, excluding accommodation day zero, while preserving custom terms. Why: editor, public proposal and PDF must share consistent deadlines.
 - Planner direct PDF export captures a read-only clone of the current full preview using the shared printed PDF builder and size policy. Why: preserve unsaved version content and filename without publishing or opening print dialogs; bounded page captures avoid long-tour canvas limits.
+- Client-facing links use `PUBLIC_APP_URL` (src/lib/publicUrl.ts) and readable slugs from `buildProposalSlug`; never the company's main website domain. Why: yourtoursportugal.com hosts the corporate site.

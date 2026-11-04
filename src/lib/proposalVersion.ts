@@ -1,3 +1,4 @@
+import { buildProposalSlug, type ProposalSlugParts } from './proposalSlug';
 // Propostas são versionadas por lead: uma linha em `proposals` por
 // (lead_id, version). Fora do detalhe da lead, tudo deve ler a versão LIVE
 // (`leads.active_version`).
@@ -9,8 +10,8 @@ export const getLeadLiveVersion = async (leadId: string): Promise<number> => {
 };
 
 /** Token público único por versão — nunca muda depois de criado. */
-export const buildProposalToken = (leadCode: string, version: number) => {
-  const slug = (leadCode || 'ytp').toLowerCase().replace(/[^a-z0-9]/g, '-');
-  const rand = Math.random().toString(36).slice(2, 6);
-  return `ytp-${slug}-v${version}-${rand}`;
-};
+export const buildProposalToken = (
+  leadCode: string,
+  version: number,
+  extra: Omit<ProposalSlugParts, 'leadCode' | 'version'> = {},
+) => buildProposalSlug({ leadCode, version, ...extra });

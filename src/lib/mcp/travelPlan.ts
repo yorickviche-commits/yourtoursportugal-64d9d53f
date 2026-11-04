@@ -110,8 +110,7 @@ export interface SaveContext {
 
 const DAY_LABEL: Record<string, string> = { en: "Day", fr: "Jour", es: "Día", pt: "Dia", it: "Giorno", de: "Tag" };
 
-const token = (leadCode: string, version: number) =>
-  `${leadCode.toLowerCase().replace(/[^a-z0-9]+/g, "-")}-v${version}-${Math.random().toString(36).slice(2, 8)}`;
+import { buildProposalSlug } from "../proposalSlug";
 
 export async function savePlan(
   supabase: SupabaseClient,
@@ -204,7 +203,14 @@ export async function savePlan(
   } else {
     const { error: insErr } = await supabase.from("proposals").insert({
       ...common,
-      public_token: token(sc.leadCode, version),
+      public_token: buildProposalSlug({
+        leadCode: sc.leadCode,
+        version,
+        client: (lead as any).client_name,
+        program: plan.trip_title,
+        start: plan.days?.[0]?.date,
+        end: plan.days?.[plan.days.length - 1]?.date,
+      }),
       lead_id: lead.id,
       version,
       map_stops: [] as never,

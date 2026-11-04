@@ -8,10 +8,9 @@ const GENERAL_FIELDS = [
   "pax", "pax_children", "pax_infants", "budget_level", "notes", "sales_owner",
   "status", "comfort_level", "travel_style", "source",
 ] as const;
-const buildProposalToken = (leadCode: string, version: number) => {
-  const slug = (leadCode || "ytp").toLowerCase().replace(/[^a-z0-9]/g, "-");
-  return `ytp-${slug}-v${version}-${Math.random().toString(36).slice(2, 6)}`;
-};
+import { buildProposalSlug } from "../proposalSlug";
+const buildProposalToken = (leadCode: string, version: number, client?: string | null) =>
+  buildProposalSlug({ leadCode, version, client });
 import type { LeadRow } from "./lead";
 
 const pickGeneralData = (lead: any): Record<string, unknown> => {
@@ -111,7 +110,7 @@ export async function createLeadVersion(
       ...rest,
       lead_id: leadId,
       version: newVersion,
-      public_token: buildProposalToken((lead as any).yt_id || lead.lead_code || "ytp", newVersion),
+      public_token: buildProposalToken((lead as any).yt_id || lead.lead_code || "ytp", newVersion, (lead as any).client_name),
       status: "draft",
       sent_at: null,
       approved_at: null,
