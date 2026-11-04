@@ -1,3 +1,4 @@
+import { PUBLIC_APP_URL } from "@/lib/publicUrl";
 import { useState, useEffect, useRef } from 'react';
 import { ChevronDown, ChevronRight, Plus, Trash2, ImagePlus, X, MapPin, Loader2, Link2, Upload, Sparkles, Eye, Copy, RefreshCw, Wand2 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
@@ -153,7 +154,7 @@ const ItineraryEditor = ({ leadId, clientName, destination, travelDates, travelP
       });
 
       if (existing.status === 'published') {
-        setPreviewUrl(`${window.location.origin}/preview/${existing.id}`);
+        setPreviewUrl(`${PUBLIC_APP_URL}/preview/${existing.id}`);
       }
     }
     setLoaded(true);
@@ -504,7 +505,7 @@ const ItineraryEditor = ({ leadId, clientName, destination, travelDates, travelP
       setItinerary(prev => ({ ...prev, id: itineraryId!, status }));
 
       if (publish) {
-        const url = `${window.location.origin}/preview/${itineraryId}`;
+        const url = `${PUBLIC_APP_URL}/preview/${itineraryId}`;
         setPreviewUrl(url);
         toast({ title: 'Itinerário publicado!', description: 'Link de preview gerado com sucesso.' });
       } else {
