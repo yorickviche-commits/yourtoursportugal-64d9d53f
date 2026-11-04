@@ -50,10 +50,10 @@ function supabasePublishableKey() {
   throw new Error("SUPABASE_PUBLISHABLE_KEY, SUPABASE_PUBLISHABLE_KEYS, or SUPABASE_ANON_KEY is required");
 }
 function supabaseForUser(ctx) {
-  const token2 = ctx.getToken();
-  if (!token2) throw new Error("supabaseForUser requires a verified OAuth token");
+  const token = ctx.getToken();
+  if (!token) throw new Error("supabaseForUser requires a verified OAuth token");
   return createClient(supabaseProjectUrl(), supabasePublishableKey(), {
-    global: { headers: { Authorization: `Bearer ${token2}` } },
+    global: { headers: { Authorization: `Bearer ${token}` } },
     auth: { persistSession: false, autoRefreshToken: false }
   });
 }
@@ -66,6 +66,35 @@ import { ToolError as ToolError2 } from "npm:@lovable.dev/mcp-js@0.26.1";
 
 // src/lib/mcp/versions.ts
 import { ToolError } from "npm:@lovable.dev/mcp-js@0.26.1";
+
+// src/lib/proposalSlug.ts
+var MONTHS = ["jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec"];
+var slugify = (value) => (value || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
+var parseIso = (v) => {
+  const m = (v || "").match(/^(\d{4})-(\d{2})-(\d{2})/);
+  return m ? { y: m[1], m: MONTHS[Number(m[2]) - 1], d: String(Number(m[3])) } : null;
+};
+function formatSlugDates(start, end) {
+  const a = parseIso(start);
+  const b = parseIso(end);
+  if (a && b && (a.y !== b.y || a.m !== b.m || a.d !== b.d)) {
+    if (a.y === b.y && a.m === b.m) return `${a.d}-${b.d}-${b.m}-${b.y}`;
+    if (a.y === b.y) return `${a.d}-${a.m}-${b.d}-${b.m}-${b.y}`;
+    return `${a.d}-${a.m}-${a.y}-${b.d}-${b.m}-${b.y}`;
+  }
+  const one = a || b;
+  if (one) return `${one.d}-${one.m}-${one.y}`;
+  return slugify([start, end].filter(Boolean).join(" "));
+}
+function buildProposalSlug(p) {
+  const program = slugify(p.program || "").split("-").slice(0, 6).join("-");
+  const client = slugify(p.client || "").split("-").slice(0, 3).join("-");
+  const parts = [slugify(p.leadCode) || "ytp", client, program, formatSlugDates(p.start, p.end), `v${p.version}`].filter(Boolean);
+  const suffix = p.suffix ?? Math.random().toString(36).slice(2, 6);
+  return `${parts.join("-")}-${suffix}`.slice(0, 120);
+}
+
+// src/lib/mcp/versions.ts
 var GENERAL_FIELDS = [
   "yt_id",
   "client_name",
@@ -88,10 +117,7 @@ var GENERAL_FIELDS = [
   "travel_style",
   "source"
 ];
-var buildProposalToken = (leadCode, version) => {
-  const slug2 = (leadCode || "ytp").toLowerCase().replace(/[^a-z0-9]/g, "-");
-  return `ytp-${slug2}-v${version}-${Math.random().toString(36).slice(2, 6)}`;
-};
+var buildProposalToken = (leadCode, version, client) => buildProposalSlug({ leadCode, version, client });
 var pickGeneralData = (lead) => {
   const out = {};
   GENERAL_FIELDS.forEach((k) => {
@@ -160,7 +186,7 @@ async function createLeadVersion(supabase, lead, fromVersion, opts) {
       ...rest,
       lead_id: leadId,
       version: newVersion,
-      public_token: buildProposalToken(lead.yt_id || lead.lead_code || "ytp", newVersion),
+      public_token: buildProposalToken(lead.yt_id || lead.lead_code || "ytp", newVersion, lead.client_name),
       status: "draft",
       sent_at: null,
       approved_at: null
@@ -2331,7 +2357,6 @@ async function loadPlan(supabase, lead, version) {
   };
 }
 var DAY_LABEL = { en: "Day", fr: "Jour", es: "D\xEDa", pt: "Dia", it: "Giorno", de: "Tag" };
-var token = (leadCode, version) => `${leadCode.toLowerCase().replace(/[^a-z0-9]+/g, "-")}-v${version}-${Math.random().toString(36).slice(2, 8)}`;
 async function savePlan(supabase, lead, version, plan, meta, sc) {
   const startDate = plan.days[0]?.date || sc.travelDates || null;
   const endDate = plan.days[plan.days.length - 1]?.date || sc.travelEndDate || null;
@@ -2392,7 +2417,14 @@ async function savePlan(supabase, lead, version, plan, meta, sc) {
   } else {
     const { error: insErr } = await supabase.from("proposals").insert({
       ...common,
-      public_token: token(sc.leadCode, version),
+      public_token: buildProposalSlug({
+        leadCode: sc.leadCode,
+        version,
+        client: lead.client_name,
+        program: plan.trip_title,
+        start: plan.days?.[0]?.date,
+        end: plan.days?.[plan.days.length - 1]?.date
+      }),
       lead_id: lead.id,
       version,
       map_stops: [],
@@ -3811,9 +3843,9 @@ function bg(p) {
   } catch {
   }
 }
-function jwtClaims(token2) {
+function jwtClaims(token) {
   try {
-    const part = String(token2).split(".")[1];
+    const part = String(token).split(".")[1];
     const b64 = part.replace(/-/g, "+").replace(/_/g, "/");
     return JSON.parse(atob(b64 + "=".repeat((4 - b64.length % 4) % 4)));
   } catch {
