@@ -7,7 +7,7 @@
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
 
-const APP_ORIGIN = "https://yourtoursportugal.lovable.app";
+const APP_ORIGIN = "https://yourtoursportugal.com";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
