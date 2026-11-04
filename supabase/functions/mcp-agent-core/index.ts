@@ -3539,7 +3539,7 @@ var draft_client_email_default = defineTool32({
           language: language ?? l.language,
           programme_title: plan.trip_title,
           programme_summary: plan.narrative,
-          itinerary_url: proposal?.public_token ? `https://yourtoursportugal.com/proposal/${proposal.public_token}` : null,
+          itinerary_url: proposal?.public_token ? `https://yourtoursportugal.lovable.app/proposal/${proposal.public_token}` : null,
           booking_url: proposal?.wetravel_checkout_url ?? null,
           senderName: "Yorick Viche"
         },

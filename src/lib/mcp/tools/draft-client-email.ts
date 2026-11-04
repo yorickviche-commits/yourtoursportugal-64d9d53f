@@ -59,7 +59,7 @@ export default defineTool({
           programme_title: plan.trip_title,
           programme_summary: plan.narrative,
           itinerary_url: (proposal as any)?.public_token
-            ? `https://yourtoursportugal.com/proposal/${(proposal as any).public_token}`
+            ? `https://yourtoursportugal.lovable.app/proposal/${(proposal as any).public_token}`
             : null,
           booking_url: (proposal as any)?.wetravel_checkout_url ?? null,
           senderName: "Yorick Viche",

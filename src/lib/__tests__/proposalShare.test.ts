@@ -1,8 +1,8 @@
 import { describe, it, expect } from "vitest";
-import { getProposalShareUrl } from "../proposalShare";
+import { getProposalAppUrl } from "../proposalShare";
 
 describe("client proposal links", () => {
-  it("use the yourtoursportugal.com domain", () => {
-    expect(getProposalShareUrl("abc")).toBe("https://yourtoursportugal.com/proposal/abc");
+  it("never point at the company's main website", () => {
+    expect(getProposalAppUrl("abc")).toBe("https://yourtoursportugal.lovable.app/proposal/abc");
   });
 });
