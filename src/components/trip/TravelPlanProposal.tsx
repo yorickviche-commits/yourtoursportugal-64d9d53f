@@ -1313,7 +1313,12 @@ const TravelPlanProposal = ({
           closing_terms: buildClosingTerms() as any,
         }).eq('id', existingProposal.id);
       } else {
-        const token = buildProposalToken(leadCode, version);
+        const token = buildProposalToken(ytId || leadCode, version, {
+          client: clientName,
+          program: planToSave.trip_title,
+          start: planToSave.days[0]?.date || travelDates,
+          end: planToSave.days[planToSave.days.length - 1]?.date || travelEndDate,
+        });
         await supabase.from('proposals').insert({
           public_token: token,
           lead_id: leadId,
