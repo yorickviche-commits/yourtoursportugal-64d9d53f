@@ -37,4 +37,21 @@ describe('catalog execution versions', () => {
     if (day.product_ref?.execution) day.product_ref.execution.items = [];
     expect(executionCostingItems(day, { adults: 4 })).toEqual([]);
   });
+  it('keeps the saved programme PVP for four adults separate from unknown supplier NET', () => {
+    const day = productToProposalDays(product, { dayNumber: 1 })[0];
+    if (!day.product_ref?.execution) throw new Error('Missing execution');
+    day.product_ref.pricing = { adult_per_person_by_group_size: { '4_pax': 150 }, child_4_11: 75, infant_0_3: 0 };
+    day.product_ref.execution.items = [{ ...source.costingDays[0].items[0], catalogBasePrice: true, addonId: undefined, status: 'neutro', priceAdults: 0, priceChildren: 0, netPending: true, retailTotal: 480 }];
+    const rows = executionCostingItems(day, { adults: 4 });
+    expect(rows?.[0].pvpTotal).toBe(600);
+    expect(rows?.[0].netTotal).toBe(0);
+    expect(rows?.[0].netPending).toBe(true);
+  });
+  it('recalculates the programme table for adults and children without charging infants', () => {
+    const day = productToProposalDays(product, { dayNumber: 1 })[0];
+    if (!day.product_ref?.execution) throw new Error('Missing execution');
+    day.product_ref.pricing = { adult_per_person_by_group_size: { '4_pax': 150 }, child_4_11: 75, infant_0_3: 0 };
+    day.product_ref.execution.items = [{ ...source.costingDays[0].items[0], catalogBasePrice: true, status: 'neutro', priceAdults: 0, priceChildren: 0, retailTotal: 480 }];
+    expect(executionCostingItems(day, { adults: 2, children: 2, infants: 1 })?.[0].pvpTotal).toBe(450);
+  });
 });

@@ -1,6 +1,6 @@
 import type { TravelPlanData, ProposalDay } from '@/components/trip/TravelPlanProposal';
 import type { LeadCostingDay, LeadCostItem } from '@/components/trip/LeadCostingEditor';
-import type { ProductPricing, PaxMix } from './productPricing';
+import { quoteProduct, type ProductPricing, type PaxMix } from './productPricing';
 import { calculateProductRow } from './productAddons';
 export interface ProductExecution {
   id: string; label: string; plan: TravelPlanData; costingDays: LeadCostingDay[];
@@ -21,6 +21,11 @@ export function executionCostingItems(day: ProposalDay, mix: PaxMix): LeadCostIt
     const row = structuredClone(item);
     row.id = crypto.randomUUID();
     if (row.pricingType === 'per_person') { row.numAdults = mix.adults + (mix.youths || 0); row.numChildren = mix.children || 0; }
+    if (row.catalogBasePrice) {
+      const pricing = day.product_ref?.pricing as ProductPricing | undefined;
+      const quote = pricing ? quoteProduct(pricing, mix) : null;
+      row.retailTotal = quote?.total ?? 0;
+    }
     return calculateProductRow(row);
   });
 }

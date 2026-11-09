@@ -60,6 +60,8 @@ export interface LeadCostItem {
   retailChild?: number;
   retailTotal?: number;
   netPending?: boolean;
+  /** Client price of the complete catalog programme, separate from supplier NET. */
+  catalogBasePrice?: boolean;
 }
 
 export interface CostNote {
@@ -90,7 +92,7 @@ export const ACCOMMODATION_DAY = 0;
 export const isAccommodationDay = (d: { day: number }) => d.day === ACCOMMODATION_DAY;
 
 function calcItem(item: LeadCostItem): LeadCostItem {
-  if (item.addonId) return calculateProductRow(item);
+  if (item.addonId || item.catalogBasePrice) return calculateProductRow(item);
   let netTotal: number;
   if (item.pricingType === 'per_night') {
     // For accommodation rows the "Nº Adt" column holds the number of nights.
