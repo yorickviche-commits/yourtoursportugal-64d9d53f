@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import { Copy, Loader2, Plus, Save } from 'lucide-react';
-import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -10,7 +9,7 @@ import { local, useSaveProductLocal, type ImportedProduct } from '@/hooks/useMag
 import TravelPlanProposal, { type TravelPlanData } from '@/components/trip/TravelPlanProposal';
 import LeadCostingEditor, { type LeadCostingDay } from '@/components/trip/LeadCostingEditor';
 import { productToProposalDay, productTitle, productSummary } from '@/lib/productToDay';
-import { cloneExecution, executionLabel, type ProductExecution } from '@/lib/productExecution';
+import { cloneExecution, type ProductExecution } from '@/lib/productExecution';
 import type { ProductPricing } from '@/lib/productPricing';
 
 function initialExecution(product: ImportedProduct): ProductExecution {
