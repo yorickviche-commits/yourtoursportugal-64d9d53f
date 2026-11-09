@@ -183,6 +183,13 @@
       "when": 1794230245834,
       "tag": "0025_bokun_integration",
       "breakpoints": true
+    },
+    {
+      "idx": 26,
+      "version": "7",
+      "when": 1794232132111,
+      "tag": "0026_bokun_polling",
+      "breakpoints": true
     }
   ]
 }

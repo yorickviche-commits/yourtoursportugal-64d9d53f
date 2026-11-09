@@ -1051,6 +1051,45 @@ export type Database = {
           },
         ]
       }
+      bokun_sync_state: {
+        Row: {
+          consecutive_failures: number
+          cursor_at: string | null
+          id: number
+          last_error: string | null
+          last_full_scan_at: string | null
+          last_run_at: string | null
+          last_success_at: string | null
+          locked_until: string | null
+          stale_alerted_at: string | null
+          updated_at: string
+        }
+        Insert: {
+          consecutive_failures?: number
+          cursor_at?: string | null
+          id?: number
+          last_error?: string | null
+          last_full_scan_at?: string | null
+          last_run_at?: string | null
+          last_success_at?: string | null
+          locked_until?: string | null
+          stale_alerted_at?: string | null
+          updated_at?: string
+        }
+        Update: {
+          consecutive_failures?: number
+          cursor_at?: string | null
+          id?: number
+          last_error?: string | null
+          last_full_scan_at?: string | null
+          last_run_at?: string | null
+          last_success_at?: string | null
+          locked_until?: string | null
+          stale_alerted_at?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       booking_emails_log: {
         Row: {
           body: string
@@ -2698,6 +2737,7 @@ export type Database = {
           active_version: number | null
           assigned_agents: string[]
           bokun_confirmation_code: string | null
+          bokun_hash: string | null
           booking_origin: string | null
           budget_level: string | null
           budget_tier: string | null
@@ -2754,6 +2794,7 @@ export type Database = {
           active_version?: number | null
           assigned_agents?: string[]
           bokun_confirmation_code?: string | null
+          bokun_hash?: string | null
           booking_origin?: string | null
           budget_level?: string | null
           budget_tier?: string | null
@@ -2810,6 +2851,7 @@ export type Database = {
           active_version?: number | null
           assigned_agents?: string[]
           bokun_confirmation_code?: string | null
+          bokun_hash?: string | null
           booking_origin?: string | null
           budget_level?: string | null
           budget_tier?: string | null
@@ -7016,6 +7058,7 @@ export type Database = {
           service_role_crud: boolean
         }[]
       }
+      bokun_try_lock: { Args: { p_seconds?: number }; Returns: boolean }
       can_view_feedback: { Args: { _feedback_id: string }; Returns: boolean }
       claim_sync_items: {
         Args: { p_limit?: number; p_target: string }

@@ -46,6 +46,46 @@ function Section({ title, count, children }: { title: string; count?: number; ch
 
 const Empty = () => <p className="text-xs text-muted-foreground">Nada a rever.</p>;
 
+/* ============================== BÓKUN ============================== */
+function BokunCard() {
+  const [from, setFrom] = useState('');
+  const [to, setTo] = useState('');
+  const [busy, setBusy] = useState(false);
+  const { data: st } = useQuery({
+    queryKey: ['bokun_sync_state'], refetchInterval: 60_000,
+    queryFn: async () => (await sb.from('bokun_sync_state').select('*').eq('id', 1).maybeSingle()).data,
+  });
+  const run = async () => {
+    setBusy(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('bokun-poll', { body: { mode: 'import', from, to } });
+      if (error) {
+        let msg = error.message;
+        if (error instanceof FunctionsHttpError) { try { msg = (await error.context.json())?.error || msg; } catch { /* ignore */ } }
+        throw new Error(msg);
+      }
+      const d = data as any;
+      toast.success(`Bókun: ${d.seen} vistas · ${d.created} criadas · ${d.updated} atualizadas · ${d.cancelled} canceladas · ${d.errors} erros`);
+    } catch (e) { toast.error((e as Error).message); } finally { setBusy(false); }
+  };
+  const failing = (st?.consecutive_failures ?? 0) > 0;
+  return (
+    <Card><CardContent className="p-3 space-y-2">
+      <div className="flex items-center gap-2 flex-wrap">
+        <h3 className="text-sm font-semibold">Bókun</h3>
+        <Badge variant={failing ? 'destructive' : 'secondary'}>{failing ? `${st.consecutive_failures} falha(s)` : 'OK'}</Badge>
+        <span className="text-xs text-muted-foreground">Última sincronização: {fmt(st?.last_success_at)}</span>
+      </div>
+      {st?.last_error && <p className="text-xs text-destructive">{st.last_error}</p>}
+      <div className="flex flex-wrap items-end gap-2">
+        <div><label className="text-[10px] uppercase text-muted-foreground">Reservas criadas de</label><Input type="date" className="h-8 text-xs" value={from} onChange={e => setFrom(e.target.value)} /></div>
+        <div><label className="text-[10px] uppercase text-muted-foreground">até</label><Input type="date" className="h-8 text-xs" value={to} onChange={e => setTo(e.target.value)} /></div>
+        <Button size="sm" disabled={!from || !to || busy} onClick={run}>{busy && <Loader2 className="h-3 w-3 animate-spin mr-1" />}Importar intervalo</Button>
+      </div>
+    </CardContent></Card>
+  );
+}
+
 /* ============================== SAÚDE ============================== */
 function HealthTab() {
   const qc = useQueryClient();
@@ -91,6 +131,7 @@ function HealthTab() {
 
   return (
     <div className="space-y-3">
+      <BokunCard />
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
         <Card><CardContent className="p-3"><div className="text-[10px] uppercase text-muted-foreground">Último pull NetHunt</div><div className="text-sm font-medium">{fmt(data.lastPull)}</div></CardContent></Card>
         <Card><CardContent className="p-3"><div className="text-[10px] uppercase text-muted-foreground">Último item processado (worker)</div><div className="text-sm font-medium">{fmt(data.lastWorker)}</div></CardContent></Card>

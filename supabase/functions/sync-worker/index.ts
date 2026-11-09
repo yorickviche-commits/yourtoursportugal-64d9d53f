@@ -6,6 +6,7 @@ import {
   createRecord, recId, recUpdatedAt, setBaselines, logSync, fromDateTime, PRIORITY_OUT, TASKS_FOLDER,
   leadAction, rawStage, F, DEALS_FOLDER, fetchRecord, field, ytKey, dealValues,
 } from '../_shared/nethunt.ts';
+import { alertAdmins, lisbonHour } from '../_shared/bokun.ts';
 
 // Creates the NetHunt deal for a lead without one (Bókun bookings). NetHunt assigns the official
 // YT ID, which is written back to the lead. Idempotent: skips leads already linked.
@@ -187,5 +188,25 @@ Deno.serve(async (req) => {
       }
     }
   }
+  if (new Date().getUTCMinutes() === 0) await bokunWatchdog(sb);
   return reply({ processed: out.length, items: out });
 });
+
+// Hourly (piggybacks on this per-minute worker): alerts if the Bókun poll stopped succeeding —
+// >60 min during Lisbon business hours (from 08:00), >7 h outside them. One alert per outage.
+async function bokunWatchdog(sb: any) {
+  try {
+    const { data: st } = await sb.from('bokun_sync_state').select('last_success_at, stale_alerted_at').eq('id', 1).maybeSingle();
+    if (!st?.last_success_at || st.stale_alerted_at) return;
+    const h = lisbonHour();
+    const ageMin = (Date.now() - Date.parse(st.last_success_at)) / 60000;
+    const limit = h >= 8 && h < 22 ? 60 : h >= 22 || h < 7 ? 420 : Infinity;
+    if (ageMin <= limit) return;
+    await alertAdmins(sb, {
+      key: `stale-${new Date().toISOString().slice(0, 13)}`,
+      title: 'Bókun: sincronização parada',
+      body: `A importação de reservas Bókun não corre com sucesso há ${Math.round(ageMin)} minutos.`,
+    });
+    await sb.from('bokun_sync_state').update({ stale_alerted_at: new Date().toISOString() }).eq('id', 1);
+  } catch (e) { console.error('bokunWatchdog', e); }
+}
