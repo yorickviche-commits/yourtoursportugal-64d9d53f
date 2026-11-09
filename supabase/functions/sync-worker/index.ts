@@ -4,7 +4,53 @@
 import {
   LEAD_SYNC_COLS, leadValues, taskRowValues, pushDiff, getBaselines, updateRecord, wkey, TF,
   createRecord, recId, recUpdatedAt, setBaselines, logSync, fromDateTime, PRIORITY_OUT, TASKS_FOLDER,
+  leadAction, rawStage, F, DEALS_FOLDER, fetchRecord, field, ytKey, dealValues,
 } from '../_shared/nethunt.ts';
+
+// Creates the NetHunt deal for a lead without one (Bókun bookings). NetHunt assigns the official
+// YT ID, which is written back to the lead. Idempotent: skips leads already linked.
+async function createNethuntDeal(sb: any, id: string): Promise<void> {
+  const { data: lead } = await sb.from('leads').select(`${LEAD_SYNC_COLS}, notes, bokun_confirmation_code`).eq('id', id).maybeSingle();
+  if (!lead) return;
+  if (lead.nethunt_record_id) {
+    if (lead.yt_id) return;
+    // Deal exists but the YT ID was not read yet: fetch it again (NetHunt may assign it a bit later).
+    const rec = await fetchRecord(DEALS_FOLDER, lead.nethunt_record_id);
+    const yt2 = rec ? ytKey(field(rec, F.ytId)) : null;
+    if (!yt2) throw new Error(`Deal NetHunt ${lead.nethunt_record_id} ainda sem YT ID`);
+    const code = lead.bokun_confirmation_code;
+    const p: Record<string, unknown> = { yt_id: `YT${yt2}` };
+    if (code && typeof lead.notes === 'string') p.notes = lead.notes.replace(`Programa: ${code} ·`, `Programa: YT${yt2} ·`);
+    await sb.from('leads').update(p).eq('id', id);
+    return;
+  }
+  const { vals } = await leadValues(sb, lead);
+  const fields: Record<string, unknown> = {};
+  for (const [f, v] of Object.entries(vals)) {
+    if (v === undefined || v === null) continue;
+    const a = leadAction(f, v);
+    if (a && a.value != null && !(Array.isArray(a.value) && !a.value.length)) fields[a.field] = a.value;
+  }
+  if (!fields[wkey(F.stage)]) fields[wkey(F.stage)] = rawStage('OPERATIONS - Deposit/Payment Received');
+  const created = await createRecord(DEALS_FOLDER, fields);
+  const rid = created ? recId(created) : null;
+  if (!rid) throw new Error('NetHunt não devolveu o record criado');
+  const now = new Date().toISOString();
+  // Link immediately so a retry never creates a second deal.
+  await sb.from('leads').update({ nethunt_record_id: rid, nethunt_synced_at: now }).eq('id', id).is('nethunt_record_id', null);
+  const fresh = (await fetchRecord(DEALS_FOLDER, rid)) ?? created;
+  const yt = ytKey(field(fresh, F.ytId));
+  const patch: Record<string, unknown> = { nethunt_updated_at: recUpdatedAt(fresh) };
+  if (yt) {
+    patch.yt_id = `YT${yt}`;
+    const code = lead.bokun_confirmation_code;
+    if (code && typeof lead.notes === 'string') patch.notes = lead.notes.replace(`Programa: ${code} ·`, `Programa: YT${yt} ·`);
+  }
+  await setBaselines(sb, 'lead', id, dealValues(fresh));
+  await sb.from('leads').update(patch).eq('id', id);
+  await logSync(sb, [{ direction: 'push', entity: 'lead', entity_id: id, nethunt_record_id: rid, action: 'create', detail: { yt_id: patch.yt_id ?? null, origin: 'bokun' } }]);
+  if (!yt) throw new Error(`Deal NetHunt ${rid} criado sem YT ID — confirmar no NetHunt`);
+}
 import { createClient, SUPABASE_URL, SERVICE_ROLE_KEY, getSyncAdmins, runCalendarSync, ADMIN_URL_BASE } from '../_shared/calendar-sync-core.ts';
 
 // Backoff [1,2,5,15,60] min and the 5-failure limit live in SQL complete_sync_item().
@@ -51,6 +97,7 @@ async function createNethuntTask(sb: any, task: any): Promise<void> {
 }
 
 async function syncNethunt(sb: any, entity: string, id: string): Promise<void> {
+  if (entity === 'lead_create_deal') { await createNethuntDeal(sb, id); return; }
   if (entity === 'lead') {
     const { data: lead } = await sb.from('leads').select(LEAD_SYNC_COLS).eq('id', id).maybeSingle();
     if (!lead?.nethunt_record_id) return;

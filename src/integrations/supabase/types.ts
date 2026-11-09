@@ -970,6 +970,87 @@ export type Database = {
           },
         ]
       }
+      bokun_events: {
+        Row: {
+          attempts: number
+          confirmation_code: string | null
+          created_at: string
+          error_message: string | null
+          event_id: string
+          event_type: string
+          headers: Json
+          id: string
+          lead_id: string | null
+          processed_at: string | null
+          raw_payload: Json
+          status: string
+        }
+        Insert: {
+          attempts?: number
+          confirmation_code?: string | null
+          created_at?: string
+          error_message?: string | null
+          event_id: string
+          event_type: string
+          headers?: Json
+          id?: string
+          lead_id?: string | null
+          processed_at?: string | null
+          raw_payload?: Json
+          status?: string
+        }
+        Update: {
+          attempts?: number
+          confirmation_code?: string | null
+          created_at?: string
+          error_message?: string | null
+          event_id?: string
+          event_type?: string
+          headers?: Json
+          id?: string
+          lead_id?: string | null
+          processed_at?: string | null
+          raw_payload?: Json
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bokun_events_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bokun_events_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "rpt_files"
+            referencedColumns: ["lead_id"]
+          },
+          {
+            foreignKeyName: "bokun_events_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_task_queue"
+            referencedColumns: ["lead_id"]
+          },
+          {
+            foreignKeyName: "bokun_events_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "v_lead_economics"
+            referencedColumns: ["lead_id"]
+          },
+          {
+            foreignKeyName: "bokun_events_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "v_lead_outcomes"
+            referencedColumns: ["lead_id"]
+          },
+        ]
+      }
       booking_emails_log: {
         Row: {
           body: string
@@ -2616,6 +2697,7 @@ export type Database = {
         Row: {
           active_version: number | null
           assigned_agents: string[]
+          bokun_confirmation_code: string | null
           booking_origin: string | null
           budget_level: string | null
           budget_tier: string | null
@@ -2658,6 +2740,7 @@ export type Database = {
           service_language: string | null
           source: string
           status: string
+          tags: string[]
           travel_dates: string | null
           travel_end_date: string | null
           travel_style: Json | null
@@ -2670,6 +2753,7 @@ export type Database = {
         Insert: {
           active_version?: number | null
           assigned_agents?: string[]
+          bokun_confirmation_code?: string | null
           booking_origin?: string | null
           budget_level?: string | null
           budget_tier?: string | null
@@ -2712,6 +2796,7 @@ export type Database = {
           service_language?: string | null
           source?: string
           status?: string
+          tags?: string[]
           travel_dates?: string | null
           travel_end_date?: string | null
           travel_style?: Json | null
@@ -2724,6 +2809,7 @@ export type Database = {
         Update: {
           active_version?: number | null
           assigned_agents?: string[]
+          bokun_confirmation_code?: string | null
           booking_origin?: string | null
           budget_level?: string | null
           budget_tier?: string | null
@@ -2766,6 +2852,7 @@ export type Database = {
           service_language?: string | null
           source?: string
           status?: string
+          tags?: string[]
           travel_dates?: string | null
           travel_end_date?: string | null
           travel_style?: Json | null
