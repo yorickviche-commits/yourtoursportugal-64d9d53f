@@ -3,6 +3,7 @@ import { local } from '@/hooks/useMagpie';
 import type { ProposalBullet, ProposalDay, ProposalImage } from '@/components/trip/TravelPlanProposal';
 
 import type { ProductExecution } from './productExecution';
+import { catalogAddonRows } from './productAddons';
 export function selectedExecution(p: ImportedProduct): ProductExecution | undefined {
   const versions = local(p)?.execution_versions || [];
   return versions.find(v => v.id === p.selected_execution_id) || versions.find(v => v.id === local(p)?.default_execution_id) || versions[0];
@@ -110,6 +111,7 @@ export function productRef(p: ImportedProduct): Pick<ProposalDay, 'product_ref'>
   if (execution) return { product_ref: { magpie_id: p.magpie_id, name: productTitle(p), pricing: execution.pricing,
     execution: { id: execution.id, label: execution.label, items: structuredClone(execution.costingDays[0]?.items || []) } } };
   const pricing = (p.raw_payload as any)?.pricing;
-  if (!pricing?.adult_per_person_by_group_size) return {};
-  return { product_ref: { magpie_id: p.magpie_id, name: productTitle(p), pricing } };
+  const addons = catalogAddonRows(p, 1, 0);
+  if (!pricing?.adult_per_person_by_group_size && !addons.length) return {};
+  return { product_ref: { magpie_id: p.magpie_id, name: productTitle(p), pricing, addons } };
 }

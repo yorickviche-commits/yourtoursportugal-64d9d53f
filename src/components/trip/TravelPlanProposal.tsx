@@ -25,6 +25,7 @@ import ProposalImagePicker from './ProposalImagePicker';
 import ProductPickerDialog from './ProductPickerDialog';
 import { productToProposalDays, productBullets, imageList, productRef } from '@/lib/productToDay';
 import type { LeadCostItem, LeadCostingDay } from './LeadCostingEditor';
+import { calculateProductRow } from '@/lib/productAddons';
 import type { ImportedProduct } from '@/hooks/useMagpie';
 import { useUsedPhotos, extractPhotoId } from '@/hooks/useUsedPhotos';
 import { getProposalDict } from '@/lib/proposalI18n';
@@ -67,7 +68,7 @@ export interface ProposalDay {
   images?: ProposalImage[];
   mapUrl?: string;
   /** Catalog product this day came from (drives tier PVP in Costing). */
-  product_ref?: { magpie_id: string; name: string; pricing: unknown; execution?: { id: string; label: string; items: LeadCostItem[] } };
+  product_ref?: { magpie_id: string; name: string; pricing: unknown; addons?: LeadCostItem[]; execution?: { id: string; label: string; items: LeadCostItem[] } };
 }
 
 import { routeForDay } from '@/lib/versionRouteMaps';
@@ -781,18 +782,18 @@ const TravelPlanProposal = ({
 
   /** Opcionais do costing — extras fora do preço base do programa. */
   const optionals = (() => {
-    if (!costingDaysData || costingDaysData.length === 0) return [] as { day: number; description: string; pvp: number; perPerson?: number }[];
+    const rows = costingDaysData?.length ? costingDaysData : (plan?.days || []).map(day => ({ day_number: day.day_number, items: (day.product_ref?.execution?.items || day.product_ref?.addons || []).map(row => calculateProductRow({ ...row, numAdults: row.pricingType === 'per_person' ? pax : row.numAdults, numChildren: row.pricingType === 'per_person' ? paxChildren || 0 : row.numChildren })) }));
     const out: { day: number; description: string; pvp: number; perPerson?: number }[] = [];
-    (costingDaysData as any[]).forEach((d: any) => {
+    (rows as any[]).forEach((d: any) => {
       const items = Array.isArray(d.items) ? d.items : [];
       items.forEach((it: any) => {
         if (it.status !== 'opcionais') return;
         out.push({
           day: Number(d.day_number) || 0,
-          description: String(it.description || '').trim(),
+          description: String(it.commercialDescription || it.description || '').trim(),
           pvp: Math.round(Number(it.pvpTotal || 0) * 100) / 100,
           perPerson: it.pricingType === 'per_person'
-            ? Math.round(Number(it.priceAdults || 0) * (1 + Number(it.marginPercent || 0) / 100) * 100) / 100
+            ? it.retailAdult ?? Math.round(Number(it.priceAdults || 0) * (1 + Number(it.marginPercent || 0) / 100) * 100) / 100
             : undefined,
         });
       });

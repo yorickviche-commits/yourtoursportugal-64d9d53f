@@ -2,6 +2,7 @@ import { useState, useMemo, useCallback } from 'react';
 import { ChevronDown, ChevronRight, Plus, CheckCircle2, MinusCircle, XCircle, Sparkles, Pencil, Trash2, Save, Loader2, Wand2, GripVertical, Link2 } from 'lucide-react';
 import PaymentLinkDialog from '@/components/payments/PaymentLinkDialog';
 import { executionCostingItems } from '@/lib/productExecution';
+import { calculateProductRow } from '@/lib/productAddons';
 import { quoteProduct } from '@/lib/productPricing';
 import PaymentLinksList from '@/components/payments/PaymentLinksList';
 import { DragDropContext, Droppable, Draggable, type DropResult } from '@hello-pangea/dnd';
@@ -52,6 +53,13 @@ export interface LeadCostItem {
   isFixedRate?: boolean;
   startTime?: string;
   endTime?: string;
+  addonId?: string;
+  addonGroup?: string;
+  commercialDescription?: string;
+  retailAdult?: number;
+  retailChild?: number;
+  retailTotal?: number;
+  netPending?: boolean;
 }
 
 export interface CostNote {
@@ -82,6 +90,7 @@ export const ACCOMMODATION_DAY = 0;
 export const isAccommodationDay = (d: { day: number }) => d.day === ACCOMMODATION_DAY;
 
 function calcItem(item: LeadCostItem): LeadCostItem {
+  if (item.addonId) return calculateProductRow(item);
   let netTotal: number;
   if (item.pricingType === 'per_night') {
     // For accommodation rows the "Nº Adt" column holds the number of nights.
@@ -363,6 +372,7 @@ const LeadCostingEditor = ({ costingDays, onChange, onSave, saving, plannerDays,
             numChildren: paxChildren, priceChildren: Math.round(quote.childPrice / (1 + m / 100) * 100) / 100,
             netTotal: 0, marginPercent: m, pvpTotal: 0, profit: 0, status: 'neutro', notes: [], costLayer: 'experience',
           }));
+          items.push(...(d.product_ref?.addons || []).map((row: LeadCostItem) => calculateProductRow({ ...structuredClone(row), id: genId(), numAdults: pax, numChildren: paxChildren })));
           return { day: dayNum, title: d.title || `Dia ${dayNum}`, date: d.date || '', items };
         }
         items.push(makeDefaultItem('Guia — Dia ' + dayNum, pax, paxChildren, 'guide'));
@@ -413,7 +423,7 @@ const LeadCostingEditor = ({ costingDays, onChange, onSave, saving, plannerDays,
   const updateItem = useCallback((dayIdx: number, itemIdx: number, updates: Partial<LeadCostItem>) => {
     const updated = [...costingDays];
     const items = [...updated[dayIdx].items];
-    items[itemIdx] = calcItem({ ...items[itemIdx], ...updates });
+    items[itemIdx] = calcItem({ ...items[itemIdx], ...updates, ...(('priceAdults' in updates || 'priceChildren' in updates) ? { netPending: false } : {}) });
     updated[dayIdx] = { ...updated[dayIdx], items };
     onChange(updated);
   }, [costingDays, onChange]);
@@ -788,6 +798,8 @@ const LeadCostingEditor = ({ costingDays, onChange, onSave, saving, plannerDays,
                                             <Sparkles className="h-3.5 w-3.5" />
                                           </button>
                                         </div>
+                                        {item.commercialDescription && <p className="text-xs text-muted-foreground px-1 py-1 whitespace-normal">{item.commercialDescription}</p>}
+                                        {item.netPending && <span className="text-xs text-muted-foreground">NET por definir</span>}
                                         {templateMode && <div className="flex gap-1 mt-1">
                                           <Input aria-label={`Início ${item.description || 'rubrica'}`} type="time" className="h-7 text-xs px-1" value={item.startTime || ''} onChange={e => updateItem(dayIdx, itemIdx, { startTime: e.target.value })} />
                                           <Input aria-label={`Fim ${item.description || 'rubrica'}`} type="time" className="h-7 text-xs px-1" value={item.endTime || ''} onChange={e => updateItem(dayIdx, itemIdx, { endTime: e.target.value })} />

@@ -1,4 +1,5 @@
 # Roadmap
+- [x] Representar e editar add-ons do catálogo nas versões, Planner e Custos; desenvolver descrições YT sem inventar inclusões ou custos NET.
 - [x] Versões A/B/C no catálogo com Travel Plan e operações FSE/NET; importar a versão guardada para Planner e Custos e verificar persistência.
 - [x] Download direto do PDF do Planner, compressão abaixo de 10 MB e verificação de itinerário de 15 dias.
 
