@@ -55,7 +55,6 @@ import AdminAiUsagePage from "./pages/AdminAiUsagePage";
 import JarvisLiveMapPage from "./pages/JarvisLiveMapPage";
 import JarvisPage from "./pages/JarvisPage";
 import ProfilePage from "./pages/ProfilePage";
-import CatalogPage from "./pages/CatalogPage";
 import ProductsPage from "./pages/ProductsPage";
 import ProductDetailPage from "./pages/ProductDetailPage";
 import MapasPage from "./pages/MapasPage";
@@ -131,7 +130,7 @@ const App = () => (
             <Route path="/comercial/matriz" element={<ProtectedRoute><FSEDatabasePage /></ProtectedRoute>} />
             <Route path="/comercial/suppliers" element={<ProtectedRoute><AdminSuppliersPage /></ProtectedRoute>} />
             <Route path="/comercial/suppliers/:id" element={<ProtectedRoute><AdminSupplierDetailPage /></ProtectedRoute>} />
-            <Route path="/catalog" element={<ProtectedRoute><CatalogPage /></ProtectedRoute>} />
+            <Route path="/catalog" element={<Navigate to="/products" replace />} />
             <Route path="/products" element={<ProtectedRoute><ProductsPage /></ProtectedRoute>} />
             <Route path="/products/:magpieId" element={<ProtectedRoute><ProductDetailPage /></ProtectedRoute>} />
             <Route path="/mapas" element={<ProtectedRoute><MapasPage /></ProtectedRoute>} />

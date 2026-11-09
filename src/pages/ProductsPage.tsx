@@ -68,17 +68,9 @@ const ProductsPage = () => {
         <div className="flex items-center justify-between gap-3 flex-wrap">
           <div>
             <h1 className="text-xl font-bold">Biblioteca de Produtos</h1>
-            <p className="text-xs text-muted-foreground">{products.length} produtos importados de Magpie</p>
+            <p className="text-xs text-muted-foreground">{products.length} produtos no catálogo YT</p>
           </div>
-          <div className="flex gap-2">
-            <Button size="sm" variant="outline" disabled={refresh.isPending}
-              onClick={() => refresh.mutate([...selected])}>
-              {refresh.isPending
-                ? <Loader2 className="h-4 w-4 mr-1 animate-spin" />
-                : <RefreshCw className="h-4 w-4 mr-1" />}
-              {selected.size ? `Refresh (${selected.size})` : 'Refresh todos'}
-            </Button>
-          </div>
+
         </div>
 
         <div className="flex flex-wrap gap-2">
@@ -123,7 +115,7 @@ const ProductsPage = () => {
           <div className="py-10 text-center text-sm text-muted-foreground">A carregar...</div>
         ) : filtered.length === 0 ? (
           <div className="py-10 text-center text-sm text-muted-foreground">
-            Nenhum produto. Importa a partir do catálogo Magpie.
+            Nenhum produto no catálogo YT.
           </div>
         ) : (
           <div className="space-y-2">
@@ -159,20 +151,9 @@ const ProductsPage = () => {
                         {p.category && <span>{p.category}</span>}
                         {p.location && <span>• {p.location}</span>}
                         {p.duration_text && <span>• {p.duration_text}</span>}
-                        <span className={cn('flex items-center gap-1', stale && 'text-amber-600 font-medium')}>
-                          {stale && <AlertTriangle className="h-3 w-3" />}
-                          {p.last_synced_at
-                            ? `Sync ${new Date(p.last_synced_at).toLocaleDateString('pt-PT')}`
-                            : 'Nunca sincronizado'}
-                        </span>
                       </div>
                     </div>
                   </div>
-                  <Button size="sm" variant="ghost" className="shrink-0"
-                    disabled={refresh.isPending}
-                    onClick={() => refresh.mutate([p.magpie_id])}>
-                    <RefreshCw className="h-3.5 w-3.5" />
-                  </Button>
                 </div>
               );
             })}

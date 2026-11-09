@@ -120,11 +120,7 @@ const ProductDetailPage = () => {
               </div>
             </div>
           </div>
-          <Button size="sm" variant="outline" disabled={refresh.isPending}
-            onClick={() => refresh.mutate([product.magpie_id])}>
-            {refresh.isPending ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <RefreshCw className="h-4 w-4 mr-1" />}
-            Refresh de Magpie
-          </Button>
+
         </div>
 
         {product.sync_error && (
@@ -138,9 +134,9 @@ const ProductDetailPage = () => {
         {/* Our data */}
         <div className="bg-card rounded-xl border-2 border-primary/30 p-4 space-y-3">
           <div>
-            <h2 className="text-sm font-bold">Os nossos dados (não sincronizados)</h2>
+            <h2 className="text-sm font-bold">Dados internos YT</h2>
             <p className="text-xs text-muted-foreground">
-              Nada nesta secção é alterado pelo sync com Magpie.
+              Estado, visibilidade e notas comerciais do produto.
             </p>
           </div>
           <div className="grid gap-3 md:grid-cols-2">
@@ -205,7 +201,7 @@ const ProductDetailPage = () => {
 
         {/* Magpie content (read-only) */}
         {images.length > 0 && (
-          <Section title="Galeria (alojada em Magpie)">
+          <Section title="Galeria">
             <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
               {images.map((img, i) => {
                 const url = typeof img === 'string' ? img : (img as { url?: string })?.url;
@@ -259,7 +255,7 @@ const ProductDetailPage = () => {
                 ))}
               </dl>
             ) : (
-              <p className="text-sm text-muted-foreground">Magpie não devolve tarifas para este produto.</p>
+              <p className="text-sm text-muted-foreground">Sem tarifas definidas.</p>
             )}
           </Section>
         </div>

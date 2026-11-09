@@ -37,8 +37,7 @@ const reservasItems: NavItem[] = [
 const comercialItems: NavItem[] = [
   { to: '/comercial/matriz', icon: Grid3x3, label: 'Matriz FSE', pageKey: 'comercial_matriz' },
   { to: '/comercial/suppliers', icon: Truck, label: 'Fornecedores', pageKey: 'comercial_suppliers' },
-  { to: '/catalog', icon: PackageSearch, label: 'Catálogo Magpie', pageKey: 'catalog' },
-  { to: '/products', icon: Boxes, label: 'Catálogo de Produtos', pageKey: 'products' },
+  { to: '/products', icon: Boxes, label: 'Catálogo de Produtos YT', pageKey: 'products' },
   { to: '/mapas', icon: MapPin, label: 'Mapas', pageKey: 'mapas' },
   { to: '/partners', icon: Handshake, label: 'Parceiros B2B', pageKey: 'partners' },
 ];
