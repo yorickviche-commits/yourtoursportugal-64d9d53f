@@ -23,7 +23,7 @@ import { syncCostingTitles, planDaysToTitles } from '@/lib/versionDayTitles';
 import { cn } from '@/lib/utils';
 import ProposalImagePicker from './ProposalImagePicker';
 import ProductPickerDialog from './ProductPickerDialog';
-import { productToProposalDay, productBullets, imageList } from '@/lib/productToDay';
+import { productToProposalDay, productBullets, imageList, productRef } from '@/lib/productToDay';
 import type { ImportedProduct } from '@/hooks/useMagpie';
 import { useUsedPhotos, extractPhotoId } from '@/hooks/useUsedPhotos';
 import { getProposalDict } from '@/lib/proposalI18n';
@@ -65,6 +65,8 @@ export interface ProposalDay {
   overnight: string;
   images?: ProposalImage[];
   mapUrl?: string;
+  /** Catalog product this day came from (drives tier PVP in Costing). */
+  product_ref?: { magpie_id: string; name: string; pricing: unknown };
 }
 
 import { routeForDay } from '@/lib/versionRouteMaps';
@@ -1490,6 +1492,7 @@ const TravelPlanProposal = ({
         bullets: [...current.bullets.filter(b => (typeof b === 'string' ? b.trim() : b.text.trim())), ...productBullets(product)],
         images: [...existingImages, ...extraImages].slice(0, 2),
         subtitle: current.subtitle,
+        ...productRef(product),
       };
       return { ...base, days };
     });

@@ -345,6 +345,19 @@ const LeadCostingEditor = ({ costingDays, onChange, onSave, saving, plannerDays,
       const newDays: LeadCostingDay[] = tpDays.map((d: any) => {
         const dayNum = d.day_number || d.day || 1;
         const items: LeadCostItem[] = [];
+        // Catalog product day: one line at the tier PVP for this lead's pax mix.
+        const quote = d.product_ref?.pricing ? quoteProduct(d.product_ref.pricing, { adults: pax, children: paxChildren }) : null;
+        if (quote) {
+          const m = 30;
+          items.push(calcItem({
+            id: genId(), description: `${d.product_ref.name} (tabela ${quote.groupSize} pax)`, supplier: 'YT Tour Catálogo',
+            pricingType: 'per_person',
+            numAdults: pax, priceAdults: Math.round(quote.adultPrice / (1 + m / 100) * 100) / 100,
+            numChildren: paxChildren, priceChildren: Math.round(quote.childPrice / (1 + m / 100) * 100) / 100,
+            netTotal: 0, marginPercent: m, pvpTotal: 0, profit: 0, status: 'neutro', notes: [], costLayer: 'experience',
+          }));
+          return { day: dayNum, title: d.title || `Dia ${dayNum}`, date: d.date || '', items };
+        }
         items.push(makeDefaultItem('Guia — Dia ' + dayNum, pax, paxChildren, 'guide'));
         items.push(makeDefaultItem('Veículo YT — Dia ' + dayNum, pax, paxChildren, 'transport'));
         items.push(makeDefaultItem('Custos Transporte (combustível, portagens, parking)', pax, paxChildren, 'operational'));

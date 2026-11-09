@@ -83,5 +83,13 @@ export function productToProposalDay(
     bullets: productBullets(p),
     overnight: (p.location as string | null) || '',
     images: imageList(p.images, 2),
+    ...productRef(p),
   };
+}
+
+/** Pricing reference stored on the day so Costing can apply the tier table. */
+export function productRef(p: ImportedProduct): Pick<ProposalDay, 'product_ref'> {
+  const pricing = (p.raw_payload as any)?.pricing;
+  if (!pricing?.adult_per_person_by_group_size) return {};
+  return { product_ref: { magpie_id: p.magpie_id, name: productTitle(p), pricing } };
 }
