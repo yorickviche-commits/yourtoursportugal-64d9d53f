@@ -34,7 +34,7 @@ export async function searchBookings(filter: Record<string, unknown>, maxPages =
   const out: any[] = [];
   const pageSize = 50;
   for (let page = 1; page <= maxPages; page++) {
-    const r = await bokunCall('POST', '/booking.json/booking-search', { bookingRole: 'SELLER', page, pageSize, ...filter });
+    const r = await bokunCall('POST', '/booking.json/booking-search', { bookingRole: 'SELLER', bookingStatuses: ['RESERVED', 'CONFIRMED', 'CANCELLED'], page, pageSize, ...filter });
     const items = (r?.items ?? []) as any[];
     out.push(...items);
     if (items.length < pageSize || out.length >= (r?.totalHits ?? 0)) break;
@@ -90,7 +90,7 @@ export function normalizeBooking(it: any): BokunBooking {
     product: use.map((p) => s(p?.product?.title)).filter(Boolean).join(' + ') || 'Produto Bókun',
     start, end, time, adults, children, infants,
     lang: s(first?.guidedLanguage ?? f.guidedLanguage ?? f.language ?? c.language),
-    total: num(it?.customerInvoice?.totalAsMoney?.amount ?? it?.totalPrice),
+    total: num(it?.customerInvoice?.totalAsMoney?.amount ?? it?.customerInvoice?.totalDueAsMoney?.amount ?? it?.totalPrice),
     paid: num(it?.paidAmountAsMoney?.amount),
     currency: s(it?.currency) || 'EUR',
     channel: Array.from(new Set(ota)).join(' · '),
