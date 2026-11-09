@@ -1,6 +1,7 @@
 import { useState, useMemo, useCallback } from 'react';
 import { ChevronDown, ChevronRight, Plus, CheckCircle2, MinusCircle, XCircle, Sparkles, Pencil, Trash2, Save, Loader2, Wand2, GripVertical, Link2 } from 'lucide-react';
 import PaymentLinkDialog from '@/components/payments/PaymentLinkDialog';
+import { executionCostingItems } from '@/lib/productExecution';
 import { quoteProduct } from '@/lib/productPricing';
 import PaymentLinksList from '@/components/payments/PaymentLinksList';
 import { DragDropContext, Droppable, Draggable, type DropResult } from '@hello-pangea/dnd';
@@ -49,6 +50,8 @@ export interface LeadCostItem {
   costLayer?: CostLayer;
   isProtocol?: boolean;
   isFixedRate?: boolean;
+  startTime?: string;
+  endTime?: string;
 }
 
 export interface CostNote {
@@ -260,10 +263,11 @@ interface LeadCostingEditorProps {
   onPvpOverrideChange?: (v: number | null) => void;
   /** Lead version being edited (travel_plans are versioned). */
   version?: number;
+  templateMode?: boolean;
 }
 
 // ─── Component ───────────────────────────────────────
-const LeadCostingEditor = ({ costingDays, onChange, onSave, saving, plannerDays, pax, paxChildren, destination, leadId, leadCode, clientName, startDate, endDate, pvpOverride: pvpOverrideProp, onPvpOverrideChange, version = 0 }: LeadCostingEditorProps) => {
+const LeadCostingEditor = ({ costingDays, onChange, onSave, saving, plannerDays, pax, paxChildren, destination, leadId, leadCode, clientName, startDate, endDate, pvpOverride: pvpOverrideProp, onPvpOverrideChange, version = 0, templateMode = false }: LeadCostingEditorProps) => {
   const [expandedDays, setExpandedDays] = useState<number[]>(costingDays.length > 0 ? costingDays.map(d => d.day) : []);
   const [autoFilling, setAutoFilling] = useState(false);
   const [payLinkOpen, setPayLinkOpen] = useState(false);
@@ -346,6 +350,8 @@ const LeadCostingEditor = ({ costingDays, onChange, onSave, saving, plannerDays,
       const newDays: LeadCostingDay[] = tpDays.map((d: any) => {
         const dayNum = d.day_number || d.day || 1;
         const items: LeadCostItem[] = [];
+        const executionItems = executionCostingItems(d, { adults: pax, children: paxChildren });
+        if (executionItems) return { day: dayNum, title: d.title || `Dia ${dayNum}`, date: d.date || '', items: executionItems };
         // Catalog product day: one line at the tier PVP for this lead's pax mix.
         const quote = d.product_ref?.pricing ? quoteProduct(d.product_ref.pricing, { adults: pax, children: paxChildren }) : null;
         if (quote) {
@@ -576,10 +582,15 @@ const LeadCostingEditor = ({ costingDays, onChange, onSave, saving, plannerDays,
   const [localPvpOverride, setLocalPvpOverride] = useState<number | null>(null);
   const pvpOverride = pvpOverrideProp !== undefined ? pvpOverrideProp : localPvpOverride;
   const setPvpOverride = (v: number | null) => {
+    if (templateMode && v != null && grandNet > 0) {
+      const margin = (v / grandNet - 1) * 100;
+      onChange(costingDays.map(d => ({ ...d, items: d.items.map(i => i.status === 'opcionais' || i.status === 'eliminar' ? i : calcItem({ ...i, marginPercent: margin })) })));
+      return;
+    }
     if (onPvpOverrideChange) onPvpOverrideChange(v);
     else setLocalPvpOverride(v);
   };
-  const effectivePVP = pvpOverride != null ? pvpOverride : computedPVP;
+  const effectivePVP = !templateMode && pvpOverride != null ? pvpOverride : computedPVP;
   const grandPVP = effectivePVP;
   const grandProfit = grandPVP - grandNet;
   const grandMargin = grandNet > 0 ? (grandProfit / grandNet) * 100 : 0;
@@ -621,8 +632,8 @@ const LeadCostingEditor = ({ costingDays, onChange, onSave, saving, plannerDays,
           <button onClick={expandAll} className="text-[10px] text-[hsl(var(--info))] hover:underline">Expandir</button>
           <button onClick={collapseAll} className="text-[10px] text-[hsl(var(--info))] hover:underline">Colapsar</button>
         </div>
-        <div className="flex items-center gap-2">
-          {hasItems && (
+        <div className="flex items-center flex-wrap gap-2">
+          {hasItems && !templateMode && (
             <Button variant="outline" size="sm" className="text-xs gap-1 border-[hsl(var(--warning))]/50 text-[hsl(var(--warning))] hover:bg-[hsl(var(--warning))]/10" onClick={autoFulfillBudget} disabled={autoFilling}>
               {autoFilling ? <Loader2 className="h-3 w-3 animate-spin" /> : <Wand2 className="h-3 w-3" />}
               Auto-Fulfill Budget
@@ -777,6 +788,10 @@ const LeadCostingEditor = ({ costingDays, onChange, onSave, saving, plannerDays,
                                             <Sparkles className="h-3.5 w-3.5" />
                                           </button>
                                         </div>
+                                        {templateMode && <div className="flex gap-1 mt-1">
+                                          <Input aria-label={`Início ${item.description || 'rubrica'}`} type="time" className="h-7 text-xs px-1" value={item.startTime || ''} onChange={e => updateItem(dayIdx, itemIdx, { startTime: e.target.value })} />
+                                          <Input aria-label={`Fim ${item.description || 'rubrica'}`} type="time" className="h-7 text-xs px-1" value={item.endTime || ''} onChange={e => updateItem(dayIdx, itemIdx, { endTime: e.target.value })} />
+                                        </div>}
                                       </td>
                                       <td className="px-1 py-1 align-middle min-w-[110px]">
                                         <SupplierSearchDropdown
@@ -892,12 +907,30 @@ const LeadCostingEditor = ({ costingDays, onChange, onSave, saving, plannerDays,
                       {day.items.length === 0 && <span className="text-amber-600">— secção vazia, não aparece</span>}
                     </label>
                   )}
-                  <button onClick={() => addItem(dayIdx)} className="mb-3 p-1 rounded-full border border-dashed border-muted-foreground/30 hover:border-[hsl(var(--info))] hover:bg-muted/20 transition-colors">
+                  <Button variant="outline" size="icon" aria-label={`Adicionar rubrica dia ${day.day}`} title="Adicionar rubrica" onClick={() => addItem(dayIdx)} className="mb-3 h-9 w-9 border-dashed">
                     <Plus className="h-4 w-4 text-muted-foreground" />
-                  </button>
+                  </Button>
 
+                  {templateMode && <div className="space-y-3 sm:hidden">
+                    {day.items.map((item, itemIdx) => <div key={item.id} className="border border-border rounded-md p-3 space-y-2">
+                      <Input aria-label="Atividade" value={item.description} onChange={e => updateItem(dayIdx, itemIdx, { description: e.target.value })} />
+                      <SupplierSearchDropdown value={item.supplier} onChange={supplier => updateItem(dayIdx, itemIdx, { supplier })} />
+                      <Button variant="outline" size="sm" onClick={() => setExpPicker({ dayIdx, itemIdx, supplier: item.supplier })}><Sparkles className="h-4 w-4 mr-1" />Escolher serviço FSE</Button>
+                      <div className="grid grid-cols-2 gap-2">
+                        <label className="text-xs">Início<Input aria-label="Início" type="time" value={item.startTime || ''} onChange={e => updateItem(dayIdx, itemIdx, { startTime: e.target.value })} /></label>
+                        <label className="text-xs">Fim<Input aria-label="Fim" type="time" value={item.endTime || ''} onChange={e => updateItem(dayIdx, itemIdx, { endTime: e.target.value })} /></label>
+                        <label className="text-xs">NET adulto / total<Input type="number" min={0} value={item.priceAdults} onChange={e => updateItem(dayIdx, itemIdx, { priceAdults: Number(e.target.value) })} /></label>
+                        <label className="text-xs">NET criança<Input type="number" min={0} value={item.priceChildren} onChange={e => updateItem(dayIdx, itemIdx, { priceChildren: Number(e.target.value) })} /></label>
+                        <label className="text-xs">Adultos / noites<Input type="number" min={0} value={item.numAdults} onChange={e => updateItem(dayIdx, itemIdx, { numAdults: Number(e.target.value) })} /></label>
+                        <label className="text-xs">Crianças<Input type="number" min={0} value={item.numChildren} onChange={e => updateItem(dayIdx, itemIdx, { numChildren: Number(e.target.value) })} /></label>
+                      </div>
+                      <Select value={item.pricingType} onValueChange={v => updateItem(dayIdx, itemIdx, { pricingType: v as LeadCostItem['pricingType'] })}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="total">Total</SelectItem><SelectItem value="per_person">Por pessoa</SelectItem><SelectItem value="per_night">Por noite</SelectItem></SelectContent></Select>
+                      <Select value={item.status} onValueChange={v => updateItem(dayIdx, itemIdx, { status: v as LeadCostItem['status'] })}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{STATUS_OPTIONS.map(opt => <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>)}</SelectContent></Select>
+                      <div className="flex items-center justify-between gap-2"><span className="text-xs font-semibold">NET {eur(item.netTotal)}</span><CostNoteDialog item={item} onUpdate={notes => updateItem(dayIdx, itemIdx, { notes })} /><Button size="icon" variant="ghost" title="Remover rubrica" onClick={() => removeItem(dayIdx, itemIdx)}><Trash2 className="h-4 w-4 text-destructive" /></Button></div>
+                    </div>)}
+                  </div>}
                   {/* Table Header */}
-                  <div className="overflow-x-auto">
+                  <div className={cn("overflow-x-auto", templateMode && "hidden sm:block")}>
                     <table className="w-full text-[10px]">
                       {tableHead}
                       <Droppable droppableId={`cost-day-${dayIdx}`}>
@@ -922,7 +955,7 @@ const LeadCostingEditor = ({ costingDays, onChange, onSave, saving, plannerDays,
                         <Sparkles className="h-3.5 w-3.5" /> Opcionais
                         <span className="font-normal text-muted-foreground">— não somam ao preço do programa</span>
                       </p>
-                      <div className="overflow-x-auto">
+                      <div className={cn("overflow-x-auto", templateMode && "hidden sm:block")}>
                         <table className="w-full text-[10px]">
                           {tableHead}
                           <Droppable droppableId={`cost-opt-${dayIdx}`}>
@@ -940,7 +973,7 @@ const LeadCostingEditor = ({ costingDays, onChange, onSave, saving, plannerDays,
                         </table>
                       </div>
                       {dayOptActive.length > 0 && (
-                        <div className="flex items-center justify-center gap-8 mt-2 text-xs pt-2 border-t border-[hsl(var(--warning))]/30">
+                        <div className="flex flex-wrap items-center justify-center gap-4 mt-2 text-xs pt-2 border-t border-[hsl(var(--warning))]/30">
                           <div className="text-center">
                             <p className="text-[10px] text-muted-foreground font-semibold">NET</p>
                             <p className="font-bold">{eur(dayOptNet)}</p>
@@ -967,7 +1000,7 @@ const LeadCostingEditor = ({ costingDays, onChange, onSave, saving, plannerDays,
 
                   {/* Day Subtotals */}
                   {dayActiveItems.length > 0 && (
-                    <div className="flex items-center justify-center gap-8 mt-3 text-xs pt-2 border-t">
+                    <div className="flex flex-wrap items-center justify-center gap-4 mt-3 text-xs pt-2 border-t">
                       <div className="text-center">
                         <p className="text-[10px] text-muted-foreground font-semibold">NET</p>
                         <p className="font-bold">{eur(dayNet)}</p>

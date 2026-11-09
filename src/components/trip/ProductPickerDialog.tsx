@@ -1,6 +1,8 @@
 import { useMemo, useState } from 'react';
 import { Loader2, Search, Package } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
 import { useImportedProducts, firstImage, local, type ImportedProduct } from '@/hooks/useMagpie';
 import { productTitle, productSummary } from '@/lib/productToDay';
@@ -19,6 +21,7 @@ const ProductPickerDialog = ({ open, onOpenChange, onSelect, title = 'Importar p
   const { data: products, isLoading } = useImportedProducts();
   const [search, setSearch] = useState('');
   const [showAll, setShowAll] = useState(false);
+  const [executions, setExecutions] = useState<Record<string, string>>({});
 
   const ready = useMemo(() => {
     const rows = products ?? [];
@@ -82,10 +85,10 @@ const ProductPickerDialog = ({ open, onOpenChange, onSelect, title = 'Importar p
           {!isLoading && filtered.map(p => {
             const img = firstImage(p.images);
             return (
-              <button
-                key={p.magpie_id}
-                onClick={() => { onSelect(p); onOpenChange(false); }}
-                className="w-full flex items-start gap-3 p-3 text-left hover:bg-muted/50 transition-colors"
+              <div key={p.magpie_id} className="flex flex-wrap items-start gap-3 p-3">
+              <Button variant="ghost"
+                onClick={() => { onSelect({ ...p, selected_execution_id: executions[p.magpie_id] }); onOpenChange(false); }}
+                className="h-auto flex-1 min-w-0 flex items-start justify-start gap-3 p-0 text-left whitespace-normal"
               >
                 <div className="w-16 h-12 rounded bg-muted overflow-hidden shrink-0">
                   {img
@@ -101,7 +104,12 @@ const ProductPickerDialog = ({ open, onOpenChange, onSelect, title = 'Importar p
                     {p.category && <span>· {p.category}</span>}
                   </div>
                 </div>
-              </button>
+              </Button>
+              {!!local(p)?.execution_versions?.length && <Select value={executions[p.magpie_id] || local(p)?.default_execution_id || local(p)?.execution_versions?.[0]?.id} onValueChange={id => setExecutions(prev => ({ ...prev, [p.magpie_id]: id }))}>
+                <SelectTrigger className="w-32 h-9" aria-label={`Versão ${productTitle(p)}`}><SelectValue /></SelectTrigger>
+                <SelectContent>{local(p)?.execution_versions?.map(v => <SelectItem key={v.id} value={v.id}>Versão {v.label}</SelectItem>)}</SelectContent>
+              </Select>}
+              </div>
             );
           })}
         </div>

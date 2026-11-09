@@ -169,6 +169,13 @@
       "when": 1792107474543,
       "tag": "0023_create_jarvis_state",
       "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "7",
+      "when": 1794190175124,
+      "tag": "0024_product_execution_versions",
+      "breakpoints": true
     }
   ]
 }

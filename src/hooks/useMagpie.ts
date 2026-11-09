@@ -1,4 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import type { ProductExecution } from '@/lib/productExecution';
+import type { Json } from '@/integrations/supabase/types';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
@@ -135,6 +137,8 @@ export interface ProductLocal {
   custom_title: string | null;
   custom_summary: string | null;
   sort_weight: number;
+  execution_versions?: ProductExecution[];
+  default_execution_id?: string | null;
 }
 
 export function useImportedProducts() {
@@ -158,7 +162,7 @@ export function useImportedProduct(magpieId?: string) {
       const { data, error } = await supabase
         .from('magpie_products')
         .select('*, product_local(*)')
-        .eq('magpie_id', magpieId!)
+        .eq('magpie_id', magpieId ?? '')
         .maybeSingle();
       if (error) throw error;
       return data as unknown as ImportedProduct | null;
@@ -171,9 +175,10 @@ export function useSaveProductLocal(magpieId: string) {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (values: Partial<ProductLocal>) => {
+      const { execution_versions, ...fields } = values;
       const { error } = await supabase
         .from('product_local')
-        .upsert({ magpie_id: magpieId, ...values }, { onConflict: 'magpie_id' });
+        .upsert({ magpie_id: magpieId, ...fields, ...(execution_versions ? { execution_versions: execution_versions as unknown as Json } : {}) }, { onConflict: 'magpie_id' });
       if (error) throw error;
     },
     onSuccess: () => {

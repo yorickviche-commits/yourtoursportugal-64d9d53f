@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import AppLayout from '@/components/AppLayout';
+import ProductExecutionWorkspace from '@/components/products/ProductExecutionWorkspace';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -131,6 +132,8 @@ const ProductDetailPage = () => {
             {product.sync_error}
           </div>
         )}
+
+        <ProductExecutionWorkspace key={product.magpie_id} product={product} />
 
         {/* Our data */}
         <div className="bg-card rounded-xl border-2 border-primary/30 p-4 space-y-3">

@@ -1,0 +1,2 @@
+ALTER TABLE public.product_local ADD COLUMN execution_versions jsonb NOT NULL DEFAULT '[]'::jsonb, ADD COLUMN default_execution_id text;
+COMMENT ON COLUMN public.product_local.execution_versions IS 'Independent catalog execution snapshots: commercial travel plan, supplier NET costing, schedules and notes. Imported leads retain their own snapshots.';

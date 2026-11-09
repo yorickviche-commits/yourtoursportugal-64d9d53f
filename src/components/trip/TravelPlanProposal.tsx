@@ -23,7 +23,8 @@ import { syncCostingTitles, planDaysToTitles } from '@/lib/versionDayTitles';
 import { cn } from '@/lib/utils';
 import ProposalImagePicker from './ProposalImagePicker';
 import ProductPickerDialog from './ProductPickerDialog';
-import { productToProposalDay, productBullets, imageList, productRef } from '@/lib/productToDay';
+import { productToProposalDays, productBullets, imageList, productRef } from '@/lib/productToDay';
+import type { LeadCostItem, LeadCostingDay } from './LeadCostingEditor';
 import type { ImportedProduct } from '@/hooks/useMagpie';
 import { useUsedPhotos, extractPhotoId } from '@/hooks/useUsedPhotos';
 import { getProposalDict } from '@/lib/proposalI18n';
@@ -66,7 +67,7 @@ export interface ProposalDay {
   images?: ProposalImage[];
   mapUrl?: string;
   /** Catalog product this day came from (drives tier PVP in Costing). */
-  product_ref?: { magpie_id: string; name: string; pricing: unknown };
+  product_ref?: { magpie_id: string; name: string; pricing: unknown; execution?: { id: string; label: string; items: LeadCostItem[] } };
 }
 
 import { routeForDay } from '@/lib/versionRouteMaps';
@@ -165,6 +166,7 @@ interface TravelPlanProposalProps {
   netPricing?: boolean;
   /** Version of the lead being edited/consulted (travel_plans + costing are versioned). */
   version?: number;
+  template?: { plan: TravelPlanData; metadata?: string; costingDays: LeadCostingDay[]; onChange: (plan: TravelPlanData, metadata: string) => void; onSave: (plan: TravelPlanData, metadata: string) => Promise<void> };
 }
 
 
@@ -572,6 +574,7 @@ const TravelPlanProposal = ({
   accommodation = [],
   netPricing = false,
   version = 0,
+  template,
 
 }: TravelPlanProposalProps) => {
   const { toast } = useToast();
@@ -747,7 +750,7 @@ const TravelPlanProposal = ({
   });
 
   // Load costing data (same version) to compute total PVP for the proposal
-  const { data: costingDaysData } = useQuery({
+  const { data: leadCostingDaysData } = useQuery({
     queryKey: ['lead_costing_data_proposal', leadId, version],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -761,6 +764,8 @@ const TravelPlanProposal = ({
     enabled: !!leadId,
   });
 
+
+  const costingDaysData = template ? template.costingDays.map(d => ({ day_number: d.day, items: d.items })) : leadCostingDaysData;
 
   // Load lead-level PVP override (manual price adjustment)
   const { data: leadPvpOverride } = useQuery({
@@ -895,6 +900,17 @@ const TravelPlanProposal = ({
     setWetravelDepositEur(null);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [leadId, version]);
+  useEffect(() => {
+    if (!template) return;
+    planUndo.reset(structuredClone(template.plan));
+    try { const meta = JSON.parse(template.metadata || '{}'); setClosing({ ...DEFAULT_CLOSING, ...meta.closing }); if (meta.language) setLanguage(meta.language); } catch { /* No metadata yet. */ }
+    // Template is mounted with its execution ID as key; edits must not rehydrate it.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  useEffect(() => {
+    if (template && plan) template.onChange(plan, JSON.stringify({ closing, language }));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [plan, closing, language]);
   if (savedPlan && !plan && hydratedRef.current !== versionKey) {
     hydratedRef.current = versionKey;
 
@@ -1254,6 +1270,7 @@ const TravelPlanProposal = ({
       const paxStr = buildParticipantsLabel(pax, paxChildren, proposalLang);
       // Store cover_image in extra_instructions as JSON metadata
       const metadata = JSON.stringify({ cover_image: planToSave.cover_image || null, brand_logo: planToSave.brand_logo || null, closing, language });
+      if (template) { await template.onSave(planToSave, metadata); toast({ title: 'Versão do produto guardada' }); return; }
       const { data: existingPlanRow } = await supabase
         .from('travel_plans').select('id').eq('lead_id', leadId)
         .eq('version', version)
@@ -1398,7 +1415,7 @@ const TravelPlanProposal = ({
     // estar nas dependências — sem isso o closure ficava preso ao primeiro render
     // e gravava closing_terms sem os opcionais (e com o PVP desatualizado).
   }, [plan, closing, accommodation, netPricing, optionals, totalPVP, version, language,
-      leadId, leadCode, clientName, pax, paxChildren, travelDates, travelEndDate, toast, queryClient]);
+      leadId, leadCode, clientName, pax, paxChildren, travelDates, travelEndDate, toast, queryClient, template]);
 
 
   // Edit helpers
@@ -1479,8 +1496,8 @@ const TravelPlanProposal = ({
       const base = p || { trip_title: destination || clientName, narrative: '', days: [] };
       if (target === 'new') {
         const index = base.days.length;
-        const day = productToProposalDay(product, { dayNumber: index + 1, date: dateForDayIndex(index) });
-        return { ...base, days: [...base.days, day] };
+        const days = productToProposalDays(product, { dayNumber: index + 1, date: dateForDayIndex(index) });
+        return { ...base, days: [...base.days, ...days.map((d, i) => ({ ...d, date: dateForDayIndex(index + i) }))] };
       }
       const days = [...base.days];
       const current = days[target];
@@ -1697,14 +1714,14 @@ const TravelPlanProposal = ({
   return (
     <div className="space-y-4 print:space-y-6">
       {/* Actions Bar */}
-      <div className="flex items-center justify-between print:hidden">
+      <div className="flex items-center justify-between flex-wrap gap-2 print:hidden">
         <Tabs value={viewMode} onValueChange={v => setViewMode(v as any)} className="w-auto">
           <TabsList className="h-8">
             <TabsTrigger value="preview" className="text-xs gap-1 px-3"><Eye className="h-3 w-3" /> Pré-visualização</TabsTrigger>
             <TabsTrigger value="edit" className="text-xs gap-1 px-3"><Edit3 className="h-3 w-3" /> Edição</TabsTrigger>
           </TabsList>
         </Tabs>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center flex-wrap gap-2">
           <Select value={language} onValueChange={handleLanguageChange}>
             <SelectTrigger className="h-8 w-[80px] text-xs" title="Idioma do plano">
               <SelectValue />

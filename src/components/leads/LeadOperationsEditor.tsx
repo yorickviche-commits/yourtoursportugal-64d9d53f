@@ -135,7 +135,7 @@ const LeadOperationsEditor = ({ activeVersion, leadId, leadCode, pvpTotal = 0, s
 
   // Costing lookup: day + normalized title -> {supplier, pax, net}
   const costingLookup = useMemo(() => {
-    const map: Record<string, { supplier: string; pax: number; net: number }> = {};
+    const map: Record<string, { supplier: string; pax: number; net: number; startTime?: string; endTime?: string }> = {};
     costingDays.forEach((day: any) => {
       const items = Array.isArray(day.items) ? day.items : [];
       items.forEach((it: any) => {
@@ -144,6 +144,8 @@ const LeadOperationsEditor = ({ activeVersion, leadId, leadCode, pvpTotal = 0, s
           supplier: it.supplier || '',
           pax: Number(it.numAdults ?? it.num_adults ?? 0) || 0,
           net: Number(it.netTotal ?? it.unitCost ?? it.unit_cost ?? 0) || 0,
+          startTime: it.startTime,
+          endTime: it.endTime,
         };
         map[`${day.day_number}|${norm(title)}`] = entry;
       });
@@ -179,8 +181,8 @@ const LeadOperationsEditor = ({ activeVersion, leadId, leadCode, pvpTotal = 0, s
         pax: op?.pax ?? cost?.pax ?? 0,
         netValue: cost?.net ?? Number(op?.net_value ?? 0) ?? 0,
         realCost: op?.real_cost != null ? Number(op.real_cost) : null,
-        scheduleTime: op?.schedule_time || '',
-        scheduleEndTime: (op as any)?.schedule_end_time?.slice(0, 5) || '',
+        scheduleTime: op?.schedule_time || cost?.startTime || '',
+        scheduleEndTime: (op as any)?.schedule_end_time?.slice(0, 5) || cost?.endTime || '',
         bookingStatus: normalizeBookingStatus(op?.booking_status),
         paymentStatus: normalizePaymentStatus(op?.payment_status),
         invoiceStatus: normalizeInvoiceStatus(op?.invoice_status),

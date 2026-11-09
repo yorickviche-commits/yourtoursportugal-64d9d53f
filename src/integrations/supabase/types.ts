@@ -4174,6 +4174,8 @@ export type Database = {
           created_at: string
           custom_summary: string | null
           custom_title: string | null
+          default_execution_id: string | null
+          execution_versions: Json
           id: string
           internal_tags: string[]
           is_visible: boolean
@@ -4187,6 +4189,8 @@ export type Database = {
           created_at?: string
           custom_summary?: string | null
           custom_title?: string | null
+          default_execution_id?: string | null
+          execution_versions?: Json
           id?: string
           internal_tags?: string[]
           is_visible?: boolean
@@ -4200,6 +4204,8 @@ export type Database = {
           created_at?: string
           custom_summary?: string | null
           custom_title?: string | null
+          default_execution_id?: string | null
+          execution_versions?: Json
           id?: string
           internal_tags?: string[]
           is_visible?: boolean

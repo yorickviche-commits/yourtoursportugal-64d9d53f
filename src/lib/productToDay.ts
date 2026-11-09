@@ -2,6 +2,21 @@ import type { ImportedProduct } from '@/hooks/useMagpie';
 import { local } from '@/hooks/useMagpie';
 import type { ProposalBullet, ProposalDay, ProposalImage } from '@/components/trip/TravelPlanProposal';
 
+import type { ProductExecution } from './productExecution';
+export function selectedExecution(p: ImportedProduct): ProductExecution | undefined {
+  const versions = local(p)?.execution_versions || [];
+  return versions.find(v => v.id === p.selected_execution_id) || versions.find(v => v.id === local(p)?.default_execution_id) || versions[0];
+}
+export function productToProposalDays(p: ImportedProduct, opts: { dayNumber: number; date?: string }): ProposalDay[] {
+  const execution = selectedExecution(p);
+  if (!execution) return [productToProposalDay(p, opts)];
+  return execution.plan.days.map((day, i) => ({
+    ...structuredClone(day), day_number: opts.dayNumber + i, date: i === 0 ? opts.date || '' : '',
+    product_ref: { magpie_id: p.magpie_id, name: productTitle(p), pricing: execution.pricing,
+      execution: { id: execution.id, label: execution.label, items: structuredClone(execution.costingDays.find(d => d.day === day.day_number)?.items || []) } },
+  }));
+}
+
 /** Normalizes a jsonb list (strings or objects) into plain text lines. */
 export function textList(value: unknown, max = 12): string[] {
   if (!Array.isArray(value)) return [];
@@ -64,6 +79,8 @@ export function productSummary(p: ImportedProduct): string {
 
 /** Bullets derived from a product: highlights first, inclusions as fallback. */
 export function productBullets(p: ImportedProduct): ProposalBullet[] {
+  const saved = selectedExecution(p)?.plan.days[0]?.bullets;
+  if (saved) return structuredClone(saved).map(b => typeof b === 'string' ? { text: b } : b);
   const highlights = textList(p.highlights);
   const lines = highlights.length ? highlights : textList(p.included);
   const duration = parseDuration(p.duration_text as string | null);
@@ -89,6 +106,9 @@ export function productToProposalDay(
 
 /** Pricing reference stored on the day so Costing can apply the tier table. */
 export function productRef(p: ImportedProduct): Pick<ProposalDay, 'product_ref'> {
+  const execution = selectedExecution(p);
+  if (execution) return { product_ref: { magpie_id: p.magpie_id, name: productTitle(p), pricing: execution.pricing,
+    execution: { id: execution.id, label: execution.label, items: structuredClone(execution.costingDays[0]?.items || []) } } };
   const pricing = (p.raw_payload as any)?.pricing;
   if (!pricing?.adult_per_person_by_group_size) return {};
   return { product_ref: { magpie_id: p.magpie_id, name: productTitle(p), pricing } };
