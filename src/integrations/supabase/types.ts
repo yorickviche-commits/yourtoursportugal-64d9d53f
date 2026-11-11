@@ -6302,6 +6302,342 @@ export type Database = {
         }
         Relationships: []
       }
+      workbench_alerts: {
+        Row: {
+          created_at: string
+          handled_at: string | null
+          handled_by: string | null
+          id: string
+          lead_id: string
+          next_step: string | null
+          reason: string
+          side: string
+          snoozed_until: string | null
+          status: string
+          title: string
+        }
+        Insert: {
+          created_at?: string
+          handled_at?: string | null
+          handled_by?: string | null
+          id?: string
+          lead_id: string
+          next_step?: string | null
+          reason: string
+          side: string
+          snoozed_until?: string | null
+          status?: string
+          title: string
+        }
+        Update: {
+          created_at?: string
+          handled_at?: string | null
+          handled_by?: string | null
+          id?: string
+          lead_id?: string
+          next_step?: string | null
+          reason?: string
+          side?: string
+          snoozed_until?: string | null
+          status?: string
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "workbench_alerts_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "workbench_alerts_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "rpt_files"
+            referencedColumns: ["lead_id"]
+          },
+          {
+            foreignKeyName: "workbench_alerts_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_task_queue"
+            referencedColumns: ["lead_id"]
+          },
+          {
+            foreignKeyName: "workbench_alerts_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "v_lead_economics"
+            referencedColumns: ["lead_id"]
+          },
+          {
+            foreignKeyName: "workbench_alerts_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "v_lead_outcomes"
+            referencedColumns: ["lead_id"]
+          },
+        ]
+      }
+      workbench_auto_log: {
+        Row: {
+          created_at: string
+          created_by_agent: string
+          id: string
+          lead_id: string
+          reversible: boolean
+          side: string
+          trace: string | null
+          what: string
+        }
+        Insert: {
+          created_at?: string
+          created_by_agent: string
+          id?: string
+          lead_id: string
+          reversible?: boolean
+          side: string
+          trace?: string | null
+          what: string
+        }
+        Update: {
+          created_at?: string
+          created_by_agent?: string
+          id?: string
+          lead_id?: string
+          reversible?: boolean
+          side?: string
+          trace?: string | null
+          what?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "workbench_auto_log_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "workbench_auto_log_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "rpt_files"
+            referencedColumns: ["lead_id"]
+          },
+          {
+            foreignKeyName: "workbench_auto_log_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_task_queue"
+            referencedColumns: ["lead_id"]
+          },
+          {
+            foreignKeyName: "workbench_auto_log_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "v_lead_economics"
+            referencedColumns: ["lead_id"]
+          },
+          {
+            foreignKeyName: "workbench_auto_log_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "v_lead_outcomes"
+            referencedColumns: ["lead_id"]
+          },
+        ]
+      }
+      workbench_checklist: {
+        Row: {
+          id: string
+          item_key: string
+          label: string
+          lead_id: string
+          note: string | null
+          source: string
+          status: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          id?: string
+          item_key: string
+          label: string
+          lead_id: string
+          note?: string | null
+          source?: string
+          status?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          id?: string
+          item_key?: string
+          label?: string
+          lead_id?: string
+          note?: string | null
+          source?: string
+          status?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "workbench_checklist_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "workbench_checklist_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "rpt_files"
+            referencedColumns: ["lead_id"]
+          },
+          {
+            foreignKeyName: "workbench_checklist_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_task_queue"
+            referencedColumns: ["lead_id"]
+          },
+          {
+            foreignKeyName: "workbench_checklist_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "v_lead_economics"
+            referencedColumns: ["lead_id"]
+          },
+          {
+            foreignKeyName: "workbench_checklist_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "v_lead_outcomes"
+            referencedColumns: ["lead_id"]
+          },
+        ]
+      }
+      workbench_settings: {
+        Row: {
+          key: string
+          updated_at: string
+          value: Json
+        }
+        Insert: {
+          key: string
+          updated_at?: string
+          value: Json
+        }
+        Update: {
+          key?: string
+          updated_at?: string
+          value?: Json
+        }
+        Relationships: []
+      }
+      workbench_threads: {
+        Row: {
+          ai_checked: string | null
+          ai_reading: string | null
+          ball: string
+          from_email: string | null
+          from_name: string | null
+          gmail_thread_id: string
+          id: string
+          in_inbox: boolean
+          last_message_at: string | null
+          lead_id: string | null
+          mailbox: string
+          message_count: number
+          snippet: string | null
+          subject: string
+          updated_at: string
+          urgency: string
+          urgency_reason: string | null
+          yt_ref: string | null
+        }
+        Insert: {
+          ai_checked?: string | null
+          ai_reading?: string | null
+          ball?: string
+          from_email?: string | null
+          from_name?: string | null
+          gmail_thread_id: string
+          id?: string
+          in_inbox?: boolean
+          last_message_at?: string | null
+          lead_id?: string | null
+          mailbox: string
+          message_count?: number
+          snippet?: string | null
+          subject?: string
+          updated_at?: string
+          urgency?: string
+          urgency_reason?: string | null
+          yt_ref?: string | null
+        }
+        Update: {
+          ai_checked?: string | null
+          ai_reading?: string | null
+          ball?: string
+          from_email?: string | null
+          from_name?: string | null
+          gmail_thread_id?: string
+          id?: string
+          in_inbox?: boolean
+          last_message_at?: string | null
+          lead_id?: string | null
+          mailbox?: string
+          message_count?: number
+          snippet?: string | null
+          subject?: string
+          updated_at?: string
+          urgency?: string
+          urgency_reason?: string | null
+          yt_ref?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "workbench_threads_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "workbench_threads_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "rpt_files"
+            referencedColumns: ["lead_id"]
+          },
+          {
+            foreignKeyName: "workbench_threads_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_task_queue"
+            referencedColumns: ["lead_id"]
+          },
+          {
+            foreignKeyName: "workbench_threads_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "v_lead_economics"
+            referencedColumns: ["lead_id"]
+          },
+          {
+            foreignKeyName: "workbench_threads_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "v_lead_outcomes"
+            referencedColumns: ["lead_id"]
+          },
+        ]
+      }
       ytb_activity_log: {
         Row: {
           action: string
@@ -7059,6 +7395,7 @@ export type Database = {
         }[]
       }
       bokun_try_lock: { Args: { p_seconds?: number }; Returns: boolean }
+      can_use_workbench: { Args: { _user_id: string }; Returns: boolean }
       can_view_feedback: { Args: { _feedback_id: string }; Returns: boolean }
       claim_sync_items: {
         Args: { p_limit?: number; p_target: string }
@@ -7220,6 +7557,20 @@ export type Database = {
       run_report: { Args: { definition: Json }; Returns: Json }
       show_limit: { Args: never; Returns: number }
       show_trgm: { Args: { "": string }; Returns: string[] }
+      workbench_apply_auto_checklist: {
+        Args: { p_rows: Json }
+        Returns: undefined
+      }
+      workbench_set_auto_checklist: {
+        Args: {
+          p_item_key: string
+          p_label: string
+          p_lead_id: string
+          p_note?: string
+          p_status: string
+        }
+        Returns: undefined
+      }
       ytb_can_edit: { Args: { _user_id: string }; Returns: boolean }
       ytb_match_chunks: {
         Args: {

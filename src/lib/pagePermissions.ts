@@ -2,6 +2,7 @@
 // Keys are stored in the `permissions` table as `page:<slug>`.
 
 export type PageKey =
+  | 'workbench'
   | 'admin_sync'
   | 'dashboard'
   | 'leads'
@@ -39,6 +40,7 @@ export interface PageDef {
 }
 
 export const PAGES: PageDef[] = [
+  { key: 'workbench', label: 'Workbench', path: '/workbench', group: 'Visão Geral' },
   { key: 'dashboard',           label: 'Dashboard',            path: '/dashboard',            group: 'Visão Geral' },
   { key: 'reports',             label: 'Relatórios',           path: '/reports',              group: 'Visão Geral' },
   { key: 'leads',               label: 'Leads & Files',        path: '/leads',                group: 'Dep. Reservas' },

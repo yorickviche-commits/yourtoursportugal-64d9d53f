@@ -54,6 +54,7 @@ import AdminRegionsPage from "./pages/AdminRegionsPage";
 import AdminAiUsagePage from "./pages/AdminAiUsagePage";
 import JarvisLiveMapPage from "./pages/JarvisLiveMapPage";
 import JarvisPage from "./pages/JarvisPage";
+import WorkbenchPage from "./pages/WorkbenchPage";
 import ProfilePage from "./pages/ProfilePage";
 import ProductsPage from "./pages/ProductsPage";
 import ProductDetailPage from "./pages/ProductDetailPage";
@@ -98,6 +99,7 @@ const App = () => (
 
             <Route path="/" element={<RootRedirect />} />
             <Route path="/leads" element={<ProtectedRoute><LeadsFilesPage /></ProtectedRoute>} />
+            <Route path="/workbench" element={<ProtectedRoute><WorkbenchPage /></ProtectedRoute>} />
             <Route path="/leads/:id" element={<ProtectedRoute><LeadDetailPage /></ProtectedRoute>} />
             <Route path="/ops" element={<ProtectedRoute><OpsWizardPage /></ProtectedRoute>} />
             <Route path="/trips" element={<ProtectedRoute><TripsPage /></ProtectedRoute>} />

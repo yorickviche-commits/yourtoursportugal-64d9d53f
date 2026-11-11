@@ -1,4 +1,7 @@
 # Roadmap
+- [x] Workbench entrega inicial: navegação protegida, estrutura inbox/file, aprovação sem execução, checklists e prontidão; teste real de valor manual/reload e recompute em lote.
+- [ ] Workbench caixas Gmail: aguarda renovar consentimento da ligação existente e ligar/verificar operations@; inbox real não pôde ser testado.
+- [ ] Workbench restante fase 1: calendários/detalhes Google/NetHunt diretos, MCP, N/A automático, regras de urgência restantes e limites em settings, propostas do ledger com revisão, logs reversíveis e pendências específicas; parado no limite solicitado desta entrega.
 - [x] Popular versões A dos 11 produtos com inclusões dos PDFs, horários disponíveis, rubricas e opcionais; verificar fichas, persistência e cálculo de importação.
 - [ ] Completar FSEs/NET e combinações B/C: aguarda fornecedores, protocolos e combinações aprovadas não identificados nos PDFs comerciais.
 - [x] Representar e editar add-ons do catálogo nas versões, Planner e Custos; desenvolver descrições YT sem inventar inclusões ou custos NET.
