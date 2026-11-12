@@ -7705,6 +7705,7 @@ export type Database = {
       }
       is_admin: { Args: { _user_id: string }; Returns: boolean }
       is_agent_user: { Args: { _user_id: string }; Returns: boolean }
+      is_finance_human: { Args: { _user_id: string }; Returns: boolean }
       is_internal_user: { Args: { _user_id: string }; Returns: boolean }
       is_sync_admin: { Args: { _user_id: string }; Returns: boolean }
       lead_live_pvp: { Args: { p_lead_id: string }; Returns: number }

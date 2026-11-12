@@ -239,6 +239,13 @@
       "when": 1794517954205,
       "tag": "0033_finance_tesoureiro",
       "breakpoints": true
+    },
+    {
+      "idx": 34,
+      "version": "7",
+      "when": 1794518318634,
+      "tag": "0034_finance_rls_human_validation",
+      "breakpoints": true
     }
   ]
 }
