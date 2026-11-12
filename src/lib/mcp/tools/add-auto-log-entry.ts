@@ -8,8 +8,8 @@ const sideOf = (l: { nethunt_stage?: string | null; status?: string | null }) =>
 const fail = (e: { message: string } | null) => { if (e) throw new ToolError(e.message); };
 export default defineTool({
   name: "add_auto_log_entry",
-  title: "Add Workbench auto-log entry",
-  description: "Record something the agent did for a lead in the Workbench daily log.",
+  title: "Add YT Cockpit auto-log entry",
+  description: "Record something the agent did for a lead in the YT Cockpit daily log.",
   inputSchema: { ...lead, what: z.string().min(1).max(300).describe("What was done."), trace: z.string().max(1000).optional().describe("Where it can be checked."), reversible: z.boolean().optional().describe("Can be undone.") },
   annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
   handler: async ({ lead_id, lead_code, what, trace, reversible }, ctx) => {

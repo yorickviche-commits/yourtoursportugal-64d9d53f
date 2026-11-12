@@ -145,7 +145,7 @@ const DesktopSidebar = () => {
       </div>
 
       <nav className="flex-1 py-3 px-2 space-y-1 overflow-y-auto">
-        {canAccess('workbench') && renderNavItem({ to: '/workbench', icon: LayoutDashboard, label: 'Workbench', pageKey: 'workbench' })}
+        {canAccess('workbench') && renderNavItem({ to: '/cockpit', icon: LayoutDashboard, label: 'YT Cockpit', pageKey: 'workbench' })}
         {renderGroup('Visão Geral', visibleOverview, overviewOpen, setOverviewOpen)}
         {renderGroup('Dep. Reservas', visibleReservas, reservasOpen, setReservasOpen)}
         {renderGroup('Comercial', visibleComercial, comercialOpen, setComercialOpen)}
@@ -280,7 +280,7 @@ const MobileMenu = ({ open, onClose }: { open: boolean; onClose: () => void }) =
         <button onClick={onClose} className="p-2 hover:bg-muted rounded-lg"><X className="h-5 w-5" /></button>
       </div>
       <nav className="flex-1 overflow-y-auto py-4 px-2 space-y-2">
-        {canAccess('workbench') && renderItem({ to: '/workbench', icon: LayoutDashboard, label: 'Workbench', pageKey: 'workbench' })}
+        {canAccess('workbench') && renderItem({ to: '/cockpit', icon: LayoutDashboard, label: 'YT Cockpit', pageKey: 'workbench' })}
         {renderGroup('Visão Geral', visibleOverview, overviewOpen, setOverviewOpen)}
         {renderGroup('Dep. Reservas', visibleReservas, reservasOpen, setReservasOpen)}
         {renderGroup('Comercial', visibleComercial, comercialOpen, setComercialOpen)}

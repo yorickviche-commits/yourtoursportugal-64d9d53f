@@ -8,7 +8,7 @@ const sideOf = (l: { nethunt_stage?: string | null; status?: string | null }) =>
 const fail = (e: { message: string } | null) => { if (e) throw new ToolError(e.message); };
 export default defineTool({
   name: "set_checklist_status",
-  title: "Set Workbench checklist status",
+  title: "Set YT Cockpit checklist status",
   description: "Set an automatic checklist status for a lead. Values set manually by a person are never overwritten.",
   inputSchema: { ...lead, item_key: z.enum(["guide","transport","pickup","contact","suppliers","payment","briefing","file","plan","costing","proposal","followup","payment_link"]).describe("Checklist item."), status: z.enum(["ok","pending","missing","na"]).describe("Status."), note: z.string().max(500).optional().describe("Short note.") },
   annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false },

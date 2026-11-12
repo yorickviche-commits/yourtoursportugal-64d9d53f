@@ -8,7 +8,7 @@ const sideOf = (l: { nethunt_stage?: string | null; status?: string | null }) =>
 const fail = (e: { message: string } | null) => { if (e) throw new ToolError(e.message); };
 export default defineTool({
   name: "open_workbench_alert",
-  title: "Open Workbench alert",
+  title: "Open YT Cockpit alert",
   description: "Open one urgent alert for a lead and reason (duplicates are ignored). A person handles it.",
   inputSchema: { ...lead, reason: z.string().min(3).max(300).describe("Why it is urgent."), next_step: z.string().max(300).optional().describe("Suggested next step.") },
   annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false },

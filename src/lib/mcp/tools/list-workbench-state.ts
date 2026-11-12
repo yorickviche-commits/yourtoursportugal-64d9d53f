@@ -8,8 +8,8 @@ async function all(q: any) { const out: any[]=[]; for(let from=0;;from+=1000){co
 const fail = (e: { message: string } | null) => { if (e) throw new ToolError(e.message); };
 export default defineTool({
   name: "list_workbench_state",
-  title: "List Workbench state",
-  description: "Read the Workbench: inbox threads, open alerts and checklist for one side (sales/ops) or one lead. Read-only.",
+  title: "List YT Cockpit state",
+  description: "Read the YT Cockpit: inbox threads, open alerts and checklist for one side (sales/ops) or one lead. Read-only.",
   inputSchema: { include_archived: z.boolean().optional().describe("Include all files and archived inbox threads (default false)."), side: z.enum(["sales", "ops"]).optional().describe("Mailbox side."), ...lead, limit: z.number().int().min(1).max(200).optional().describe("Max threads (default 50).") },
   annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
   handler: async ({ side, lead_id, lead_code, limit, include_archived }, ctx) => {

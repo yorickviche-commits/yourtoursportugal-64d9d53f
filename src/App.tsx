@@ -99,7 +99,8 @@ const App = () => (
 
             <Route path="/" element={<RootRedirect />} />
             <Route path="/leads" element={<ProtectedRoute><LeadsFilesPage /></ProtectedRoute>} />
-            <Route path="/workbench" element={<ProtectedRoute><WorkbenchPage /></ProtectedRoute>} />
+            <Route path="/cockpit" element={<ProtectedRoute><WorkbenchPage /></ProtectedRoute>} />
+            <Route path="/workbench" element={<Navigate to="/cockpit" replace />} />
             <Route path="/leads/:id" element={<ProtectedRoute><LeadDetailPage /></ProtectedRoute>} />
             <Route path="/ops" element={<ProtectedRoute><OpsWizardPage /></ProtectedRoute>} />
             <Route path="/trips" element={<ProtectedRoute><TripsPage /></ProtectedRoute>} />

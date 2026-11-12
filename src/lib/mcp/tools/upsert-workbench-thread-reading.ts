@@ -8,9 +8,9 @@ const sideOf = (l: { nethunt_stage?: string | null; status?: string | null }) =>
 const fail = (e: { message: string } | null) => { if (e) throw new ToolError(e.message); };
 export default defineTool({
   name: "upsert_workbench_thread_reading",
-  title: "Record Workbench thread reading",
+  title: "Record YT Cockpit thread reading",
   description: "Store the agent reading of an inbox thread (meaning, what was checked, whose turn, urgency). Never sends email.",
-  inputSchema: { thread_id: z.string().describe("Workbench thread id."), ai_reading: z.string().max(2000).optional().describe("What the email means."), ai_checked: z.string().max(2000).optional().describe("What it was verified against."), ball: z.enum(["ours", "client", "supplier"]).optional().describe("Whose turn."), urgency: z.enum(["urgent", "today", "week"]).optional().describe("Urgency."), urgency_reason: z.string().max(500).optional().describe("Why.") },
+  inputSchema: { thread_id: z.string().describe("YT Cockpit thread id."), ai_reading: z.string().max(2000).optional().describe("What the email means."), ai_checked: z.string().max(2000).optional().describe("What it was verified against."), ball: z.enum(["ours", "client", "supplier"]).optional().describe("Whose turn."), urgency: z.enum(["urgent", "today", "week"]).optional().describe("Urgency."), urgency_reason: z.string().max(500).optional().describe("Why.") },
   annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false },
   handler: async ({ thread_id, ...fields }, ctx) => {
     if (!ctx.isAuthenticated()) throw new ToolError("Not authenticated");

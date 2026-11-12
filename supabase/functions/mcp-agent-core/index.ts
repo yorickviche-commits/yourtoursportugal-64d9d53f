@@ -3984,8 +3984,8 @@ var fail = (e) => {
 };
 var list_workbench_state_default = defineTool36({
   name: "list_workbench_state",
-  title: "List Workbench state",
-  description: "Read the Workbench: inbox threads, open alerts and checklist for one side (sales/ops) or one lead. Read-only.",
+  title: "List YT Cockpit state",
+  description: "Read the YT Cockpit: inbox threads, open alerts and checklist for one side (sales/ops) or one lead. Read-only.",
   inputSchema: { include_archived: z34.boolean().optional().describe("Include all files and archived inbox threads (default false)."), side: z34.enum(["sales", "ops"]).optional().describe("Mailbox side."), ...lead, limit: z34.number().int().min(1).max(200).optional().describe("Max threads (default 50).") },
   annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
   handler: async ({ side, lead_id, lead_code, limit, include_archived }, ctx) => {
@@ -4023,9 +4023,9 @@ var fail2 = (e) => {
 };
 var upsert_workbench_thread_reading_default = defineTool37({
   name: "upsert_workbench_thread_reading",
-  title: "Record Workbench thread reading",
+  title: "Record YT Cockpit thread reading",
   description: "Store the agent reading of an inbox thread (meaning, what was checked, whose turn, urgency). Never sends email.",
-  inputSchema: { thread_id: z35.string().describe("Workbench thread id."), ai_reading: z35.string().max(2e3).optional().describe("What the email means."), ai_checked: z35.string().max(2e3).optional().describe("What it was verified against."), ball: z35.enum(["ours", "client", "supplier"]).optional().describe("Whose turn."), urgency: z35.enum(["urgent", "today", "week"]).optional().describe("Urgency."), urgency_reason: z35.string().max(500).optional().describe("Why.") },
+  inputSchema: { thread_id: z35.string().describe("YT Cockpit thread id."), ai_reading: z35.string().max(2e3).optional().describe("What the email means."), ai_checked: z35.string().max(2e3).optional().describe("What it was verified against."), ball: z35.enum(["ours", "client", "supplier"]).optional().describe("Whose turn."), urgency: z35.enum(["urgent", "today", "week"]).optional().describe("Urgency."), urgency_reason: z35.string().max(500).optional().describe("Why.") },
   annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false },
   handler: async ({ thread_id, ...fields }, ctx) => {
     if (!ctx.isAuthenticated()) throw new ToolError43("Not authenticated");
@@ -4049,7 +4049,7 @@ var fail3 = (e) => {
 };
 var set_checklist_status_default = defineTool38({
   name: "set_checklist_status",
-  title: "Set Workbench checklist status",
+  title: "Set YT Cockpit checklist status",
   description: "Set an automatic checklist status for a lead. Values set manually by a person are never overwritten.",
   inputSchema: { ...lead3, item_key: z36.enum(["guide", "transport", "pickup", "contact", "suppliers", "payment", "briefing", "file", "plan", "costing", "proposal", "followup", "payment_link"]).describe("Checklist item."), status: z36.enum(["ok", "pending", "missing", "na"]).describe("Status."), note: z36.string().max(500).optional().describe("Short note.") },
   annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false },
@@ -4076,8 +4076,8 @@ var fail4 = (e) => {
 };
 var add_auto_log_entry_default = defineTool39({
   name: "add_auto_log_entry",
-  title: "Add Workbench auto-log entry",
-  description: "Record something the agent did for a lead in the Workbench daily log.",
+  title: "Add YT Cockpit auto-log entry",
+  description: "Record something the agent did for a lead in the YT Cockpit daily log.",
   inputSchema: { ...lead4, what: z37.string().min(1).max(300).describe("What was done."), trace: z37.string().max(1e3).optional().describe("Where it can be checked."), reversible: z37.boolean().optional().describe("Can be undone.") },
   annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
   handler: async ({ lead_id, lead_code, what, trace, reversible }, ctx) => {
@@ -4096,7 +4096,7 @@ var lead5 = { lead_id: z38.string().optional().describe("Lead uuid."), lead_code
 var sideOf3 = (l) => l.nethunt_stage?.startsWith("OPERATIONS") || !l.nethunt_stage && l.status === "won" ? "ops" : "sales";
 var open_workbench_alert_default = defineTool40({
   name: "open_workbench_alert",
-  title: "Open Workbench alert",
+  title: "Open YT Cockpit alert",
   description: "Open one urgent alert for a lead and reason (duplicates are ignored). A person handles it.",
   inputSchema: { ...lead5, reason: z38.string().min(3).max(300).describe("Why it is urgent."), next_step: z38.string().max(300).optional().describe("Suggested next step.") },
   annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false },
@@ -4112,7 +4112,7 @@ var open_workbench_alert_default = defineTool40({
 });
 
 // src/lib/mcp/toolset.ts
-var INSTRUCTIONS = "Operations tools for Your Tours Portugal (TCC). Read the pipeline with `list_leads` / `get_lead`, the programme with `get_travel_plan`, departures with `list_upcoming_trips`, and follow-up with `list_tasks` / `create_task` / `update_task`. Prepare sales files with `update_lead_stage` (stages from `list_lead_stages`), `assign_lead_agents`, `update_lead_general_data`, `add_lead_note` and `export_travel_plan_pdf`. Leads accept the everyday code format such as YT5130. Every write is logged in the lead history as 'AI agent (MCP)' and mirrored to NetHunt when the lead is linked. These tools never send emails, never create payment links and never delete leads or versions. Client emails, supplier emails and payment links are only proposed into the 'Aprova\xE7\xF5es AI' queue (list_pending_approvals / get_approval_status); a person approves before anything is executed. Create leads with `import_lead_ai`, check them with `validate_lead`, build the programme with `generate_travel_plan` and the update_travel_plan_* tools, and the budget with the costing tools. Scheduled agents (Grok Worker, Claude Supervisor) connect to /functions/v1/mcp-agent with a personal `ytp_agent_` key: each key only runs its allowed tools within a daily limit, every write is stamped with the agent label and model, and agents work in proposal mode \u2014 generate_travel_plan and the travel plan / costing edits land on a non-LIVE 'Proposta AI' version that a person promotes with 'Tornar LIVE'; Workbench tools (list_workbench_state, upsert_workbench_thread_reading, set_checklist_status, add_auto_log_entry, open_workbench_alert) only record readings, automatic checklist values, logs and alerts; agents can never approve queue items, move a lead to OPERATIONS or create payment links.";
+var INSTRUCTIONS = "Operations tools for Your Tours Portugal (TCC). Read the pipeline with `list_leads` / `get_lead`, the programme with `get_travel_plan`, departures with `list_upcoming_trips`, and follow-up with `list_tasks` / `create_task` / `update_task`. Prepare sales files with `update_lead_stage` (stages from `list_lead_stages`), `assign_lead_agents`, `update_lead_general_data`, `add_lead_note` and `export_travel_plan_pdf`. Leads accept the everyday code format such as YT5130. Every write is logged in the lead history as 'AI agent (MCP)' and mirrored to NetHunt when the lead is linked. These tools never send emails, never create payment links and never delete leads or versions. Client emails, supplier emails and payment links are only proposed into the 'Aprova\xE7\xF5es AI' queue (list_pending_approvals / get_approval_status); a person approves before anything is executed. Create leads with `import_lead_ai`, check them with `validate_lead`, build the programme with `generate_travel_plan` and the update_travel_plan_* tools, and the budget with the costing tools. Scheduled agents (Grok Worker, Claude Supervisor) connect to /functions/v1/mcp-agent with a personal `ytp_agent_` key: each key only runs its allowed tools within a daily limit, every write is stamped with the agent label and model, and agents work in proposal mode \u2014 generate_travel_plan and the travel plan / costing edits land on a non-LIVE 'Proposta AI' version that a person promotes with 'Tornar LIVE'; YT Cockpit tools (list_workbench_state, upsert_workbench_thread_reading, set_checklist_status, add_auto_log_entry, open_workbench_alert) only record readings, automatic checklist values, logs and alerts; agents can never approve queue items, move a lead to OPERATIONS or create payment links.";
 var ALL_TOOLS = [
   list_leads_default,
   get_lead_default,
