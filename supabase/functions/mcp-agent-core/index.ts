@@ -3,7 +3,7 @@
 // supabase function: mcp-agent-core
 // Bundled from src/lib/mcp/agent-entry.ts by @lovable.dev/mcp-js.
 // src/lib/mcp/agent-entry.ts
-import { auth, defineMcp, ToolError as ToolError42 } from "npm:@lovable.dev/mcp-js@0.26.1";
+import { auth, defineMcp, ToolError as ToolError47 } from "npm:@lovable.dev/mcp-js@0.26.1";
 
 // src/lib/mcp/tools/list-leads.ts
 import { defineTool, ToolError as ToolError4 } from "npm:@lovable.dev/mcp-js@0.26.1";
@@ -118,16 +118,16 @@ var GENERAL_FIELDS = [
   "source"
 ];
 var buildProposalToken = (leadCode, version, client) => buildProposalSlug({ leadCode, version, client });
-var pickGeneralData = (lead) => {
+var pickGeneralData = (lead6) => {
   const out = {};
   GENERAL_FIELDS.forEach((k) => {
-    out[k] = (lead ?? {})[k] ?? null;
+    out[k] = (lead6 ?? {})[k] ?? null;
   });
   return out;
 };
-async function createLeadVersion(supabase, lead, fromVersion, opts) {
+async function createLeadVersion(supabase, lead6, fromVersion, opts) {
   const agent = opts?.agent;
-  const leadId = lead.id;
+  const leadId = lead6.id;
   const { data: versions } = await supabase.from("lead_versions").select("version").eq("lead_id", leadId);
   const maxExisting = (versions ?? []).reduce((m, r) => Math.max(m, Number(r.version)), fromVersion);
   const newVersion = maxExisting + 1;
@@ -142,7 +142,7 @@ async function createLeadVersion(supabase, lead, fromVersion, opts) {
     version: newVersion
   }));
   const { data: srcVer } = await supabase.from("lead_versions").select("*").eq("lead_id", leadId).eq("version", fromVersion).maybeSingle();
-  const ctxSrc = srcVer || lead;
+  const ctxSrc = srcVer || lead6;
   const context = {
     route_map_url: ctxSrc.route_map_url ?? null,
     route_day_maps: ctxSrc.route_day_maps ?? [],
@@ -155,7 +155,7 @@ async function createLeadVersion(supabase, lead, fromVersion, opts) {
       lead_id: leadId,
       version: newVersion,
       name: agent ? `Proposta AI V${newVersion}` : `V${newVersion}`,
-      general_data: pickGeneralData(lead),
+      general_data: pickGeneralData(lead6),
       ...context,
       ...agent ? {
         is_ai_proposal: true,
@@ -186,7 +186,7 @@ async function createLeadVersion(supabase, lead, fromVersion, opts) {
       ...rest,
       lead_id: leadId,
       version: newVersion,
-      public_token: buildProposalToken(lead.yt_id || lead.lead_code || "ytp", newVersion, lead.client_name),
+      public_token: buildProposalToken(lead6.yt_id || lead6.lead_code || "ytp", newVersion, lead6.client_name),
       status: "draft",
       sent_at: null,
       approved_at: null
@@ -215,9 +215,9 @@ function agentIdentity(supabase, ctx) {
   return hit;
 }
 var agentActor = (a) => a ? `${a.agent_label}${a.model ? ` \xB7 ${a.model}` : ""}` : "AI agent (MCP)";
-async function resolveWriteVersion(supabase, ctx, lead, explicit) {
+async function resolveWriteVersion(supabase, ctx, lead6, explicit) {
   const agent = await agentIdentity(supabase, ctx);
-  const live = liveVersion(lead);
+  const live = liveVersion(lead6);
   if (!agent) return explicit ?? live;
   if (explicit !== void 0) {
     if (explicit === live) {
@@ -225,16 +225,16 @@ async function resolveWriteVersion(supabase, ctx, lead, explicit) {
         `V${live} is the LIVE version \u2014 AI agents cannot edit it. Omit 'version' to write on your AI proposal.`
       );
     }
-    const { data: data2 } = await supabase.from("lead_versions").select("is_ai_proposal").eq("lead_id", lead.id).eq("version", explicit).maybeSingle();
+    const { data: data2 } = await supabase.from("lead_versions").select("is_ai_proposal").eq("lead_id", lead6.id).eq("version", explicit).maybeSingle();
     if (!data2?.is_ai_proposal) {
       throw new ToolError2(`V${explicit} is not an AI proposal \u2014 AI agents can only edit their own AI proposals.`);
     }
     return explicit;
   }
-  const { data } = await supabase.from("lead_versions").select("version").eq("lead_id", lead.id).eq("is_ai_proposal", true).eq("proposed_by_key_id", agent.id).order("version", { ascending: false }).limit(1);
+  const { data } = await supabase.from("lead_versions").select("version").eq("lead_id", lead6.id).eq("is_ai_proposal", true).eq("proposed_by_key_id", agent.id).order("version", { ascending: false }).limit(1);
   const existing = data?.[0]?.version;
   if (existing !== void 0 && existing !== null) return Number(existing);
-  return createLeadVersion(supabase, lead, live, { agent });
+  return createLeadVersion(supabase, lead6, live, { agent });
 }
 
 // src/lib/mcp/lead.ts
@@ -288,30 +288,30 @@ async function resolveLead(supabase, args, select = "*") {
   if (!row) throw new ToolError3(`Lead "${code}" not found or not accessible (tried YT id and lead code)`);
   return row;
 }
-var leadLabel = (lead) => lead.yt_id || lead.lead_code || lead.id;
-var leadUrl = (lead) => `${APP_ORIGIN}/leads/${lead.id}`;
-async function auditLead(supabase, ctx, lead, actionType, changes, extra) {
+var leadLabel = (lead6) => lead6.yt_id || lead6.lead_code || lead6.id;
+var leadUrl = (lead6) => `${APP_ORIGIN}/leads/${lead6.id}`;
+async function auditLead(supabase, ctx, lead6, actionType, changes, extra) {
   const agent = await agentIdentity(supabase, ctx);
   const { error } = await supabase.from("activity_logs").insert({
     action_type: actionType,
     entity_type: "lead",
-    entity_id: lead.id,
+    entity_id: lead6.id,
     user_id: ctx.getUserId() ?? null,
     details: {
       actor: agentActor(agent),
       ...agent ? { agent_key_id: agent.id, agent_label: agent.agent_label, agent_model: agent.model } : {},
       actor_user_id: ctx.getUserId() ?? null,
       actor_email: ctx.getUserEmail() ?? null,
-      lead_code: leadLabel(lead),
+      lead_code: leadLabel(lead6),
       changes,
       ...extra ?? {}
     }
   });
   if (error) console.warn("audit insert failed", error.message);
-  if (agent && lead.nethunt_record_id) {
+  if (agent && lead6.nethunt_record_id) {
     const ver = extra?.version ?? extra?.target_version;
     const text = `[${agentActor(agent)}] ${actionType}${ver !== void 0 ? ` \xB7 V${ver}` : ""} \u2014 ${Object.keys(changes).join(", ") || "update"}`;
-    await pushNetHunt(supabase, "comment", lead.id, { text }, true);
+    await pushNetHunt(supabase, "comment", lead6.id, { text }, true);
   }
 }
 async function pushNetHunt(supabase, entity, leadId, changes, linked) {
@@ -328,7 +328,7 @@ async function pushNetHunt(supabase, entity, leadId, changes, linked) {
     return { status: "error", message: e.message };
   }
 }
-var liveVersion = (lead) => Number(lead.active_version ?? 0);
+var liveVersion = (lead6) => Number(lead6.active_version ?? 0);
 
 // src/lib/mcp/tools/list-leads.ts
 var list_leads_default = defineTool({
@@ -460,17 +460,17 @@ var get_lead_default = defineTool2({
   handler: async ({ lead_id, lead_code }, ctx) => {
     if (!ctx.isAuthenticated()) throw new ToolError5("Not authenticated");
     const supabase = supabaseForUser(ctx);
-    const lead = await resolveLead(supabase, { lead_id, lead_code });
-    const version = liveVersion(lead);
+    const lead6 = await resolveLead(supabase, { lead_id, lead_code });
+    const version = liveVersion(lead6);
     const [planner, costing] = await Promise.all([
-      supabase.from("lead_planner_data").select("*").eq("lead_id", lead.id).eq("version", version).order("day_number"),
-      supabase.from("lead_costing_data").select("*").eq("lead_id", lead.id).eq("version", version).order("day_number")
+      supabase.from("lead_planner_data").select("*").eq("lead_id", lead6.id).eq("version", version).order("day_number"),
+      supabase.from("lead_costing_data").select("*").eq("lead_id", lead6.id).eq("version", version).order("day_number")
     ]);
     const payload = {
       lead: {
-        ...lead,
-        stage_label: STAGES.find((s) => s.code === lead.nethunt_stage)?.label ?? lead.nethunt_stage ?? lead.status,
-        tcc_url: leadUrl(lead)
+        ...lead6,
+        stage_label: STAGES.find((s) => s.code === lead6.nethunt_stage)?.label ?? lead6.nethunt_stage ?? lead6.status,
+        tcc_url: leadUrl(lead6)
       },
       version,
       planner: planner.data ?? null,
@@ -574,9 +574,9 @@ var create_task_default = defineTool5({
     let leadRid = null;
     const code = lead_code ?? yt_id;
     if (lead_id || code) {
-      const lead = await resolveLead(supabase, { lead_id, lead_code: lead_id ? void 0 : code }, "id, nethunt_record_id");
-      leadId = lead.id;
-      leadRid = lead.nethunt_record_id;
+      const lead6 = await resolveLead(supabase, { lead_id, lead_code: lead_id ? void 0 : code }, "id, nethunt_record_id");
+      leadId = lead6.id;
+      leadRid = lead6.nethunt_record_id;
     }
     const { data, error } = await supabase.from("tasks").insert({
       title: title.trim(),
@@ -709,27 +709,27 @@ var update_lead_stage_default = defineTool9({
   handler: async ({ lead_id, lead_code, stage, note }, ctx) => {
     if (!ctx.isAuthenticated()) throw new ToolError12("Not authenticated");
     const supabase = supabaseForUser(ctx);
-    const lead = await resolveLead(supabase, { lead_id, lead_code });
+    const lead6 = await resolveLead(supabase, { lead_id, lead_code });
     const target = resolveStage(stage);
     if (target.group === "OPERATIONS" && await agentIdentity(supabase, ctx)) {
       throw new ToolError12("AI agents cannot move a lead to an OPERATIONS stage \u2014 a person must do it in the TCC.");
     }
     const previous = {
-      stage: lead.nethunt_stage ?? null,
-      status: lead.status,
-      label: STAGES.find((s) => s.code === lead.nethunt_stage)?.label ?? null
+      stage: lead6.nethunt_stage ?? null,
+      status: lead6.status,
+      label: STAGES.find((s) => s.code === lead6.nethunt_stage)?.label ?? null
     };
-    const alreadyThere = lead.nethunt_stage === target.code && lead.status === target.status;
+    const alreadyThere = lead6.nethunt_stage === target.code && lead6.status === target.status;
     if (!alreadyThere) {
-      const { error } = await supabase.from("leads").update({ status: target.status, nethunt_stage: target.code }).eq("id", lead.id);
+      const { error } = await supabase.from("leads").update({ status: target.status, nethunt_stage: target.code }).eq("id", lead6.id);
       if (error) throw new ToolError12(error.message);
       await supabase.from("lead_stage_history").insert({
-        lead_id: lead.id,
+        lead_id: lead6.id,
         stage_code: target.code,
         stage_label: target.label,
         source: "mcp"
       });
-      await auditLead(supabase, ctx, lead, "lead_status_changed", {
+      await auditLead(supabase, ctx, lead6, "lead_status_changed", {
         nethunt_stage: { from: previous.stage, to: target.code },
         status: { from: previous.status, to: target.status }
       }, note ? { note } : void 0);
@@ -737,13 +737,13 @@ var update_lead_stage_default = defineTool9({
     const sync = await pushNetHunt(
       supabase,
       "lead",
-      lead.id,
+      lead6.id,
       { nethunt_stage: target.code, status: target.status },
-      Boolean(lead.nethunt_record_id)
+      Boolean(lead6.nethunt_record_id)
     );
     const payload = {
-      lead: leadLabel(lead),
-      lead_id: lead.id,
+      lead: leadLabel(lead6),
+      lead_id: lead6.id,
       previous_stage: previous.label ?? previous.stage,
       new_stage: target.label,
       new_status: target.status,
@@ -777,7 +777,7 @@ var assign_lead_agents_default = defineTool10({
       throw new ToolError13("Provide agent_1 and/or agent_2 (use null to clear)");
     }
     const supabase = supabaseForUser(ctx);
-    const lead = await resolveLead(supabase, { lead_id, lead_code });
+    const lead6 = await resolveLead(supabase, { lead_id, lead_code });
     const { data: profileRows, error: profErr } = await supabase.from("profiles").select("id, full_name, email, status");
     if (profErr) throw new ToolError13(profErr.message);
     const profiles = profileRows ?? [];
@@ -788,7 +788,7 @@ var assign_lead_agents_default = defineTool10({
       if (!hit) throw new ToolError13(`Agent "${value}" not found. Valid users: ${validList}`);
       return hit.id;
     };
-    const current = lead.assigned_agents ?? [];
+    const current = lead6.assigned_agents ?? [];
     const nextRaw = [
       agent_1 === void 0 ? current[0] ?? null : agent_1,
       agent_2 === void 0 ? current[1] ?? null : agent_2
@@ -801,15 +801,15 @@ var assign_lead_agents_default = defineTool10({
     };
     const changed = current.join(",") !== next.join(",");
     if (changed) {
-      const { error } = await supabase.from("leads").update({ assigned_agents: next }).eq("id", lead.id);
+      const { error } = await supabase.from("leads").update({ assigned_agents: next }).eq("id", lead6.id);
       if (error) throw new ToolError13(error.message);
-      await auditLead(supabase, ctx, lead, "lead_agents_changed", {
+      await auditLead(supabase, ctx, lead6, "lead_agents_changed", {
         assigned_agents: { from: current.map(nameOf), to: next.map(nameOf) }
       });
     }
     const payload = {
-      lead: leadLabel(lead),
-      lead_id: lead.id,
+      lead: leadLabel(lead6),
+      lead_id: lead6.id,
       previous_agents: current.map(nameOf),
       new_agents: next.map(nameOf),
       changed
@@ -885,8 +885,8 @@ var update_lead_general_data_default = defineTool11({
     if (!ctx.isAuthenticated()) throw new ToolError14("Not authenticated");
     const { lead_id, lead_code, ...fields } = args;
     const supabase = supabaseForUser(ctx);
-    const lead = await resolveLead(supabase, { lead_id, lead_code });
-    const version = liveVersion(lead);
+    const lead6 = await resolveLead(supabase, { lead_id, lead_code });
+    const version = liveVersion(lead6);
     if (fields.n_jovens !== void 0 && fields.n_criancas !== void 0 && fields.n_jovens !== fields.n_criancas) {
       throw new ToolError14("n_jovens and n_criancas map to the same field \u2014 send only one of them");
     }
@@ -915,36 +915,36 @@ var update_lead_general_data_default = defineTool11({
       updates.number_of_days = days2;
     }
     const changes = {};
-    for (const key of Object.keys(updates)) changes[key] = { from: lead[key] ?? null, to: updates[key] };
+    for (const key of Object.keys(updates)) changes[key] = { from: lead6[key] ?? null, to: updates[key] };
     if (Object.keys(updates).length) {
-      const { error } = await supabase.from("leads").update(updates).eq("id", lead.id);
+      const { error } = await supabase.from("leads").update(updates).eq("id", lead6.id);
       if (error) throw new ToolError14(error.message);
     }
-    const { data: verRow } = await supabase.from("lead_versions").select("id, general_data").eq("lead_id", lead.id).eq("version", version).maybeSingle();
+    const { data: verRow } = await supabase.from("lead_versions").select("id, general_data").eq("lead_id", lead6.id).eq("version", version).maybeSingle();
     const merged = { ...verRow?.general_data ?? {}, ...updates };
     if (verRow) {
       await supabase.from("lead_versions").update({ general_data: merged }).eq("id", verRow.id);
     } else {
-      await supabase.from("lead_versions").insert({ lead_id: lead.id, version, name: `V${version}`, general_data: merged });
+      await supabase.from("lead_versions").insert({ lead_id: lead6.id, version, name: `V${version}`, general_data: merged });
     }
     if (fields.idioma) {
       const lang = fields.idioma.slice(0, 2).toLowerCase();
-      const { error } = await supabase.from("proposals").update({ language: lang }).eq("lead_id", lead.id).eq("version", version);
+      const { error } = await supabase.from("proposals").update({ language: lang }).eq("lead_id", lead6.id).eq("version", version);
       if (error) throw new ToolError14(error.message);
       changes.language = { from: null, to: lang };
     }
-    const pax = Number(updates.pax ?? lead.pax ?? 2);
-    const paxChildren = Number(updates.pax_children ?? lead.pax_children ?? 0);
+    const pax = Number(updates.pax ?? lead6.pax ?? 2);
+    const paxChildren = Number(updates.pax_children ?? lead6.pax_children ?? 0);
     await syncGeneralToProposalServer(supabase, {
-      leadId: lead.id,
+      leadId: lead6.id,
       version,
       pax,
       paxChildren,
-      travelDates: updates.travel_dates ?? (lead.travel_dates || null),
-      travelEndDate: updates.travel_end_date ?? (lead.travel_end_date || null)
+      travelDates: updates.travel_dates ?? (lead6.travel_dates || null),
+      travelEndDate: updates.travel_end_date ?? (lead6.travel_end_date || null)
     });
-    await auditLead(supabase, ctx, lead, "lead_updated", changes, { version });
-    const payload = { lead: leadLabel(lead), lead_id: lead.id, version, updated_fields: changes };
+    await auditLead(supabase, ctx, lead6, "lead_updated", changes, { version });
+    const payload = { lead: leadLabel(lead6), lead_id: lead6.id, version, updated_fields: changes };
     return {
       content: [{ type: "text", text: JSON.stringify(payload, null, 2) }],
       structuredContent: payload
@@ -969,22 +969,22 @@ var add_lead_note_default = defineTool12({
   handler: async ({ lead_id, lead_code, text, pin }, ctx) => {
     if (!ctx.isAuthenticated()) throw new ToolError15("Not authenticated");
     const supabase = supabaseForUser(ctx);
-    const lead = await resolveLead(supabase, { lead_id, lead_code });
+    const lead6 = await resolveLead(supabase, { lead_id, lead_code });
     const stamp = (/* @__PURE__ */ new Date()).toISOString().slice(0, 16).replace("T", " ");
     const agent = await agentIdentity(supabase, ctx);
     const author = agent ? agentActor(agent) : ctx.getUserEmail() ?? "AI agent (MCP)";
     const entry = agent ? `[${stamp}] ${author}: ${text}` : `[${stamp}] ${author} (AI agent via MCP): ${text}`;
-    const existing = String(lead.notes || "").trim();
+    const existing = String(lead6.notes || "").trim();
     if (existing.includes(text.trim())) {
-      const payload2 = { lead: leadLabel(lead), lead_id: lead.id, added: false, reason: "Identical note already present" };
+      const payload2 = { lead: leadLabel(lead6), lead_id: lead6.id, added: false, reason: "Identical note already present" };
       return { content: [{ type: "text", text: JSON.stringify(payload2, null, 2) }], structuredContent: payload2 };
     }
     const notes = pin ? [entry, existing].filter(Boolean).join("\n\n") : [existing, entry].filter(Boolean).join("\n\n");
-    const { error } = await supabase.from("leads").update({ notes }).eq("id", lead.id);
+    const { error } = await supabase.from("leads").update({ notes }).eq("id", lead6.id);
     if (error) throw new ToolError15(error.message);
-    await auditLead(supabase, ctx, lead, "lead_note_added", { notes: { from: existing || null, to: entry } }, { pinned: Boolean(pin) });
-    const sync = await pushNetHunt(supabase, "comment", lead.id, { text: entry }, Boolean(lead.nethunt_record_id));
-    const payload = { lead: leadLabel(lead), lead_id: lead.id, added: true, pinned: Boolean(pin), note: entry, nethunt_sync: sync };
+    await auditLead(supabase, ctx, lead6, "lead_note_added", { notes: { from: existing || null, to: entry } }, { pinned: Boolean(pin) });
+    const sync = await pushNetHunt(supabase, "comment", lead6.id, { text: entry }, Boolean(lead6.nethunt_record_id));
+    const payload = { lead: leadLabel(lead6), lead_id: lead6.id, added: true, pinned: Boolean(pin), note: entry, nethunt_sync: sync };
     return { content: [{ type: "text", text: JSON.stringify(payload, null, 2) }], structuredContent: payload };
   }
 });
@@ -1006,11 +1006,11 @@ var get_travel_plan_default = defineTool13({
   handler: async ({ lead_id, lead_code, version }, ctx) => {
     if (!ctx.isAuthenticated()) throw new ToolError16("Not authenticated");
     const supabase = supabaseForUser(ctx);
-    const lead = await resolveLead(supabase, { lead_id, lead_code });
-    const ver = version ?? liveVersion(lead);
-    const { data: proposal, error } = await supabase.from("proposals").select("id, version, title, summary_text, participants, date_range, language, days, public_token, closing_terms, total_value_eur, wetravel_checkout_url").eq("lead_id", lead.id).eq("version", ver).order("created_at", { ascending: false }).limit(1).maybeSingle();
+    const lead6 = await resolveLead(supabase, { lead_id, lead_code });
+    const ver = version ?? liveVersion(lead6);
+    const { data: proposal, error } = await supabase.from("proposals").select("id, version, title, summary_text, participants, date_range, language, days, public_token, closing_terms, total_value_eur, wetravel_checkout_url").eq("lead_id", lead6.id).eq("version", ver).order("created_at", { ascending: false }).limit(1).maybeSingle();
     if (error) throw new ToolError16(error.message);
-    if (!proposal) throw new ToolError16(`No proposal found for ${leadLabel(lead)} version ${ver}`);
+    if (!proposal) throw new ToolError16(`No proposal found for ${leadLabel(lead6)} version ${ver}`);
     const p = proposal;
     const closing = p.closing_terms || {};
     const days2 = (Array.isArray(p.days) ? p.days : []).map((d, i) => ({
@@ -1033,8 +1033,8 @@ var get_travel_plan_default = defineTool13({
       room_type: strip(h.roomType) || null
     }));
     const payload = {
-      lead: leadLabel(lead),
-      lead_id: lead.id,
+      lead: leadLabel(lead6),
+      lead_id: lead6.id,
       version: ver,
       language: p.language || "en",
       title: strip(p.title),
@@ -1794,17 +1794,17 @@ async function buildTravelPlanPdf(p, opts = {}) {
   const bytes = new Uint8Array(doc.output("arraybuffer"));
   return { bytes, pages: doc.getNumberOfPages(), warnings: Array.from(new Set(warnings)) };
 }
-async function renderTravelPlanPdf(supabase, lead, version, _plan, _meta) {
-  const { data: proposal } = await supabase.from("proposals").select("*").eq("lead_id", lead.id).eq("version", version).order("created_at", { ascending: false }).limit(1).maybeSingle();
+async function renderTravelPlanPdf(supabase, lead6, version, _plan, _meta) {
+  const { data: proposal } = await supabase.from("proposals").select("*").eq("lead_id", lead6.id).eq("version", version).order("created_at", { ascending: false }).limit(1).maybeSingle();
   if (!proposal) throw new Error(`No proposal found for version ${version}`);
-  const built = await buildTravelPlanPdf({ ...proposal, client_name: proposal.client_name || lead.client_name });
+  const built = await buildTravelPlanPdf({ ...proposal, client_name: proposal.client_name || lead6.client_name });
   return { ...built, proposal };
 }
 var safeName = (s) => s.replace(/[\\/:*?"<>|]+/g, "").replace(/\s+/g, " ").trim();
-async function storeTravelPlanPdf(supabase, lead, pdf) {
-  const code = safeName(String(lead.yt_id || lead.lead_code || lead.id));
+async function storeTravelPlanPdf(supabase, lead6, pdf) {
+  const code = safeName(String(lead6.yt_id || lead6.lead_code || lead6.id));
   const title = String(pdf.proposal?.title || "Travel Plan").replace(/\*\*/g, "");
-  const file_name = `${code} - ${safeName(String(lead.client_name || ""))} - ${safeName(title)}.pdf`;
+  const file_name = `${code} - ${safeName(String(lead6.client_name || ""))} - ${safeName(title)}.pdf`;
   const path = `${code}/${file_name}`;
   const { error } = await supabase.storage.from("travel-plan-pdfs").upload(path, pdf.bytes, { contentType: "application/pdf", upsert: true });
   if (error) throw new Error(`Upload failed: ${error.message}`);
@@ -1831,19 +1831,19 @@ var export_travel_plan_pdf_default = defineTool14({
   handler: async ({ lead_id, lead_code, language, version, hide_optionals }, ctx) => {
     if (!ctx.isAuthenticated()) throw new ToolError17("Not authenticated");
     const supabase = supabaseForUser(ctx);
-    const lead = await resolveLead(supabase, { lead_id, lead_code });
-    const ver = version ?? liveVersion(lead);
-    const { data: proposal, error } = await supabase.from("proposals").select("*").eq("lead_id", lead.id).eq("version", ver).order("created_at", { ascending: false }).limit(1).maybeSingle();
+    const lead6 = await resolveLead(supabase, { lead_id, lead_code });
+    const ver = version ?? liveVersion(lead6);
+    const { data: proposal, error } = await supabase.from("proposals").select("*").eq("lead_id", lead6.id).eq("version", ver).order("created_at", { ascending: false }).limit(1).maybeSingle();
     if (error) throw new ToolError17(error.message);
-    if (!proposal) throw new ToolError17(`No proposal found for ${leadLabel(lead)} version ${ver}`);
+    if (!proposal) throw new ToolError17(`No proposal found for ${leadLabel(lead6)} version ${ver}`);
     const p = proposal;
     const built = await buildTravelPlanPdf(
-      { ...p, language: language || p.language, client_name: p.client_name || lead.client_name },
+      { ...p, language: language || p.language, client_name: p.client_name || lead6.client_name },
       { hideOptionals: Boolean(hide_optionals) }
     );
-    const code = leadLabel(lead);
+    const code = leadLabel(lead6);
     const title = String(p.title || "Travel Plan").replace(/\*\*/g, "");
-    const fileName = `${safe(code)} - ${safe(String(lead.client_name || ""))} - ${safe(title)}.pdf`;
+    const fileName = `${safe(code)} - ${safe(String(lead6.client_name || ""))} - ${safe(title)}.pdf`;
     const path = `${safe(code)}/${fileName}`;
     const { error: upErr } = await supabase.storage.from(BUCKET).upload(path, built.bytes, { contentType: "application/pdf", upsert: true });
     if (upErr) throw new ToolError17(`Upload failed: ${upErr.message}`);
@@ -1851,7 +1851,7 @@ var export_travel_plan_pdf_default = defineTool14({
     if (signErr) throw new ToolError17(`Could not sign the file: ${signErr.message}`);
     const payload = {
       lead: code,
-      lead_id: lead.id,
+      lead_id: lead6.id,
       version: ver,
       file_name: fileName,
       storage_path: `${BUCKET}/${path}`,
@@ -1875,8 +1875,8 @@ import { z as z13 } from "npm:zod@^3.25.76";
 
 // src/lib/mcp/queue.ts
 import { ToolError as ToolError18 } from "npm:@lovable.dev/mcp-js@0.26.1";
-async function enqueueAction(supabase, ctx, lead, args) {
-  const key = `${args.type}:${lead.id}:${args.idempotencyKey}`;
+async function enqueueAction(supabase, ctx, lead6, args) {
+  const key = `${args.type}:${lead6.id}:${args.idempotencyKey}`;
   const find = async () => {
     const { data: data2 } = await supabase.from("ai_action_queue").select("*").eq("idempotency_key", key).maybeSingle();
     return data2 ?? null;
@@ -1886,8 +1886,8 @@ async function enqueueAction(supabase, ctx, lead, args) {
   if (existing) return { item: existing, created: false };
   const { data, error } = await supabase.from("ai_action_queue").insert({
     type: args.type,
-    lead_id: lead.id,
-    lead_code: leadLabel(lead),
+    lead_id: lead6.id,
+    lead_code: leadLabel(lead6),
     title: args.title,
     subtitle: args.subtitle ?? null,
     payload: args.payload,
@@ -1935,8 +1935,8 @@ var list_pending_approvals_default = defineTool15({
     let query = supabase.from("ai_action_queue").select("*").eq("status", status ?? "pending").order("created_at", { ascending: false }).limit(limit ?? 50);
     if (type) query = query.eq("type", type);
     if (lead_id || lead_code) {
-      const lead = await resolveLead(supabase, { lead_id, lead_code }, "id, lead_code, yt_id, client_name");
-      query = query.eq("lead_id", lead.id);
+      const lead6 = await resolveLead(supabase, { lead_id, lead_code }, "id, lead_code, yt_id, client_name");
+      query = query.eq("lead_id", lead6.id);
     }
     const { data, error } = await query;
     if (error) throw new ToolError19(error.message);
@@ -2027,8 +2027,8 @@ function blankLine(partial) {
     isFixedRate: partial.isFixedRate
   });
 }
-async function loadCosting(supabase, lead, version) {
-  const { data, error } = await supabase.from("lead_costing_data").select("day_number, title, items").eq("lead_id", lead.id).eq("version", version).order("day_number", { ascending: true });
+async function loadCosting(supabase, lead6, version) {
+  const { data, error } = await supabase.from("lead_costing_data").select("day_number, title, items").eq("lead_id", lead6.id).eq("version", version).order("day_number", { ascending: true });
   if (error) throw new ToolError21(error.message);
   return (data ?? []).map((row) => ({
     day_number: Number(row.day_number),
@@ -2036,10 +2036,10 @@ async function loadCosting(supabase, lead, version) {
     items: (Array.isArray(row.items) ? row.items : []).map((i) => calcLine(i))
   }));
 }
-async function saveCostingDay(supabase, lead, version, day) {
-  const { data: existing } = await supabase.from("lead_costing_data").select("id").eq("lead_id", lead.id).eq("version", version).eq("day_number", day.day_number).maybeSingle();
+async function saveCostingDay(supabase, lead6, version, day) {
+  const { data: existing } = await supabase.from("lead_costing_data").select("id").eq("lead_id", lead6.id).eq("version", version).eq("day_number", day.day_number).maybeSingle();
   const payload = {
-    lead_id: lead.id,
+    lead_id: lead6.id,
     version,
     day_number: day.day_number,
     title: day.title || (day.day_number === ACCOMMODATION_DAY ? "Alojamento" : `Dia ${day.day_number}`),
@@ -2075,12 +2075,12 @@ function assertMinimumMargin(totals) {
     );
   }
 }
-async function soldLeadReason(supabase, lead) {
-  const stage = String(lead.nethunt_stage ?? "");
+async function soldLeadReason(supabase, lead6) {
+  const stage = String(lead6.nethunt_stage ?? "");
   if (stage.toUpperCase().startsWith("OPERATIONS")) return `stage ${stage}`;
-  const status = String(lead.status ?? "").toLowerCase();
+  const status = String(lead6.status ?? "").toLowerCase();
   if (["won", "confirmed", "confirmada", "ganho"].includes(status)) return `status ${status}`;
-  const deposited = await paymentsSummary(supabase, lead);
+  const deposited = await paymentsSummary(supabase, lead6);
   if (deposited > 0) return `payment registered (${deposited.toFixed(2)} EUR)`;
   return null;
 }
@@ -2090,8 +2090,8 @@ function marginWarning(totals) {
   }
   return null;
 }
-async function paymentsSummary(supabase, lead) {
-  const { data } = await supabase.from("lead_payments").select("amount").eq("lead_id", lead.id);
+async function paymentsSummary(supabase, lead6) {
+  const { data } = await supabase.from("lead_payments").select("amount").eq("lead_id", lead6.id);
   const deposited = (data ?? []).reduce((s, p) => s + Number(p.amount || 0), 0);
   return Math.round(deposited * 100) / 100;
 }
@@ -2110,14 +2110,14 @@ var get_costing_default = defineTool17({
   handler: async ({ lead_id, lead_code, version }, ctx) => {
     if (!ctx.isAuthenticated()) throw new ToolError22("Not authenticated");
     const supabase = supabaseForUser(ctx);
-    const lead = await resolveLead(supabase, { lead_id, lead_code });
-    const ver = version ?? liveVersion(lead);
-    const days2 = await loadCosting(supabase, lead, ver);
+    const lead6 = await resolveLead(supabase, { lead_id, lead_code });
+    const ver = version ?? liveVersion(lead6);
+    const days2 = await loadCosting(supabase, lead6, ver);
     const totals = costingTotals(days2);
-    const deposited = await paymentsSummary(supabase, lead);
+    const deposited = await paymentsSummary(supabase, lead6);
     const payload = {
-      lead: leadLabel(lead),
-      lead_id: lead.id,
+      lead: leadLabel(lead6),
+      lead_id: lead6.id,
       version: ver,
       days: days2.map((d) => ({
         day_number: d.day_number,
@@ -2185,9 +2185,9 @@ var upsert_costing_lines_default = defineTool18({
   handler: async ({ lead_id, lead_code, version, lines, allow_below_min_margin, below_min_margin_reason }, ctx) => {
     if (!ctx.isAuthenticated()) throw new ToolError23("Not authenticated");
     const supabase = supabaseForUser(ctx);
-    const lead = await resolveLead(supabase, { lead_id, lead_code });
-    const ver = await resolveWriteVersion(supabase, ctx, lead, version);
-    const days2 = await loadCosting(supabase, lead, ver);
+    const lead6 = await resolveLead(supabase, { lead_id, lead_code });
+    const ver = await resolveWriteVersion(supabase, ctx, lead6, version);
+    const days2 = await loadCosting(supabase, lead6, ver);
     const byDay = new Map(days2.map((d) => [d.day_number, d]));
     const touched = /* @__PURE__ */ new Set();
     const created = [];
@@ -2242,23 +2242,23 @@ var upsert_costing_lines_default = defineTool18({
         }
         marginException = `explicit override: ${below_min_margin_reason.trim()}`;
       } else {
-        const sold = await soldLeadReason(supabase, lead);
+        const sold = await soldLeadReason(supabase, lead6);
         if (sold) marginException = `lead already sold \u2014 ${sold}`;
         else assertMinimumMargin(totals);
       }
     }
-    for (const dayNumber of touched) await saveCostingDay(supabase, lead, ver, byDay.get(dayNumber));
+    for (const dayNumber of touched) await saveCostingDay(supabase, lead6, ver, byDay.get(dayNumber));
     await auditLead(
       supabase,
       ctx,
-      lead,
+      lead6,
       "costing_updated",
       { costing_lines: { from: `${days2.flatMap((d) => d.items).length} lines`, to: `${allDays.flatMap((d) => d.items).length} lines` } },
       { version: ver, created_line_ids: created, updated_line_ids: updated, margin_warning: warning, margin_exception: marginException }
     );
     const payload = {
-      lead: leadLabel(lead),
-      lead_id: lead.id,
+      lead: leadLabel(lead6),
+      lead_id: lead6.id,
       version: ver,
       created_line_ids: created,
       updated_line_ids: updated,
@@ -2290,9 +2290,9 @@ var remove_costing_line_default = defineTool19({
   handler: async ({ lead_id, lead_code, version, day_number, line_id }, ctx) => {
     if (!ctx.isAuthenticated()) throw new ToolError24("Not authenticated");
     const supabase = supabaseForUser(ctx);
-    const lead = await resolveLead(supabase, { lead_id, lead_code });
-    const ver = await resolveWriteVersion(supabase, ctx, lead, version);
-    const days2 = await loadCosting(supabase, lead, ver);
+    const lead6 = await resolveLead(supabase, { lead_id, lead_code });
+    const ver = await resolveWriteVersion(supabase, ctx, lead6, version);
+    const days2 = await loadCosting(supabase, lead6, ver);
     const day = days2.find((d) => d.day_number === day_number);
     if (!day) throw new ToolError24(`Day ${day_number} has no costing lines for version ${ver}`);
     const line = day.items.find((i) => i.id === line_id);
@@ -2302,17 +2302,17 @@ var remove_costing_line_default = defineTool19({
       );
     }
     day.items = day.items.filter((i) => i.id !== line_id);
-    await saveCostingDay(supabase, lead, ver, day);
+    await saveCostingDay(supabase, lead6, ver, day);
     const totals = costingTotals(days2);
     await auditLead(
       supabase,
       ctx,
-      lead,
+      lead6,
       "costing_line_removed",
       { costing_line: { from: `${line.description} (${line.pvpTotal} EUR)`, to: null } },
       { version: ver, day_number, line_id }
     );
-    const payload = { lead: leadLabel(lead), lead_id: lead.id, version: ver, removed: line.description, totals };
+    const payload = { lead: leadLabel(lead6), lead_id: lead6.id, version: ver, removed: line.description, totals };
     return { content: [{ type: "text", text: JSON.stringify(payload, null, 2) }], structuredContent: payload };
   }
 });
@@ -2324,8 +2324,8 @@ import { z as z18 } from "npm:zod@^3.25.76";
 // src/lib/mcp/travelPlan.ts
 import { ToolError as ToolError25 } from "npm:@lovable.dev/mcp-js@0.26.1";
 var bulletText = (b) => typeof b === "string" ? b : String(b?.text ?? "");
-async function loadPlan(supabase, lead, version) {
-  const { data, error } = await supabase.from("travel_plans").select("id, trip_title, narrative, days, extra_instructions").eq("lead_id", lead.id).eq("version", version).order("updated_at", { ascending: false }).limit(1).maybeSingle();
+async function loadPlan(supabase, lead6, version) {
+  const { data, error } = await supabase.from("travel_plans").select("id, trip_title, narrative, days, extra_instructions").eq("lead_id", lead6.id).eq("version", version).order("updated_at", { ascending: false }).limit(1).maybeSingle();
   if (error) throw new ToolError25(error.message);
   let meta = { closing: {}, language: "EN" };
   if (data?.extra_instructions) {
@@ -2357,7 +2357,7 @@ async function loadPlan(supabase, lead, version) {
   };
 }
 var DAY_LABEL = { en: "Day", fr: "Jour", es: "D\xEDa", pt: "Dia", it: "Giorno", de: "Tag" };
-async function savePlan(supabase, lead, version, plan, meta, sc) {
+async function savePlan(supabase, lead6, version, plan, meta, sc) {
   const startDate = plan.days[0]?.date || sc.travelDates || null;
   const endDate = plan.days[plan.days.length - 1]?.date || sc.travelEndDate || null;
   const lang = (meta.language || sc.language || "EN").toLowerCase().slice(0, 2);
@@ -2369,7 +2369,7 @@ async function savePlan(supabase, lead, version, plan, meta, sc) {
     language: meta.language || sc.language || "EN"
   });
   const planPayload2 = {
-    lead_id: lead.id,
+    lead_id: lead6.id,
     file_id: sc.leadCode,
     trip_title: plan.trip_title,
     client_name: sc.clientName,
@@ -2382,7 +2382,7 @@ async function savePlan(supabase, lead, version, plan, meta, sc) {
     status: "draft",
     version
   };
-  const { data: existingPlanRow } = await supabase.from("travel_plans").select("id").eq("lead_id", lead.id).eq("version", version).order("updated_at", { ascending: false }).limit(1).maybeSingle();
+  const { data: existingPlanRow } = await supabase.from("travel_plans").select("id").eq("lead_id", lead6.id).eq("version", version).order("updated_at", { ascending: false }).limit(1).maybeSingle();
   const { error } = existingPlanRow ? await supabase.from("travel_plans").update(planPayload2).eq("id", existingPlanRow.id) : await supabase.from("travel_plans").insert(planPayload2);
   if (error) throw new ToolError25(error.message);
   const dateRange = startDate && endDate ? `${startDate} \u2014 ${endDate}` : startDate || "";
@@ -2397,7 +2397,7 @@ async function savePlan(supabase, lead, version, plan, meta, sc) {
     accommodation: d.overnight ? { label: d.overnight, hotel_name: d.overnight, note: "" } : null,
     map_url: d.mapUrl || ""
   }));
-  const { data: existingProposal } = await supabase.from("proposals").select("id").eq("lead_id", lead.id).eq("version", version).maybeSingle();
+  const { data: existingProposal } = await supabase.from("proposals").select("id").eq("lead_id", lead6.id).eq("version", version).maybeSingle();
   const common = {
     title: plan.trip_title,
     client_name: sc.clientName,
@@ -2420,12 +2420,12 @@ async function savePlan(supabase, lead, version, plan, meta, sc) {
       public_token: buildProposalSlug({
         leadCode: sc.leadCode,
         version,
-        client: lead.client_name,
+        client: lead6.client_name,
         program: plan.trip_title,
         start: plan.days?.[0]?.date,
         end: plan.days?.[plan.days.length - 1]?.date
       }),
-      lead_id: lead.id,
+      lead_id: lead6.id,
       version,
       map_stops: [],
       status: "draft"
@@ -2447,12 +2447,12 @@ function planWarnings(plan) {
   }
   return w;
 }
-async function planPayload(supabase, lead, version, plan) {
-  const { data: proposal } = await supabase.from("proposals").select("public_token, wetravel_checkout_url, total_value_eur, participants, date_range, language").eq("lead_id", lead.id).eq("version", version).maybeSingle();
+async function planPayload(supabase, lead6, version, plan) {
+  const { data: proposal } = await supabase.from("proposals").select("public_token, wetravel_checkout_url, total_value_eur, participants, date_range, language").eq("lead_id", lead6.id).eq("version", version).maybeSingle();
   const p = proposal;
   return {
-    lead: leadLabel(lead),
-    lead_id: lead.id,
+    lead: leadLabel(lead6),
+    lead_id: lead6.id,
     version,
     title: plan.trip_title,
     summary: plan.narrative,
@@ -2491,14 +2491,14 @@ var autofill_costing_from_plan_default = defineTool20({
   handler: async ({ lead_id, lead_code, version, seed_missing_lines }, ctx) => {
     if (!ctx.isAuthenticated()) throw new ToolError26("Not authenticated");
     const supabase = supabaseForUser(ctx);
-    const lead = await resolveLead(supabase, { lead_id, lead_code });
-    const ver = await resolveWriteVersion(supabase, ctx, lead, version);
-    const { plan } = await loadPlan(supabase, lead, ver);
-    if (!plan.days.length) throw new ToolError26(`Lead ${leadLabel(lead)} has no travel plan on version ${ver} \u2014 run generate_travel_plan first`);
-    const days2 = await loadCosting(supabase, lead, ver);
+    const lead6 = await resolveLead(supabase, { lead_id, lead_code });
+    const ver = await resolveWriteVersion(supabase, ctx, lead6, version);
+    const { plan } = await loadPlan(supabase, lead6, ver);
+    if (!plan.days.length) throw new ToolError26(`Lead ${leadLabel(lead6)} has no travel plan on version ${ver} \u2014 run generate_travel_plan first`);
+    const days2 = await loadCosting(supabase, lead6, ver);
     const byDay = new Map(days2.map((d) => [d.day_number, d]));
-    const pax = Number(lead.pax ?? 2);
-    const paxChildren = Number(lead.pax_children ?? 0);
+    const pax = Number(lead6.pax ?? 2);
+    const paxChildren = Number(lead6.pax_children ?? 0);
     let seeded = 0;
     if (seed_missing_lines !== false) {
       for (const day of plan.days) {
@@ -2526,7 +2526,7 @@ var autofill_costing_from_plan_default = defineTool20({
       const { data, error } = await supabase.functions.invoke("auto-fulfill-budget", {
         body: {
           items: toFill.map((f) => ({ description: f.item.description, day: f.day, pricingType: f.item.pricingType })),
-          destination: String(lead.destination ?? "")
+          destination: String(lead6.destination ?? "")
         }
       });
       if (error) throw new ToolError26(error.message);
@@ -2545,19 +2545,19 @@ var autofill_costing_from_plan_default = defineTool20({
         filled += 1;
       }
     }
-    for (const day of allDays) await saveCostingDay(supabase, lead, ver, day);
+    for (const day of allDays) await saveCostingDay(supabase, lead6, ver, day);
     const totals = costingTotals(allDays);
     await auditLead(
       supabase,
       ctx,
-      lead,
+      lead6,
       "costing_autofilled",
       { costing: { from: `${days2.flatMap((d) => d.items).length} lines`, to: `${flat.length} lines` } },
       { version: ver, seeded, filled }
     );
     const payload = {
-      lead: leadLabel(lead),
-      lead_id: lead.id,
+      lead: leadLabel(lead6),
+      lead_id: lead6.id,
       version: ver,
       lines_created: seeded,
       lines_priced: filled,
@@ -2620,12 +2620,12 @@ var normalizeInvoiceStatus = (status) => {
 var PERIOD_ORDER = ["morning", "lunch", "afternoon", "night"];
 var slug = (s) => (s || "item").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 48);
 var norm2 = (s) => (s || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]+/g, "");
-async function buildOpsRows(supabase, lead) {
-  const version = liveVersion(lead);
+async function buildOpsRows(supabase, lead6) {
+  const version = liveVersion(lead6);
   const [planner, costing, ops] = await Promise.all([
-    supabase.from("lead_planner_data").select("*").eq("lead_id", lead.id).eq("version", version).order("day_number"),
-    supabase.from("lead_costing_data").select("*").eq("lead_id", lead.id).eq("version", version).order("day_number"),
-    supabase.from("lead_operations").select("*").eq("lead_id", lead.id)
+    supabase.from("lead_planner_data").select("*").eq("lead_id", lead6.id).eq("version", version).order("day_number"),
+    supabase.from("lead_costing_data").select("*").eq("lead_id", lead6.id).eq("version", version).order("day_number"),
+    supabase.from("lead_operations").select("*").eq("lead_id", lead6.id)
   ]);
   for (const r of [planner, costing, ops]) if (r.error) throw new Error(r.error.message);
   const plannerDays = planner.data ?? [];
@@ -2722,14 +2722,14 @@ var get_operations_default = defineTool21({
   handler: async ({ lead_id, lead_code }, ctx) => {
     if (!ctx.isAuthenticated()) throw new ToolError27("Not authenticated");
     const supabase = supabaseForUser(ctx);
-    const lead = await resolveLead(supabase, { lead_id, lead_code });
+    const lead6 = await resolveLead(supabase, { lead_id, lead_code });
     let built;
     try {
-      built = await buildOpsRows(supabase, lead);
+      built = await buildOpsRows(supabase, lead6);
     } catch (e) {
       throw new ToolError27(e.message);
     }
-    const { data: dayOps } = await supabase.from("lead_day_ops").select("day_number, guide_name, vehicle, vehicle_pickup, pickup_time, pickup_location, pickup_maps_url, dropoff_location, dropoff_maps_url, notes_backoffice, notes_guide, guide_payment_amount").eq("lead_id", lead.id).order("day_number", { ascending: true });
+    const { data: dayOps } = await supabase.from("lead_day_ops").select("day_number, guide_name, vehicle, vehicle_pickup, pickup_time, pickup_location, pickup_maps_url, dropoff_location, dropoff_maps_url, notes_backoffice, notes_guide, guide_payment_amount").eq("lead_id", lead6.id).order("day_number", { ascending: true });
     const services = built.rows.map(({ op: _op, ...r }) => ({
       item_key: r.item_key,
       day_number: r.day_number,
@@ -2760,13 +2760,13 @@ var get_operations_default = defineTool21({
       services_with_real_cost: confirmed.length
     };
     const payload = {
-      lead: leadLabel(lead),
-      lead_id: lead.id,
+      lead: leadLabel(lead6),
+      lead_id: lead6.id,
       version: built.version,
-      trip_briefing: lead.trip_briefing ?? null,
-      service_language: lead.service_language ?? null,
-      booking_origin: lead.booking_origin ?? null,
-      external_booking_ref: lead.external_booking_ref ?? null,
+      trip_briefing: lead6.trip_briefing ?? null,
+      service_language: lead6.service_language ?? null,
+      booking_origin: lead6.booking_origin ?? null,
+      external_booking_ref: lead6.external_booking_ref ?? null,
       day_ops: dayOps ?? [],
       total_services: services.length,
       totals,
@@ -2810,17 +2810,17 @@ var update_operation_item_default = defineTool22({
     if (!ctx.isAuthenticated()) throw new ToolError28("Not authenticated");
     const { lead_id, lead_code, item_key, confirmation_number, notes, ...rest } = args;
     const supabase = supabaseForUser(ctx);
-    const lead = await resolveLead(supabase, { lead_id, lead_code });
+    const lead6 = await resolveLead(supabase, { lead_id, lead_code });
     let built;
     try {
-      built = await buildOpsRows(supabase, lead);
+      built = await buildOpsRows(supabase, lead6);
     } catch (e) {
       throw new ToolError28(e.message);
     }
     const target = built.rows.find((r) => r.item_key === item_key);
     if (!target) {
       throw new ToolError28(
-        `Service "${item_key}" not found on ${leadLabel(lead)}. Valid keys: ${built.rows.map((k) => k.item_key).join(", ") || "(no services yet)"}`
+        `Service "${item_key}" not found on ${leadLabel(lead6)}. Valid keys: ${built.rows.map((k) => k.item_key).join(", ") || "(no services yet)"}`
       );
     }
     const row = target.op ?? {
@@ -2855,7 +2855,7 @@ var update_operation_item_default = defineTool22({
     for (const key of Object.keys(updates)) changes[key] = { from: row[key] ?? null, to: updates[key] };
     const now = (/* @__PURE__ */ new Date()).toISOString();
     const { error } = target.op ? await supabase.from("lead_operations").update({ ...updates, updated_at: now }).eq("id", target.op.id) : await supabase.from("lead_operations").insert({
-      lead_id: lead.id,
+      lead_id: lead6.id,
       item_key,
       day_number: target.day_number,
       activity_title: target.activity_title,
@@ -2871,8 +2871,8 @@ var update_operation_item_default = defineTool22({
       updated_at: now
     });
     if (error) throw new ToolError28(error.message);
-    await auditLead(supabase, ctx, lead, "operation_updated", changes, { item_key });
-    const payload = { lead: leadLabel(lead), lead_id: lead.id, item_key, updated_fields: changes, materialized: !target.op };
+    await auditLead(supabase, ctx, lead6, "operation_updated", changes, { item_key });
+    const payload = { lead: leadLabel(lead6), lead_id: lead6.id, item_key, updated_fields: changes, materialized: !target.op };
     return { content: [{ type: "text", text: JSON.stringify(payload, null, 2) }], structuredContent: payload };
   }
 });
@@ -2905,14 +2905,14 @@ var update_day_ops_default = defineTool23({
     if (!ctx.isAuthenticated()) throw new ToolError29("Not authenticated");
     const { lead_id, lead_code, day_number, ...fields } = args;
     const supabase = supabaseForUser(ctx);
-    const lead = await resolveLead(supabase, { lead_id, lead_code });
+    const lead6 = await resolveLead(supabase, { lead_id, lead_code });
     const changes = Object.fromEntries(Object.entries(fields).filter(([, v]) => v !== void 0));
     if (!Object.keys(changes).length) throw new ToolError29("No fields to update");
-    const { error } = await supabase.from("lead_day_ops").upsert({ lead_id: lead.id, day_number, ...changes, updated_at: (/* @__PURE__ */ new Date()).toISOString() }, { onConflict: "lead_id,day_number" });
+    const { error } = await supabase.from("lead_day_ops").upsert({ lead_id: lead6.id, day_number, ...changes, updated_at: (/* @__PURE__ */ new Date()).toISOString() }, { onConflict: "lead_id,day_number" });
     if (error) throw new ToolError29(error.message);
     const audit = Object.fromEntries(Object.entries(changes).map(([k, v]) => [k, { from: null, to: v }]));
-    await auditLead(supabase, ctx, lead, "day_ops_updated", audit, { day_number });
-    const payload = { lead: leadLabel(lead), lead_id: lead.id, day_number, updated_fields: changes };
+    await auditLead(supabase, ctx, lead6, "day_ops_updated", audit, { day_number });
+    const payload = { lead: leadLabel(lead6), lead_id: lead6.id, day_number, updated_fields: changes };
     return { content: [{ type: "text", text: JSON.stringify(payload, null, 2) }], structuredContent: payload };
   }
 });
@@ -2939,8 +2939,8 @@ var update_trip_briefing_default = defineTool24({
   handler: async ({ lead_id, lead_code, ...fields }, ctx) => {
     if (!ctx.isAuthenticated()) throw new ToolError30("Not authenticated");
     const supabase = supabaseForUser(ctx);
-    const lead = await resolveLead(supabase, { lead_id, lead_code });
-    const current = lead.trip_briefing ?? {};
+    const lead6 = await resolveLead(supabase, { lead_id, lead_code });
+    const current = lead6.trip_briefing ?? {};
     const patch = {};
     for (const [k, v] of Object.entries(fields)) if (v !== void 0) patch[k] = v;
     if (!Object.keys(patch).length) throw new ToolError30("Send at least one briefing field to update");
@@ -2948,12 +2948,12 @@ var update_trip_briefing_default = defineTool24({
       throw new ToolError30("pickup_time must be HH:MM");
     }
     const next = { ...current, ...patch, updated_at: (/* @__PURE__ */ new Date()).toISOString() };
-    const { error } = await supabase.from("leads").update({ trip_briefing: next }).eq("id", lead.id);
+    const { error } = await supabase.from("leads").update({ trip_briefing: next }).eq("id", lead6.id);
     if (error) throw new ToolError30(error.message);
     const changes = {};
     for (const key of Object.keys(patch)) changes[key] = { from: current[key] ?? null, to: patch[key] };
-    await auditLead(supabase, ctx, lead, "trip_briefing_updated", changes);
-    const payload = { lead: leadLabel(lead), lead_id: lead.id, trip_briefing: next };
+    await auditLead(supabase, ctx, lead6, "trip_briefing_updated", changes);
+    const payload = { lead: leadLabel(lead6), lead_id: lead6.id, trip_briefing: next };
     return { content: [{ type: "text", text: JSON.stringify(payload, null, 2) }], structuredContent: payload };
   }
 });
@@ -2981,9 +2981,9 @@ var validate_lead_default = defineTool25({
   handler: async ({ lead_id, lead_code, version }, ctx) => {
     if (!ctx.isAuthenticated()) throw new ToolError31("Not authenticated");
     const supabase = supabaseForUser(ctx);
-    const lead = await resolveLead(supabase, { lead_id, lead_code });
-    const ver = version ?? liveVersion(lead);
-    const l = lead;
+    const lead6 = await resolveLead(supabase, { lead_id, lead_code });
+    const ver = version ?? liveVersion(lead6);
+    const l = lead6;
     const missing = [];
     const inconsistencies = [];
     if (!l.client_name) missing.push("client_name");
@@ -3000,8 +3000,8 @@ var validate_lead_default = defineTool25({
       inconsistencies.push(`Dates span ${span} days but number_of_days is ${l.number_of_days}`);
     }
     if (span !== null && span <= 0) inconsistencies.push("End date is not after the start date");
-    const { plan } = await loadPlan(supabase, lead, ver);
-    const { data: proposalRow } = await supabase.from("proposals").select("public_token, language, brand_logo_url").eq("lead_id", lead.id).eq("version", ver).maybeSingle();
+    const { plan } = await loadPlan(supabase, lead6, ver);
+    const { data: proposalRow } = await supabase.from("proposals").select("public_token, language, brand_logo_url").eq("lead_id", lead6.id).eq("version", ver).maybeSingle();
     const proposal = proposalRow;
     const planDays = plan.days.length;
     if (!planDays) missing.push("travel plan (no days yet)");
@@ -3011,7 +3011,7 @@ var validate_lead_default = defineTool25({
     if (planDays && proposal?.language && l.language && String(proposal.language).toLowerCase() !== String(l.language).toLowerCase()) {
       inconsistencies.push(`Programme language is ${proposal.language} but the client language is ${l.language}`);
     }
-    const costing = await loadCosting(supabase, lead, ver);
+    const costing = await loadCosting(supabase, lead6, ver);
     const lines = costing.flatMap((d) => d.items);
     const totals = costingTotals(costing);
     if (!lines.length) missing.push("costing (no lines yet)");
@@ -3026,15 +3026,15 @@ var validate_lead_default = defineTool25({
       if (!l.partner_id) missing.push("B2B partner");
       if (!proposal?.brand_logo_url) missing.push("B2B logo on the proposal");
     }
-    const deposited = await paymentsSummary(supabase, lead);
+    const deposited = await paymentsSummary(supabase, lead6);
     const nextStage = [];
     if (missing.length || inconsistencies.length) nextStage.push("Fix the items above before sending to the client");
     if (!proposal?.public_token) nextStage.push("Generate the digital itinerary link");
     if (totals.requires_ceo_approval) nextStage.push(`Total above ${totals.ceo_threshold_eur} EUR \u2014 CEO approval required`);
     if (!deposited) nextStage.push("No payment recorded yet \u2014 deposit needed before Operations");
     const payload = {
-      lead: leadLabel(lead),
-      lead_id: lead.id,
+      lead: leadLabel(lead6),
+      lead_id: lead6.id,
       version: ver,
       stage: l.nethunt_stage ?? l.status,
       ready: missing.length === 0 && inconsistencies.length === 0,
@@ -3066,13 +3066,13 @@ var generate_travel_plan_default = defineTool26({
   handler: async ({ lead_id, lead_code, briefing, catalogue_products, force_new_version }, ctx) => {
     if (!ctx.isAuthenticated()) throw new ToolError32("Not authenticated");
     const supabase = supabaseForUser(ctx);
-    const lead = await resolveLead(supabase, { lead_id, lead_code });
-    const l = lead;
-    const liveVer = liveVersion(lead);
+    const lead6 = await resolveLead(supabase, { lead_id, lead_code });
+    const l = lead6;
+    const liveVer = liveVersion(lead6);
     const agent = await agentIdentity(supabase, ctx);
-    const current = await loadPlan(supabase, lead, liveVer);
+    const current = await loadPlan(supabase, lead6, liveVer);
     const newVersionNeeded = agent !== null || force_new_version === true || !current.isEmpty;
-    const targetVersion = agent ? await createLeadVersion(supabase, lead, liveVer, { agent }) : newVersionNeeded ? await createLeadVersion(supabase, lead, liveVer) : liveVer;
+    const targetVersion = agent ? await createLeadVersion(supabase, lead6, liveVer, { agent }) : newVersionNeeded ? await createLeadVersion(supabase, lead6, liveVer) : liveVer;
     const extra = [
       briefing?.trim(),
       catalogue_products?.length ? `Include these catalogue products: ${catalogue_products.join("; ")}` : null
@@ -3080,7 +3080,7 @@ var generate_travel_plan_default = defineTool26({
     const { data, error } = await supabase.functions.invoke("generate-travel-plan", {
       body: {
         leadData: {
-          yt_id: l.yt_id || lead.lead_code,
+          yt_id: l.yt_id || lead6.lead_code,
           client_name: l.client_name,
           destination: l.destination,
           travel_dates: l.travel_dates,
@@ -3112,25 +3112,25 @@ var generate_travel_plan_default = defineTool26({
       brand_logo: result.brand_logo ?? current.plan.brand_logo ?? null,
       days: result.days.map((d, i) => ({ ...d, day_number: d.day_number ?? i + 1 }))
     };
-    await savePlan(supabase, lead, targetVersion, plan, current.meta, {
+    await savePlan(supabase, lead6, targetVersion, plan, current.meta, {
       clientName: String(l.client_name ?? ""),
       pax: Number(l.pax ?? 0),
       paxChildren: Number(l.pax_children ?? 0),
       language: String(l.language ?? "EN"),
       travelDates: l.travel_dates,
       travelEndDate: l.travel_end_date,
-      leadCode: String(l.yt_id || lead.lead_code)
+      leadCode: String(l.yt_id || lead6.lead_code)
     });
     await auditLead(
       supabase,
       ctx,
-      lead,
+      lead6,
       "travel_plan_generated",
       { travel_plan: { from: `V${liveVer} (${current.plan.days.length} days)`, to: `V${targetVersion} (${plan.days.length} days)` } },
       { new_version_created: newVersionNeeded, version: targetVersion, ai_proposal: agent !== null }
     );
     const payload = {
-      ...await planPayload(supabase, lead, targetVersion, plan),
+      ...await planPayload(supabase, lead6, targetVersion, plan),
       new_version_created: newVersionNeeded,
       previous_version: liveVer,
       live_version: agent ? liveVer : targetVersion,
@@ -3169,10 +3169,10 @@ var update_travel_plan_day_default = defineTool27({
     if (!ctx.isAuthenticated()) throw new ToolError33("Not authenticated");
     const { lead_id, lead_code, version, action, day_number, move_to } = args;
     const supabase = supabaseForUser(ctx);
-    const lead = await resolveLead(supabase, { lead_id, lead_code });
-    const l = lead;
-    const ver = await resolveWriteVersion(supabase, ctx, lead, version);
-    const { plan, meta } = await loadPlan(supabase, lead, ver);
+    const lead6 = await resolveLead(supabase, { lead_id, lead_code });
+    const l = lead6;
+    const ver = await resolveWriteVersion(supabase, ctx, lead6, version);
+    const { plan, meta } = await loadPlan(supabase, lead6, ver);
     const days2 = [...plan.days].sort((a, b) => a.day_number - b.day_number);
     const idx = days2.findIndex((d) => d.day_number === day_number);
     const apply = (day) => ({
@@ -3201,19 +3201,19 @@ var update_travel_plan_day_default = defineTool27({
     }
     const renumbered = days2.map((d, i) => ({ ...d, day_number: i + 1 }));
     const next = { ...plan, days: renumbered };
-    await savePlan(supabase, lead, ver, next, meta, {
+    await savePlan(supabase, lead6, ver, next, meta, {
       clientName: String(l.client_name ?? ""),
       pax: Number(l.pax ?? 0),
       paxChildren: Number(l.pax_children ?? 0),
       language: String(l.language ?? "EN"),
       travelDates: l.travel_dates,
       travelEndDate: l.travel_end_date,
-      leadCode: String(l.yt_id || lead.lead_code)
+      leadCode: String(l.yt_id || lead6.lead_code)
     });
-    await auditLead(supabase, ctx, lead, "travel_plan_day_updated", {
+    await auditLead(supabase, ctx, lead6, "travel_plan_day_updated", {
       [`day_${day_number}`]: { from: `${plan.days.length} days`, to: `${renumbered.length} days (${action})` }
     }, { version: ver, action });
-    const payload = { lead: leadLabel(lead), action, ...await planPayload(supabase, lead, ver, next) };
+    const payload = { lead: leadLabel(lead6), action, ...await planPayload(supabase, lead6, ver, next) };
     return { content: [{ type: "text", text: JSON.stringify(payload, null, 2) }], structuredContent: payload };
   }
 });
@@ -3241,31 +3241,31 @@ var update_travel_plan_header_default = defineTool28({
       throw new ToolError34("Send at least one header field to update");
     }
     const supabase = supabaseForUser(ctx);
-    const lead = await resolveLead(supabase, { lead_id, lead_code });
-    const l = lead;
-    const ver = await resolveWriteVersion(supabase, ctx, lead, version);
-    const { plan, meta } = await loadPlan(supabase, lead, ver);
+    const lead6 = await resolveLead(supabase, { lead_id, lead_code });
+    const l = lead6;
+    const ver = await resolveWriteVersion(supabase, ctx, lead6, version);
+    const { plan, meta } = await loadPlan(supabase, lead6, ver);
     const next = {
       ...plan,
       trip_title: title ?? plan.trip_title,
       narrative: summary ?? plan.narrative,
       cover_image: cover_image_url || cover_image_caption ? { url: cover_image_url ?? plan.cover_image?.url ?? "", caption: cover_image_caption ?? plan.cover_image?.caption } : plan.cover_image
     };
-    await savePlan(supabase, lead, ver, next, meta, {
+    await savePlan(supabase, lead6, ver, next, meta, {
       clientName: String(l.client_name ?? ""),
       pax: Number(l.pax ?? 0),
       paxChildren: Number(l.pax_children ?? 0),
       language: String(l.language ?? "EN"),
       travelDates: l.travel_dates,
       travelEndDate: l.travel_end_date,
-      leadCode: String(l.yt_id || lead.lead_code)
+      leadCode: String(l.yt_id || lead6.lead_code)
     });
-    await auditLead(supabase, ctx, lead, "travel_plan_header_updated", {
+    await auditLead(supabase, ctx, lead6, "travel_plan_header_updated", {
       title: { from: plan.trip_title, to: next.trip_title },
       summary: { from: plan.narrative ? `${plan.narrative.slice(0, 60)}\u2026` : null, to: next.narrative ? `${next.narrative.slice(0, 60)}\u2026` : null },
       cover_image: { from: plan.cover_image?.url ?? null, to: next.cover_image?.url ?? null }
     }, { version: ver });
-    const payload = { lead: leadLabel(lead), ...await planPayload(supabase, lead, ver, next) };
+    const payload = { lead: leadLabel(lead6), ...await planPayload(supabase, lead6, ver, next) };
     return { content: [{ type: "text", text: JSON.stringify(payload, null, 2) }], structuredContent: payload };
   }
 });
@@ -3288,12 +3288,12 @@ var fill_travel_plan_images_default = defineTool29({
   handler: async ({ lead_id, lead_code, version, images_per_day, overwrite }, ctx) => {
     if (!ctx.isAuthenticated()) throw new ToolError35("Not authenticated");
     const supabase = supabaseForUser(ctx);
-    const lead = await resolveLead(supabase, { lead_id, lead_code });
-    const l = lead;
-    const ver = await resolveWriteVersion(supabase, ctx, lead, version);
+    const lead6 = await resolveLead(supabase, { lead_id, lead_code });
+    const l = lead6;
+    const ver = await resolveWriteVersion(supabase, ctx, lead6, version);
     const count = images_per_day ?? 2;
-    const { plan, meta } = await loadPlan(supabase, lead, ver);
-    if (!plan.days.length) throw new ToolError35(`Lead ${leadLabel(lead)} has no travel plan on version ${ver}`);
+    const { plan, meta } = await loadPlan(supabase, lead6, ver);
+    if (!plan.days.length) throw new ToolError35(`Lead ${leadLabel(lead6)} has no travel plan on version ${ver}`);
     const search = async (query, n) => {
       const { data, error } = await supabase.functions.invoke("search-destination-images", {
         body: { query, count: n, mode: "search" }
@@ -3320,23 +3320,23 @@ var fill_travel_plan_images_default = defineTool29({
       day.images = overwrite ? found : [...has, ...found].slice(0, count);
       filledDays += 1;
     }
-    await savePlan(supabase, lead, ver, plan, meta, {
+    await savePlan(supabase, lead6, ver, plan, meta, {
       clientName: String(l.client_name ?? ""),
       pax: Number(l.pax ?? 0),
       paxChildren: Number(l.pax_children ?? 0),
       language: String(l.language ?? "EN"),
       travelDates: l.travel_dates,
       travelEndDate: l.travel_end_date,
-      leadCode: String(l.yt_id || lead.lead_code)
+      leadCode: String(l.yt_id || lead6.lead_code)
     });
-    await auditLead(supabase, ctx, lead, "travel_plan_images_filled", {
+    await auditLead(supabase, ctx, lead6, "travel_plan_images_filled", {
       images: { from: "missing", to: `${filledDays} days filled` }
     }, { version: ver });
     const payload = {
-      lead: leadLabel(lead),
+      lead: leadLabel(lead6),
       days_filled: filledDays,
       days_without_images: failures,
-      ...await planPayload(supabase, lead, ver, plan)
+      ...await planPayload(supabase, lead6, ver, plan)
     };
     return { content: [{ type: "text", text: JSON.stringify(payload, null, 2) }], structuredContent: payload };
   }
@@ -3365,10 +3365,10 @@ var request_payment_link_default = defineTool30({
   handler: async ({ lead_id, lead_code, kind, amount_eur, description }, ctx) => {
     if (!ctx.isAuthenticated()) throw new ToolError36("Not authenticated");
     const supabase = supabaseForUser(ctx);
-    const lead = await resolveLead(supabase, { lead_id, lead_code });
-    const l = lead;
-    const ver = liveVersion(lead);
-    const totals = costingTotals(await loadCosting(supabase, lead, ver));
+    const lead6 = await resolveLead(supabase, { lead_id, lead_code });
+    const l = lead6;
+    const ver = liveVersion(lead6);
+    const totals = costingTotals(await loadCosting(supabase, lead6, ver));
     let amount = amount_eur ?? 0;
     if (kind === "custom") {
       if (!amount_eur) throw new ToolError36("amount_eur is required when kind is 'custom'");
@@ -3379,9 +3379,9 @@ var request_payment_link_default = defineTool30({
       if (!totals.pvp_eur) throw new ToolError36("The costing has no selling price yet \u2014 fill the costing first");
       amount = Math.round(totals.pvp_eur * KINDS[kind] * 100) / 100;
     }
-    const { data: proposal } = await supabase.from("proposals").select("id, title").eq("lead_id", lead.id).eq("version", ver).maybeSingle();
-    const title = `${leadLabel(lead)} \xB7 ${l.client_name} \u2014 ${kind === "custom" ? "montante personalizado" : kind === "optionals" ? "opcionais" : kind.replace("_", " ")}`;
-    const { item, created } = await enqueueAction(supabase, ctx, lead, {
+    const { data: proposal } = await supabase.from("proposals").select("id, title").eq("lead_id", lead6.id).eq("version", ver).maybeSingle();
+    const title = `${leadLabel(lead6)} \xB7 ${l.client_name} \u2014 ${kind === "custom" ? "montante personalizado" : kind === "optionals" ? "opcionais" : kind.replace("_", " ")}`;
+    const { item, created } = await enqueueAction(supabase, ctx, lead6, {
       type: "payment_link",
       title,
       subtitle: `${amount.toFixed(2)} EUR`,
@@ -3394,7 +3394,7 @@ var request_payment_link_default = defineTool30({
         deposit_cents: kind === "deposit_25" || kind === "deposit_50" ? Math.round(amount * 100) : null,
         description: description ?? proposal?.title ?? l.destination ?? "Your Tours Portugal",
         proposal_id: proposal?.id ?? null,
-        trip_ref: leadLabel(lead),
+        trip_ref: leadLabel(lead6),
         start_date: l.travel_dates ?? null,
         end_date: l.travel_end_date ?? null,
         total_pvp_eur: totals.pvp_eur,
@@ -3402,7 +3402,7 @@ var request_payment_link_default = defineTool30({
       }
     });
     if (created) {
-      await auditLead(supabase, ctx, lead, "payment_link_requested", {
+      await auditLead(supabase, ctx, lead6, "payment_link_requested", {
         payment_link: { from: null, to: `${amount.toFixed(2)} EUR (${kind}) \u2014 awaiting human approval` }
       }, { approval_id: item.id });
     }
@@ -3410,7 +3410,7 @@ var request_payment_link_default = defineTool30({
       approval_id: item.id,
       already_queued: !created,
       status: item.status,
-      lead: leadLabel(lead),
+      lead: leadLabel(lead6),
       proposed_amount_eur: amount,
       kind,
       requires_ceo_approval: totals.requires_ceo_approval,
@@ -3441,11 +3441,11 @@ var draft_fse_requests_default = defineTool31({
   handler: async ({ lead_id, lead_code, only_pending }, ctx) => {
     if (!ctx.isAuthenticated()) throw new ToolError37("Not authenticated");
     const supabase = supabaseForUser(ctx);
-    const lead = await resolveLead(supabase, { lead_id, lead_code });
-    const l = lead;
-    const ref = leadLabel(lead);
-    const ver = liveVersion(lead);
-    const { data: opsRows } = await supabase.from("lead_operations").select("*").eq("lead_id", lead.id).order("day_number", { ascending: true });
+    const lead6 = await resolveLead(supabase, { lead_id, lead_code });
+    const l = lead6;
+    const ref = leadLabel(lead6);
+    const ver = liveVersion(lead6);
+    const { data: opsRows } = await supabase.from("lead_operations").select("*").eq("lead_id", lead6.id).order("day_number", { ascending: true });
     const services = (opsRows ?? []).map((r) => ({
       supplier: String(r.supplier ?? "").trim(),
       day: Number(r.day_number ?? 0),
@@ -3456,7 +3456,7 @@ var draft_fse_requests_default = defineTool31({
       booked: normalizeBookingStatus(r.booking_status) === "booked"
     }));
     if (!services.length) {
-      const costing = await loadCosting(supabase, lead, ver);
+      const costing = await loadCosting(supabase, lead6, ver);
       for (const day of costing) {
         for (const item of day.items) {
           if (!item.supplier || item.status === "eliminar") continue;
@@ -3497,7 +3497,7 @@ ${lines}
 <p>Agradecemos a confirma\xE7\xE3o com o n\xFAmero de reserva e as condi\xE7\xF5es aplic\xE1veis.</p>
 <p>Obrigado e bom trabalho,<br/><strong>Your Tours Portugal</strong></p>
 </div>`;
-      const { item, created } = await enqueueAction(supabase, ctx, lead, {
+      const { item, created } = await enqueueAction(supabase, ctx, lead6, {
         type: "fse_email",
         title: `${ref} \xB7 Pedido FSE \u2014 ${supplier}`,
         subtitle: `${list.length} servi\xE7o(s)`,
@@ -3513,7 +3513,7 @@ ${lines}
       });
       items.push({ approval_id: item.id, supplier, to: emailOf(supplier), services: list.length, already_queued: !created });
     }
-    await auditLead(supabase, ctx, lead, "fse_requests_drafted", {
+    await auditLead(supabase, ctx, lead6, "fse_requests_drafted", {
       fse_requests: { from: null, to: `${items.length} supplier email(s) queued for approval` }
     });
     const payload = {
@@ -3556,13 +3556,13 @@ var draft_client_email_default = defineTool32({
   handler: async ({ lead_id, lead_code, purpose, notes, language, attach_travel_plan_pdf, cc, bcc }, ctx) => {
     if (!ctx.isAuthenticated()) throw new ToolError38("Not authenticated");
     const supabase = supabaseForUser(ctx);
-    const lead = await resolveLead(supabase, { lead_id, lead_code });
-    const l = lead;
-    const ref = leadLabel(lead);
-    const ver = liveVersion(lead);
+    const lead6 = await resolveLead(supabase, { lead_id, lead_code });
+    const l = lead6;
+    const ref = leadLabel(lead6);
+    const ver = liveVersion(lead6);
     if (!l.email) throw new ToolError38(`Lead ${ref} has no client email address`);
-    const { plan, meta } = await loadPlan(supabase, lead, ver);
-    const { data: proposal } = await supabase.from("proposals").select("public_token, wetravel_checkout_url, title, total_value_eur").eq("lead_id", lead.id).eq("version", ver).maybeSingle();
+    const { plan, meta } = await loadPlan(supabase, lead6, ver);
+    const { data: proposal } = await supabase.from("proposals").select("public_token, wetravel_checkout_url, title, total_value_eur").eq("lead_id", lead6.id).eq("version", ver).maybeSingle();
     const { data, error } = await supabase.functions.invoke("generate-email", {
       body: {
         templateKey: TEMPLATE[purpose],
@@ -3585,11 +3585,11 @@ var draft_client_email_default = defineTool32({
     const warnings = planWarnings(plan);
     if (attach_travel_plan_pdf) {
       if (!plan.days.length) throw new ToolError38(`Lead ${ref} has no travel plan to attach on version ${ver}`);
-      const pdf = await renderTravelPlanPdf(supabase, lead, ver, plan, meta);
-      const stored = await storeTravelPlanPdf(supabase, lead, pdf);
+      const pdf = await renderTravelPlanPdf(supabase, lead6, ver, plan, meta);
+      const stored = await storeTravelPlanPdf(supabase, lead6, pdf);
       attachments.push({ filename: stored.file_name, path: stored.storage_path, signed_url: stored.signed_url, pages: pdf.pages });
     }
-    const { item, created } = await enqueueAction(supabase, ctx, lead, {
+    const { item, created } = await enqueueAction(supabase, ctx, lead6, {
       type: "client_email",
       title: `${ref} \xB7 ${l.client_name} \u2014 ${email.subject}`,
       subtitle: purpose,
@@ -3607,7 +3607,7 @@ var draft_client_email_default = defineTool32({
       }
     });
     if (created) {
-      await auditLead(supabase, ctx, lead, "client_email_drafted", {
+      await auditLead(supabase, ctx, lead6, "client_email_drafted", {
         client_email: { from: null, to: `${email.subject} \u2014 awaiting human approval` }
       }, { approval_id: item.id, purpose });
     }
@@ -3769,14 +3769,14 @@ var import_lead_ai_default = defineTool33({
     };
     const { data: created, error: insErr } = await supabase.from("leads").insert(row).select().single();
     if (insErr) throw new ToolError39(insErr.message);
-    const lead = created;
-    await auditLead(supabase, ctx, lead, "lead_created", { lead: { from: null, to: ytId } }, { source, gmail_thread_id });
+    const lead6 = created;
+    await auditLead(supabase, ctx, lead6, "lead_created", { lead: { from: null, to: ytId } }, { source, gmail_thread_id });
     const required = ["clientName", "email", "travelDates", "pax", "destination"];
     const payload = {
       duplicate: false,
-      id: lead.id,
+      id: lead6.id,
       lead_code: ytId,
-      url: leadUrl(lead),
+      url: leadUrl(lead6),
       stage: "SALES \xB7 New Lead",
       extracted: x,
       missing_fields: required.filter((k) => !x[k] && !(k === "email" && email)),
@@ -3933,8 +3933,141 @@ var log_ai_session_default = defineTool35({
   }
 });
 
+// src/lib/mcp/tools/list-workbench-state.ts
+import { defineTool as defineTool36, ToolError as ToolError42 } from "npm:@lovable.dev/mcp-js@0.26.1";
+import { z as z34 } from "npm:zod@^3.25.76";
+var lead = { lead_id: z34.string().optional().describe("Lead uuid."), lead_code: z34.string().optional().describe("Lead code such as YT5130 or YT-2026-4474.") };
+var fail = (e) => {
+  if (e) throw new ToolError42(e.message);
+};
+var list_workbench_state_default = defineTool36({
+  name: "list_workbench_state",
+  title: "List Workbench state",
+  description: "Read the Workbench: inbox threads, open alerts and checklist for one side (sales/ops) or one lead. Read-only.",
+  inputSchema: { side: z34.enum(["sales", "ops"]).optional().describe("Mailbox side."), ...lead, limit: z34.number().int().min(1).max(200).optional().describe("Max threads (default 50).") },
+  annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
+  handler: async ({ side, lead_id, lead_code, limit }, ctx) => {
+    if (!ctx.isAuthenticated()) throw new ToolError42("Not authenticated");
+    const db = supabaseForUser(ctx);
+    const l = lead_id || lead_code ? await resolveLead(db, { lead_id, lead_code }, "id,yt_id,nethunt_stage,status") : null;
+    let t = db.from("workbench_threads").select("id,mailbox,subject,from_email,last_message_at,yt_ref,lead_id,ball,urgency,urgency_reason,ai_reading,ai_checked").eq("in_inbox", true).order("last_message_at", { ascending: true }).limit(limit ?? 50);
+    let a = db.from("workbench_alerts").select("id,lead_id,side,title,reason,next_step,status,created_at").neq("status", "handled");
+    if (side) {
+      t = t.eq("mailbox", side);
+      a = a.eq("side", side);
+    }
+    if (l) {
+      t = t.eq("lead_id", l.id);
+      a = a.eq("lead_id", l.id);
+    }
+    const [tr, ar, cr] = await Promise.all([t, a, l ? db.from("workbench_checklist").select("item_key,label,status,source,note").eq("lead_id", l.id) : Promise.resolve({ data: [], error: null })]);
+    fail(tr.error);
+    fail(ar.error);
+    fail(cr.error);
+    const result = { threads: tr.data ?? [], alerts: ar.data ?? [], checklist: cr.data ?? [] };
+    return { content: [{ type: "text", text: JSON.stringify(result) }], structuredContent: result };
+  }
+});
+
+// src/lib/mcp/tools/upsert-workbench-thread-reading.ts
+import { defineTool as defineTool37, ToolError as ToolError43 } from "npm:@lovable.dev/mcp-js@0.26.1";
+import { z as z35 } from "npm:zod@^3.25.76";
+var lead2 = { lead_id: z35.string().optional().describe("Lead uuid."), lead_code: z35.string().optional().describe("Lead code such as YT5130 or YT-2026-4474.") };
+var fail2 = (e) => {
+  if (e) throw new ToolError43(e.message);
+};
+var upsert_workbench_thread_reading_default = defineTool37({
+  name: "upsert_workbench_thread_reading",
+  title: "Record Workbench thread reading",
+  description: "Store the agent reading of an inbox thread (meaning, what was checked, whose turn, urgency). Never sends email.",
+  inputSchema: { thread_id: z35.string().describe("Workbench thread id."), ai_reading: z35.string().max(2e3).optional().describe("What the email means."), ai_checked: z35.string().max(2e3).optional().describe("What it was verified against."), ball: z35.enum(["ours", "client", "supplier"]).optional().describe("Whose turn."), urgency: z35.enum(["urgent", "today", "week"]).optional().describe("Urgency."), urgency_reason: z35.string().max(500).optional().describe("Why.") },
+  annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false },
+  handler: async ({ thread_id, ...fields }, ctx) => {
+    if (!ctx.isAuthenticated()) throw new ToolError43("Not authenticated");
+    const db = supabaseForUser(ctx);
+    const patch = Object.fromEntries(Object.entries(fields).filter(([, v]) => v !== void 0));
+    const r = await db.from("workbench_threads").update({ ...patch, updated_at: (/* @__PURE__ */ new Date()).toISOString() }).eq("id", thread_id).select("id,lead_id,mailbox").maybeSingle();
+    fail2(r.error);
+    if (!r.data) throw new ToolError43("Thread not found");
+    if (r.data.lead_id) await db.from("workbench_auto_log").insert({ lead_id: r.data.lead_id, side: r.data.mailbox, what: "Leitura de email registada", trace: Object.keys(patch).join(", "), created_by_agent: agentActor(await agentIdentity(db, ctx)) });
+    return { content: [{ type: "text", text: "Reading saved." }] };
+  }
+});
+
+// src/lib/mcp/tools/set-checklist-status.ts
+import { defineTool as defineTool38, ToolError as ToolError44 } from "npm:@lovable.dev/mcp-js@0.26.1";
+import { z as z36 } from "npm:zod@^3.25.76";
+var lead3 = { lead_id: z36.string().optional().describe("Lead uuid."), lead_code: z36.string().optional().describe("Lead code such as YT5130 or YT-2026-4474.") };
+var sideOf = (l) => l.nethunt_stage?.startsWith("OPERATIONS") || !l.nethunt_stage && l.status === "won" ? "ops" : "sales";
+var fail3 = (e) => {
+  if (e) throw new ToolError44(e.message);
+};
+var set_checklist_status_default = defineTool38({
+  name: "set_checklist_status",
+  title: "Set Workbench checklist status",
+  description: "Set an automatic checklist status for a lead. Values set manually by a person are never overwritten.",
+  inputSchema: { ...lead3, item_key: z36.enum(["guide", "transport", "pickup", "contact", "suppliers", "payment", "briefing", "file", "plan", "costing", "proposal", "followup", "payment_link"]).describe("Checklist item."), status: z36.enum(["ok", "pending", "missing", "na"]).describe("Status."), note: z36.string().max(500).optional().describe("Short note.") },
+  annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false },
+  handler: async ({ lead_id, lead_code, item_key, status, note }, ctx) => {
+    if (!ctx.isAuthenticated()) throw new ToolError44("Not authenticated");
+    const db = supabaseForUser(ctx);
+    const l = await resolveLead(db, { lead_id, lead_code }, "id,nethunt_stage,status");
+    const cur = await db.from("workbench_checklist").select("source,label").eq("lead_id", l.id).eq("item_key", item_key).maybeSingle();
+    fail3(cur.error);
+    if (cur.data?.source === "manual") return { content: [{ type: "text", text: "Skipped: this item was set manually by a person." }] };
+    fail3((await db.rpc("workbench_set_auto_checklist", { p_lead_id: l.id, p_item_key: item_key, p_label: cur.data?.label ?? item_key, p_status: status, p_note: note ?? null })).error);
+    await db.from("workbench_auto_log").insert({ lead_id: l.id, side: sideOf(l), what: `Checklist ${item_key}: ${status}`, trace: note ?? null, created_by_agent: agentActor(await agentIdentity(db, ctx)) });
+    return { content: [{ type: "text", text: "Checklist updated." }] };
+  }
+});
+
+// src/lib/mcp/tools/add-auto-log-entry.ts
+import { defineTool as defineTool39, ToolError as ToolError45 } from "npm:@lovable.dev/mcp-js@0.26.1";
+import { z as z37 } from "npm:zod@^3.25.76";
+var lead4 = { lead_id: z37.string().optional().describe("Lead uuid."), lead_code: z37.string().optional().describe("Lead code such as YT5130 or YT-2026-4474.") };
+var sideOf2 = (l) => l.nethunt_stage?.startsWith("OPERATIONS") || !l.nethunt_stage && l.status === "won" ? "ops" : "sales";
+var fail4 = (e) => {
+  if (e) throw new ToolError45(e.message);
+};
+var add_auto_log_entry_default = defineTool39({
+  name: "add_auto_log_entry",
+  title: "Add Workbench auto-log entry",
+  description: "Record something the agent did for a lead in the Workbench daily log.",
+  inputSchema: { ...lead4, what: z37.string().min(1).max(300).describe("What was done."), trace: z37.string().max(1e3).optional().describe("Where it can be checked."), reversible: z37.boolean().optional().describe("Can be undone.") },
+  annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
+  handler: async ({ lead_id, lead_code, what, trace, reversible }, ctx) => {
+    if (!ctx.isAuthenticated()) throw new ToolError45("Not authenticated");
+    const db = supabaseForUser(ctx);
+    const l = await resolveLead(db, { lead_id, lead_code }, "id,nethunt_stage,status");
+    fail4((await db.from("workbench_auto_log").insert({ lead_id: l.id, side: sideOf2(l), what, trace: trace ?? null, reversible: reversible ?? false, created_by_agent: agentActor(await agentIdentity(db, ctx)) })).error);
+    return { content: [{ type: "text", text: "Logged." }] };
+  }
+});
+
+// src/lib/mcp/tools/open-workbench-alert.ts
+import { defineTool as defineTool40, ToolError as ToolError46 } from "npm:@lovable.dev/mcp-js@0.26.1";
+import { z as z38 } from "npm:zod@^3.25.76";
+var lead5 = { lead_id: z38.string().optional().describe("Lead uuid."), lead_code: z38.string().optional().describe("Lead code such as YT5130 or YT-2026-4474.") };
+var sideOf3 = (l) => l.nethunt_stage?.startsWith("OPERATIONS") || !l.nethunt_stage && l.status === "won" ? "ops" : "sales";
+var open_workbench_alert_default = defineTool40({
+  name: "open_workbench_alert",
+  title: "Open Workbench alert",
+  description: "Open one urgent alert for a lead and reason (duplicates are ignored). A person handles it.",
+  inputSchema: { ...lead5, reason: z38.string().min(3).max(300).describe("Why it is urgent."), next_step: z38.string().max(300).optional().describe("Suggested next step.") },
+  annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false },
+  handler: async ({ lead_id, lead_code, reason, next_step }, ctx) => {
+    if (!ctx.isAuthenticated()) throw new ToolError46("Not authenticated");
+    const db = supabaseForUser(ctx);
+    const l = await resolveLead(db, { lead_id, lead_code }, "id,yt_id,nethunt_stage,status");
+    const r = await db.from("workbench_alerts").insert({ lead_id: l.id, side: sideOf3(l), title: l.yt_id || "File", reason, next_step: next_step ?? null });
+    if (r.error && r.error.code !== "23505") throw new ToolError46(r.error.message);
+    await db.from("workbench_auto_log").insert({ lead_id: l.id, side: sideOf3(l), what: "Alerta aberto", trace: reason, created_by_agent: agentActor(await agentIdentity(db, ctx)) });
+    return { content: [{ type: "text", text: r.error ? "Alert already open." : "Alert opened." }] };
+  }
+});
+
 // src/lib/mcp/toolset.ts
-var INSTRUCTIONS = "Operations tools for Your Tours Portugal (TCC). Read the pipeline with `list_leads` / `get_lead`, the programme with `get_travel_plan`, departures with `list_upcoming_trips`, and follow-up with `list_tasks` / `create_task` / `update_task`. Prepare sales files with `update_lead_stage` (stages from `list_lead_stages`), `assign_lead_agents`, `update_lead_general_data`, `add_lead_note` and `export_travel_plan_pdf`. Leads accept the everyday code format such as YT5130. Every write is logged in the lead history as 'AI agent (MCP)' and mirrored to NetHunt when the lead is linked. These tools never send emails, never create payment links and never delete leads or versions. Client emails, supplier emails and payment links are only proposed into the 'Aprova\xE7\xF5es AI' queue (list_pending_approvals / get_approval_status); a person approves before anything is executed. Create leads with `import_lead_ai`, check them with `validate_lead`, build the programme with `generate_travel_plan` and the update_travel_plan_* tools, and the budget with the costing tools. Scheduled agents (Grok Worker, Claude Supervisor) connect to /functions/v1/mcp-agent with a personal `ytp_agent_` key: each key only runs its allowed tools within a daily limit, every write is stamped with the agent label and model, and agents work in proposal mode \u2014 generate_travel_plan and the travel plan / costing edits land on a non-LIVE 'Proposta AI' version that a person promotes with 'Tornar LIVE'; agents can never approve queue items, move a lead to OPERATIONS or create payment links.";
+var INSTRUCTIONS = "Operations tools for Your Tours Portugal (TCC). Read the pipeline with `list_leads` / `get_lead`, the programme with `get_travel_plan`, departures with `list_upcoming_trips`, and follow-up with `list_tasks` / `create_task` / `update_task`. Prepare sales files with `update_lead_stage` (stages from `list_lead_stages`), `assign_lead_agents`, `update_lead_general_data`, `add_lead_note` and `export_travel_plan_pdf`. Leads accept the everyday code format such as YT5130. Every write is logged in the lead history as 'AI agent (MCP)' and mirrored to NetHunt when the lead is linked. These tools never send emails, never create payment links and never delete leads or versions. Client emails, supplier emails and payment links are only proposed into the 'Aprova\xE7\xF5es AI' queue (list_pending_approvals / get_approval_status); a person approves before anything is executed. Create leads with `import_lead_ai`, check them with `validate_lead`, build the programme with `generate_travel_plan` and the update_travel_plan_* tools, and the budget with the costing tools. Scheduled agents (Grok Worker, Claude Supervisor) connect to /functions/v1/mcp-agent with a personal `ytp_agent_` key: each key only runs its allowed tools within a daily limit, every write is stamped with the agent label and model, and agents work in proposal mode \u2014 generate_travel_plan and the travel plan / costing edits land on a non-LIVE 'Proposta AI' version that a person promotes with 'Tornar LIVE'; Workbench tools (list_workbench_state, upsert_workbench_thread_reading, set_checklist_status, add_auto_log_entry, open_workbench_alert) only record readings, automatic checklist values, logs and alerts; agents can never approve queue items, move a lead to OPERATIONS or create payment links.";
 var ALL_TOOLS = [
   list_leads_default,
   get_lead_default,
@@ -3970,7 +4103,12 @@ var ALL_TOOLS = [
   draft_client_email_default,
   import_lead_ai_default,
   create_nethunt_deal_default,
-  log_ai_session_default
+  log_ai_session_default,
+  list_workbench_state_default,
+  upsert_workbench_thread_reading_default,
+  set_checklist_status_default,
+  add_auto_log_entry_default,
+  open_workbench_alert_default
 ];
 
 // src/lib/mcp/agent-entry.ts
@@ -3980,10 +4118,10 @@ var guarded = ALL_TOOLS.map((tool) => {
   return {
     ...t,
     handler: async (args, ctx) => {
-      if (!ctx.isAuthenticated()) throw new ToolError42("Not authenticated");
+      if (!ctx.isAuthenticated()) throw new ToolError47("Not authenticated");
       const agent = await agentIdentity(supabaseForUser(ctx), ctx);
-      if (!agent) throw new ToolError42("This endpoint only accepts agent keys (ytp_agent_...)");
-      if (!agent.scopes.includes(t.name)) throw new ToolError42(`Tool ${t.name} is not in this agent key's scopes`);
+      if (!agent) throw new ToolError47("This endpoint only accepts agent keys (ytp_agent_...)");
+      if (!agent.scopes.includes(t.name)) throw new ToolError47(`Tool ${t.name} is not in this agent key's scopes`);
       return t.handler(args, ctx);
     }
   };

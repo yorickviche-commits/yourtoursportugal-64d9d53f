@@ -1686,6 +1686,256 @@
           "$schema": "http://json-schema.org/draft-07/schema#"
         },
         "outputSchema": null
+      },
+      {
+        "name": "list_workbench_state",
+        "title": "List Workbench state",
+        "description": "Read the Workbench: inbox threads, open alerts and checklist for one side (sales/ops) or one lead. Read-only.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "side": {
+              "type": "string",
+              "enum": [
+                "sales",
+                "ops"
+              ],
+              "description": "Mailbox side."
+            },
+            "lead_id": {
+              "type": "string",
+              "description": "Lead uuid."
+            },
+            "lead_code": {
+              "type": "string",
+              "description": "Lead code such as YT5130 or YT-2026-4474."
+            },
+            "limit": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 200,
+              "description": "Max threads (default 50)."
+            }
+          },
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "upsert_workbench_thread_reading",
+        "title": "Record Workbench thread reading",
+        "description": "Store the agent reading of an inbox thread (meaning, what was checked, whose turn, urgency). Never sends email.",
+        "annotations": {
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "thread_id": {
+              "type": "string",
+              "description": "Workbench thread id."
+            },
+            "ai_reading": {
+              "type": "string",
+              "maxLength": 2000,
+              "description": "What the email means."
+            },
+            "ai_checked": {
+              "type": "string",
+              "maxLength": 2000,
+              "description": "What it was verified against."
+            },
+            "ball": {
+              "type": "string",
+              "enum": [
+                "ours",
+                "client",
+                "supplier"
+              ],
+              "description": "Whose turn."
+            },
+            "urgency": {
+              "type": "string",
+              "enum": [
+                "urgent",
+                "today",
+                "week"
+              ],
+              "description": "Urgency."
+            },
+            "urgency_reason": {
+              "type": "string",
+              "maxLength": 500,
+              "description": "Why."
+            }
+          },
+          "required": [
+            "thread_id"
+          ],
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "set_checklist_status",
+        "title": "Set Workbench checklist status",
+        "description": "Set an automatic checklist status for a lead. Values set manually by a person are never overwritten.",
+        "annotations": {
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "lead_id": {
+              "type": "string",
+              "description": "Lead uuid."
+            },
+            "lead_code": {
+              "type": "string",
+              "description": "Lead code such as YT5130 or YT-2026-4474."
+            },
+            "item_key": {
+              "type": "string",
+              "enum": [
+                "guide",
+                "transport",
+                "pickup",
+                "contact",
+                "suppliers",
+                "payment",
+                "briefing",
+                "file",
+                "plan",
+                "costing",
+                "proposal",
+                "followup",
+                "payment_link"
+              ],
+              "description": "Checklist item."
+            },
+            "status": {
+              "type": "string",
+              "enum": [
+                "ok",
+                "pending",
+                "missing",
+                "na"
+              ],
+              "description": "Status."
+            },
+            "note": {
+              "type": "string",
+              "maxLength": 500,
+              "description": "Short note."
+            }
+          },
+          "required": [
+            "item_key",
+            "status"
+          ],
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "add_auto_log_entry",
+        "title": "Add Workbench auto-log entry",
+        "description": "Record something the agent did for a lead in the Workbench daily log.",
+        "annotations": {
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "idempotentHint": false,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "lead_id": {
+              "type": "string",
+              "description": "Lead uuid."
+            },
+            "lead_code": {
+              "type": "string",
+              "description": "Lead code such as YT5130 or YT-2026-4474."
+            },
+            "what": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 300,
+              "description": "What was done."
+            },
+            "trace": {
+              "type": "string",
+              "maxLength": 1000,
+              "description": "Where it can be checked."
+            },
+            "reversible": {
+              "type": "boolean",
+              "description": "Can be undone."
+            }
+          },
+          "required": [
+            "what"
+          ],
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "open_workbench_alert",
+        "title": "Open Workbench alert",
+        "description": "Open one urgent alert for a lead and reason (duplicates are ignored). A person handles it.",
+        "annotations": {
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "lead_id": {
+              "type": "string",
+              "description": "Lead uuid."
+            },
+            "lead_code": {
+              "type": "string",
+              "description": "Lead code such as YT5130 or YT-2026-4474."
+            },
+            "reason": {
+              "type": "string",
+              "minLength": 3,
+              "maxLength": 300,
+              "description": "Why it is urgent."
+            },
+            "next_step": {
+              "type": "string",
+              "maxLength": 300,
+              "description": "Suggested next step."
+            }
+          },
+          "required": [
+            "reason"
+          ],
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
       }
     ]
   }

@@ -14,12 +14,16 @@ export function useWorkbench(side:Side){
  const {user,isAdmin,roles}=useAuth();
  const enabled=!!user&&(isAdmin||roles.includes('sales_agent')||roles.includes('operations_agent'));
  const qc=useQueryClient();const [syncError,setSyncError]=useState('');const [busy,setBusy]=useState(false);
- const tables=['leads','workbench_threads','workbench_checklist','workbench_alerts','workbench_auto_log','ai_action_queue','sales_agent_items','lead_costing_data','lead_versions','lead_payments','tasks'] as const;
+ const tables=['leads','workbench_threads','workbench_checklist','workbench_alerts','workbench_auto_log','ai_action_queue','sales_agent_items','lead_costing_data','lead_versions','lead_payments','tasks','lead_operations','calendar_events'] as const;
  const results=useQueries({queries:tables.map(table=>({queryKey:['workbench',table,side],queryFn:async()=>{
- let q=supabase.from(table as 'workbench_threads').select('*');
+ // Paginate: the Data API returns at most 1000 rows per request.
+ const out:Record<string,any>[]=[];
+ for(let from=0;;from+=1000){let q:any=(supabase as any).from(table).select('*').range(from,from+999);
  if(table==='workbench_threads')q=q.eq('mailbox',side).eq('in_inbox',true);
  if(table==='workbench_alerts'||table==='workbench_auto_log')q=q.filter('side','eq',side);
- const r=await q;if(r.error)throw r.error;return r.data as Record<string,any>[];
+ if(table==='workbench_alerts')q=q.neq('status','handled');
+ const r=await q;if(r.error)throw r.error;out.push(...(r.data as Record<string,any>[]));if(r.data.length<1000)break}
+ return out;
  },enabled,staleTime:15*60*1000,refetchOnWindowFocus:false,refetchInterval:false as const}))});
  const queries=results.map((result,i)=>({...result,table:tables[i]}));
  const rows=(table:typeof tables[number])=>queries.find(q=>q.table===table)?.data||[];

@@ -13,3 +13,8 @@
 - [x] Página Consumo AI (/admin/consumo)
 - [x] JARVIS: copiar ficheiros prontos (página, HTML, função) + deploy
 - [x] Corrigir inclusões dinâmicas sem limite no Planner, proposta e PDF; verificar YT5171.
+
+## Workbench — Lote 2 (12 nov 2026)
+- [x] Correções A1–A6, calendário, regras de urgência 2–5, pendentes, links, propostas, ferramentas MCP
+- [ ] Ligar Gmail operations@yourtours.pt (precisa de pessoa) e associar como GOOGLE_MAIL_API_KEY_1
+- [ ] Dar às chaves de agentes acesso às 5 ferramentas Workbench (Admin)

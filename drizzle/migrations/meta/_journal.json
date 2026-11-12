@@ -204,6 +204,13 @@
       "when": 1794432468939,
       "tag": "0028_workbench_batch_recompute",
       "breakpoints": true
+    },
+    {
+      "idx": 29,
+      "version": "7",
+      "when": 1794470832390,
+      "tag": "0029_workbench_agents_access",
+      "breakpoints": true
     }
   ]
 }

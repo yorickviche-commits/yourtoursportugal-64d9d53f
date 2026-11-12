@@ -1,0 +1,1 @@
+CREATE OR REPLACE FUNCTION public.can_use_workbench(_user_id uuid) RETURNS boolean LANGUAGE sql STABLE SECURITY DEFINER SET search_path=public AS $$ SELECT public.is_admin(_user_id) OR public.has_role(_user_id, 'sales_agent') OR public.has_role(_user_id, 'operations_agent') OR public.is_agent_user(_user_id) $$;

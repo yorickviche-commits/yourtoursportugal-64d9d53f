@@ -8,11 +8,15 @@ Deno.serve(async req=>{
  const {db}=await workbenchUser(req);
  const {side}=z.object({side:z.enum(['sales','ops'])}).parse(await req.json());
  const settings=await db.from('workbench_settings').select('value').eq('key',`mailbox_${side}`).maybeSingle();if(settings.error)throw settings.error;
- const keyName=(settings.data?.value as {secret_name?:string}|null)?.secret_name||'GOOGLE_MAIL_API_KEY';
+ const keyName=(settings.data?.value as {secret_name?:string}|null)?.secret_name;
+ if(!keyName)return json({connected:false,error:`Ligar caixa: falta configurar a caixa ${addresses[side]}`});
+ if(!Deno.env.get(keyName))return json({connected:false,error:`Ligar caixa: liga a conta Gmail ${addresses[side]} nos conectores (Gmail) do workspace e associa-a a este projeto.`});
  if(!/^GOOGLE_MAIL_API_KEY(?:_\d+)?$/.test(keyName))throw new Error('Ligação inválida');
  const profile=await (await gateway('google_mail',keyName,'/gmail/v1/users/me/profile')).json();
  if(profile.emailAddress?.toLowerCase()!==addresses[side])return json({connected:false,error:`Ligar caixa: a ligação atual não corresponde a ${addresses[side]}`});
- const leads=await db.from('leads').select('id,yt_id,email');if(leads.error)throw leads.error;
+ const leads={data:[] as {id:string;yt_id:string|null;email:string|null;bokun_confirmation_code:string|null}[]};
+ for(let f=0;;f+=1000){const r=await db.from('leads').select('id,yt_id,email,bokun_confirmation_code').range(f,f+999);if(r.error)throw r.error;leads.data.push(...(r.data||[]));if((r.data||[]).length<1000)break}
+ const norm=(x:string)=>x.toUpperCase().replace(/[\s-]/g,'');
  const seen:string[]=[];let pageToken='';
  do{
  const list=await (await gateway('google_mail',keyName,`/gmail/v1/users/me/threads?labelIds=INBOX&maxResults=50${pageToken?`&pageToken=${encodeURIComponent(pageToken)}`:''}`)).json();
@@ -31,9 +35,10 @@ Deno.serve(async req=>{
  const t=JSON.parse(http.slice(sep+4).trim());const messages=t.messages||[];const m=[...messages].sort((a,b)=>Number(b.internalDate)-Number(a.internalDate))[0];if(!m)continue;
  const header=(name:string)=>m.payload?.headers?.find((h:{name:string})=>h.name.toLowerCase()===name.toLowerCase())?.value||'';
  const from=header('From');const email=(from.match(/<([^>]+)>/)?.[1]||from).trim();const subject=header('Subject');
- const refs=`${subject} ${messages.map(x=>x.snippet||'').join(' ')}`.match(/\bYT\s*\d{4,}\b/gi)?.map(x=>x.replace(/\s/g,'').toUpperCase())||[];
- const refMatches=leads.data?.filter(l=>l.yt_id&&refs.includes(l.yt_id.replace(/\s/g,'').toUpperCase()))||[];
- const emailMatches=leads.data?.filter(l=>l.email?.toLowerCase()===email.toLowerCase())||[];
+ const text=`${subject} ${messages.map((x:{snippet?:string})=>x.snippet||'').join(' ')}`;
+ const refs=[...(text.match(/\bYT[\s-]*\d{4}(?:[\s-]*\d{3,})?\b/gi)||[]),...(text.match(/\b[A-Z]{2,5}-\d{5,}\b/g)||[])].map(norm);
+ const refMatches=leads.data.filter(l=>(l.yt_id&&refs.includes(norm(l.yt_id)))||(l.bokun_confirmation_code&&refs.includes(norm(l.bokun_confirmation_code))));
+ const emailMatches=leads.data.filter(l=>l.email?.toLowerCase()===email.toLowerCase())||[];
  const lead=refMatches.length===1?refMatches[0]:refMatches.length===0&&emailMatches.length===1?emailMatches[0]:null;
  const up=await db.from('workbench_threads').upsert({mailbox:side,gmail_thread_id:t.id,subject,from_email:email,from_name:from.replace(/<[^>]+>/,'').replace(/"/g,'').trim(),snippet:m.snippet||t.snippet,message_count:messages.length,last_message_at:new Date(Number(m.internalDate)).toISOString(),in_inbox:messages.some(x=>x.labelIds?.includes('INBOX')),lead_id:lead?.id||null,yt_ref:lead?.yt_id||refs[0]||null,updated_at:new Date().toISOString()},{onConflict:'mailbox,gmail_thread_id'});if(up.error)throw up.error;
  }

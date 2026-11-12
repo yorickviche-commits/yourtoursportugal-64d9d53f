@@ -15,9 +15,11 @@ export function belongsToSide(lead: {nethunt_stage?:string|null;status?:string|n
   if (lead.nethunt_stage) return lead.nethunt_stage.startsWith(side==='ops'?'OPERATIONS':'SALES');
   return side==='ops' ? lead.status==='won' : lead.status!=='won';
 }
-export function matchThread(text:string,email:string,leads:{id:string;yt_id?:string|null;email?:string|null}[]) {
-  const refs=text.match(/\bYT\s*\d{4,}\b/gi)?.map(s=>s.replace(/\s/g,'').toUpperCase())||[];
-  const byRef=leads.filter(l=>l.yt_id && refs.includes(l.yt_id.replace(/\s/g,'').toUpperCase()));
+export const normRef=(x:string)=>x.toUpperCase().replace(/[\s-]/g,'');
+export const findRefs=(text:string)=>[...(text.match(/\bYT[\s-]*\d{4}(?:[\s-]*\d{3,})?\b/gi)||[]),...(text.match(/\b[A-Z]{2,5}-\d{5,}\b/g)||[])].map(normRef);
+export function matchThread(text:string,email:string,leads:{id:string;yt_id?:string|null;email?:string|null;bokun_confirmation_code?:string|null}[]) {
+  const refs=findRefs(text);
+  const byRef=leads.filter(l=>(l.yt_id && refs.includes(normRef(l.yt_id)))||(l.bokun_confirmation_code&&refs.includes(normRef(l.bokun_confirmation_code))));
   if(byRef.length===1)return byRef[0];
   if(byRef.length>1)return null;
   const byEmail=leads.filter(l=>email && l.email?.trim().toLowerCase()===email.toLowerCase());
