@@ -1689,8 +1689,8 @@
       },
       {
         "name": "list_workbench_state",
-        "title": "List Workbench state",
-        "description": "Read the Workbench: inbox threads, open alerts and checklist for one side (sales/ops) or one lead. Read-only.",
+        "title": "List YT Cockpit state",
+        "description": "Read the YT Cockpit: inbox threads, open alerts and checklist for one side (sales/ops) or one lead. Read-only.",
         "annotations": {
           "readOnlyHint": true,
           "idempotentHint": true,
@@ -1733,7 +1733,7 @@
       },
       {
         "name": "upsert_workbench_thread_reading",
-        "title": "Record Workbench thread reading",
+        "title": "Record YT Cockpit thread reading",
         "description": "Store the agent reading of an inbox thread (meaning, what was checked, whose turn, urgency). Never sends email.",
         "annotations": {
           "readOnlyHint": false,
@@ -1746,7 +1746,7 @@
           "properties": {
             "thread_id": {
               "type": "string",
-              "description": "Workbench thread id."
+              "description": "YT Cockpit thread id."
             },
             "ai_reading": {
               "type": "string",
@@ -1792,7 +1792,7 @@
       },
       {
         "name": "set_checklist_status",
-        "title": "Set Workbench checklist status",
+        "title": "Set YT Cockpit checklist status",
         "description": "Set an automatic checklist status for a lead. Values set manually by a person are never overwritten.",
         "annotations": {
           "readOnlyHint": false,
@@ -1857,8 +1857,8 @@
       },
       {
         "name": "add_auto_log_entry",
-        "title": "Add Workbench auto-log entry",
-        "description": "Record something the agent did for a lead in the Workbench daily log.",
+        "title": "Add YT Cockpit auto-log entry",
+        "description": "Record something the agent did for a lead in the YT Cockpit daily log.",
         "annotations": {
           "readOnlyHint": false,
           "destructiveHint": false,
@@ -1902,7 +1902,7 @@
       },
       {
         "name": "open_workbench_alert",
-        "title": "Open Workbench alert",
+        "title": "Open YT Cockpit alert",
         "description": "Open one urgent alert for a lead and reason (duplicates are ignored). A person handles it.",
         "annotations": {
           "readOnlyHint": false,
