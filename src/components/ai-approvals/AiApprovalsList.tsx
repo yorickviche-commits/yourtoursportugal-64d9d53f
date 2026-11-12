@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import MobileFilePanel from '@/components/mobile/MobileFilePanel';
 import { Link } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Check, X, Pencil, Loader2, Mail, CreditCard, Truck, Paperclip } from 'lucide-react';
@@ -62,7 +63,7 @@ async function toBase64(blob: Blob) {
 
 async function execute(item: QueueItem, p: Record<string, any>) {
   if (item.type === 'payment_link') {
-    const { data: lead } = await supabase.from('leads').select('travel_dates, travel_end_date').eq('id', item.lead_id!).maybeSingle();
+    const { data: lead } = await supabase.from('leads').select('travel_dates, travel_end_date').eq('id', item.lead_id ?? '').maybeSingle();
     const body = {
       action: 'create', lead_id: item.lead_id, proposal_id: p.proposal_id ?? null,
       title: p.description || item.title, trip_ref: p.trip_ref ?? item.lead_code,
@@ -117,7 +118,7 @@ function Preview({ item, p }: { item: QueueItem; p: Record<string, any> }) {
           <a key={a.filename} href={a.signed_url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-[hsl(var(--info))] hover:underline mr-3"><Paperclip className="h-3 w-3" />{a.filename}</a>
         ))}
       </div>
-      <iframe title="preview" sandbox="" srcDoc={p.html || ''} className="w-full h-72 rounded border bg-background" />
+      <iframe title="preview" sandbox="" srcDoc={p.html || ''} className="w-full h-72 max-md:h-[50dvh] rounded border bg-background" />
     </div>
   );
 }
@@ -126,7 +127,7 @@ function Card({ item }: { item: QueueItem }) {
   const qc = useQueryClient();
   const { toast } = useToast();
   const [editing, setEditing] = useState(false);
-  const [open, setOpen] = useState(item.status === 'pending');
+  const [open, setOpen] = useState(!window.matchMedia('(max-width: 767px)').matches && item.status === 'pending');
   const [draft, setDraft] = useState<Record<string, any>>(item.payload || {});
   const [busy, setBusy] = useState<string | null>(null);
   const Meta = TYPE_META[item.type];
@@ -170,7 +171,7 @@ function Card({ item }: { item: QueueItem }) {
 
   return (
     <div className="bg-card rounded-lg border">
-      <button onClick={() => setOpen(o => !o)} className="w-full text-left p-3 flex items-start gap-3">
+      <Button variant="ghost" onClick={() => setOpen(o => !o)} className="w-full h-auto whitespace-normal text-left p-3 flex items-start gap-3">
         <Meta.icon className="h-4 w-4 mt-0.5 shrink-0 text-muted-foreground" />
         <div className="min-w-0 flex-1">
           <p className="text-sm font-medium truncate">{item.title}</p>
@@ -181,26 +182,26 @@ function Card({ item }: { item: QueueItem }) {
           {item.error && <p className="text-xs text-[hsl(var(--urgent))] mt-1">{item.error}</p>}
         </div>
         <Badge className={cn('shrink-0 border-0', STATUS_CLS[item.status])}>{STATUS_PT[item.status] ?? item.status}</Badge>
-      </button>
-      {open && (
+      </Button>
+      <MobileFilePanel open={open} onClose={()=>setOpen(false)} title={item.title}>{open && (
         <div className="px-3 pb-3 space-y-3 border-t pt-3">
           {editing ? (
             item.type === 'payment_link' ? (
               <div className="grid grid-cols-2 gap-2">
-                <Input type="number" step="0.01" value={draft.amount_eur ?? ''} onChange={e => setDraft({ ...draft, amount_eur: Number(e.target.value) })} placeholder="Montante €" />
+                <Input type="number" inputMode="decimal" step="0.01" value={draft.amount_eur ?? ''} onChange={e => setDraft({ ...draft, amount_eur: Number(e.target.value) })} placeholder="Montante €" />
                 <Input value={draft.description ?? ''} onChange={e => setDraft({ ...draft, description: e.target.value })} placeholder="Descrição" />
               </div>
             ) : (
               <div className="space-y-2">
-                <Input value={draft.to ?? ''} onChange={e => setDraft({ ...draft, to: e.target.value })} placeholder="Para" />
+                <Input type="email" inputMode="email" value={draft.to ?? ''} onChange={e => setDraft({ ...draft, to: e.target.value })} placeholder="Para" />
                 <Input value={draft.subject ?? ''} onChange={e => setDraft({ ...draft, subject: e.target.value })} placeholder="Assunto" />
                 <Textarea rows={10} className="font-mono text-xs" value={draft.html ?? ''} onChange={e => setDraft({ ...draft, html: e.target.value })} />
               </div>
             )
           ) : <Preview item={item} p={draft} />}
           {actionable && (
-            <div className="flex flex-wrap gap-2 sticky bottom-0 bg-card pt-1">
-              <Button size="sm" onClick={approve} disabled={!!busy} className="min-h-[44px] sm:min-h-0 bg-[hsl(var(--success))] text-primary-foreground hover:opacity-90">
+            <div className="ai-mobile-actions flex flex-wrap gap-2 sticky bottom-0 bg-card pt-1">
+              <Button size="sm" onClick={approve} disabled={!!busy} className="min-h-[44px] sm:min-h-0 bg-success text-success-foreground hover:opacity-90">
                 {busy === 'approve' ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Check className="h-3.5 w-3.5" />} Aprovar e executar
               </Button>
               <Button size="sm" variant="secondary" onClick={() => setEditing(e => !e)} disabled={!!busy} className="min-h-[44px] sm:min-h-0">
@@ -217,7 +218,7 @@ function Card({ item }: { item: QueueItem }) {
             <a href={item.result.payment_link.checkout_url} target="_blank" rel="noreferrer" className="text-xs text-[hsl(var(--info))] hover:underline">Abrir link WeTravel →</a>
           )}
         </div>
-      )}
+      )}</MobileFilePanel>
     </div>
   );
 }

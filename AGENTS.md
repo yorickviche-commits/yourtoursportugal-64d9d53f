@@ -15,3 +15,5 @@
 - Workbench is additive and read-only toward external services; its checklist RPC updates auto rows only, and page approvals only record review without invoking execution. Why: preserve existing sync ownership, manual overrides and human control.
 - Workbench UI, recompute and MCP share pure scope rules in the edge shared directory; archive status is derived, not persisted. Why: keep Lisbon dates and active filters consistent without stage mutations or new scheduled calls.
 - Finance tables: admins + finance role read; only humans (admin/finance, non-agent) approve/reject batch items and the guard trigger limits them to validation fields; all other writes come from agent users or service role, and only approved items become executed/failed. Why: agents propose, accounting validates.
+- Daily phone navigation and file review reuse existing queries/actions through breakpoint-gated navigation and Vaul drawers; phone styling stays below 768px. Why: preserve desktop and avoid a second operational logic path.
+- Home-screen installation uses a manifest and icons only, without an app-shell service worker. Why: installation was requested but offline caching was not.

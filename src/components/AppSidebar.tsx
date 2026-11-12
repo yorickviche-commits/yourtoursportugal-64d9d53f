@@ -16,6 +16,7 @@ import { usePagePermissions } from '@/hooks/usePagePermissions';
 import { PageKey } from '@/lib/pagePermissions';
 import BrandLogo from './BrandLogo';
 import { useAiQueue } from './ai-approvals/AiApprovalsList';
+import MobileNavigation from './mobile/MobileNavigation';
 
 interface NavItem { to: string; icon: any; label: string; pageKey: PageKey; }
 
@@ -333,7 +334,7 @@ const AppSidebar = () => {
   if (isMobile) {
     return (
       <>
-        <MobileMenuButton onClick={() => setMobileOpen(true)} />
+        <MobileNavigation onMore={() => setMobileOpen(true)} />
         <MobileMenu open={mobileOpen} onClose={() => setMobileOpen(false)} />
       </>
     );

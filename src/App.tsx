@@ -55,6 +55,7 @@ import AdminAiUsagePage from "./pages/AdminAiUsagePage";
 import JarvisLiveMapPage from "./pages/JarvisLiveMapPage";
 import JarvisPage from "./pages/JarvisPage";
 import WorkbenchPage from "./pages/WorkbenchPage";
+import AiApprovalsPage from "./pages/AiApprovalsPage";
 import ProfilePage from "./pages/ProfilePage";
 import ProductsPage from "./pages/ProductsPage";
 import ProductDetailPage from "./pages/ProductDetailPage";
@@ -121,6 +122,7 @@ const App = () => (
             <Route path="/agents/dashboard" element={<Navigate to="/agents" replace />} />
             <Route path="/agents/spark-legacy" element={<ProtectedRoute><AgentControlPage /></ProtectedRoute>} />
             <Route path="/agents/approvals" element={<Navigate to="/agents" replace />} />
+            <Route path="/approvals/ai" element={<ProtectedRoute><AiApprovalsPage /></ProtectedRoute>} />
             <Route path="/approvals" element={<ProtectedRoute><ApprovalsPage /></ProtectedRoute>} />
             <Route path="/tasks" element={<ProtectedRoute><TasksPage /></ProtectedRoute>} />
             <Route path="/crm" element={<ProtectedRoute><CRMPage /></ProtectedRoute>} />

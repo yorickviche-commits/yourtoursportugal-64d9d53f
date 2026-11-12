@@ -1,4 +1,6 @@
 import {useEffect,useMemo,useState} from 'react';
+import {useIsMobile} from '@/hooks/use-mobile';
+import MobileFilePanel from '@/components/mobile/MobileFilePanel';
 import {Link} from 'react-router-dom';
 import {Button} from '@/components/ui/button';
 import {Badge} from '@/components/ui/badge';
@@ -15,8 +17,8 @@ const tones:Record<Tone,string>={sales:'bg-info/15 text-info border-info',pre:'b
 const label:Record<Tone,string>={sales:'Oferta',pre:'PRÉ-RESERVA',ops:'Reserva confirmada',confirmed:'Confirmado',waiting:'A aguardar confirmação',hotel:'Hotel'};
 // Read-only: this calendar never writes to Google Calendar.
 export default function WorkbenchCalendar({side,leads,operations,payments,total,onOpen}:{side:Side;leads:Row[];operations:Row[];payments:Row[];total:(id:string)=>number;onOpen:(id:string)=>void}){
- const todayKey=lisbonToday();const [showPast,setShowPast]=useState(false);
- const [view,setView]=useState<'day'|'week'|'month'>('week');const [cursor,setCursor]=useState(()=>new Date(`${lisbonToday()}T12:00:00Z`));const [overlay,setOverlay]=useState(false);
+ const mobile=useIsMobile();const todayKey=lisbonToday();const [showPast,setShowPast]=useState(false);
+ const [view,setView]=useState<'day'|'week'|'month'>(()=>window.matchMedia('(max-width: 767px)').matches?'day':'week');const [cursor,setCursor]=useState(()=>new Date(`${lisbonToday()}T12:00:00Z`));const [overlay,setOverlay]=useState(false);
  const [gcal,setGcal]=useState<Row[]|null>(null);const [gError,setGError]=useState('');const [open,setOpen]=useState<Ev|null>(null);
  const range=useMemo(()=>{const s=new Date(Date.UTC(cursor.getUTCFullYear(),cursor.getUTCMonth(),cursor.getUTCDate()));if(view==='week')s.setUTCDate(s.getUTCDate()-((s.getUTCDay()+6)%7));if(view==='month')s.setUTCDate(1);const e=new Date(s);if(view==='day')e.setUTCDate(e.getUTCDate()+1);else if(view==='week')e.setUTCDate(e.getUTCDate()+7);else e.setUTCMonth(e.getUTCMonth()+1);return {s,e}},[cursor,view]);
  useEffect(()=>{if(side!=='ops')return;let off=false;setGError('');workbenchInvoke('workbench-calendar',{from:range.s.toISOString(),to:range.e.toISOString()}).then(r=>{if(!off)setGcal(r.events||[])}).catch(e=>{if(!off){setGcal(null);setGError(e instanceof Error?e.message:String(e))}});return()=>{off=true}},[side,range.s.getTime(),range.e.getTime()]);
@@ -35,19 +37,19 @@ export default function WorkbenchCalendar({side,leads,operations,payments,total,
  const move=(n:number)=>{setShowPast(true);const c=new Date(cursor);if(view==='day')c.setUTCDate(c.getUTCDate()+n);else if(view==='week')c.setUTCDate(c.getUTCDate()+7*n);else c.setUTCMonth(c.getUTCMonth()+n);setCursor(c)};
  const lead=open?.leadId?leads.find(l=>l.id===open.leadId):null;const ops=lead?operations.filter(o=>o.lead_id===lead.id):[];
  return <div className="space-y-3">
-  <div className="flex flex-wrap gap-2 items-center"><div className="flex gap-1">{(['day','week','month'] as const).map(v=><Button key={v} size="sm" variant={view===v?'default':'outline'} onClick={()=>setView(v)}>{v==='day'?'Dia':v==='week'?'Semana':'Mês'}</Button>)}</div>
+  <div className="flex flex-wrap gap-2 items-center"><div className="flex gap-1">{(['day','week','month'] as const).map(v=><Button key={v} size="sm" variant={view===v?'default':'outline'} onClick={()=>setView(v)}>{v==='day'?(mobile?'Agenda / Dia':'Dia'):v==='week'?'Semana':'Mês'}</Button>)}</div>
   <Button size="sm" variant="outline" aria-label="Anterior" onClick={()=>move(-1)}>‹</Button><Button size="sm" variant="outline" onClick={()=>{setShowPast(false);setCursor(new Date(`${todayKey}T12:00:00Z`))}}>Hoje</Button><Button size="sm" variant="outline" aria-label="Seguinte" onClick={()=>move(1)}>›</Button>
   <span className="text-sm font-medium">{range.s.toLocaleDateString('pt-PT',{month:'long',year:'numeric',timeZone:'UTC'})}</span>
   {side==='sales'&&<label className="flex gap-2 items-center text-sm ml-auto"><Switch checked={overlay} onCheckedChange={setOverlay}/>Mostrar reservas confirmadas</label>}</div>
   {side==='ops'&&gError&&<p className="text-sm">Não foi possível ler o calendário Reservas YT. A mostrar as viagens em Operações do TCC. <span className="text-muted-foreground break-words">({gError.slice(0,140)})</span></p>}
   <div className="grid lg:grid-cols-[minmax(0,1fr)_320px] gap-4 items-start">
   <div className={cn('grid gap-1',view==='day'?'grid-cols-1':'grid-cols-1 sm:grid-cols-7')}>{days.map(d=><div key={d.toISOString()} className={cn('border border-border rounded-md p-1 min-h-20 min-w-0',dayKey(d)===dayKey(new Date())&&'border-primary')}><div className="text-xs text-muted-foreground">{d.toLocaleDateString('pt-PT',{weekday:'short',day:'numeric',timeZone:'UTC'})}</div>{on(d).slice(0,view==='month'?4:20).map(e=><Button variant="ghost" key={e.id+dayKey(d)} onClick={()=>setOpen(e)} className={cn('w-full text-left text-xs border rounded px-1 py-0.5 mt-1 truncate',tones[e.tone],dayKey(d)<todayKey&&'opacity-40','h-auto justify-start')}>{e.tone==='pre'&&<strong>PRÉ-RESERVA · </strong>}{e.ref} {e.title}</Button>)}{view==='month'&&on(d).length>4&&<small>+{on(d).length-4}</small>}</div>)}</div>
-  {open?<Card><CardHeader><CardTitle className="text-base flex justify-between gap-2">{open.ref}<Button size="sm" variant="ghost" onClick={()=>setOpen(null)}>Fechar</Button></CardTitle></CardHeader><CardContent className="text-sm space-y-1">
+  <MobileFilePanel open={!!open} onClose={()=>setOpen(null)} title={open?.ref||'Evento'}>{open?<Card><CardHeader><CardTitle className="text-base flex justify-between gap-2">{open.ref}<Button size="sm" variant="ghost" onClick={()=>setOpen(null)}>Fechar</Button></CardTitle></CardHeader><CardContent className="text-sm space-y-1">
    <p className="font-medium break-words">{open.title}</p><Badge className={tones[open.tone]}>{label[open.tone]}</Badge>
    <p>{new Date(open.start).toLocaleDateString('pt-PT')}{open.start?.length>10?` · ${new Date(open.start).toLocaleTimeString('pt-PT',{hour:'2-digit',minute:'2-digit',timeZone:'Europe/Lisbon'})}`:''}</p>
    {lead&&<><p>{lead.pax??'?'} pax</p><p>Guia: {ops.filter(o=>/guia|guide/i.test(o.activity_title||'')).map(o=>o.supplier).filter(Boolean).join(', ')||'Por atribuir'}</p><p>Fornecedores confirmados: {ops.filter(o=>['booked','confirmed'].includes(o.booking_status)).length} de {ops.length}</p><p>Estado: {lead.nethunt_stage||lead.status}</p></>}
    {open.note&&<p className="text-muted-foreground line-clamp-4 break-words">{open.note}</p>}
    <div className="flex flex-wrap gap-2 pt-2">{lead&&<Button size="sm" onClick={()=>onOpen(lead.id)}>Abrir file</Button>}{lead&&<Button size="sm" variant="outline" asChild><Link to={`/leads/${lead.id}`}>File TCC</Link></Button>}{open.link&&<Button size="sm" variant="outline" asChild><a href={open.link} target="_blank" rel="noreferrer">Ver no Calendar</a></Button>}</div>
-  </CardContent></Card>:<p className="text-sm text-muted-foreground">Clica num evento para ver os detalhes.</p>}
+  </CardContent></Card>:<p className="text-sm text-muted-foreground">Clica num evento para ver os detalhes.</p>}</MobileFilePanel>
   </div></div>;
 }

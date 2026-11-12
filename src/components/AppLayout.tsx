@@ -16,7 +16,7 @@ const AppLayout = ({ children }: { children: ReactNode }) => {
       <AppSidebar />
       <main className={
         isMobile
-          ? "p-4 pt-14 pb-28 max-w-full"
+          ? "mobile-app-main p-4 max-w-full min-w-0"
           : "ml-[56px] p-6 pb-28 max-w-[1400px] transition-all duration-200"
       }>
         <div className="mb-4 hidden justify-end md:flex">
@@ -24,10 +24,12 @@ const AppLayout = ({ children }: { children: ReactNode }) => {
         </div>
         {children}
       </main>
-      <NewLeadFAB onClick={() => setNewLeadOpen(true)} />
-      <TourLauncher />
-      <AssistantLauncher />
-      <FeedbackLauncher />
+      <div className="hidden md:contents">
+        <NewLeadFAB onClick={() => setNewLeadOpen(true)} />
+        <TourLauncher />
+        <AssistantLauncher />
+        <FeedbackLauncher />
+      </div>
       <NewLeadDialog open={newLeadOpen} onOpenChange={setNewLeadOpen} />
     </div>
   );

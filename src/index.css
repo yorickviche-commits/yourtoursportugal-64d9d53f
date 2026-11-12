@@ -273,3 +273,80 @@
 [data-print-mode] [data-interactive] {
   display: none !important;
 }
+
+/* Phone-only operational shell; desktop sizing and presentation stay unchanged. */
+@media (max-width: 767px) {
+  html, body, #root { max-width: 100%; overflow-x: clip; }
+  body { letter-spacing: 0; }
+  .mobile-app-header { height: calc(52px + env(safe-area-inset-top)); padding-top: env(safe-area-inset-top); }
+  .mobile-app-main { padding-top: calc(72px + env(safe-area-inset-top)); padding-bottom: calc(92px + env(safe-area-inset-bottom)); }
+  .mobile-bottom-nav { padding-bottom: env(safe-area-inset-bottom); box-shadow: var(--shadow-md); }
+  .mobile-app-main button, .mobile-app-main [role="combobox"], .mobile-file-sheet button, .mobile-bottom-nav a { min-height: 44px; }
+  .mobile-app-main input, .mobile-app-main textarea, .mobile-app-main select, [role="dialog"] input, [role="dialog"] textarea { font-size: 16px; min-height: 44px; }
+  .mobile-app-main input, .mobile-app-main textarea { min-width: 0; }
+  .mobile-file-sheet { border-radius: 20px 20px 0 0; padding-bottom: env(safe-area-inset-bottom); }
+  .mobile-file-scroll { padding-bottom: calc(24px + env(safe-area-inset-bottom)); }
+  .mobile-file-sheet [class*="rounded-lg"], .cockpit-page [class*="rounded-lg"] { border-radius: 16px; }
+  .mobile-file-sheet [class*="grid-cols-2"] { grid-template-columns: minmax(0, 1fr); }
+  .mobile-file-sheet p, .mobile-file-sheet span { overflow-wrap: anywhere; }
+  .cockpit-header { position: sticky; top: calc(52px + env(safe-area-inset-top)); z-index: 20; background: hsl(var(--background)); padding: 12px 0; }
+  .cockpit-header h1 { font-size: 22px; }
+  .cockpit-header > div:first-child { gap: 8px; }
+  .cockpit-header > div:first-child a { width: 44px; padding: 0; font-size: 0; }
+  .cockpit-header > div:first-child a svg { margin: 0; }
+  .cockpit-header > div:last-child { gap: 12px; }
+  .cockpit-segments { display: grid; grid-template-columns: minmax(0,1fr) minmax(0,1fr); width: 100%; background: hsl(var(--card)); border-radius: 14px; padding: 4px; gap: 4px; }
+  .cockpit-segments > button { font-size: 13px; white-space: normal; border-radius: 10px; }
+  .cockpit-segments > button:nth-child(n+3) { min-height: 36px; font-size: 12px; border: none; background: transparent; color: hsl(var(--foreground)); }
+  .cockpit-counters { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 10px; width: 100%; font-size: 11px; }
+  .cockpit-counters span { line-height: 1.4; }
+  .cockpit-counters strong { display: block; font-size: 22px; }
+  .cockpit-page section { padding-top: 20px; }
+  .cockpit-page h2 { font-size: 18px; }
+  .cockpit-page section > div > button { border-radius: 14px; padding: 16px; }
+  .cockpit-file-card { background: hsl(var(--card)); border: 1px solid hsl(var(--border)); padding: 16px; border-radius: 16px; margin-bottom: 12px; box-shadow: var(--shadow-xs); }
+  .cockpit-file-card > div:first-child { align-items: flex-start; }
+  .cockpit-file-card > div:first-child button { font-size: 15px; line-height: 1.4; flex: 1; justify-content: flex-start; }
+  .cockpit-file-card > div:first-child > span { font-size: 12px; max-width: 96px; text-align: right; }
+  .cockpit-status-dots > div { width: 16px; height: 16px; font-size: 0; padding: 0; border-radius: 50%; }
+  .cockpit-status-dots > div.bg-success-muted { background: hsl(var(--success)); }
+  .cockpit-status-dots > div.bg-warning-muted { background: hsl(var(--warning)); }
+  .cockpit-status-dots > div.text-destructive { background: hsl(var(--destructive)); }
+  .mobile-urgent-sheet { inset: 0; width: 100%; max-width: none; height: 100dvh; transform: none; border-radius: 0; display: flex; flex-direction: column; justify-content: center; padding: calc(24px + env(safe-area-inset-top)) 24px calc(24px + env(safe-area-inset-bottom)); }
+  .mobile-urgent-sheet h2 { font-size: 28px; color: hsl(var(--destructive)); }
+  .mobile-urgent-sheet p { font-size: 17px; line-height: 1.6; }
+  .mobile-urgent-sheet button { min-height: 52px; }
+  .finance-panel > div { background: transparent; border: none; box-shadow: none; }
+  .finance-panel > div > div { padding-left: 0; padding-right: 0; }
+  .finance-panel [class*="rounded-md"] { border-radius: 16px; background: hsl(var(--card)); padding: 16px; }
+  .finance-standard-action { position: fixed; bottom: calc(76px + env(safe-area-inset-bottom)); left: 16px; right: 16px; z-index: 30; box-shadow: var(--shadow-lg); min-height: 48px; font-size: 14px; }
+  .finance-panel { padding-bottom: 64px; }
+  .finance-validate { display: grid; grid-template-columns: minmax(0,1fr) minmax(0,1fr); }
+  .finance-validate input { grid-column: 1 / -1; grid-row: 1; }
+  .ai-mobile-actions { position: sticky; bottom: -16px; padding: 12px 0 calc(12px + env(safe-area-inset-bottom)); z-index: 10; display: grid; grid-template-columns: 1fr 1fr; }
+  .ai-mobile-actions button:first-child { grid-column: 1 / -1; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .mobile-file-sheet, .mobile-urgent-sheet { animation: none !important; transition: none !important; }
+}
+
+@media (max-width: 767px) {
+ .cockpit-page section > div > button > div { width: 100%; min-width: 0; }
+ .cockpit-page section > div > button { max-width: 100%; }
+ .cockpit-page section > div > button p { white-space: normal; overflow-wrap: anywhere; }
+ .cockpit-page section > div > button [class*="truncate"] { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+ .cockpit-page section > div > button [class*="text-xs"] { flex-wrap: wrap; }
+ .cockpit-page section > div > button [class*="inline-flex"] { max-width: 100%; white-space: normal; text-align: left; }
+ .mobile-file-scroll > .border-t { display: flex; flex-direction: column; flex: 1; }
+ .ai-mobile-actions { margin-top: auto; flex-shrink: 0; }
+ .finance-panel > div:first-child > div:first-child { padding-bottom: 16px; }
+ .finance-standard-action { width: calc(100% - 32px); }
+}
+
+@media (max-width: 767px) {
+ .mobile-file-scroll > .border-t { min-height: 100%; }
+ .finance-standard-action:disabled { display: none; }
+ .mobile-app-main button[role="switch"] { min-height: 24px; }
+ .mobile-file-sheet:has(.ai-mobile-actions) .mobile-file-scroll { padding-bottom: 168px; }
+ .ai-mobile-actions { position: fixed; inset-inline: 16px; bottom: 0; padding-bottom: calc(16px + env(safe-area-inset-bottom)); margin-top: 0; background: hsl(var(--background)); }
+}

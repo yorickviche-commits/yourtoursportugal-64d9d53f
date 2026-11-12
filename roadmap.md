@@ -1,4 +1,11 @@
 # Roadmap
+- [x] Mobile lot: shell with bottom tabs, badges, safe areas and compact header; desktop checked at 1440px.
+- [x] Mobile lot: Cockpit file cards/panel, touch checklist, urgency sheet, day calendar, finance layout and pull-to-refresh; real Sales/Ops threads checked at both phone sizes.
+- [ ] Mobile next lot: compact overflow menu for Archive/Finance; direct inbox reply/archive shortcuts require an approved write path (mirror remains read-only); paginated Archive and mobile summary of missing items.
+- [x] Mobile lot: AI approval review sheet, edit/preview and fixed primary actions; no approval execution triggered during tests.
+- [ ] Mobile next lot: complete lead details, Operations/Costing cards, filter sheets and sticky daily actions.
+- [x] Mobile lot: manifest-only installation and icons; verified 390×844, 360×780, desktop and zero service workers; not published. Physical iPhone installation remains unverified.
+- [ ] Mobile validation: finance approval/rejection with a real pending batch (currently empty); checklist write/reload and touch pull-refresh/gesture checks.
 - [x] Workbench: âmbito futuro Lisboa, Arquivo consultável e pendências, emails novos, calendários e MCP; 23 testes, consulta real e contagens verificadas.
 - [x] Workbench entrega inicial: navegação protegida, estrutura inbox/file, aprovação sem execução, checklists e prontidão; teste real de valor manual/reload e recompute em lote.
 - [ ] Workbench caixas Gmail: aguarda renovar consentimento da ligação existente e ligar/verificar operations@; inbox real não pôde ser testado.
