@@ -3936,7 +3936,49 @@ var log_ai_session_default = defineTool35({
 // src/lib/mcp/tools/list-workbench-state.ts
 import { defineTool as defineTool36, ToolError as ToolError42 } from "npm:@lovable.dev/mcp-js@0.26.1";
 import { z as z34 } from "npm:zod@^3.25.76";
+
+// supabase/functions/_shared/workbenchScope.ts
+var lisbonToday = (now = /* @__PURE__ */ new Date()) => new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Lisbon", year: "numeric", month: "2-digit", day: "2-digit" }).format(now);
+var workbenchSide = (l) => /^OPERATIONS/i.test(l.nethunt_stage || "") || !/^SALES/i.test(l.nethunt_stage || "") && l.status === "won" ? "ops" : "sales";
+function workbenchScope(l, today = lisbonToday()) {
+  const side = workbenchSide(l), stage = l.nethunt_stage || "", start = l.trip_start?.slice(0, 10) || null;
+  const date = side === "ops" ? l.trip_finish?.slice(0, 10) || start : start;
+  const reason = /archive/i.test(stage) ? "arquivada" : /lost|cancelled|canceled/i.test(l.status || "") || /cancelled|canceled/i.test(stage) ? "perdida-cancelada" : date && date < today ? "data passada" : null;
+  const deferred = /deferred|postponed/i.test(stage);
+  const eligible = side === "ops" ? l.status === "won" || /^OPERATIONS/i.test(stage) : stage ? /New Lead|Budgeting\s*&\s*Fine-Tuning|Final Negotiation\s*&\s*Ready to Book/i.test(stage) : ["new", "contacted", "qualified", "proposal_sent", "negotiation"].includes(l.status || "new");
+  return { side, date, reason, archived: !!reason, active: !reason && !deferred && eligible && (side === "sales" || !!date), undated: !start, deferred };
+}
+function archiveCutoff(l, today = lisbonToday()) {
+  const s = workbenchScope(l, today);
+  if (s.reason === "data passada" && s.date) {
+    const next = /* @__PURE__ */ new Date(`${s.date}T12:00:00Z`);
+    next.setUTCDate(next.getUTCDate() + 1);
+    const key = next.toISOString().slice(0, 10);
+    const utc = Date.parse(`${key}T00:00:00Z`);
+    return lisbonToday(new Date(utc - 36e5)) === key ? utc - 36e5 : utc;
+  }
+  return Date.parse(l.nethunt_updated_at || l.updated_at || "") || Infinity;
+}
+function activeWorkbenchThread(t, lead6, today = lisbonToday()) {
+  if (!t.lead_id) return true;
+  if (!lead6) return false;
+  const s = workbenchScope(lead6, today);
+  if (s.active) return true;
+  return s.archived && !/^(reservas|operations)@yourtours\.pt$/i.test(t.from_email || "") && Date.parse(t.last_message_at || "") >= archiveCutoff(lead6, today);
+}
+
+// src/lib/mcp/tools/list-workbench-state.ts
 var lead = { lead_id: z34.string().optional().describe("Lead uuid."), lead_code: z34.string().optional().describe("Lead code such as YT5130 or YT-2026-4474.") };
+async function all(q) {
+  const out = [];
+  for (let from = 0; ; from += 1e3) {
+    const r = await q.range(from, from + 999);
+    fail(r.error);
+    out.push(...r.data || []);
+    if ((r.data || []).length < 1e3) break;
+  }
+  return out;
+}
 var fail = (e) => {
   if (e) throw new ToolError42(e.message);
 };
@@ -3944,14 +3986,19 @@ var list_workbench_state_default = defineTool36({
   name: "list_workbench_state",
   title: "List Workbench state",
   description: "Read the Workbench: inbox threads, open alerts and checklist for one side (sales/ops) or one lead. Read-only.",
-  inputSchema: { side: z34.enum(["sales", "ops"]).optional().describe("Mailbox side."), ...lead, limit: z34.number().int().min(1).max(200).optional().describe("Max threads (default 50).") },
+  inputSchema: { include_archived: z34.boolean().optional().describe("Include all files and archived inbox threads (default false)."), side: z34.enum(["sales", "ops"]).optional().describe("Mailbox side."), ...lead, limit: z34.number().int().min(1).max(200).optional().describe("Max threads (default 50).") },
   annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
-  handler: async ({ side, lead_id, lead_code, limit }, ctx) => {
+  handler: async ({ side, lead_id, lead_code, limit, include_archived }, ctx) => {
     if (!ctx.isAuthenticated()) throw new ToolError42("Not authenticated");
     const db = supabaseForUser(ctx);
-    const l = lead_id || lead_code ? await resolveLead(db, { lead_id, lead_code }, "id,yt_id,nethunt_stage,status") : null;
-    let t = db.from("workbench_threads").select("id,mailbox,subject,from_email,last_message_at,yt_ref,lead_id,ball,urgency,urgency_reason,ai_reading,ai_checked").eq("in_inbox", true).order("last_message_at", { ascending: true }).limit(limit ?? 50);
-    let a = db.from("workbench_alerts").select("id,lead_id,side,title,reason,next_step,status,created_at").neq("status", "handled");
+    const today = lisbonToday();
+    const cols = "id,yt_id,nethunt_stage,status,trip_start,trip_finish,updated_at,nethunt_updated_at";
+    const l = lead_id || lead_code ? await resolveLead(db, { lead_id, lead_code }, cols) : null;
+    const leads = l ? [l] : await all(db.from("leads").select(cols).order("id"));
+    const scoped = leads.filter((x) => (!side || workbenchSide(x) === side) && (include_archived || workbenchScope(x, today).active));
+    const ids = new Set(scoped.map((x) => x.id));
+    let t = db.from("workbench_threads").select("id,mailbox,subject,from_email,last_message_at,yt_ref,lead_id,ball,urgency,urgency_reason,ai_reading,ai_checked,in_inbox").order("last_message_at", { ascending: true });
+    let a = db.from("workbench_alerts").select("id,lead_id,side,title,reason,next_step,status,created_at").neq("status", "handled").order("id");
     if (side) {
       t = t.eq("mailbox", side);
       a = a.eq("side", side);
@@ -3960,11 +4007,9 @@ var list_workbench_state_default = defineTool36({
       t = t.eq("lead_id", l.id);
       a = a.eq("lead_id", l.id);
     }
-    const [tr, ar, cr] = await Promise.all([t, a, l ? db.from("workbench_checklist").select("item_key,label,status,source,note").eq("lead_id", l.id) : Promise.resolve({ data: [], error: null })]);
-    fail(tr.error);
-    fail(ar.error);
-    fail(cr.error);
-    const result = { threads: tr.data ?? [], alerts: ar.data ?? [], checklist: cr.data ?? [] };
+    const [tr, ar, cr] = await Promise.all([all(t), all(a), l && ids.has(l.id) ? all(db.from("workbench_checklist").select("item_key,label,status,source,note").eq("lead_id", l.id).order("item_key")) : Promise.resolve([])]);
+    const threads = tr.filter((x) => include_archived ? !x.lead_id || ids.has(x.lead_id) : x.in_inbox && activeWorkbenchThread(x, leads.find((y) => y.id === x.lead_id), today)).slice(0, limit ?? 50);
+    const result = { files: scoped.map((x) => ({ id: x.id, yt_id: x.yt_id, ...workbenchScope(x, today) })), threads, alerts: ar.filter((x) => ids.has(x.lead_id) && workbenchScope(leads.find((y) => y.id === x.lead_id) || {}, today).active), checklist: cr };
     return { content: [{ type: "text", text: JSON.stringify(result) }], structuredContent: result };
   }
 });

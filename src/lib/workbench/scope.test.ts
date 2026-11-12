@@ -1,0 +1,23 @@
+import {describe,it,expect} from 'vitest';
+import {workbenchScope,lisbonToday,activeWorkbenchThread,hasOutstandingOperations} from './rules';
+const today='2026-11-12';
+const ops={nethunt_stage:'OPERATIONS - Deposit/Payment Received',status:'won',trip_start:'2026-11-10',trip_finish:'2026-11-12'};
+const sales={nethunt_stage:'SALES - Final Negotiation & Ready to Book',status:'negotiation',trip_start:'2026-11-12'};
+describe('Workbench future scope',()=>{
+ it('keeps ops through its inclusive end date despite an earlier start',()=>expect(workbenchScope(ops,today).active).toBe(true));
+ it('falls back to start when ops has no finish',()=>expect(workbenchScope({...ops,trip_finish:null},today).reason).toBe('data passada'));
+ it('excludes postponed ops even when won',()=>expect(workbenchScope({...ops,nethunt_stage:'OPERATIONS - Deferred / Postponed Trip'},today).active).toBe(false));
+ it('keeps sales starting today',()=>expect(workbenchScope(sales,today).active).toBe(true));
+ it('archives sales based on start, not end',()=>expect(workbenchScope({...sales,trip_start:'2026-11-11',trip_finish:'2026-11-14'},today).reason).toBe('data passada'));
+ it('keeps undated open sales with the undated flag',()=>expect(workbenchScope({...sales,trip_start:null},today)).toMatchObject({active:true,undated:true}));
+ it('excludes archive stages regardless of future dates',()=>expect(workbenchScope({...sales,nethunt_stage:'SALES - Archive'},today)).toMatchObject({active:false,reason:'arquivada'}));
+ it('excludes lost and cancelled files',()=>{expect(workbenchScope({...sales,status:'lost'},today).active).toBe(false);expect(workbenchScope({...ops,status:'cancelled'},today).active).toBe(false)});
+ it('uses Lisbon today even across UTC midnight in summer',()=>expect(lisbonToday(new Date('2026-07-01T23:30:00Z'))).toBe('2026-07-02'));
+ it('hides old archive email but exposes a new incoming email',()=>{const l={...sales,id:'a',trip_start:'2026-11-11'};expect(activeWorkbenchThread({lead_id:'a',last_message_at:'2026-11-11T18:00:00Z'},l,today)).toBe(false);expect(activeWorkbenchThread({lead_id:'a',from_email:'client@example.com',last_message_at:'2026-11-12T01:00:00Z'},l,today)).toBe(true)});
+ it('does not resurface outgoing archive emails',()=>expect(activeWorkbenchThread({lead_id:'a',from_email:'operations@yourtours.pt',last_message_at:'2026-11-12T01:00:00Z'},{...ops,trip_finish:'2026-11-11'},today)).toBe(false));
+ it('keeps unmatched threads',()=>expect(activeWorkbenchThread({lead_id:null},undefined,today)).toBe(true));
+ it('flags unpaid client balance in the archive',()=>expect(hasOutstandingOperations([],99,100)).toBe(true));
+ it('flags missing supplier invoices',()=>expect(hasOutstandingOperations([{booking_status:'booked',payment_status:'paid',invoice_status:'not_received'}],100,100)).toBe(true));
+ it('flags unfinished operations lines',()=>expect(hasOutstandingOperations([{booking_status:'sent',payment_status:'paid',invoice_status:'received'}],100,100)).toBe(true));
+ it('does not flag fully settled operations',()=>expect(hasOutstandingOperations([{booking_status:'confirmed',payment_status:'paid',invoice_status:'received'}],100,100,[{status:'ok'}])).toBe(false));
+});

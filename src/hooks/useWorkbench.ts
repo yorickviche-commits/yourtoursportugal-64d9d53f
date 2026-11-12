@@ -19,7 +19,8 @@ export function useWorkbench(side:Side){
  // Paginate: the Data API returns at most 1000 rows per request.
  const out:Record<string,any>[]=[];
  for(let from=0;;from+=1000){let q:any=(supabase as any).from(table).select('*').range(from,from+999);
- if(table==='workbench_threads')q=q.eq('mailbox',side).eq('in_inbox',true);
+ // Keep departed inbox threads readable within archived files.
+ // Both mirrors are needed in the read-only archive; active filtering is local.
  if(table==='workbench_alerts'||table==='workbench_auto_log')q=q.filter('side','eq',side);
  if(table==='workbench_alerts')q=q.neq('status','handled');
  const r=await q;if(r.error)throw r.error;out.push(...(r.data as Record<string,any>[]));if(r.data.length<1000)break}

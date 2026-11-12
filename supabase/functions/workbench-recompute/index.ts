@@ -1,4 +1,5 @@
 import {workbenchUser,corsHeaders,json} from '../_shared/workbench.ts';
+import {workbenchScope,workbenchSide,lisbonToday} from '../_shared/workbenchScope.ts';
 const ITEMS={ops:[['guide','Guia'],['transport','Transporte'],['pickup','Pick-up'],['contact','Contacto do cliente'],['suppliers','Fornecedores'],['payment','Pagamento'],['briefing','Briefing']],sales:[['file','File criada'],['plan','Travel plan'],['costing','Costing'],['proposal','Proposta enviada'],['followup','Follow-up'],['payment_link','Link de pagamento']]};
 type Row=Record<string,any>;
 // Paginated, column-limited loads (Data API caps each request at 1000 rows).
@@ -15,7 +16,13 @@ Deno.serve(async req=>{
  if(req.method!=='POST')return json({error:'Método não permitido'},405);
  try{
  const {db}=await workbenchUser(req);
- const leads=(await all(db,'leads','id,yt_id,status,nethunt_stage,active_version,phone,email,trip_start,trip_briefing,pvp_override,client_type',undefined,q=>q.neq('status','lost'))).filter(l=>!/archive/i.test(l.nethunt_stage||''));
+ const today=lisbonToday();
+ const everyLead=await all(db,'leads','id,yt_id,status,nethunt_stage,active_version,phone,email,trip_start,trip_finish,trip_briefing,pvp_override,client_type');
+ const leads=everyLead.filter(l=>workbenchScope(l,today).active);
+ // Existing refresh closes stale alerts; no scheduled work or lead-stage writes.
+ const inactiveIds=everyLead.filter(l=>!workbenchScope(l,today).active).map(l=>l.id);
+ let closedAlerts=0;
+ for(let i=0;i<inactiveIds.length;i+=150){const r=await db.from('workbench_alerts').update({status:'handled',handled_at:new Date().toISOString()}).in('lead_id',inactiveIds.slice(i,i+150)).neq('status','handled').select('id');if(r.error)throw r.error;closedAlerts+=(r.data||[]).length;}
  const ids=leads.map(l=>l.id);
  const [plans,costs,operations,days,payments,links,versions,tasks,settings,checks,alerts,travelPlans,threads]=await Promise.all([
   all(db,'lead_planner_data','lead_id,version',ids),all(db,'lead_costing_data','lead_id,version,items',ids),
@@ -32,7 +39,7 @@ Deno.serve(async req=>{
  const alert=(l:Row,side:string,reason:string,next:string)=>{alertLeads.add(l.id);if(!alerts.some(a=>a.lead_id===l.id&&a.side===side&&a.reason===reason)&&!newAlerts.some(a=>a.lead_id===l.id&&a.reason===reason))newAlerts.push({lead_id:l.id,side,title:l.yt_id||'File',reason,next_step:next})};
  for(const a of alerts)alertLeads.add(a.lead_id);
  for(const l of leads){
- const side=(l.nethunt_stage?.startsWith('OPERATIONS')||(!l.nethunt_stage&&l.status==='won'))?'ops':'sales';
+ const side=workbenchSide(l);
  const ver=l.active_version||0;const v=V(l.id).find(x=>x.version===ver);const c=C(l.id).filter(x=>x.version===ver);const o=O(l.id);const d=D(l.id);
  const total=Number(v?.pvp_override??l.pvp_override??c.flatMap(x=>x.items||[]).filter((x:Row)=>!['opcionais','eliminar'].includes(x.status)).reduce((a:number,x:Row)=>a+(Number(x.pvpTotal)||0),0));
  const paid=PAY(l.id).reduce((a,x)=>a+Number(x.amount||0),0);
@@ -68,6 +75,6 @@ Deno.serve(async req=>{
  const groups:Record<string,string[]>={urgent:[],today:[],week:[]};
  for(const t of threads)groups[t.lead_id&&alertLeads.has(t.lead_id)?'urgent':t.ball==='ours'?'today':'week'].push(t.id);
  for(const [u,list] of Object.entries(groups))for(let i=0;i<list.length;i+=150){const r=await db.from('workbench_threads').update({urgency:u}).in('id',list.slice(i,i+150));if(r.error)throw r.error}
- return json({ok:true,items:updates.length,alerts:newAlerts.length});
+ return json({ok:true,items:updates.length,alerts:newAlerts.length,closed_alerts:closedAlerts,counts:Object.fromEntries(['sales','ops'].map(side=>[side,{active:leads.filter(l=>workbenchSide(l)===side).length,archive:everyLead.filter(l=>workbenchSide(l)===side&&workbenchScope(l,today).archived).length,excluded:everyLead.filter(l=>workbenchSide(l)===side&&!workbenchScope(l,today).active&&!workbenchScope(l,today).archived).length}]))});
  }catch(e){const message=e instanceof Error?e.message:String(e);return json({error:message},message.startsWith('401')?401:message.startsWith('403')?403:500)}
 });

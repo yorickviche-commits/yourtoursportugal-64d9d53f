@@ -1,4 +1,5 @@
 # Roadmap
+- [x] Workbench: âmbito futuro Lisboa, Arquivo consultável e pendências, emails novos, calendários e MCP; 23 testes, consulta real e contagens verificadas.
 - [x] Workbench entrega inicial: navegação protegida, estrutura inbox/file, aprovação sem execução, checklists e prontidão; teste real de valor manual/reload e recompute em lote.
 - [ ] Workbench caixas Gmail: aguarda renovar consentimento da ligação existente e ligar/verificar operations@; inbox real não pôde ser testado.
 - [ ] Workbench restante fase 1: calendários/detalhes Google/NetHunt diretos, MCP, N/A automático, regras de urgência restantes e limites em settings, propostas do ledger com revisão, logs reversíveis e pendências específicas; parado no limite solicitado desta entrega.

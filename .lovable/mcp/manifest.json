@@ -1699,6 +1699,10 @@
         "inputSchema": {
           "type": "object",
           "properties": {
+            "include_archived": {
+              "type": "boolean",
+              "description": "Include all files and archived inbox threads (default false)."
+            },
             "side": {
               "type": "string",
               "enum": [
