@@ -2,7 +2,7 @@ import { defineTool, ToolError } from "@lovable.dev/mcp-js";
 import { z } from "zod";
 import { supabaseForUser } from "../supabase";
 import { resolveLead } from "../lead";
-import { workbenchScope, workbenchSide, activeWorkbenchThread, lisbonToday } from "../../../../supabase/functions/_shared/workbenchScope";
+import { workbenchScope, workbenchSide, activeWorkbenchThread, lisbonToday, withDerivedDates } from "../../../../supabase/functions/_shared/workbenchScope";
 const lead = { lead_id: z.string().optional().describe("Lead uuid."), lead_code: z.string().optional().describe("Lead code such as YT5130 or YT-2026-4474.") };
 async function all(q: any) { const out: any[]=[]; for(let from=0;;from+=1000){const r=await q.range(from,from+999);fail(r.error);out.push(...(r.data||[]));if((r.data||[]).length<1000)break;}return out;}
 const fail = (e: { message: string } | null) => { if (e) throw new ToolError(e.message); };
@@ -16,9 +16,9 @@ export default defineTool({
     if (!ctx.isAuthenticated()) throw new ToolError("Not authenticated");
     const db = supabaseForUser(ctx);
     const today=lisbonToday();
-    const cols="id,yt_id,nethunt_stage,status,trip_start,trip_finish,updated_at,nethunt_updated_at";
+    const cols="id,yt_id,nethunt_stage,status,trip_start,trip_finish,travel_dates,travel_end_date,updated_at,nethunt_updated_at";
     const l = lead_id || lead_code ? await resolveLead(db, { lead_id, lead_code }, cols) : null;
-    const leads=l?[l]:await all(db.from("leads").select(cols).order("id"));
+    const leads=(l?[l]:await all(db.from("leads").select(cols).order("id"))).map((x:any)=>withDerivedDates(x));
     const scoped=leads.filter(x=>(!side||workbenchSide(x)===side)&&(include_archived||workbenchScope(x,today).active));
     const ids=new Set(scoped.map(x=>x.id));
     let t=db.from("workbench_threads").select("id,mailbox,subject,from_email,last_message_at,yt_ref,lead_id,ball,urgency,urgency_reason,ai_reading,ai_checked,in_inbox").order("last_message_at",{ascending:true});

@@ -20,4 +20,16 @@ describe('Workbench future scope',()=>{
  it('flags missing supplier invoices',()=>expect(hasOutstandingOperations([{booking_status:'booked',payment_status:'paid',invoice_status:'not_received'}],100,100)).toBe(true));
  it('flags unfinished operations lines',()=>expect(hasOutstandingOperations([{booking_status:'sent',payment_status:'paid',invoice_status:'received'}],100,100)).toBe(true));
  it('does not flag fully settled operations',()=>expect(hasOutstandingOperations([{booking_status:'confirmed',payment_status:'paid',invoice_status:'received'}],100,100,[{status:'ok'}])).toBe(false));
+});import {parseTravelDate} from './rules';
+describe('Dados Gerais date fallback',()=>{
+ const base={nethunt_stage:'SALES - New Lead',status:'new',trip_start:null,trip_finish:null};
+ it('uses ISO travel_dates as start',()=>expect(workbenchScope({...base,travel_dates:'2026-12-09'},today)).toMatchObject({date:'2026-12-09',undated:false,estimated:false,active:true}));
+ it('archives sales whose ISO travel_dates is past',()=>expect(workbenchScope({...base,travel_dates:'2026-04-07'},today).reason).toBe('data passada'));
+ it('uses ISO travel_end_date as ops finish',()=>expect(workbenchScope({...base,status:'won',nethunt_stage:null,travel_dates:'2026-11-05',travel_end_date:'2026-11-20'},today)).toMatchObject({side:'ops',date:'2026-11-20',active:true}));
+ it('never overrides stored trip_start',()=>expect(workbenchScope({...base,trip_start:'2026-12-01',travel_dates:'2026-01-01'},today).date).toBe('2026-12-01'));
+ it('estimates month text',()=>{expect(parseTravelDate('April 2027')).toEqual({date:'2027-04-01',estimated:true});expect(parseTravelDate('April, 2027')?.date).toBe('2027-04-01');expect(parseTravelDate('2027-05')?.date).toBe('2027-05-01')});
+ it('estimates day text',()=>expect(parseTravelDate('October 5, 2026')).toEqual({date:'2026-10-05',estimated:true}));
+ it('estimates last week of June',()=>expect(parseTravelDate('última semana de junio 2027')?.date).toBe('2027-06-24'));
+ it('flags estimated files',()=>expect(workbenchScope({...base,travel_dates:'April 2027'},today)).toMatchObject({estimated:true,undated:false,active:true}));
+ it('keeps A definir undated',()=>{expect(parseTravelDate('A definir')).toBeNull();expect(workbenchScope({...base,travel_dates:'A definir'},today).undated).toBe(true)});
 });

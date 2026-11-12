@@ -1,5 +1,5 @@
 export type Side = 'sales' | 'ops';
-export {lisbonToday,workbenchScope,workbenchSide,activeWorkbenchThread,hasOutstandingOperations} from '../../../supabase/functions/_shared/workbenchScope';
+export {lisbonToday,workbenchScope,workbenchSide,activeWorkbenchThread,hasOutstandingOperations,withDerivedDates,parseTravelDate} from '../../../supabase/functions/_shared/workbenchScope';
 export type Status = 'ok' | 'pending' | 'missing' | 'na';
 export const ITEMS = {
   ops: [['guide','Guia'],['transport','Transporte'],['pickup','Pick-up'],['contact','Contacto do cliente'],['suppliers','Fornecedores'],['payment','Pagamento'],['briefing','Briefing']],

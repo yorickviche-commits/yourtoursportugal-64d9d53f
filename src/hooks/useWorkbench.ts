@@ -1,3 +1,4 @@
+import {withDerivedDates} from '@/lib/workbench/rules';
 import {useQueries,useQueryClient} from '@tanstack/react-query';
 import {supabase} from '@/integrations/supabase/client';
 import {FunctionsHttpError} from '@supabase/supabase-js';
@@ -24,7 +25,7 @@ export function useWorkbench(side:Side){
  if(table==='workbench_alerts'||table==='workbench_auto_log')q=q.filter('side','eq',side);
  if(table==='workbench_alerts')q=q.neq('status','handled');
  const r=await q;if(r.error)throw r.error;out.push(...(r.data as Record<string,any>[]));if(r.data.length<1000)break}
- return out;
+ return table==='leads'?out.map(withDerivedDates):out;
  },enabled,staleTime:15*60*1000,refetchOnWindowFocus:false,refetchInterval:false as const}))});
  const queries=results.map((result,i)=>({...result,table:tables[i]}));
  const rows=(table:typeof tables[number])=>queries.find(q=>q.table===table)?.data||[];

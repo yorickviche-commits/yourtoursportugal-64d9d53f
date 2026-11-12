@@ -3940,13 +3940,54 @@ import { z as z34 } from "npm:zod@^3.25.76";
 // supabase/functions/_shared/workbenchScope.ts
 var lisbonToday = (now = /* @__PURE__ */ new Date()) => new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Lisbon", year: "numeric", month: "2-digit", day: "2-digit" }).format(now);
 var workbenchSide = (l) => /^OPERATIONS/i.test(l.nethunt_stage || "") || !/^SALES/i.test(l.nethunt_stage || "") && l.status === "won" ? "ops" : "sales";
-function workbenchScope(l, today = lisbonToday()) {
+var MONTHS2 = { jan: 1, january: 1, janeiro: 1, enero: 1, feb: 2, february: 2, fevereiro: 2, febrero: 2, mar: 3, march: 3, marco: 3, marzo: 3, apr: 4, april: 4, abril: 4, may: 5, maio: 5, mayo: 5, jun: 6, june: 6, junho: 6, junio: 6, jul: 7, july: 7, julho: 7, julio: 7, aug: 8, august: 8, agosto: 8, sep: 9, sept: 9, september: 9, setembro: 9, septiembre: 9, oct: 10, october: 10, outubro: 10, octubre: 10, nov: 11, november: 11, novembro: 11, noviembre: 11, dec: 12, december: 12, dezembro: 12, diciembre: 12 };
+var pad = (n) => String(n).padStart(2, "0");
+var validIso = (y, m, d) => {
+  const dt = new Date(Date.UTC(y, m - 1, d));
+  return dt.getUTCFullYear() === y && dt.getUTCMonth() === m - 1 && dt.getUTCDate() === d ? `${y}-${pad(m)}-${pad(d)}` : null;
+};
+function parseTravelDate(raw) {
+  const t = (raw || "").trim();
+  if (!t) return null;
+  let m = t.match(/^(\d{4})-(\d{2})-(\d{2})(?:$|T)/);
+  if (m) {
+    const d2 = validIso(+m[1], +m[2], +m[3]);
+    return d2 ? { date: d2, estimated: false } : null;
+  }
+  m = t.match(/^(\d{4})-(\d{2})$/);
+  if (m) {
+    const d2 = validIso(+m[1], +m[2], 1);
+    return d2 ? { date: d2, estimated: true } : null;
+  }
+  const n = t.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+  const year = n.match(/\b(20\d{2})\b/);
+  if (!year) return null;
+  const mon = Object.keys(MONTHS2).sort((a, b) => b.length - a.length).find((k) => new RegExp(`\\b${k}\\b`).test(n));
+  if (!mon) return null;
+  const month = MONTHS2[mon];
+  if (/\b(ultima|last)\s+(semana|week)\b/.test(n)) {
+    const d2 = validIso(+year[1], month, 24);
+    return d2 ? { date: d2, estimated: true } : null;
+  }
+  const day = n.replace(year[1], "").match(/\b([0-3]?\d)(?:st|nd|rd|th)?\b/);
+  const d = validIso(+year[1], month, day ? +day[1] : 1);
+  return d ? { date: d, estimated: true } : null;
+}
+function withDerivedDates(l) {
+  if (l.trip_start && l.trip_finish) return l;
+  const s = l.trip_start ? null : parseTravelDate(l.travel_dates);
+  const fRaw = l.trip_finish ? null : parseTravelDate(l.travel_end_date);
+  const f = fRaw && !fRaw.estimated ? fRaw : null;
+  return { ...l, trip_start: l.trip_start || s?.date || null, trip_finish: l.trip_finish || f?.date || null, date_estimated: !!s?.estimated };
+}
+function workbenchScope(l0, today = lisbonToday()) {
+  const l = withDerivedDates(l0);
   const side = workbenchSide(l), stage = l.nethunt_stage || "", start = l.trip_start?.slice(0, 10) || null;
   const date = side === "ops" ? l.trip_finish?.slice(0, 10) || start : start;
   const reason = /archive/i.test(stage) ? "arquivada" : /lost|cancelled|canceled/i.test(l.status || "") || /cancelled|canceled/i.test(stage) ? "perdida-cancelada" : date && date < today ? "data passada" : null;
   const deferred = /deferred|postponed/i.test(stage);
   const eligible = side === "ops" ? l.status === "won" || /^OPERATIONS/i.test(stage) : stage ? /New Lead|Budgeting\s*&\s*Fine-Tuning|Final Negotiation\s*&\s*Ready to Book/i.test(stage) : ["new", "contacted", "qualified", "proposal_sent", "negotiation"].includes(l.status || "new");
-  return { side, date, reason, archived: !!reason, active: !reason && !deferred && eligible && (side === "sales" || !!date), undated: !start, deferred };
+  return { side, date, reason, archived: !!reason, active: !reason && !deferred && eligible && (side === "sales" || !!date), undated: !start, estimated: !!l.date_estimated, deferred };
 }
 function archiveCutoff(l, today = lisbonToday()) {
   const s = workbenchScope(l, today);
@@ -3992,9 +4033,9 @@ var list_workbench_state_default = defineTool36({
     if (!ctx.isAuthenticated()) throw new ToolError42("Not authenticated");
     const db = supabaseForUser(ctx);
     const today = lisbonToday();
-    const cols = "id,yt_id,nethunt_stage,status,trip_start,trip_finish,updated_at,nethunt_updated_at";
+    const cols = "id,yt_id,nethunt_stage,status,trip_start,trip_finish,travel_dates,travel_end_date,updated_at,nethunt_updated_at";
     const l = lead_id || lead_code ? await resolveLead(db, { lead_id, lead_code }, cols) : null;
-    const leads = l ? [l] : await all(db.from("leads").select(cols).order("id"));
+    const leads = (l ? [l] : await all(db.from("leads").select(cols).order("id"))).map((x) => withDerivedDates(x));
     const scoped = leads.filter((x) => (!side || workbenchSide(x) === side) && (include_archived || workbenchScope(x, today).active));
     const ids = new Set(scoped.map((x) => x.id));
     let t = db.from("workbench_threads").select("id,mailbox,subject,from_email,last_message_at,yt_ref,lead_id,ball,urgency,urgency_reason,ai_reading,ai_checked,in_inbox").order("last_message_at", { ascending: true });

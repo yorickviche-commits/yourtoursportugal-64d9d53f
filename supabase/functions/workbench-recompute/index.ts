@@ -1,5 +1,5 @@
 import {workbenchUser,corsHeaders,json} from '../_shared/workbench.ts';
-import {workbenchScope,workbenchSide,lisbonToday} from '../_shared/workbenchScope.ts';
+import {workbenchScope,workbenchSide,lisbonToday,withDerivedDates} from '../_shared/workbenchScope.ts';
 const ITEMS={ops:[['guide','Guia'],['transport','Transporte'],['pickup','Pick-up'],['contact','Contacto do cliente'],['suppliers','Fornecedores'],['payment','Pagamento'],['briefing','Briefing']],sales:[['file','File criada'],['plan','Travel plan'],['costing','Costing'],['proposal','Proposta enviada'],['followup','Follow-up'],['payment_link','Link de pagamento']]};
 type Row=Record<string,any>;
 // Paginated, column-limited loads (Data API caps each request at 1000 rows).
@@ -17,7 +17,7 @@ Deno.serve(async req=>{
  try{
  const {db}=await workbenchUser(req);
  const today=lisbonToday();
- const everyLead=await all(db,'leads','id,yt_id,status,nethunt_stage,active_version,phone,email,trip_start,trip_finish,trip_briefing,pvp_override,client_type');
+ const everyLead=(await all(db,'leads','id,yt_id,status,nethunt_stage,active_version,phone,email,trip_start,trip_finish,travel_dates,travel_end_date,trip_briefing,pvp_override,client_type')).map(withDerivedDates);
  const leads=everyLead.filter(l=>workbenchScope(l,today).active);
  // Existing refresh closes stale alerts; no scheduled work or lead-stage writes.
  const inactiveIds=everyLead.filter(l=>!workbenchScope(l,today).active).map(l=>l.id);
