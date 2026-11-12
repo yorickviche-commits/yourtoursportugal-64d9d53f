@@ -211,6 +211,13 @@
       "when": 1794470832390,
       "tag": "0029_workbench_agents_access",
       "breakpoints": true
+    },
+    {
+      "idx": 30,
+      "version": "7",
+      "when": 1794471750678,
+      "tag": "0030_restrict_sales_agent_reads",
+      "breakpoints": true
     }
   ]
 }
