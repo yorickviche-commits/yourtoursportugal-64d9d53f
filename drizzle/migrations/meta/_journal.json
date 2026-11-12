@@ -232,6 +232,13 @@
       "when": 1794512423681,
       "tag": "0032_tighten_reference_reads_and_storage_inserts",
       "breakpoints": true
+    },
+    {
+      "idx": 33,
+      "version": "7",
+      "when": 1794517954205,
+      "tag": "0033_finance_tesoureiro",
+      "breakpoints": true
     }
   ]
 }

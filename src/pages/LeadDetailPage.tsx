@@ -1,4 +1,5 @@
 import { fetchPlanDayTitles, syncCostingTitles } from '@/lib/versionDayTitles';
+import { LeadPaymentsCard } from '@/components/finance/FinancePanel';
 import { eur as fmtEur } from '@/lib/money';
 import { useState, useCallback, useEffect, useRef, useMemo } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
@@ -977,6 +978,7 @@ const LeadDetailPage = ({ mode = 'lead' }: { mode?: 'lead' | 'booking' } = {}) =
         {activeTab === 'dados_gerais' && (
           <div className="space-y-6">
             {versionBar}
+            {lead && <LeadPaymentsCard leadId={lead.id} />}
 
             <fieldset disabled={locked} className="space-y-6 disabled:opacity-95">
 

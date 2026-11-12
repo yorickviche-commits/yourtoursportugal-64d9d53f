@@ -38,10 +38,15 @@ import upsertWorkbenchThreadReadingTool from "./tools/upsert-workbench-thread-re
 import setChecklistStatusTool from "./tools/set-checklist-status";
 import addAutoLogEntryTool from "./tools/add-auto-log-entry";
 import openWorkbenchAlertTool from "./tools/open-workbench-alert";
+import listPaymentsTool from "./tools/list-payments";
+import registerPaymentTool from "./tools/register-payment";
+import proposeFinanceBatchTool from "./tools/propose-finance-batch";
+import listFinanceBatchTool from "./tools/list-finance-batch";
+import markFinanceItemExecutedTool from "./tools/mark-finance-item-executed";
 
 
 export const INSTRUCTIONS =
-  "Operations tools for Your Tours Portugal (TCC). Read the pipeline with `list_leads` / `get_lead`, the programme with `get_travel_plan`, departures with `list_upcoming_trips`, and follow-up with `list_tasks` / `create_task` / `update_task`. Prepare sales files with `update_lead_stage` (stages from `list_lead_stages`), `assign_lead_agents`, `update_lead_general_data`, `add_lead_note` and `export_travel_plan_pdf`. Leads accept the everyday code format such as YT5130. Every write is logged in the lead history as 'AI agent (MCP)' and mirrored to NetHunt when the lead is linked. These tools never send emails, never create payment links and never delete leads or versions. Client emails, supplier emails and payment links are only proposed into the 'Aprovações AI' queue (list_pending_approvals / get_approval_status); a person approves before anything is executed. Create leads with `import_lead_ai`, check them with `validate_lead`, build the programme with `generate_travel_plan` and the update_travel_plan_* tools, and the budget with the costing tools. Scheduled agents (Grok Worker, Claude Supervisor) connect to /functions/v1/mcp-agent with a personal `ytp_agent_` key: each key only runs its allowed tools within a daily limit, every write is stamped with the agent label and model, and agents work in proposal mode — generate_travel_plan and the travel plan / costing edits land on a non-LIVE 'Proposta AI' version that a person promotes with 'Tornar LIVE'; YT Cockpit tools (list_workbench_state, upsert_workbench_thread_reading, set_checklist_status, add_auto_log_entry, open_workbench_alert) only record readings, automatic checklist values, logs and alerts; agents can never approve queue items, move a lead to OPERATIONS or create payment links.";
+  "Operations tools for Your Tours Portugal (TCC). Read the pipeline with `list_leads` / `get_lead`, the programme with `get_travel_plan`, departures with `list_upcoming_trips`, and follow-up with `list_tasks` / `create_task` / `update_task`. Prepare sales files with `update_lead_stage` (stages from `list_lead_stages`), `assign_lead_agents`, `update_lead_general_data`, `add_lead_note` and `export_travel_plan_pdf`. Leads accept the everyday code format such as YT5130. Every write is logged in the lead history as 'AI agent (MCP)' and mirrored to NetHunt when the lead is linked. These tools never send emails, never create payment links and never delete leads or versions. Client emails, supplier emails and payment links are only proposed into the 'Aprovações AI' queue (list_pending_approvals / get_approval_status); a person approves before anything is executed. Create leads with `import_lead_ai`, check them with `validate_lead`, build the programme with `generate_travel_plan` and the update_travel_plan_* tools, and the budget with the costing tools. Scheduled agents (Grok Worker, Claude Supervisor) connect to /functions/v1/mcp-agent with a personal `ytp_agent_` key: each key only runs its allowed tools within a daily limit, every write is stamped with the agent label and model, and agents work in proposal mode — generate_travel_plan and the travel plan / costing edits land on a non-LIVE 'Proposta AI' version that a person promotes with 'Tornar LIVE'; YT Cockpit tools (list_workbench_state, upsert_workbench_thread_reading, set_checklist_status, add_auto_log_entry, open_workbench_alert) only record readings, automatic checklist values, logs and alerts; Finance tools (list_payments, register_payment, propose_finance_batch, list_finance_batch, mark_finance_item_executed) record payments and propose the daily batch for human validation in YT Cockpit → Finanças; only approved items can be marked executed; agents can never approve queue or finance items, move a lead to OPERATIONS or create payment links.";
 
 export const ALL_TOOLS = [
     listLeadsTool,
@@ -84,4 +89,9 @@ export const ALL_TOOLS = [
     setChecklistStatusTool,
     addAutoLogEntryTool,
     openWorkbenchAlertTool,
+    listPaymentsTool,
+    registerPaymentTool,
+    proposeFinanceBatchTool,
+    listFinanceBatchTool,
+    markFinanceItemExecutedTool,
 ];

@@ -4152,8 +4152,179 @@ var open_workbench_alert_default = defineTool40({
   }
 });
 
+// src/lib/mcp/tools/list-payments.ts
+import { defineTool as defineTool41, ToolError as ToolError48 } from "npm:@lovable.dev/mcp-js@0.26.1";
+import { z as z40 } from "npm:zod@^3.25.76";
+
+// src/lib/mcp/finance.ts
+import { ToolError as ToolError47 } from "npm:@lovable.dev/mcp-js@0.26.1";
+import { z as z39 } from "npm:zod@^3.25.76";
+var CHANNELS = ["wetravel", "fareharbor_stripe", "bokun", "viator", "getyourguide", "transfer_b2b", "other"];
+var PAY_STATUS = ["requested", "paid_channel", "invoiced", "bank_received", "receipt_issued", "reconciled", "exception"];
+var PAY_TYPES = ["deposit", "balance", "full", "addon", "refund"];
+var ACTIONS = ["issue_proforma", "issue_fa", "issue_rc", "register_payment", "mark_exception"];
+var VALIDATION = ["pending", "approved", "rejected", "executed", "failed"];
+var leadArgs = { lead_id: z39.string().optional().describe("Lead uuid."), yt_ref: z39.string().optional().describe("Lead code such as YT5130 or YT-2026-4474.") };
+var fail5 = (e) => {
+  if (e) throw new ToolError47(e.message);
+};
+var json = (rows) => (rows ?? []).map((r) => JSON.parse(JSON.stringify(r)));
+
+// src/lib/mcp/tools/list-payments.ts
+var list_payments_default = defineTool41({
+  name: "list_payments",
+  title: "List payments ledger",
+  description: "List client payment lines from the TCC payments ledger (Finan\xE7as), filtered by file, status, channel or dates.",
+  inputSchema: { yt_ref: z40.string().optional(), lead_id: z40.string().optional(), status: z40.enum(PAY_STATUS).optional(), channel: z40.enum(CHANNELS).optional(), date_from: z40.string().optional().describe("YYYY-MM-DD (created_at)."), date_to: z40.string().optional().describe("YYYY-MM-DD (created_at)."), limit: z40.number().int().min(1).max(500).optional() },
+  annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
+  handler: async (a, ctx) => {
+    if (!ctx.isAuthenticated()) throw new ToolError48("Not authenticated");
+    let q = supabaseForUser(ctx).from("payments_ledger").select("*").order("created_at", { ascending: false }).limit(a.limit ?? 100);
+    if (a.yt_ref) q = q.ilike("yt_ref", `%${a.yt_ref.replace(/\D/g, "").slice(-4)}%`);
+    if (a.lead_id) q = q.eq("lead_id", a.lead_id);
+    if (a.status) q = q.eq("status", a.status);
+    if (a.channel) q = q.eq("channel", a.channel);
+    if (a.date_from) q = q.gte("created_at", a.date_from);
+    if (a.date_to) q = q.lte("created_at", `${a.date_to}T23:59:59`);
+    const { data, error } = await q;
+    fail5(error);
+    return { content: [{ type: "text", text: JSON.stringify(data) }], structuredContent: { payments: json(data) } };
+  }
+});
+
+// src/lib/mcp/tools/register-payment.ts
+import { defineTool as defineTool42, ToolError as ToolError49 } from "npm:@lovable.dev/mcp-js@0.26.1";
+import { z as z41 } from "npm:zod@^3.25.76";
+var register_payment_default = defineTool42({
+  name: "register_payment",
+  title: "Register payment",
+  description: "Create or update one payments ledger line (never deletes, never changes the lead stage). Pass payment_id to update.",
+  inputSchema: {
+    payment_id: z41.string().optional(),
+    ...leadArgs,
+    channel: z41.enum(CHANNELS).optional(),
+    payer_name: z41.string().optional(),
+    amount_gross: z41.number().optional(),
+    currency: z41.string().optional(),
+    payment_type: z41.enum(PAY_TYPES).optional(),
+    status: z41.enum(PAY_STATUS).optional(),
+    requested_at: z41.string().optional(),
+    paid_channel_at: z41.string().optional(),
+    bank_date: z41.string().optional(),
+    invoiced_at: z41.string().optional(),
+    receipt_at: z41.string().optional(),
+    reconciled_at: z41.string().optional(),
+    proforma_ref: z41.string().optional(),
+    optitravel_file: z41.string().optional(),
+    fa_number: z41.string().optional(),
+    rc_number: z41.string().optional(),
+    channel_evidence_url: z41.string().optional(),
+    bank_line_ref: z41.string().optional(),
+    payout_ref: z41.string().optional(),
+    notes: z41.string().optional(),
+    exception_reason: z41.string().optional()
+  },
+  annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
+  handler: async ({ payment_id, lead_id, yt_ref, ...fields }, ctx) => {
+    if (!ctx.isAuthenticated()) throw new ToolError49("Not authenticated");
+    const db = supabaseForUser(ctx);
+    const row = Object.fromEntries(Object.entries(fields).filter(([, v]) => v !== void 0));
+    if (lead_id || yt_ref) {
+      const l = await resolveLead(db, { lead_id, lead_code: yt_ref }, "id,yt_id,lead_code");
+      row.lead_id = l.id;
+      row.yt_ref = l.yt_id || l.lead_code;
+    }
+    if (row.status === "exception" && !row.exception_reason) throw new ToolError49("exception_reason is required for status exception");
+    const actor = agentActor(await agentIdentity(db, ctx));
+    const r = payment_id ? await db.from("payments_ledger").update(row).eq("id", payment_id).select("id,status").single() : await db.from("payments_ledger").insert({ ...row, created_by: actor }).select("id,status").single();
+    fail5(r.error);
+    return { content: [{ type: "text", text: `Payment ${r.data.id} saved (${r.data.status}). Lead stage unchanged.` }], structuredContent: { id: r.data.id, status: r.data.status } };
+  }
+});
+
+// src/lib/mcp/tools/propose-finance-batch.ts
+import { defineTool as defineTool43, ToolError as ToolError50 } from "npm:@lovable.dev/mcp-js@0.26.1";
+import { z as z42 } from "npm:zod@^3.25.76";
+var propose_finance_batch_default = defineTool43({
+  name: "propose_finance_batch",
+  title: "Propose finance batch",
+  description: "Add items to the daily finance batch as pending; a person validates them in YT Cockpit \u2192 Finan\xE7as. Nothing is executed.",
+  inputSchema: {
+    batch_date: z42.string().optional().describe("YYYY-MM-DD, default today (Lisbon)."),
+    items: z42.array(z42.object({
+      action: z42.enum(ACTIONS),
+      yt_ref: z42.string().optional(),
+      lead_id: z42.string().optional(),
+      payment_id: z42.string().optional(),
+      proposed_payload: z42.record(z42.unknown()).describe("Client/NIF, amount, proposed document date and rule, channel, evidence; standard=true for routine items."),
+      evidence_urls: z42.array(z42.string()).optional()
+    })).min(1).max(100)
+  },
+  annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
+  handler: async ({ batch_date, items }, ctx) => {
+    if (!ctx.isAuthenticated()) throw new ToolError50("Not authenticated");
+    const db = supabaseForUser(ctx);
+    const actor = agentActor(await agentIdentity(db, ctx));
+    const rows = [];
+    for (const it4 of items) {
+      let lead_id = it4.lead_id ?? null, yt_ref = it4.yt_ref ?? null;
+      if (lead_id || yt_ref) {
+        const l = await resolveLead(db, { lead_id: lead_id ?? void 0, lead_code: yt_ref ?? void 0 }, "id,yt_id,lead_code");
+        lead_id = l.id;
+        yt_ref = l.yt_id || l.lead_code;
+      }
+      rows.push({ ...batch_date ? { batch_date } : {}, action: it4.action, lead_id, yt_ref, payment_id: it4.payment_id ?? null, proposed_payload: it4.proposed_payload, evidence_urls: it4.evidence_urls ?? [], validation_status: "pending", created_by: actor });
+    }
+    const { data, error } = await db.from("finance_batch_items").insert(rows).select("id");
+    fail5(error);
+    return { content: [{ type: "text", text: `${data.length} item(s) pending human validation.` }], structuredContent: { ids: data.map((d) => d.id) } };
+  }
+});
+
+// src/lib/mcp/tools/list-finance-batch.ts
+import { defineTool as defineTool44, ToolError as ToolError51 } from "npm:@lovable.dev/mcp-js@0.26.1";
+import { z as z43 } from "npm:zod@^3.25.76";
+var list_finance_batch_default = defineTool44({
+  name: "list_finance_batch",
+  title: "List finance batch",
+  description: "Read finance batch items by date and validation status (e.g. approved items ready to issue).",
+  inputSchema: { batch_date: z43.string().optional().describe("YYYY-MM-DD."), validation_status: z43.enum(VALIDATION).optional(), limit: z43.number().int().min(1).max(500).optional() },
+  annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
+  handler: async (a, ctx) => {
+    if (!ctx.isAuthenticated()) throw new ToolError51("Not authenticated");
+    let q = supabaseForUser(ctx).from("finance_batch_items").select("*").order("created_at", { ascending: false }).limit(a.limit ?? 200);
+    if (a.batch_date) q = q.eq("batch_date", a.batch_date);
+    if (a.validation_status) q = q.eq("validation_status", a.validation_status);
+    const { data, error } = await q;
+    fail5(error);
+    return { content: [{ type: "text", text: JSON.stringify(data) }], structuredContent: { items: json(data) } };
+  }
+});
+
+// src/lib/mcp/tools/mark-finance-item-executed.ts
+import { defineTool as defineTool45, ToolError as ToolError52 } from "npm:@lovable.dev/mcp-js@0.26.1";
+import { z as z44 } from "npm:zod@^3.25.76";
+var mark_finance_item_executed_default = defineTool45({
+  name: "mark_finance_item_executed",
+  title: "Mark finance item executed",
+  description: "Mark a human-approved finance batch item as executed or failed with the issued document reference. Only approved items are accepted.",
+  inputSchema: { item_id: z44.string(), result: z44.enum(["executed", "failed"]), execution_ref: z44.string().optional().describe("Issued document number, or failure reason.") },
+  annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false },
+  handler: async ({ item_id, result, execution_ref }, ctx) => {
+    if (!ctx.isAuthenticated()) throw new ToolError52("Not authenticated");
+    const db = supabaseForUser(ctx);
+    const cur = await db.from("finance_batch_items").select("validation_status").eq("id", item_id).maybeSingle();
+    fail5(cur.error);
+    if (!cur.data) throw new ToolError52("Item not found");
+    if (cur.data.validation_status !== "approved") throw new ToolError52(`Item is ${cur.data.validation_status}; only items approved by a person can be executed.`);
+    const r = await db.from("finance_batch_items").update({ validation_status: result, execution_ref: execution_ref ?? null, executed_at: (/* @__PURE__ */ new Date()).toISOString() }).eq("id", item_id).eq("validation_status", "approved");
+    fail5(r.error);
+    return { content: [{ type: "text", text: `Item ${item_id} marked ${result}.` }] };
+  }
+});
+
 // src/lib/mcp/toolset.ts
-var INSTRUCTIONS = "Operations tools for Your Tours Portugal (TCC). Read the pipeline with `list_leads` / `get_lead`, the programme with `get_travel_plan`, departures with `list_upcoming_trips`, and follow-up with `list_tasks` / `create_task` / `update_task`. Prepare sales files with `update_lead_stage` (stages from `list_lead_stages`), `assign_lead_agents`, `update_lead_general_data`, `add_lead_note` and `export_travel_plan_pdf`. Leads accept the everyday code format such as YT5130. Every write is logged in the lead history as 'AI agent (MCP)' and mirrored to NetHunt when the lead is linked. These tools never send emails, never create payment links and never delete leads or versions. Client emails, supplier emails and payment links are only proposed into the 'Aprova\xE7\xF5es AI' queue (list_pending_approvals / get_approval_status); a person approves before anything is executed. Create leads with `import_lead_ai`, check them with `validate_lead`, build the programme with `generate_travel_plan` and the update_travel_plan_* tools, and the budget with the costing tools. Scheduled agents (Grok Worker, Claude Supervisor) connect to /functions/v1/mcp-agent with a personal `ytp_agent_` key: each key only runs its allowed tools within a daily limit, every write is stamped with the agent label and model, and agents work in proposal mode \u2014 generate_travel_plan and the travel plan / costing edits land on a non-LIVE 'Proposta AI' version that a person promotes with 'Tornar LIVE'; YT Cockpit tools (list_workbench_state, upsert_workbench_thread_reading, set_checklist_status, add_auto_log_entry, open_workbench_alert) only record readings, automatic checklist values, logs and alerts; agents can never approve queue items, move a lead to OPERATIONS or create payment links.";
+var INSTRUCTIONS = "Operations tools for Your Tours Portugal (TCC). Read the pipeline with `list_leads` / `get_lead`, the programme with `get_travel_plan`, departures with `list_upcoming_trips`, and follow-up with `list_tasks` / `create_task` / `update_task`. Prepare sales files with `update_lead_stage` (stages from `list_lead_stages`), `assign_lead_agents`, `update_lead_general_data`, `add_lead_note` and `export_travel_plan_pdf`. Leads accept the everyday code format such as YT5130. Every write is logged in the lead history as 'AI agent (MCP)' and mirrored to NetHunt when the lead is linked. These tools never send emails, never create payment links and never delete leads or versions. Client emails, supplier emails and payment links are only proposed into the 'Aprova\xE7\xF5es AI' queue (list_pending_approvals / get_approval_status); a person approves before anything is executed. Create leads with `import_lead_ai`, check them with `validate_lead`, build the programme with `generate_travel_plan` and the update_travel_plan_* tools, and the budget with the costing tools. Scheduled agents (Grok Worker, Claude Supervisor) connect to /functions/v1/mcp-agent with a personal `ytp_agent_` key: each key only runs its allowed tools within a daily limit, every write is stamped with the agent label and model, and agents work in proposal mode \u2014 generate_travel_plan and the travel plan / costing edits land on a non-LIVE 'Proposta AI' version that a person promotes with 'Tornar LIVE'; YT Cockpit tools (list_workbench_state, upsert_workbench_thread_reading, set_checklist_status, add_auto_log_entry, open_workbench_alert) only record readings, automatic checklist values, logs and alerts; Finance tools (list_payments, register_payment, propose_finance_batch, list_finance_batch, mark_finance_item_executed) record payments and propose the daily batch for human validation in YT Cockpit \u2192 Finan\xE7as; only approved items can be marked executed; agents can never approve queue or finance items, move a lead to OPERATIONS or create payment links.";
 var ALL_TOOLS = [
   list_leads_default,
   get_lead_default,
@@ -4194,7 +4365,12 @@ var ALL_TOOLS = [
   upsert_workbench_thread_reading_default,
   set_checklist_status_default,
   add_auto_log_entry_default,
-  open_workbench_alert_default
+  open_workbench_alert_default,
+  list_payments_default,
+  register_payment_default,
+  propose_finance_batch_default,
+  list_finance_batch_default,
+  mark_finance_item_executed_default
 ];
 
 // src/lib/mcp/index.ts

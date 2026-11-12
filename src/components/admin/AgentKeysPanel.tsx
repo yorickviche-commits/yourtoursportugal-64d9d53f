@@ -14,14 +14,15 @@ import { Bot, Copy, KeyRound, Loader2, Plus, RotateCw, Ban } from 'lucide-react'
 const READ_TOOLS = [
   'list_leads', 'get_lead', 'list_lead_stages', 'get_travel_plan', 'export_travel_plan_pdf', 'list_upcoming_trips',
   'list_tasks', 'list_pending_approvals', 'get_approval_status', 'get_costing', 'get_operations', 'validate_lead',
-  'log_ai_session',
+  'log_ai_session', 'list_workbench_state', 'list_payments', 'list_finance_batch',
 ];
 const WRITE_TOOLS = [
   'update_lead_stage', 'assign_lead_agents', 'update_lead_general_data', 'add_lead_note', 'create_task', 'update_task',
   'upsert_costing_lines', 'remove_costing_line', 'autofill_costing_from_plan', 'update_operation_item', 'update_day_ops',
   'update_trip_briefing', 'generate_travel_plan', 'update_travel_plan_day', 'update_travel_plan_header',
   'fill_travel_plan_images', 'request_payment_link', 'draft_fse_requests', 'draft_client_email', 'import_lead_ai',
-  'create_nethunt_deal',
+  'create_nethunt_deal', 'upsert_workbench_thread_reading', 'set_checklist_status', 'add_auto_log_entry', 'open_workbench_alert',
+  'register_payment', 'propose_finance_batch', 'mark_finance_item_executed',
 ];
 
 interface KeyRow {

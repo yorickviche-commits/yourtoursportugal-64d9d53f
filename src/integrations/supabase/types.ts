@@ -1763,6 +1763,109 @@ export type Database = {
         }
         Relationships: []
       }
+      finance_batch_items: {
+        Row: {
+          action: Database["public"]["Enums"]["finance_action"]
+          batch_date: string
+          created_at: string
+          created_by: string | null
+          evidence_urls: string[]
+          executed_at: string | null
+          execution_ref: string | null
+          id: string
+          lead_id: string | null
+          payment_id: string | null
+          proposed_payload: Json
+          rejection_note: string | null
+          updated_at: string
+          validated_at: string | null
+          validated_by: string | null
+          validation_status: Database["public"]["Enums"]["finance_validation"]
+          yt_ref: string | null
+        }
+        Insert: {
+          action: Database["public"]["Enums"]["finance_action"]
+          batch_date?: string
+          created_at?: string
+          created_by?: string | null
+          evidence_urls?: string[]
+          executed_at?: string | null
+          execution_ref?: string | null
+          id?: string
+          lead_id?: string | null
+          payment_id?: string | null
+          proposed_payload?: Json
+          rejection_note?: string | null
+          updated_at?: string
+          validated_at?: string | null
+          validated_by?: string | null
+          validation_status?: Database["public"]["Enums"]["finance_validation"]
+          yt_ref?: string | null
+        }
+        Update: {
+          action?: Database["public"]["Enums"]["finance_action"]
+          batch_date?: string
+          created_at?: string
+          created_by?: string | null
+          evidence_urls?: string[]
+          executed_at?: string | null
+          execution_ref?: string | null
+          id?: string
+          lead_id?: string | null
+          payment_id?: string | null
+          proposed_payload?: Json
+          rejection_note?: string | null
+          updated_at?: string
+          validated_at?: string | null
+          validated_by?: string | null
+          validation_status?: Database["public"]["Enums"]["finance_validation"]
+          yt_ref?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "finance_batch_items_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "finance_batch_items_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "rpt_files"
+            referencedColumns: ["lead_id"]
+          },
+          {
+            foreignKeyName: "finance_batch_items_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_task_queue"
+            referencedColumns: ["lead_id"]
+          },
+          {
+            foreignKeyName: "finance_batch_items_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "v_lead_economics"
+            referencedColumns: ["lead_id"]
+          },
+          {
+            foreignKeyName: "finance_batch_items_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "v_lead_outcomes"
+            referencedColumns: ["lead_id"]
+          },
+          {
+            foreignKeyName: "finance_batch_items_payment_id_fkey"
+            columns: ["payment_id"]
+            isOneToOne: false
+            referencedRelation: "payments_ledger"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       fse_drive_index: {
         Row: {
           category: string | null
@@ -3928,6 +4031,132 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "proposals"
             referencedColumns: ["id"]
+          },
+        ]
+      }
+      payments_ledger: {
+        Row: {
+          amount_gross: number
+          bank_date: string | null
+          bank_line_ref: string | null
+          channel: Database["public"]["Enums"]["payment_channel"]
+          channel_evidence_url: string | null
+          created_at: string
+          created_by: string | null
+          currency: string
+          exception_reason: string | null
+          fa_number: string | null
+          id: string
+          invoiced_at: string | null
+          lead_id: string | null
+          notes: string | null
+          optitravel_file: string | null
+          paid_channel_at: string | null
+          payer_name: string | null
+          payment_type: Database["public"]["Enums"]["payment_kind"]
+          payout_ref: string | null
+          proforma_ref: string | null
+          rc_number: string | null
+          receipt_at: string | null
+          reconciled_at: string | null
+          requested_at: string | null
+          status: Database["public"]["Enums"]["payment_ledger_status"]
+          updated_at: string
+          yt_ref: string | null
+        }
+        Insert: {
+          amount_gross?: number
+          bank_date?: string | null
+          bank_line_ref?: string | null
+          channel?: Database["public"]["Enums"]["payment_channel"]
+          channel_evidence_url?: string | null
+          created_at?: string
+          created_by?: string | null
+          currency?: string
+          exception_reason?: string | null
+          fa_number?: string | null
+          id?: string
+          invoiced_at?: string | null
+          lead_id?: string | null
+          notes?: string | null
+          optitravel_file?: string | null
+          paid_channel_at?: string | null
+          payer_name?: string | null
+          payment_type?: Database["public"]["Enums"]["payment_kind"]
+          payout_ref?: string | null
+          proforma_ref?: string | null
+          rc_number?: string | null
+          receipt_at?: string | null
+          reconciled_at?: string | null
+          requested_at?: string | null
+          status?: Database["public"]["Enums"]["payment_ledger_status"]
+          updated_at?: string
+          yt_ref?: string | null
+        }
+        Update: {
+          amount_gross?: number
+          bank_date?: string | null
+          bank_line_ref?: string | null
+          channel?: Database["public"]["Enums"]["payment_channel"]
+          channel_evidence_url?: string | null
+          created_at?: string
+          created_by?: string | null
+          currency?: string
+          exception_reason?: string | null
+          fa_number?: string | null
+          id?: string
+          invoiced_at?: string | null
+          lead_id?: string | null
+          notes?: string | null
+          optitravel_file?: string | null
+          paid_channel_at?: string | null
+          payer_name?: string | null
+          payment_type?: Database["public"]["Enums"]["payment_kind"]
+          payout_ref?: string | null
+          proforma_ref?: string | null
+          rc_number?: string | null
+          receipt_at?: string | null
+          reconciled_at?: string | null
+          requested_at?: string | null
+          status?: Database["public"]["Enums"]["payment_ledger_status"]
+          updated_at?: string
+          yt_ref?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payments_ledger_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payments_ledger_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "rpt_files"
+            referencedColumns: ["lead_id"]
+          },
+          {
+            foreignKeyName: "payments_ledger_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_task_queue"
+            referencedColumns: ["lead_id"]
+          },
+          {
+            foreignKeyName: "payments_ledger_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "v_lead_economics"
+            referencedColumns: ["lead_id"]
+          },
+          {
+            foreignKeyName: "payments_ledger_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "v_lead_outcomes"
+            referencedColumns: ["lead_id"]
           },
         ]
       }
@@ -7395,6 +7624,7 @@ export type Database = {
         }[]
       }
       bokun_try_lock: { Args: { p_seconds?: number }; Returns: boolean }
+      can_use_finance: { Args: { _user_id: string }; Returns: boolean }
       can_use_workbench: { Args: { _user_id: string }; Returns: boolean }
       can_view_feedback: { Args: { _feedback_id: string }; Returns: boolean }
       claim_sync_items: {
@@ -7607,7 +7837,36 @@ export type Database = {
         | "wont_fix"
         | "duplicate"
       feedback_type: "bug" | "improvement" | "suggestion"
+      finance_action:
+        | "issue_proforma"
+        | "issue_fa"
+        | "issue_rc"
+        | "register_payment"
+        | "mark_exception"
+      finance_validation:
+        | "pending"
+        | "approved"
+        | "rejected"
+        | "executed"
+        | "failed"
       map_source: "fse" | "experiencia" | "produto"
+      payment_channel:
+        | "wetravel"
+        | "fareharbor_stripe"
+        | "bokun"
+        | "viator"
+        | "getyourguide"
+        | "transfer_b2b"
+        | "other"
+      payment_kind: "deposit" | "balance" | "full" | "addon" | "refund"
+      payment_ledger_status:
+        | "requested"
+        | "paid_channel"
+        | "invoiced"
+        | "bank_received"
+        | "receipt_issued"
+        | "reconciled"
+        | "exception"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -7756,7 +8015,40 @@ export const Constants = {
         "duplicate",
       ],
       feedback_type: ["bug", "improvement", "suggestion"],
+      finance_action: [
+        "issue_proforma",
+        "issue_fa",
+        "issue_rc",
+        "register_payment",
+        "mark_exception",
+      ],
+      finance_validation: [
+        "pending",
+        "approved",
+        "rejected",
+        "executed",
+        "failed",
+      ],
       map_source: ["fse", "experiencia", "produto"],
+      payment_channel: [
+        "wetravel",
+        "fareharbor_stripe",
+        "bokun",
+        "viator",
+        "getyourguide",
+        "transfer_b2b",
+        "other",
+      ],
+      payment_kind: ["deposit", "balance", "full", "addon", "refund"],
+      payment_ledger_status: [
+        "requested",
+        "paid_channel",
+        "invoiced",
+        "bank_received",
+        "receipt_issued",
+        "reconciled",
+        "exception",
+      ],
     },
   },
 } as const

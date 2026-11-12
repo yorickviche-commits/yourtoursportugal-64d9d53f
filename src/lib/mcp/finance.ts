@@ -1,0 +1,10 @@
+import { ToolError } from "@lovable.dev/mcp-js";
+import { z } from "zod";
+export const CHANNELS = ["wetravel", "fareharbor_stripe", "bokun", "viator", "getyourguide", "transfer_b2b", "other"] as const;
+export const PAY_STATUS = ["requested", "paid_channel", "invoiced", "bank_received", "receipt_issued", "reconciled", "exception"] as const;
+export const PAY_TYPES = ["deposit", "balance", "full", "addon", "refund"] as const;
+export const ACTIONS = ["issue_proforma", "issue_fa", "issue_rc", "register_payment", "mark_exception"] as const;
+export const VALIDATION = ["pending", "approved", "rejected", "executed", "failed"] as const;
+export const leadArgs = { lead_id: z.string().optional().describe("Lead uuid."), yt_ref: z.string().optional().describe("Lead code such as YT5130 or YT-2026-4474.") };
+export const fail = (e: { message: string } | null) => { if (e) throw new ToolError(e.message); };
+export const json = (rows: Record<string, unknown>[] | null) => (rows ?? []).map((r) => JSON.parse(JSON.stringify(r)) as Record<string, string | number | boolean | null>);

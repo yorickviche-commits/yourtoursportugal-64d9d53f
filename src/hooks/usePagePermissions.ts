@@ -38,7 +38,7 @@ export function usePagePermissions() {
 
   const canAccess = (page: PageKey): boolean => {
     if (authLoading) return false;
-    if (page === 'workbench') return isAdmin || roles.includes('sales_agent') || roles.includes('operations_agent');
+    if (page === 'workbench') return isAdmin || roles.includes('sales_agent') || roles.includes('operations_agent') || roles.includes('finance');
     // Reportar problemas está sempre disponível a qualquer utilizador interno.
     if (page === 'my_feedback') return !!user;
     if (page === 'admin_feedback') return isAdmin;

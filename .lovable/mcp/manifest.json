@@ -1940,6 +1940,330 @@
           "$schema": "http://json-schema.org/draft-07/schema#"
         },
         "outputSchema": null
+      },
+      {
+        "name": "list_payments",
+        "title": "List payments ledger",
+        "description": "List client payment lines from the TCC payments ledger (Finanças), filtered by file, status, channel or dates.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "yt_ref": {
+              "type": "string"
+            },
+            "lead_id": {
+              "type": "string"
+            },
+            "status": {
+              "type": "string",
+              "enum": [
+                "requested",
+                "paid_channel",
+                "invoiced",
+                "bank_received",
+                "receipt_issued",
+                "reconciled",
+                "exception"
+              ]
+            },
+            "channel": {
+              "type": "string",
+              "enum": [
+                "wetravel",
+                "fareharbor_stripe",
+                "bokun",
+                "viator",
+                "getyourguide",
+                "transfer_b2b",
+                "other"
+              ]
+            },
+            "date_from": {
+              "type": "string",
+              "description": "YYYY-MM-DD (created_at)."
+            },
+            "date_to": {
+              "type": "string",
+              "description": "YYYY-MM-DD (created_at)."
+            },
+            "limit": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 500
+            }
+          },
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "register_payment",
+        "title": "Register payment",
+        "description": "Create or update one payments ledger line (never deletes, never changes the lead stage). Pass payment_id to update.",
+        "annotations": {
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "idempotentHint": false,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "payment_id": {
+              "type": "string"
+            },
+            "lead_id": {
+              "type": "string",
+              "description": "Lead uuid."
+            },
+            "yt_ref": {
+              "type": "string",
+              "description": "Lead code such as YT5130 or YT-2026-4474."
+            },
+            "channel": {
+              "type": "string",
+              "enum": [
+                "wetravel",
+                "fareharbor_stripe",
+                "bokun",
+                "viator",
+                "getyourguide",
+                "transfer_b2b",
+                "other"
+              ]
+            },
+            "payer_name": {
+              "type": "string"
+            },
+            "amount_gross": {
+              "type": "number"
+            },
+            "currency": {
+              "type": "string"
+            },
+            "payment_type": {
+              "type": "string",
+              "enum": [
+                "deposit",
+                "balance",
+                "full",
+                "addon",
+                "refund"
+              ]
+            },
+            "status": {
+              "type": "string",
+              "enum": [
+                "requested",
+                "paid_channel",
+                "invoiced",
+                "bank_received",
+                "receipt_issued",
+                "reconciled",
+                "exception"
+              ]
+            },
+            "requested_at": {
+              "type": "string"
+            },
+            "paid_channel_at": {
+              "type": "string"
+            },
+            "bank_date": {
+              "type": "string"
+            },
+            "invoiced_at": {
+              "type": "string"
+            },
+            "receipt_at": {
+              "type": "string"
+            },
+            "reconciled_at": {
+              "type": "string"
+            },
+            "proforma_ref": {
+              "type": "string"
+            },
+            "optitravel_file": {
+              "type": "string"
+            },
+            "fa_number": {
+              "type": "string"
+            },
+            "rc_number": {
+              "type": "string"
+            },
+            "channel_evidence_url": {
+              "type": "string"
+            },
+            "bank_line_ref": {
+              "type": "string"
+            },
+            "payout_ref": {
+              "type": "string"
+            },
+            "notes": {
+              "type": "string"
+            },
+            "exception_reason": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "propose_finance_batch",
+        "title": "Propose finance batch",
+        "description": "Add items to the daily finance batch as pending; a person validates them in YT Cockpit → Finanças. Nothing is executed.",
+        "annotations": {
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "idempotentHint": false,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "batch_date": {
+              "type": "string",
+              "description": "YYYY-MM-DD, default today (Lisbon)."
+            },
+            "items": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "action": {
+                    "type": "string",
+                    "enum": [
+                      "issue_proforma",
+                      "issue_fa",
+                      "issue_rc",
+                      "register_payment",
+                      "mark_exception"
+                    ]
+                  },
+                  "yt_ref": {
+                    "type": "string"
+                  },
+                  "lead_id": {
+                    "type": "string"
+                  },
+                  "payment_id": {
+                    "type": "string"
+                  },
+                  "proposed_payload": {
+                    "type": "object",
+                    "additionalProperties": {},
+                    "description": "Client/NIF, amount, proposed document date and rule, channel, evidence; standard=true for routine items."
+                  },
+                  "evidence_urls": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  }
+                },
+                "required": [
+                  "action",
+                  "proposed_payload"
+                ],
+                "additionalProperties": false
+              },
+              "minItems": 1,
+              "maxItems": 100
+            }
+          },
+          "required": [
+            "items"
+          ],
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "list_finance_batch",
+        "title": "List finance batch",
+        "description": "Read finance batch items by date and validation status (e.g. approved items ready to issue).",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "batch_date": {
+              "type": "string",
+              "description": "YYYY-MM-DD."
+            },
+            "validation_status": {
+              "type": "string",
+              "enum": [
+                "pending",
+                "approved",
+                "rejected",
+                "executed",
+                "failed"
+              ]
+            },
+            "limit": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 500
+            }
+          },
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "mark_finance_item_executed",
+        "title": "Mark finance item executed",
+        "description": "Mark a human-approved finance batch item as executed or failed with the issued document reference. Only approved items are accepted.",
+        "annotations": {
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "item_id": {
+              "type": "string"
+            },
+            "result": {
+              "type": "string",
+              "enum": [
+                "executed",
+                "failed"
+              ]
+            },
+            "execution_ref": {
+              "type": "string",
+              "description": "Issued document number, or failure reason."
+            }
+          },
+          "required": [
+            "item_id",
+            "result"
+          ],
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
       }
     ]
   }
