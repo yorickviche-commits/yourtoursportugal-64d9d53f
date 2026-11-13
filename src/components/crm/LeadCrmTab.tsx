@@ -8,6 +8,7 @@ import {
   History, MessagesSquare, Loader2, Plus, CheckCircle2, Circle, Send,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import LeadEmailLinks from './LeadEmailLinks';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -148,6 +149,8 @@ export default function LeadCrmTab({ leadId }: Props) {
 
   if (!linked && !hasHistory) {
     return (
+      <div className="space-y-4">
+      <LeadEmailLinks leadId={leadId} />
       <div className="bg-card border rounded-lg p-6 text-center space-y-3">
         <p className="text-sm font-medium">Esta lead ainda não está ligada a um record do NetHunt.</p>
         <p className="text-xs text-muted-foreground">A ligação é feita automaticamente pela referência YT ({lead.yt_id || '—'}) na próxima sincronização.</p>
@@ -155,11 +158,13 @@ export default function LeadCrmTab({ leadId }: Props) {
           {syncNow.isPending ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : <RefreshCw className="h-3 w-3 mr-1" />} Sincronizar agora
         </Button>
       </div>
+      </div>
     );
   }
 
   return (
     <div className="space-y-4">
+      <LeadEmailLinks leadId={leadId} />
       {/* Header */}
       <div className="bg-card border rounded-lg p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div className="min-w-0">

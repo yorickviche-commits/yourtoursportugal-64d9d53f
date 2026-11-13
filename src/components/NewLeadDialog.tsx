@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { useAuth } from '@/hooks/useAuth';
 import { useNavigate } from 'react-router-dom';
 import { Plus, Sparkles, Loader2, Clipboard } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
@@ -52,6 +53,17 @@ const NewLeadDialog = ({ open, onOpenChange }: { open: boolean; onOpenChange: (v
   const { toast } = useToast();
   const navigate = useNavigate();
   const createLead = useCreateLead();
+  const { isAdmin } = useAuth();
+  // Next TCC number is only previewed here; it is reserved atomically when the file is saved.
+  const [ytPreview, setYtPreview] = useState('');
+  useEffect(() => {
+    if (!open) return;
+    (supabase.rpc as any)('peek_next_yt_id').then(({ data }: { data: string | null }) => {
+      if (!data) return;
+      setYtPreview(data);
+      setForm(prev => (prev.ytId ? prev : { ...prev, ytId: data }));
+    });
+  }, [open]);
 
   const updateField = <K extends keyof FormData>(key: K, value: FormData[K]) => {
     setForm(prev => ({ ...prev, [key]: value }));
@@ -102,7 +114,7 @@ const NewLeadDialog = ({ open, onOpenChange }: { open: boolean; onOpenChange: (v
     }
     // Same file already in the TCC (e.g. auto-created from NetHunt)? Update it instead of duplicating.
     try {
-      const digits = form.ytId.replace(/\D/g, '');
+      const digits = form.ytId.trim() === ytPreview ? '' : form.ytId.replace(/\D/g, '');
       let target: any = null;
       if (digits) {
         const { data } = await supabase.from('leads').select('*').ilike('yt_id', `%${digits}`);
@@ -145,10 +157,16 @@ const NewLeadDialog = ({ open, onOpenChange }: { open: boolean; onOpenChange: (v
     }
 
     try {
+      let ytId = form.ytId.trim();
+      if (!ytId || ytId === ytPreview) {
+        const { data, error } = await (supabase.rpc as any)('next_yt_id');
+        if (error) throw error;
+        ytId = data as string;
+      }
       const newLead = await createLead.mutateAsync({
-        yt_id: form.ytId.trim(),
+        yt_id: ytId,
         client_type: form.clientType,
-        client_name: form.clientName,
+        client_name: /^YT\s*-?\s*\d+\s*-\s/i.test(form.clientName.trim()) ? form.clientName.trim() : `${ytId} - ${form.clientName.trim()}`,
         email: form.email,
         phone: form.phone,
         destination: form.destination.join(', ') || 'A definir',
@@ -165,7 +183,9 @@ const NewLeadDialog = ({ open, onOpenChange }: { open: boolean; onOpenChange: (v
         travel_style: form.travelStyle,
         comfort_level: form.comfortLevel,
       });
-      await logActivity('lead_created', 'lead', newLead.id, { client_name: form.clientName });
+      await logActivity('lead_created', 'lead', newLead.id, { client_name: form.clientName, yt_id: ytId });
+      // NetHunt deal is created by the sync worker with the TCC number in its title.
+      await (supabase.rpc as any)('enqueue_sync', { p_target: 'nethunt', p_entity: 'lead_create_deal', p_entity_id: newLead.id, p_fields: [], p_reason: 'tcc_new_lead' });
       toast({ title: `Lead ${newLead.lead_code} criada!`, description: `${form.clientName} registado com sucesso.` });
       onOpenChange(false);
       setForm({ ...emptyForm });
@@ -230,7 +250,7 @@ const NewLeadDialog = ({ open, onOpenChange }: { open: boolean; onOpenChange: (v
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <Label className="text-[10px] text-muted-foreground uppercase">ID YT *</Label>
-                <Input className="h-8 text-xs mt-1 font-mono" value={form.ytId} onChange={e => updateField('ytId', e.target.value)} placeholder="Ex: YT-2026-0123" />
+                <Input className="h-8 text-xs mt-1 font-mono" value={form.ytId} readOnly={!isAdmin} onChange={e => updateField('ytId', e.target.value)} placeholder="Ex: YT5240" title={isAdmin ? 'Editável por admin (files antigas)' : 'Gerado pelo TCC ao gravar'} />
               </div>
               <div>
                 <Label className="text-[10px] text-muted-foreground uppercase">Nome *</Label>

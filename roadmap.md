@@ -26,3 +26,8 @@
 - [x] Correções A1–A6, calendário, regras de urgência 2–5, pendentes, links, propostas, ferramentas MCP
 - [ ] Ligar Gmail operations@yourtours.pt (precisa de pessoa) e associar como GOOGLE_MAIL_API_KEY_1
 - [ ] Dar às chaves de agentes acesso às 5 ferramentas Workbench (Admin)
+
+## CRM no Gmail — Fase 1 (13 nov 2026)
+- [x] YT#### gerado no TCC, email_links/sugestões, crm-email-sync (cron), crm-addon, separador CRM e "Emails por ligar".
+- [ ] Ligar contabilidade@ nos conectores Gmail e associar em `mailbox_finance` (precisa de pessoa).
+- [ ] Adicionar secret ADDON_GOOGLE_CLIENT_IDS após o add-on Apps Script devolver o `aud`.
