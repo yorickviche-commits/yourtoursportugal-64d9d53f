@@ -12,6 +12,7 @@ import { createComment } from '../_shared/nethunt.ts';
 
 const APP = 'https://yourtoursportugal.lovable.app';
 const JWKS = createRemoteJWKSet(new URL('https://www.googleapis.com/oauth2/v3/certs'));
+const ADDON_DEFAULT_CLIENT_IDS = ['617787491812-4lejul0bucsu4ulet7r5nc1tb8esslhu.apps.googleusercontent.com'];
 const json = (b: unknown, s = 200) => new Response(JSON.stringify(b), { status: s, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
 const fail = (error: string, s = 200) => json({ ok: false, error }, s);
 
@@ -39,7 +40,7 @@ async function authenticate(req: Request, sb: any): Promise<Actor | Response> {
   const token = h.slice(7);
   let aud = '';
   try { const d = decodeJwt(token); aud = Array.isArray(d.aud) ? d.aud[0] : String(d.aud || ''); } catch { return fail('Token Google inválido', 401); }
-  const allowed = (Deno.env.get('ADDON_GOOGLE_CLIENT_IDS') || '').split(',').map((x) => x.trim()).filter(Boolean);
+  const allowed = [...new Set([...(Deno.env.get('ADDON_GOOGLE_CLIENT_IDS') || '').split(',').map((x) => x.trim()).filter(Boolean), ...ADDON_DEFAULT_CLIENT_IDS])];
   if (!allowed.includes(aud)) return fail(`Add-on ainda não autorizado. Configurar ADDON_GOOGLE_CLIENT_IDS com: ${aud}`, 403);
   let p: any;
   try { ({ payload: p } = await jwtVerify(token, JWKS, { issuer: ['https://accounts.google.com', 'accounts.google.com'], audience: allowed })); }
