@@ -2193,6 +2193,171 @@ export type Database = {
         }
         Relationships: []
       }
+      gmail_label_mailboxes: {
+        Row: {
+          backfill_done: boolean
+          enabled: boolean
+          lock_until: string | null
+          mailbox: string
+        }
+        Insert: {
+          backfill_done?: boolean
+          enabled?: boolean
+          lock_until?: string | null
+          mailbox: string
+        }
+        Update: {
+          backfill_done?: boolean
+          enabled?: boolean
+          lock_until?: string | null
+          mailbox?: string
+        }
+        Relationships: []
+      }
+      gmail_label_queue: {
+        Row: {
+          done: boolean
+          last_error: string | null
+          lead_id: string
+          mailbox: string
+          next_attempt_at: string
+          requested_at: string
+          thread_id: string
+        }
+        Insert: {
+          done?: boolean
+          last_error?: string | null
+          lead_id: string
+          mailbox: string
+          next_attempt_at?: string
+          requested_at?: string
+          thread_id: string
+        }
+        Update: {
+          done?: boolean
+          last_error?: string | null
+          lead_id?: string
+          mailbox?: string
+          next_attempt_at?: string
+          requested_at?: string
+          thread_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "gmail_label_queue_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "gmail_label_queue_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "rpt_files"
+            referencedColumns: ["lead_id"]
+          },
+          {
+            foreignKeyName: "gmail_label_queue_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_task_queue"
+            referencedColumns: ["lead_id"]
+          },
+          {
+            foreignKeyName: "gmail_label_queue_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "v_lead_economics"
+            referencedColumns: ["lead_id"]
+          },
+          {
+            foreignKeyName: "gmail_label_queue_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "v_lead_outcomes"
+            referencedColumns: ["lead_id"]
+          },
+        ]
+      }
+      gmail_lead_labels: {
+        Row: {
+          label_id: string
+          lead_id: string
+          mailbox: string
+          name: string
+        }
+        Insert: {
+          label_id: string
+          lead_id: string
+          mailbox: string
+          name: string
+        }
+        Update: {
+          label_id?: string
+          lead_id?: string
+          mailbox?: string
+          name?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "gmail_lead_labels_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "gmail_lead_labels_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "rpt_files"
+            referencedColumns: ["lead_id"]
+          },
+          {
+            foreignKeyName: "gmail_lead_labels_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_task_queue"
+            referencedColumns: ["lead_id"]
+          },
+          {
+            foreignKeyName: "gmail_lead_labels_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "v_lead_economics"
+            referencedColumns: ["lead_id"]
+          },
+          {
+            foreignKeyName: "gmail_lead_labels_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "v_lead_outcomes"
+            referencedColumns: ["lead_id"]
+          },
+        ]
+      }
+      gmail_stage_labels: {
+        Row: {
+          label_id: string
+          mailbox: string
+          name: string
+          stage_key: string
+        }
+        Insert: {
+          label_id: string
+          mailbox: string
+          name: string
+          stage_key: string
+        }
+        Update: {
+          label_id?: string
+          mailbox?: string
+          name?: string
+          stage_key?: string
+        }
+        Relationships: []
+      }
       integration_settings: {
         Row: {
           api_key_ref: string | null
@@ -7954,6 +8119,8 @@ export type Database = {
         }[]
       }
       get_sync_worker_secret: { Args: never; Returns: string }
+      gmail_labels_lock: { Args: { p_mailbox: string }; Returns: boolean }
+      gmail_labels_seed: { Args: { p_mailbox: string }; Returns: number }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]

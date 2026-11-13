@@ -4,6 +4,8 @@ import { corsHeaders } from 'npm:@supabase/supabase-js@2/cors';
 import { gmailGet, gmailBatch, META_QS, MAILBOX_KEY_RE } from '../_shared/gmail.ts';
 import { loadLeadIndex } from '../_shared/lead-matcher.ts';
 import { toMeta, linkMessages, loadSupplierEmails } from '../_shared/email-link.ts';
+import {runLabelBatch,GmailLabels} from '../_shared/gmail-labels.ts';
+import {z} from 'npm:zod@3';
 
 const json = (b: unknown, s = 200) => new Response(JSON.stringify(b), { status: s, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
 const BUDGET_MS = 110_000;
@@ -83,6 +85,19 @@ Deno.serve(async (req) => {
   const db = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!, { auth: { persistSession: false } });
   if (!(await authorized(req, db))) return json({ error: 'Não autorizado' }, 401);
   const body = await req.json().catch(() => ({}));
+  if(body.labels_initialize){
+    const mailbox=z.string().email().parse(body.labels_initialize);
+    const state=await db.from('mailbox_sync_state').select('secret_name').eq('mailbox',mailbox).maybeSingle();
+    if(!state.data?.secret_name)return json({error:'Caixa não ligada'},400);
+    try{await new GmailLabels(db,mailbox,state.data.secret_name).init();return json({ok:true,mailbox});}
+    catch(e){const error=String(e);await db.from('mailbox_sync_state').update({last_error:`Gmail labels: ${error}`}).eq('mailbox',mailbox);return json({mailbox,error});}
+  }
+  if(body.labels_test){
+    const t=z.object({mailbox:z.string().email(),thread_id:z.string().min(1),lead_id:z.string().uuid()}).parse(body.labels_test);
+    const state=await db.from('mailbox_sync_state').select('secret_name').eq('mailbox',t.mailbox).maybeSingle();
+    if(!state.data?.secret_name)return json({error:'Caixa não ligada'},400);
+    return json(await runLabelBatch(db,t.mailbox,state.data.secret_name,{test:t}));
+  }
   // Cron fires every 10 min; outside 07–21h Lisbon only the first slot of each hour runs.
   if (body.cron) { const h = lisbonHour(); if ((h < 7 || h >= 21) && new Date().getUTCMinutes() >= 10) return json({ skipped: 'fora de horas' }); }
   const started = Date.now();
@@ -99,6 +114,7 @@ Deno.serve(async (req) => {
   for (const st of states.data || []) {
     try { results.push(await syncMailbox(db, st, leads, suppliers, started)); await db.from('workbench_alerts').update({ status: 'handled', handled_at: new Date().toISOString() }).eq('title', `Sincronização de emails falhou: ${st.mailbox}`).eq('status', 'open'); }
     catch (e) { const msg = e instanceof Error ? e.message : String(e); console.error('crm-email-sync', st.mailbox, msg); await db.from('mailbox_sync_state').update({ last_error: msg, last_run_at: new Date().toISOString() }).eq('mailbox', st.mailbox); await alert(db, st.mailbox, msg); results.push({ mailbox: st.mailbox, error: msg }); }
+    if(st.secret_name)results.push(await runLabelBatch(db,st.mailbox,st.secret_name,{backfill:true,limit:10}));
   }
   return json({ ok: true, results });
 });

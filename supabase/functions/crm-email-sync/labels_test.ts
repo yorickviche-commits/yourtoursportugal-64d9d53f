@@ -1,0 +1,9 @@
+import {LABEL_STAGES,labelSpec,threadDelta} from '../_shared/gmail-labels.ts';
+function assert(v:unknown){if(!v)throw new Error('Assertion failed')}
+Deno.test('11 exact labels with separate Sales and Ops archive',()=>{assert(LABEL_STAGES.length===11);assert(new Set(LABEL_STAGES.map(s=>s[1])).size===11);assert(LABEL_STAGES[0][1]==='● SALES · New Lead');assert(LABEL_STAGES[10][1]==='● OPS · Archive')});
+Deno.test('YT5057 25/10 file name and Ops colors',()=>{const s=labelSpec({yt_id:'YT5057',trip_start:'2026-10-25',status:'won'});assert(s.name==='YT5057 · 25/10');assert(s.color.backgroundColor==='#4a86e8'&&s.color.textColor==='#ffffff')});
+Deno.test('Sales orange and undated name',()=>{const s=labelSpec({yt_id:'YT5506',status:'new'});assert(s.name==='YT5506');assert(s.color.backgroundColor==='#ffad47'&&s.color.textColor==='#000000')});
+Deno.test('Archive and Deferred gray',()=>{for(const nethunt_stage of ['SALES - Archive','OPERATIONS - Archive','OPERATIONS - Deferred / Postponed Trip']){const s=labelSpec({yt_id:'YT5057',nethunt_stage});assert(s.color.backgroundColor==='#cccccc'&&s.color.textColor==='#000000')}});
+Deno.test('Swap only managed stage, preserving inbox unread OTA labels',()=>{const d=threadDelta(['INBOX','UNREAD','OTA','file','old'],'file','new',['file','old','new']);assert(d.addLabelIds.join()==='new');assert(d.removeLabelIds.join()==='old')});
+Deno.test('Unlink removes two owned labels only',()=>{const d=threadDelta(['INBOX','UNREAD','FSE','file','stage'],null,null,['file','stage']);assert(d.addLabelIds.length===0);assert(d.removeLabelIds.join()==='file,stage')});
+Deno.test('Other file stage on shared thread survives',()=>{const d=threadDelta(['file','stage'],null,null,['file','stage'],['stage']);assert(d.removeLabelIds.join()==='file')});

@@ -260,6 +260,13 @@
       "when": 1794559374305,
       "tag": "0036_mailbox_sync_backfill_cursor",
       "breakpoints": true
+    },
+    {
+      "idx": 37,
+      "version": "7",
+      "when": 1794569916513,
+      "tag": "0037_gmail_managed_labels",
+      "breakpoints": true
     }
   ]
 }

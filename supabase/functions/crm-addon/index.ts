@@ -13,6 +13,7 @@ import { ITEMS, addonChecklist } from '../_shared/workbenchChecklist.ts';
 import { workbenchSide, withDerivedDates } from '../_shared/workbenchScope.ts';
 import { gateway } from '../_shared/workbench.ts';
 import { SetChecklist, CompleteTask, ListEvents, UpdateLead, eventWindow } from './contracts.ts';
+import { refreshLeadLabels } from '../_shared/gmail-labels.ts';
 
 const APP = 'https://yourtoursportugal.lovable.app';
 const JWKS = createRemoteJWKSet(new URL('https://www.googleapis.com/oauth2/v3/certs'));
@@ -174,6 +175,7 @@ async function linkThread(sb: any, d: EmailIn, leadId: string, source: string, a
     }
   }
   await audit(sb, actor, leadId, 'email_linked', { mailbox: row.mailbox, subject: row.subject, source });
+  await refreshLeadLabels(sb, leadId).catch(e=>console.error('Gmail labels',String(e)));
 }
 async function audit(sb: any, actor: Actor, leadId: string, action: string, details: Record<string, unknown>) {
   await sb.from('activity_logs').insert({ action_type: action, entity_type: 'lead', entity_id: leadId, user_id: actor.userId, details: { actor: actor.label, actor_email: actor.email, ...details } });
@@ -213,6 +215,10 @@ const normEvent = (id: string) => id.replace(/_\d{8}(T\d{6}Z?)?$/, '');
 
 export async function handle(sb: any, action: string, data: any, actor: Actor) {
   switch (action) {
+    case 'lead': {
+      const d=z.object({lead_id:z.string().uuid()}).parse(data);
+      return {ok:true,linked:await leadCard(sb,d.lead_id)};
+    }
     case 'set_checklist': {
       const d = SetChecklist.parse(data);
       const lead = await sb.from('leads').select('id,nethunt_stage,status').eq('id', d.lead_id).maybeSingle();
@@ -297,6 +303,7 @@ export async function handle(sb: any, action: string, data: any, actor: Actor) {
         if (cal.error) throw cal.error;
       }
       await audit(sb,actor,d.lead_id,'lead_updated',{fields:Object.keys(patch),changes:Object.fromEntries(Object.entries(patch).map(([key,to])=>[key,{from:lead.data[key],to}]))});
+      await refreshLeadLabels(sb,d.lead_id).catch(e=>console.error('Gmail labels',String(e)));
       return {ok:true,linked:await leadCard(sb,d.lead_id)};
     }
     case 'stages': return { ok: true, stages: STAGES.map(([key, label, side]) => ({ key, label, side })) };
@@ -321,6 +328,7 @@ export async function handle(sb: any, action: string, data: any, actor: Actor) {
       if (d.gmail_thread_id) await sb.from('email_links').update({ unlinked: true, linked_by: actor.label }).eq('lead_id', d.lead_id).eq('mailbox', mb).eq('gmail_thread_id', d.gmail_thread_id);
       if (d.rfc822_message_id) await sb.from('email_links').update({ unlinked: true, linked_by: actor.label }).eq('lead_id', d.lead_id).eq('rfc822_message_id', d.rfc822_message_id);
       await audit(sb, actor, d.lead_id, 'email_unlinked', { mailbox: mb, thread: d.gmail_thread_id });
+      await refreshLeadLabels(sb,d.lead_id).catch(e=>console.error('Gmail labels',String(e)));
       return { ok: true, linked: null };
     }
     case 'event_context': {
@@ -398,6 +406,7 @@ export async function handle(sb: any, action: string, data: any, actor: Actor) {
         const u = await sb.from('leads').update({ nethunt_stage: target[0], status: target[3] }).eq('id', d.lead_id); if (u.error) throw u.error;
         await audit(sb, actor, d.lead_id, 'lead_status_changed', { nethunt_stage: { from: cur.data.nethunt_stage, to: target[0] } });
       }
+      await refreshLeadLabels(sb,d.lead_id).catch(e=>console.error('Gmail labels',String(e)));
       return { ok: true, linked: await leadCard(sb, d.lead_id) };
     }
     case 'add_note': {

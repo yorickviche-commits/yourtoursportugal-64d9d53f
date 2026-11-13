@@ -1,4 +1,5 @@
 # Roadmap
+- [x] CRM Gmail 1.2: etiquetas geridas, teste de uma thread YT5057 preservando outras labels, criação em ambas as caixas e backfill de 90 dias ativado no cron existente.
 - [x] CRM Gmail 1.1: checklist partilhada, tarefas, pesquisa de eventos, edição manual, 9 testes incluindo leituras YT5057 sem gravações e deploy apenas crm-addon.
 - [x] Mobile lot: shell with bottom tabs, badges, safe areas and compact header; desktop checked at 1440px.
 - [x] Mobile lot: Cockpit file cards/panel, touch checklist, urgency sheet, day calendar, finance layout and pull-to-refresh; real Sales/Ops threads checked at both phone sizes.
