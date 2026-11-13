@@ -49,3 +49,7 @@ project_id = "jufqscczzmioauzkqztj"
     verify_jwt = false
   [functions.jarvis]
     verify_jwt = false
+  [functions.crm-addon]
+    verify_jwt = false
+  [functions.crm-email-sync]
+    verify_jwt = false

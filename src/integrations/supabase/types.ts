@@ -1180,6 +1180,81 @@ export type Database = {
         }
         Relationships: []
       }
+      calendar_event_links: {
+        Row: {
+          calendar_id: string
+          created_at: string
+          event_id: string
+          html_link: string | null
+          id: string
+          lead_id: string
+          link_source: string
+          start_at: string | null
+          title: string | null
+          unlinked: boolean
+        }
+        Insert: {
+          calendar_id: string
+          created_at?: string
+          event_id: string
+          html_link?: string | null
+          id?: string
+          lead_id: string
+          link_source?: string
+          start_at?: string | null
+          title?: string | null
+          unlinked?: boolean
+        }
+        Update: {
+          calendar_id?: string
+          created_at?: string
+          event_id?: string
+          html_link?: string | null
+          id?: string
+          lead_id?: string
+          link_source?: string
+          start_at?: string | null
+          title?: string | null
+          unlinked?: boolean
+        }
+        Relationships: [
+          {
+            foreignKeyName: "calendar_event_links_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "calendar_event_links_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "rpt_files"
+            referencedColumns: ["lead_id"]
+          },
+          {
+            foreignKeyName: "calendar_event_links_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_task_queue"
+            referencedColumns: ["lead_id"]
+          },
+          {
+            foreignKeyName: "calendar_event_links_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "v_lead_economics"
+            referencedColumns: ["lead_id"]
+          },
+          {
+            foreignKeyName: "calendar_event_links_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "v_lead_outcomes"
+            referencedColumns: ["lead_id"]
+          },
+        ]
+      }
       calendar_event_snapshots: {
         Row: {
           attachments: Json | null
@@ -1675,6 +1750,153 @@ export type Database = {
           uploaded_by?: string | null
         }
         Relationships: []
+      }
+      email_link_suggestions: {
+        Row: {
+          candidate_lead_ids: string[]
+          created_at: string
+          from_email: string | null
+          gmail_message_id: string
+          gmail_thread_id: string | null
+          id: string
+          mailbox: string
+          reason: string | null
+          rfc822_message_id: string | null
+          sent_at: string | null
+          snippet: string | null
+          status: string
+          subject: string | null
+        }
+        Insert: {
+          candidate_lead_ids?: string[]
+          created_at?: string
+          from_email?: string | null
+          gmail_message_id: string
+          gmail_thread_id?: string | null
+          id?: string
+          mailbox: string
+          reason?: string | null
+          rfc822_message_id?: string | null
+          sent_at?: string | null
+          snippet?: string | null
+          status?: string
+          subject?: string | null
+        }
+        Update: {
+          candidate_lead_ids?: string[]
+          created_at?: string
+          from_email?: string | null
+          gmail_message_id?: string
+          gmail_thread_id?: string | null
+          id?: string
+          mailbox?: string
+          reason?: string | null
+          rfc822_message_id?: string | null
+          sent_at?: string | null
+          snippet?: string | null
+          status?: string
+          subject?: string | null
+        }
+        Relationships: []
+      }
+      email_links: {
+        Row: {
+          body_excerpt: string | null
+          created_at: string
+          direction: string | null
+          from_email: string | null
+          from_name: string | null
+          gmail_message_id: string
+          gmail_thread_id: string | null
+          id: string
+          lead_id: string
+          link_source: string
+          linked_by: string | null
+          mailbox: string
+          rfc822_message_id: string | null
+          sent_at: string | null
+          snippet: string | null
+          subject: string | null
+          to_emails: string[] | null
+          unlinked: boolean
+        }
+        Insert: {
+          body_excerpt?: string | null
+          created_at?: string
+          direction?: string | null
+          from_email?: string | null
+          from_name?: string | null
+          gmail_message_id: string
+          gmail_thread_id?: string | null
+          id?: string
+          lead_id: string
+          link_source?: string
+          linked_by?: string | null
+          mailbox: string
+          rfc822_message_id?: string | null
+          sent_at?: string | null
+          snippet?: string | null
+          subject?: string | null
+          to_emails?: string[] | null
+          unlinked?: boolean
+        }
+        Update: {
+          body_excerpt?: string | null
+          created_at?: string
+          direction?: string | null
+          from_email?: string | null
+          from_name?: string | null
+          gmail_message_id?: string
+          gmail_thread_id?: string | null
+          id?: string
+          lead_id?: string
+          link_source?: string
+          linked_by?: string | null
+          mailbox?: string
+          rfc822_message_id?: string | null
+          sent_at?: string | null
+          snippet?: string | null
+          subject?: string | null
+          to_emails?: string[] | null
+          unlinked?: boolean
+        }
+        Relationships: [
+          {
+            foreignKeyName: "email_links_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "email_links_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "rpt_files"
+            referencedColumns: ["lead_id"]
+          },
+          {
+            foreignKeyName: "email_links_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_task_queue"
+            referencedColumns: ["lead_id"]
+          },
+          {
+            foreignKeyName: "email_links_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "v_lead_economics"
+            referencedColumns: ["lead_id"]
+          },
+          {
+            foreignKeyName: "email_links_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "v_lead_outcomes"
+            referencedColumns: ["lead_id"]
+          },
+        ]
       }
       email_send_log: {
         Row: {
@@ -3269,6 +3491,42 @@ export type Database = {
           products_succeeded?: number
           run_type?: string
           started_at?: string
+        }
+        Relationships: []
+      }
+      mailbox_sync_state: {
+        Row: {
+          backfill_days: number | null
+          backfill_done_at: string | null
+          backfill_history_id: string | null
+          backfill_page_token: string | null
+          last_error: string | null
+          last_history_id: string | null
+          last_run_at: string | null
+          mailbox: string
+          secret_name: string | null
+        }
+        Insert: {
+          backfill_days?: number | null
+          backfill_done_at?: string | null
+          backfill_history_id?: string | null
+          backfill_page_token?: string | null
+          last_error?: string | null
+          last_history_id?: string | null
+          last_run_at?: string | null
+          mailbox: string
+          secret_name?: string | null
+        }
+        Update: {
+          backfill_days?: number | null
+          backfill_done_at?: string | null
+          backfill_history_id?: string | null
+          backfill_page_token?: string | null
+          last_error?: string | null
+          last_history_id?: string | null
+          last_run_at?: string | null
+          mailbox?: string
+          secret_name?: string | null
         }
         Relationships: []
       }
@@ -7740,6 +7998,8 @@ export type Database = {
         Returns: number
       }
       nethunt_stage_code: { Args: { p_stage: string }; Returns: string }
+      next_yt_id: { Args: never; Returns: string }
+      peek_next_yt_id: { Args: never; Returns: string }
       promote_ai_proposal: {
         Args: { p_lead_id: string; p_version: number }
         Returns: undefined

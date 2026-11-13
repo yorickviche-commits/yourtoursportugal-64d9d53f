@@ -1,0 +1,1 @@
+ALTER TABLE public.mailbox_sync_state ADD COLUMN IF NOT EXISTS backfill_page_token text, ADD COLUMN IF NOT EXISTS backfill_history_id text, ADD COLUMN IF NOT EXISTS backfill_days integer, ADD COLUMN IF NOT EXISTS backfill_done_at timestamptz;

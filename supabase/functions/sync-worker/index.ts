@@ -42,7 +42,8 @@ async function createNethuntDeal(sb: any, id: string): Promise<void> {
   const fresh = (await fetchRecord(DEALS_FOLDER, rid)) ?? created;
   const yt = ytKey(field(fresh, F.ytId));
   const patch: Record<string, unknown> = { nethunt_updated_at: recUpdatedAt(fresh) };
-  if (yt) {
+  // Files numbered in the TCC keep their own YT id; NetHunt's number is only adopted for legacy files without one.
+  if (yt && !lead.yt_id) {
     patch.yt_id = `YT${yt}`;
     const code = lead.bokun_confirmation_code;
     if (code && typeof lead.notes === 'string') patch.notes = lead.notes.replace(`Programa: ${code} ·`, `Programa: YT${yt} ·`);
@@ -50,7 +51,7 @@ async function createNethuntDeal(sb: any, id: string): Promise<void> {
   await setBaselines(sb, 'lead', id, dealValues(fresh));
   await sb.from('leads').update(patch).eq('id', id);
   await logSync(sb, [{ direction: 'push', entity: 'lead', entity_id: id, nethunt_record_id: rid, action: 'create', detail: { yt_id: patch.yt_id ?? null, origin: 'bokun' } }]);
-  if (!yt) throw new Error(`Deal NetHunt ${rid} criado sem YT ID — confirmar no NetHunt`);
+  if (!yt && !lead.yt_id) throw new Error(`Deal NetHunt ${rid} criado sem YT ID — confirmar no NetHunt`);
 }
 import { createClient, SUPABASE_URL, SERVICE_ROLE_KEY, getSyncAdmins, runCalendarSync, ADMIN_URL_BASE } from '../_shared/calendar-sync-core.ts';
 
