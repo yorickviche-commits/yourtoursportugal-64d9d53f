@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import type { Database } from '@/integrations/supabase/types';
 import { useAuth } from './useAuth';
 import type { ReportDefinition, SavedReport, SavedReportCategory } from '@/types/reports';
 
@@ -59,7 +60,7 @@ export function useSavedReportMutations(reportType = 'files') {
 
   const update = useMutation({
     mutationFn: async (input: SaveReportInput & { id: string; updateDefinition?: boolean }) => {
-      const patch: Record<string, any> = {
+      const patch: Database['public']['Tables']['saved_reports']['Update'] = {
         name: input.name,
         note: input.note ?? null,
         category: input.category,
