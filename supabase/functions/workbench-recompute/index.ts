@@ -1,6 +1,6 @@
 import {workbenchUser,corsHeaders,json} from '../_shared/workbench.ts';
 import {workbenchScope,workbenchSide,lisbonToday,withDerivedDates} from '../_shared/workbenchScope.ts';
-const ITEMS={ops:[['guide','Guia'],['transport','Transporte'],['pickup','Pick-up'],['contact','Contacto do cliente'],['suppliers','Fornecedores'],['payment','Pagamento'],['briefing','Briefing']],sales:[['file','File criada'],['plan','Travel plan'],['costing','Costing'],['proposal','Proposta enviada'],['followup','Follow-up'],['payment_link','Link de pagamento']]};
+import {ITEMS} from '../_shared/workbenchChecklist.ts';
 type Row=Record<string,any>;
 // Paginated, column-limited loads (Data API caps each request at 1000 rows).
 async function all(db:any,table:string,cols:string,ids?:string[],build?:(q:any)=>any):Promise<Row[]>{

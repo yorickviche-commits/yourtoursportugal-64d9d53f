@@ -1,4 +1,5 @@
 # Roadmap
+- [x] CRM Gmail 1.1: checklist partilhada, tarefas, pesquisa de eventos, edição manual, 9 testes incluindo leituras YT5057 sem gravações e deploy apenas crm-addon.
 - [x] Mobile lot: shell with bottom tabs, badges, safe areas and compact header; desktop checked at 1440px.
 - [x] Mobile lot: Cockpit file cards/panel, touch checklist, urgency sheet, day calendar, finance layout and pull-to-refresh; real Sales/Ops threads checked at both phone sizes.
 - [ ] Mobile next lot: compact overflow menu for Archive/Finance; direct inbox reply/archive shortcuts require an approved write path (mirror remains read-only); paginated Archive and mobile summary of missing items.

@@ -9,6 +9,10 @@ import { toMeta } from '../_shared/email-link.ts';
 
 import { extractWithFailover } from '../_shared/lead-extract.ts';
 import { createComment } from '../_shared/nethunt.ts';
+import { ITEMS, addonChecklist } from '../_shared/workbenchChecklist.ts';
+import { workbenchSide, withDerivedDates } from '../_shared/workbenchScope.ts';
+import { gateway } from '../_shared/workbench.ts';
+import { SetChecklist, CompleteTask, ListEvents, UpdateLead, eventWindow } from './contracts.ts';
 
 const APP = 'https://yourtoursportugal.lovable.app';
 const JWKS = createRemoteJWKSet(new URL('https://www.googleapis.com/oauth2/v3/certs'));
@@ -58,7 +62,7 @@ async function authenticate(req: Request, sb: any): Promise<Actor | Response> {
 }
 
 // ---------- LeadCard ----------
-const LEAD_COLS = 'id,yt_id,client_name,email,nethunt_stage,status,trip_start,trip_finish,travel_dates,travel_end_date,pax,pax_children,destination,pvp_override,estimated_value,active_version,client_type,source,booking_origin,assigned_agents,language,updated_at,nethunt_record_id';
+const LEAD_COLS = 'id,yt_id,client_name,email,phone,nethunt_stage,status,trip_start,trip_finish,travel_dates,travel_end_date,pax,pax_children,destination,pvp_override,estimated_value,active_version,client_type,source,booking_origin,assigned_agents,language,updated_at,nethunt_record_id';
 const iso = (v: string | null) => (v && /^\d{4}-\d{2}-\d{2}/.test(v) ? v.slice(0, 10) : null);
 
 async function timeline(sb: any, leadId: string, before?: string) {
@@ -83,17 +87,20 @@ async function timeline(sb: any, leadId: string, before?: string) {
   return items.filter((x) => x.at).sort((a, c) => String(c.at).localeCompare(String(a.at))).slice(0, lim);
 }
 
-async function leadCard(sb: any, leadId: string, linkSource: string | null = null) {
+export async function leadCard(sb: any, leadId: string, linkSource: string | null = null) {
   const r = await sb.from('leads').select(LEAD_COLS).eq('id', leadId).maybeSingle();
   if (!r.data) return null;
   const l = r.data;
-  const [cost, paid, agents, task, tl] = await Promise.all([
+  const [cost, paid, agents, task, tl, checks] = await Promise.all([
     sb.from('lead_costing_data').select('items').eq('lead_id', leadId).eq('version', l.active_version ?? 0),
     sb.from('payments_ledger').select('amount_gross,payment_type,status').eq('lead_id', leadId),
     (l.assigned_agents || []).length ? sb.from('profiles').select('full_name,email').in('id', l.assigned_agents) : { data: [] },
-    sb.from('tasks').select('title,due_date').eq('lead_id', leadId).eq('completed', false).order('due_date', { ascending: true, nullsFirst: false }).limit(1),
+    sb.from('tasks').select('id,title,due_date').eq('lead_id', leadId).eq('completed', false).neq('status', 'done').order('due_date', { ascending: true, nullsFirst: false }).order('created_at', { ascending: true }).limit(10),
     timeline(sb, leadId),
+    sb.from('workbench_checklist').select('item_key,status,source,note').eq('lead_id', leadId),
   ]);
+  if (checks.error) throw checks.error;
+  if (task.error) throw task.error;
   let pvp = 0;
   for (const row of cost.data || []) for (const it of (Array.isArray(row.items) ? row.items : [])) if (it?.status !== 'eliminar' && it?.status !== 'opcionais') pvp += Number(it?.pvpTotal) || 0;
   const value = l.pvp_override != null ? Number(l.pvp_override) : pvp > 0 ? Math.round(pvp * 100) / 100 : l.estimated_value != null ? Number(l.estimated_value) : null;
@@ -104,6 +111,9 @@ async function leadCard(sb: any, leadId: string, linkSource: string | null = nul
   const lastAt = [l.updated_at, ...tl.map((x: any) => x.at)].filter(Boolean).sort().pop();
   return {
     id: l.id, yt_id: l.yt_id, client_name: client, program_name: program,
+    phone: l.phone ?? null, email: l.email ?? null, pax_adults: l.pax ?? null, pax_children: l.pax_children ?? null,
+    trip_start: l.trip_start ?? null, trip_finish: l.trip_finish ?? null, pvp_override: l.pvp_override ?? null,
+    checklist: addonChecklist(workbenchSide(l), checks.data || [], task.data || []), open_tasks: task.data || [],
     stage_key: stage?.[0] ?? l.nethunt_stage ?? null, stage_label: stage?.[1] ?? l.nethunt_stage ?? null, side: stage?.[2] ?? 'sales',
     start_date: iso(l.trip_start) ?? iso(l.travel_dates), end_date: iso(l.trip_finish) ?? iso(l.travel_end_date),
     pax: (Number(l.pax) || 0) + (Number(l.pax_children) || 0) || null, destination: l.destination || null,
@@ -201,8 +211,94 @@ async function supplierOf(sb: any, d: EmailIn) {
 }
 const normEvent = (id: string) => id.replace(/_\d{8}(T\d{6}Z?)?$/, '');
 
-async function handle(sb: any, action: string, data: any, actor: Actor) {
+export async function handle(sb: any, action: string, data: any, actor: Actor) {
   switch (action) {
+    case 'set_checklist': {
+      const d = SetChecklist.parse(data);
+      const lead = await sb.from('leads').select('id,nethunt_stage,status').eq('id', d.lead_id).maybeSingle();
+      if (lead.error) throw lead.error;
+      if (!lead.data) return { ok: false, error: 'File não encontrada' };
+      const item = ITEMS[workbenchSide(lead.data)].find(([key]) => key === d.item_key);
+      if (!item) return { ok: false, error: 'Item não pertence à checklist desta file' };
+      const r = await sb.from('workbench_checklist').upsert({ lead_id:d.lead_id,item_key:d.item_key,label:item[1],status:d.status,source:'manual',updated_by:actor.userId,updated_at:new Date().toISOString(),...(d.note !== undefined ? {note:d.note} : {}) }, {onConflict:'lead_id,item_key'});
+      if (r.error) throw r.error;
+      await audit(sb,actor,d.lead_id,'checklist_updated',{item_key:d.item_key,status:d.status,source:'manual',note:d.note});
+      return {ok:true,linked:await leadCard(sb,d.lead_id)};
+    }
+    case 'complete_task': {
+      const d = CompleteTask.parse(data);
+      const task = await sb.from('tasks').select('id,lead_id,title').eq('id',d.task_id).maybeSingle();
+      if (task.error) throw task.error;
+      if (!task.data?.lead_id) return {ok:false,error:'Tarefa ligada a uma file não encontrada'};
+      const r = await sb.from('tasks').update({completed:true,status:'done'}).eq('id',d.task_id);
+      if (r.error) throw r.error;
+      const sync = await sb.rpc('enqueue_sync',{p_target:'nethunt',p_entity:'task',p_entity_id:d.task_id,p_fields:[],p_reason:'crm_addon'});
+      if (sync.error) throw sync.error;
+      await audit(sb,actor,task.data.lead_id,'task_completed',{task_id:d.task_id,title:task.data.title});
+      return {ok:true,linked:await leadCard(sb,task.data.lead_id)};
+    }
+    case 'list_events': {
+      const d = ListEvents.parse(data);
+      const lead = await sb.from('leads').select('id,trip_start,trip_finish,travel_dates,travel_end_date').eq('id',d.lead_id).maybeSingle();
+      if (lead.error) throw lead.error;
+      if (!lead.data) return {ok:false,error:'File não encontrada'};
+      const cfg = await sb.from('integration_settings').select('config').eq('name','google_calendar').maybeSingle();
+      if (cfg.error) throw cfg.error;
+      const calId = cfg.data?.config?.calendar_id || 'primary';
+      const window = eventWindow(withDerivedDates(lead.data),d.q);
+      const events = (await Promise.all([...new Set([calId,'primary'])].map(async calendar_id=>{
+        const base = `/calendar/v3/calendars/${encodeURIComponent(calendar_id)}`;
+        const meta = await (await gateway('google_calendar','GOOGLE_CALENDAR_API_KEY',base)).json();
+        const qs = new URLSearchParams({singleEvents:'true',orderBy:'startTime',maxResults:'20',timeMin:window.from,timeMax:window.to,...(d.q?{q:d.q}:{})});
+        const res = await (await gateway('google_calendar','GOOGLE_CALENDAR_API_KEY',`${base}/events?${qs}`)).json();
+        return (res.items||[]).filter((e:any)=>e.status!=='cancelled').map((e:any)=>({calendar_id,calendar_alias:meta.id||calendar_id,calendar_name:meta.summary||calendar_id,event_id:e.id,title:e.summary||'',start:e.start?.dateTime||e.start?.date||null,end:e.end?.dateTime||e.end?.date||null}));
+      }))).flat().sort((a,b)=>String(a.start).localeCompare(String(b.start))).slice(0,20);
+      const ids = [...new Set(events.flatMap(e=>[e.event_id,normEvent(e.event_id)]))];
+      if (!ids.length) return {ok:true,events:[]};
+      const [own,links] = await Promise.all([
+        sb.from('calendar_events').select('google_event_id,lead_id').in('google_event_id',ids),
+        sb.from('calendar_event_links').select('calendar_id,event_id,lead_id').eq('unlinked',false).in('event_id',ids),
+      ]);
+      if (own.error) throw own.error;
+      if (links.error) throw links.error;
+      const leadIds = [...new Set([...own.data||[],...links.data||[]].map((r:any)=>r.lead_id))];
+      const refs = leadIds.length ? await sb.from('leads').select('id,yt_id').in('id',leadIds) : {data:[]};
+      if (refs.error) throw refs.error;
+      return {ok:true,events:events.map(e=>{
+        const matches = [...(e.calendar_id===calId ? (own.data||[]).filter((r:any)=>[e.event_id,normEvent(e.event_id)].includes(r.google_event_id)) : []),...(links.data||[]).filter((r:any)=>[e.calendar_id,e.calendar_alias].includes(r.calendar_id)&&[e.event_id,normEvent(e.event_id)].includes(r.event_id))];
+        const linked = matches.find((r:any)=>r.lead_id===d.lead_id)||matches[0];
+        const {calendar_alias: _alias,...event} = e;
+        return {...event,linked_to_this:matches.some((r:any)=>r.lead_id===d.lead_id),linked_yt:refs.data?.find((r:any)=>r.id===linked?.lead_id)?.yt_id??null};
+      })};
+    }
+    case 'update_lead': {
+      const d = UpdateLead.parse(data);
+      const lead = await sb.from('leads').select('*').eq('id',d.lead_id).maybeSingle();
+      if (lead.error) throw lead.error;
+      if (!lead.data) return {ok:false,error:'File não encontrada'};
+      const {program_name,...rest} = d.fields;
+      const patch = {...rest,...(program_name!==undefined?{client_name:program_name}:{}),...(rest.trip_start?{travel_dates:rest.trip_start}:{}),...(rest.trip_finish?{travel_end_date:rest.trip_finish}:{})};
+      const merged = {...lead.data,...patch};
+      if (merged.trip_start && merged.trip_finish && merged.trip_finish < merged.trip_start) return {ok:false,error:'Data final anterior à data inicial'};
+      const version = lead.data.active_version ?? 0;
+      const v = await sb.from('lead_versions').select('id,general_data').eq('lead_id',d.lead_id).eq('version',version).maybeSingle();
+      if (v.error) throw v.error;
+      const {pvp_override,...general} = patch;
+      const versionPatch = {general_data:{...(v.data?.general_data||lead.data),...general},...(pvp_override!==undefined?{pvp_override}:{})};
+      const saved = v.data ? await sb.from('lead_versions').update(versionPatch).eq('id',v.data.id) : await sb.from('lead_versions').insert({lead_id:d.lead_id,version,name:`V${version}`,...versionPatch});
+      if (saved.error) throw saved.error;
+      const r = await sb.from('leads').update(patch).eq('id',d.lead_id);
+      if (r.error) throw r.error;
+      // Existing DB triggers retain stage history and protected Calendar queue ownership.
+      const sync = await sb.rpc('enqueue_sync',{p_target:'nethunt',p_entity:'lead',p_entity_id:d.lead_id,p_fields:[],p_reason:'crm_addon'});
+      if (sync.error) throw sync.error;
+      if (rest.trip_start!==undefined&&rest.trip_start!==lead.data.trip_start||rest.trip_finish!==undefined&&rest.trip_finish!==lead.data.trip_finish) {
+        const cal = await sb.rpc('enqueue_sync',{p_target:'calendar',p_entity:'lead',p_entity_id:d.lead_id,p_fields:[],p_reason:'crm_addon:dates'});
+        if (cal.error) throw cal.error;
+      }
+      await audit(sb,actor,d.lead_id,'lead_updated',{fields:Object.keys(patch),changes:Object.fromEntries(Object.entries(patch).map(([key,to])=>[key,{from:lead.data[key],to}]))});
+      return {ok:true,linked:await leadCard(sb,d.lead_id)};
+    }
     case 'stages': return { ok: true, stages: STAGES.map(([key, label, side]) => ({ key, label, side })) };
     case 'email_context': return emailContext(sb, EmailData.parse(data), actor);
     case 'search': {
@@ -334,7 +430,7 @@ async function handle(sb: any, action: string, data: any, actor: Actor) {
   }
 }
 
-Deno.serve(async (req) => {
+if (import.meta.main) Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response(null, { headers: corsHeaders });
   if (req.method !== 'POST') return fail('Método não permitido', 405);
   const sb = db();
