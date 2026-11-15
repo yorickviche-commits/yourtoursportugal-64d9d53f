@@ -12,6 +12,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import YTBrainSettings from '@/components/ytbrain/YTBrainSettings';
 import { Brain, Bot } from 'lucide-react';
 import AgentKeysPanel from '@/components/admin/AgentKeysPanel';
+import { useQueryClient } from '@tanstack/react-query';
+import { MARGIN_REFERENCE_QUERY_KEY } from '@/hooks/useMarginReference';
 
 interface SettingRow {
   id: string;
@@ -22,6 +24,7 @@ interface SettingRow {
 }
 
 const AdminSettingsPage = () => {
+  const queryClient = useQueryClient();
   const { isAdmin } = useAuth();
   const [settings, setSettings] = useState<SettingRow[]>([]);
   const [loading, setLoading] = useState(true);
@@ -66,6 +69,7 @@ const AdminSettingsPage = () => {
         .eq('key', key);
     }
     setEditedValues({});
+    void queryClient.invalidateQueries({ queryKey: MARGIN_REFERENCE_QUERY_KEY });
     toast({ title: 'Definições guardadas' });
     fetchSettings();
     setSaving(false);
@@ -86,7 +90,7 @@ const AdminSettingsPage = () => {
     seasonal_adjustment_pct: 'Ajuste Sazonal (%)',
     market_adjustment_pct: 'Ajuste Mercado (%)',
     emergency_override_margin: 'Margem Emergência (%)',
-    minimum_margin_threshold: 'Margem Mínima (%)',
+    minimum_margin_threshold: 'Margem de referência (%) — apenas alerta',
     payment_plan_default: 'Plano Pagamento',
     stripe_fee_pct: 'Taxa Stripe (%)',
     vat_rate_default: 'IVA Padrão (%)',
@@ -113,7 +117,9 @@ const AdminSettingsPage = () => {
             onChange={e => handleChange(s, e.target.value)}
             className="h-9 text-sm"
           />
-          {s.description && <p className="text-[11px] text-muted-foreground">{s.description}</p>}
+          {s.key === 'minimum_margin_threshold'
+            ? <p className="text-[11px] text-muted-foreground">Apenas informativa; nunca impede guardar ou avançar.</p>
+            : s.description && <p className="text-[11px] text-muted-foreground">{s.description}</p>}
         </div>
       ))}
     </div>

@@ -1,3 +1,10 @@
+# Margin reference — current request
+- [x] Audit database constraints, triggers, policies and report indicator; no database margin rejection found; informational comments migrated.
+- [x] Replace MCP rejection with warnings; mcp-agent-core deployed.
+- [ ] Deploy OAuth mcp: platform withholds this endpoint until the next app publication.
+- [x] Rename Admin reference and show a non-blocking Costing warning, with hotel/service breakdown.
+- [x] Test low-margin writes/validation and preserve CEO approval: 19 tests passed; real SALES YT5031 warning and enabled save/payment controls checked without modifying the file.
+
 # Roadmap
 - [x] CRM Gmail 1.2: etiquetas geridas, teste de uma thread YT5057 preservando outras labels, criação em ambas as caixas e backfill de 90 dias ativado no cron existente.
 - [x] CRM Gmail 1.1: checklist partilhada, tarefas, pesquisa de eventos, edição manual, 9 testes incluindo leituras YT5057 sem gravações e deploy apenas crm-addon.

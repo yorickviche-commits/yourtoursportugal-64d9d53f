@@ -3,7 +3,7 @@ import { z } from "zod";
 import { supabaseForUser } from "../supabase";
 import { auditLead, leadLabel, resolveLead } from "../lead";
 import { resolveWriteVersion } from "../agent";
-import { blankLine, calcLine, costingTotals, loadCosting, saveCostingDay, type CostDay } from "../costing";
+import { blankLine, calcLine, costingTotals, loadCosting, loadMarginReference, marginWarning, saveCostingDay, type CostDay } from "../costing";
 import { loadPlan } from "../travelPlan";
 
 /**
@@ -94,7 +94,8 @@ export default defineTool({
 
     for (const day of allDays) await saveCostingDay(supabase, lead, ver, day);
 
-    const totals = costingTotals(allDays);
+    const totals = costingTotals(allDays, await loadMarginReference(supabase));
+    const warning = marginWarning(totals);
     await auditLead(
       supabase,
       ctx,
@@ -112,6 +113,7 @@ export default defineTool({
       lines_priced: filled,
       lines_still_without_price: allDays.flatMap((d) => d.items).filter((i) => !i.priceAdults).length,
       totals,
+      warnings: warning ? [warning] : [],
       margin_below_minimum: totals.pvp_eur > 0 && totals.margin_percent < totals.min_margin_percent,
     };
     return { content: [{ type: "text", text: JSON.stringify(payload, null, 2) }], structuredContent: payload };

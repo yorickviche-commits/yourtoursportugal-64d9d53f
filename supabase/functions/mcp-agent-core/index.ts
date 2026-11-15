@@ -1992,6 +1992,17 @@ var BUSINESS_CONFIG = {
   LUXURY_MARGIN_PERCENT: 35
 };
 
+// src/lib/marginReference.ts
+function marginReferenceValue(value) {
+  const parsed = typeof value === "number" || typeof value === "string" ? Number(value) : NaN;
+  return Number.isFinite(parsed) && parsed >= 0 ? parsed : BUSINESS_CONFIG.MIN_MARGIN_PERCENT;
+}
+function lowMarginWarning(net, pvp, reference) {
+  const margin = pvp > 0 ? (pvp - net) / pvp * 100 : 0;
+  if (pvp <= 0 || margin >= reference) return null;
+  return `Margem total ${margin.toFixed(1)}% abaixo da refer\xEAncia de ${reference}% \u2014 verificar (normal se houver hot\xE9is a 10\u201315%).`;
+}
+
 // src/lib/mcp/costing.ts
 var ACCOMMODATION_DAY = 0;
 function calcLine(line) {
@@ -2051,7 +2062,7 @@ async function saveCostingDay(supabase, lead6, version, day) {
 var counts = (days2, optional) => days2.flatMap((d) => d.items).filter(
   (i) => optional ? i.status === "opcionais" : i.status !== "opcionais" && i.status !== "eliminar"
 );
-function costingTotals(days2) {
+function costingTotals(days2, reference = BUSINESS_CONFIG.MIN_MARGIN_PERCENT) {
   const base = counts(days2, false);
   const net = base.reduce((s, i) => s + i.netTotal, 0);
   const pvp = base.reduce((s, i) => s + i.pvpTotal, 0);
@@ -2065,30 +2076,15 @@ function costingTotals(days2) {
     optionals_pvp_eur: round(optionals),
     requires_ceo_approval: pvp > BUSINESS_CONFIG.CEO_APPROVAL_THRESHOLD_EUR,
     ceo_threshold_eur: BUSINESS_CONFIG.CEO_APPROVAL_THRESHOLD_EUR,
-    min_margin_percent: BUSINESS_CONFIG.MIN_MARGIN_PERCENT
+    min_margin_percent: reference
   };
 }
-function assertMinimumMargin(totals) {
-  if (totals.pvp_eur > 0 && totals.margin_percent < totals.min_margin_percent) {
-    throw new ToolError21(
-      `Minimum margin violated: ${totals.margin_percent.toFixed(1)}% is below the required ${totals.min_margin_percent}% (net ${totals.net_eur.toFixed(2)} EUR, PVP ${totals.pvp_eur.toFixed(2)} EUR). Raise the selling price or lower the net cost \u2014 the costing was not saved. For leads already sold, pass allow_below_min_margin=true with a reason.`
-    );
-  }
-}
-async function soldLeadReason(supabase, lead6) {
-  const stage = String(lead6.nethunt_stage ?? "");
-  if (stage.toUpperCase().startsWith("OPERATIONS")) return `stage ${stage}`;
-  const status = String(lead6.status ?? "").toLowerCase();
-  if (["won", "confirmed", "confirmada", "ganho"].includes(status)) return `status ${status}`;
-  const deposited = await paymentsSummary(supabase, lead6);
-  if (deposited > 0) return `payment registered (${deposited.toFixed(2)} EUR)`;
-  return null;
+async function loadMarginReference(supabase) {
+  const { data } = await supabase.from("system_settings").select("value").eq("category", "operations").eq("key", "minimum_margin_threshold").maybeSingle();
+  return marginReferenceValue(data?.value);
 }
 function marginWarning(totals) {
-  if (totals.pvp_eur > 0 && totals.margin_percent < totals.min_margin_percent) {
-    return `margem ${totals.margin_percent.toFixed(1)}% abaixo do m\xEDnimo ${totals.min_margin_percent}%`;
-  }
-  return null;
+  return lowMarginWarning(totals.net_eur, totals.pvp_eur, totals.min_margin_percent);
 }
 async function paymentsSummary(supabase, lead6) {
   const { data } = await supabase.from("lead_payments").select("amount").eq("lead_id", lead6.id);
@@ -2172,17 +2168,17 @@ var lineSchema = z16.object({
 var upsert_costing_lines_default = defineTool18({
   name: "upsert_costing_lines",
   title: "Create or update costing lines",
-  description: "Create or update costing lines of a lead, exactly like editing the Custos table in the TCC. Totals and profit are recalculated with the same arithmetic. While selling, the save is refused when the margin drops below the company minimum. For leads already sold (payment registered, OPERATIONS stage or won status) the save goes through and returns a 'warning' with the margin instead. The answer also flags when the file needs CEO approval.",
+  description: "Create or update costing lines of a lead, exactly like editing the Custos table in the TCC. Totals and profit are recalculated with the same arithmetic. Low margin never blocks saving: warnings reports margins below the configured reference. CEO approval requirements remain unchanged.",
   inputSchema: {
     lead_id: z16.string().optional().describe("Lead uuid."),
     lead_code: z16.string().optional().describe("Lead code such as YT5130."),
     version: z16.number().int().optional().describe("Version to edit (default: LIVE version)."),
     lines: z16.array(lineSchema).min(1).describe("Lines to create or update."),
-    allow_below_min_margin: z16.boolean().optional().describe("Explicit override to save below the minimum margin (e.g. migrating sold files). Requires below_min_margin_reason."),
-    below_min_margin_reason: z16.string().optional().describe("Reason for the override; logged in the lead history.")
+    allow_below_min_margin: z16.boolean().optional().describe("Legacy compatibility parameter; optional and ignored. Low margin never blocks saving."),
+    below_min_margin_reason: z16.string().optional().describe("Legacy compatibility parameter; optional and ignored. No reason is required.")
   },
   annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false },
-  handler: async ({ lead_id, lead_code, version, lines, allow_below_min_margin, below_min_margin_reason }, ctx) => {
+  handler: async ({ lead_id, lead_code, version, lines }, ctx) => {
     if (!ctx.isAuthenticated()) throw new ToolError23("Not authenticated");
     const supabase = supabaseForUser(ctx);
     const lead6 = await resolveLead(supabase, { lead_id, lead_code });
@@ -2232,29 +2228,19 @@ var upsert_costing_lines_default = defineTool18({
       }
     }
     const allDays = [...byDay.values()].sort((a, b) => a.day_number - b.day_number);
-    const totals = costingTotals(allDays);
+    const totals = costingTotals(allDays, await loadMarginReference(supabase));
     const warning = marginWarning(totals);
-    let marginException = null;
-    if (warning) {
-      if (allow_below_min_margin) {
-        if (!below_min_margin_reason?.trim()) {
-          throw new ToolError23("allow_below_min_margin=true requires below_min_margin_reason");
-        }
-        marginException = `explicit override: ${below_min_margin_reason.trim()}`;
-      } else {
-        const sold = await soldLeadReason(supabase, lead6);
-        if (sold) marginException = `lead already sold \u2014 ${sold}`;
-        else assertMinimumMargin(totals);
-      }
+    for (const dayNumber of touched) {
+      const day = byDay.get(dayNumber);
+      if (day) await saveCostingDay(supabase, lead6, ver, day);
     }
-    for (const dayNumber of touched) await saveCostingDay(supabase, lead6, ver, byDay.get(dayNumber));
     await auditLead(
       supabase,
       ctx,
       lead6,
       "costing_updated",
       { costing_lines: { from: `${days2.flatMap((d) => d.items).length} lines`, to: `${allDays.flatMap((d) => d.items).length} lines` } },
-      { version: ver, created_line_ids: created, updated_line_ids: updated, margin_warning: warning, margin_exception: marginException }
+      { version: ver, created_line_ids: created, updated_line_ids: updated, margin_warning: warning }
     );
     const payload = {
       lead: leadLabel(lead6),
@@ -2264,7 +2250,7 @@ var upsert_costing_lines_default = defineTool18({
       updated_line_ids: updated,
       totals,
       warning,
-      margin_exception: marginException,
+      warnings: warning ? [warning] : [],
       requires_ceo_approval: totals.requires_ceo_approval,
       note: totals.requires_ceo_approval ? `Total above ${totals.ceo_threshold_eur} EUR \u2014 needs CEO approval before going to the client.` : null
     };
@@ -2546,7 +2532,8 @@ var autofill_costing_from_plan_default = defineTool20({
       }
     }
     for (const day of allDays) await saveCostingDay(supabase, lead6, ver, day);
-    const totals = costingTotals(allDays);
+    const totals = costingTotals(allDays, await loadMarginReference(supabase));
+    const warning = marginWarning(totals);
     await auditLead(
       supabase,
       ctx,
@@ -2563,6 +2550,7 @@ var autofill_costing_from_plan_default = defineTool20({
       lines_priced: filled,
       lines_still_without_price: allDays.flatMap((d) => d.items).filter((i) => !i.priceAdults).length,
       totals,
+      warnings: warning ? [warning] : [],
       margin_below_minimum: totals.pvp_eur > 0 && totals.margin_percent < totals.min_margin_percent
     };
     return { content: [{ type: "text", text: JSON.stringify(payload, null, 2) }], structuredContent: payload };
@@ -3013,15 +3001,13 @@ var validate_lead_default = defineTool25({
     }
     const costing = await loadCosting(supabase, lead6, ver);
     const lines = costing.flatMap((d) => d.items);
-    const totals = costingTotals(costing);
+    const totals = costingTotals(costing, await loadMarginReference(supabase));
+    const warning = marginWarning(totals);
     if (!lines.length) missing.push("costing (no lines yet)");
     const unpriced = lines.filter((i) => !i.priceAdults).length;
     if (unpriced) inconsistencies.push(`${unpriced} costing lines without a net rate`);
     const paxMismatch = lines.filter((i) => i.pricingType === "per_person" && i.numAdults !== Number(l.pax || 0));
     if (paxMismatch.length) inconsistencies.push(`${paxMismatch.length} per-person costing lines do not use ${l.pax} adults`);
-    if (totals.pvp_eur > 0 && totals.margin_percent < totals.min_margin_percent) {
-      inconsistencies.push(`Margin ${totals.margin_percent}% is below the ${totals.min_margin_percent}% minimum`);
-    }
     if (String(l.client_type || "").toUpperCase() === "B2B") {
       if (!l.partner_id) missing.push("B2B partner");
       if (!proposal?.brand_logo_url) missing.push("B2B logo on the proposal");
@@ -3040,6 +3026,7 @@ var validate_lead_default = defineTool25({
       ready: missing.length === 0 && inconsistencies.length === 0,
       missing_fields: missing,
       inconsistencies,
+      warnings: warning ? [warning] : [],
       plan_warnings: planWarnings(plan),
       costing: { ...totals, deposited_eur: deposited, outstanding_eur: Math.round((totals.pvp_eur - deposited) * 100) / 100 },
       to_advance_stage: nextStage

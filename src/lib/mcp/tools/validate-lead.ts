@@ -2,7 +2,7 @@ import { defineTool, ToolError } from "@lovable.dev/mcp-js";
 import { z } from "zod";
 import { supabaseForUser } from "../supabase";
 import { leadLabel, liveVersion, resolveLead } from "../lead";
-import { costingTotals, loadCosting, paymentsSummary } from "../costing";
+import { costingTotals, loadCosting, loadMarginReference, marginWarning, paymentsSummary } from "../costing";
 import { loadPlan, planWarnings } from "../travelPlan";
 
 const days = (from?: string | null, to?: string | null) => {
@@ -69,15 +69,13 @@ export default defineTool({
 
     const costing = await loadCosting(supabase, lead, ver);
     const lines = costing.flatMap((d) => d.items);
-    const totals = costingTotals(costing);
+    const totals = costingTotals(costing, await loadMarginReference(supabase));
+    const warning = marginWarning(totals);
     if (!lines.length) missing.push("costing (no lines yet)");
     const unpriced = lines.filter((i) => !i.priceAdults).length;
     if (unpriced) inconsistencies.push(`${unpriced} costing lines without a net rate`);
     const paxMismatch = lines.filter((i) => i.pricingType === "per_person" && i.numAdults !== Number(l.pax || 0));
     if (paxMismatch.length) inconsistencies.push(`${paxMismatch.length} per-person costing lines do not use ${l.pax} adults`);
-    if (totals.pvp_eur > 0 && totals.margin_percent < totals.min_margin_percent) {
-      inconsistencies.push(`Margin ${totals.margin_percent}% is below the ${totals.min_margin_percent}% minimum`);
-    }
 
     if (String(l.client_type || "").toUpperCase() === "B2B") {
       if (!l.partner_id) missing.push("B2B partner");
@@ -99,6 +97,7 @@ export default defineTool({
       ready: missing.length === 0 && inconsistencies.length === 0,
       missing_fields: missing,
       inconsistencies,
+      warnings: warning ? [warning] : [],
       plan_warnings: planWarnings(plan),
       costing: { ...totals, deposited_eur: deposited, outstanding_eur: Math.round((totals.pvp_eur - deposited) * 100) / 100 },
       to_advance_stage: nextStage,

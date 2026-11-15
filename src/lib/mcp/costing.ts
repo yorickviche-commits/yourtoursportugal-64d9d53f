@@ -2,6 +2,7 @@ import { ToolError } from "@lovable.dev/mcp-js";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { BUSINESS_CONFIG } from "../../lib/businessConfig";
 import type { LeadRow } from "./lead";
+import { lowMarginWarning, marginReferenceValue } from "../marginReference";
 
 /**
  * Server-side mirror of LeadCostingEditor: the costing lives in
@@ -140,7 +141,7 @@ export interface CostingTotals {
   min_margin_percent: number;
 }
 
-export function costingTotals(days: CostDay[]): CostingTotals {
+export function costingTotals(days: CostDay[], reference = BUSINESS_CONFIG.MIN_MARGIN_PERCENT as number): CostingTotals {
   const base = counts(days, false);
   const net = base.reduce((s, i) => s + i.netTotal, 0);
   const pvp = base.reduce((s, i) => s + i.pvpTotal, 0);
@@ -154,42 +155,19 @@ export function costingTotals(days: CostDay[]): CostingTotals {
     optionals_pvp_eur: round(optionals),
     requires_ceo_approval: pvp > BUSINESS_CONFIG.CEO_APPROVAL_THRESHOLD_EUR,
     ceo_threshold_eur: BUSINESS_CONFIG.CEO_APPROVAL_THRESHOLD_EUR,
-    min_margin_percent: BUSINESS_CONFIG.MIN_MARGIN_PERCENT,
+    min_margin_percent: reference,
   };
 }
 
-/** Business rule: never let a file drop under the minimum margin. */
-export function assertMinimumMargin(totals: CostingTotals) {
-  if (totals.pvp_eur > 0 && totals.margin_percent < totals.min_margin_percent) {
-    throw new ToolError(
-      `Minimum margin violated: ${totals.margin_percent.toFixed(1)}% is below the required ${totals.min_margin_percent}% ` +
-        `(net ${totals.net_eur.toFixed(2)} EUR, PVP ${totals.pvp_eur.toFixed(2)} EUR). ` +
-        `Raise the selling price or lower the net cost — the costing was not saved. ` +
-        `For leads already sold, pass allow_below_min_margin=true with a reason.`,
-    );
-  }
-}
-
-/**
- * A lead counts as sold when it has a payment registered, sits in an
- * OPERATIONS stage, or has a won/confirmed status. Sold files keep their real
- * margin: the minimum-margin rule only blocks while selling.
- */
-export async function soldLeadReason(supabase: SupabaseClient, lead: LeadRow): Promise<string | null> {
-  const stage = String(lead.nethunt_stage ?? "");
-  if (stage.toUpperCase().startsWith("OPERATIONS")) return `stage ${stage}`;
-  const status = String(lead.status ?? "").toLowerCase();
-  if (["won", "confirmed", "confirmada", "ganho"].includes(status)) return `status ${status}`;
-  const deposited = await paymentsSummary(supabase, lead);
-  if (deposited > 0) return `payment registered (${deposited.toFixed(2)} EUR)`;
-  return null;
+export async function loadMarginReference(supabase: SupabaseClient): Promise<number> {
+  const { data } = await supabase.from("system_settings").select("value")
+    .eq("category", "operations").eq("key", "minimum_margin_threshold").maybeSingle();
+  // An unavailable advisory setting must not prevent costing writes.
+  return marginReferenceValue(data?.value);
 }
 
 export function marginWarning(totals: CostingTotals): string | null {
-  if (totals.pvp_eur > 0 && totals.margin_percent < totals.min_margin_percent) {
-    return `margem ${totals.margin_percent.toFixed(1)}% abaixo do mínimo ${totals.min_margin_percent}%`;
-  }
-  return null;
+  return lowMarginWarning(totals.net_eur, totals.pvp_eur, totals.min_margin_percent);
 }
 
 export async function paymentsSummary(supabase: SupabaseClient, lead: LeadRow) {

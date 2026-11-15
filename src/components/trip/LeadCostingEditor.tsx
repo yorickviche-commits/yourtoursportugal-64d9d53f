@@ -20,6 +20,8 @@ import SupplierExperiencePicker, { type PickedExperience } from './SupplierExper
 import CostingSmartImportDialog, { type ImportedCostRow } from './CostingSmartImportDialog';
 import type { PlannerDay, PeriodKey } from './TravelPlannerEditor';
 import { eur, num2 } from '@/lib/money';
+import { useMarginReference } from '@/hooks/useMarginReference';
+import { lowMarginWarning, marginBreakdown, marginReferenceValue } from '@/lib/marginReference';
 
 // ─── Types ───────────────────────────────────────────
 export type CostLayer = 'transport' | 'guide' | 'experience' | 'accommodation' | 'meal' | 'operational';
@@ -279,6 +281,7 @@ interface LeadCostingEditorProps {
 
 // ─── Component ───────────────────────────────────────
 const LeadCostingEditor = ({ costingDays, onChange, onSave, saving, plannerDays, pax, paxChildren, destination, leadId, leadCode, clientName, startDate, endDate, pvpOverride: pvpOverrideProp, onPvpOverrideChange, version = 0, templateMode = false }: LeadCostingEditorProps) => {
+  const { data: configuredReference } = useMarginReference();
   const [expandedDays, setExpandedDays] = useState<number[]>(costingDays.length > 0 ? costingDays.map(d => d.day) : []);
   const [autoFilling, setAutoFilling] = useState(false);
   const [payLinkOpen, setPayLinkOpen] = useState(false);
@@ -607,6 +610,8 @@ const LeadCostingEditor = ({ costingDays, onChange, onSave, saving, plannerDays,
   const grandProfit = grandPVP - grandNet;
   const grandMargin = grandNet > 0 ? (grandProfit / grandNet) * 100 : 0;
   const pvpPerPax = totalPax > 0 ? grandPVP / totalPax : 0;
+  const marginNotice = lowMarginWarning(grandNet, grandPVP, marginReferenceValue(configuredReference));
+  const marginParts = marginBreakdown(costingDays);
 
   // Local edit buffers for the totals row
   const [editMargin, setEditMargin] = useState<string>('');
@@ -1044,6 +1049,16 @@ const LeadCostingEditor = ({ costingDays, onChange, onSave, saving, plannerDays,
 
 
       {/* Grand Totals — editable & dynamic (NET read-only) */}
+      {marginNotice && (
+        <div role="status" className="border border-warning/40 bg-warning-muted text-warning-foreground rounded-md p-3 text-xs space-y-1">
+          <p>⚠️ {marginNotice}</p>
+          <p className="text-muted-foreground">
+            Margem sobre PVP · Alojamentos: {marginParts.accommodation_percent == null ? '—' : `${marginParts.accommodation_percent.toFixed(1)}%`}
+            {' · '}Restantes serviços: {marginParts.other_services_percent == null ? '—' : `${marginParts.other_services_percent.toFixed(1)}%`}
+            {pvpOverride != null && ' · Por serviço antes do ajuste manual do PVP total.'}
+          </p>
+        </div>
+      )}
       {activeItems.length > 0 && (
         <div className="bg-card rounded-lg border p-4">
           <div className="grid grid-cols-2 md:grid-cols-5 gap-6 text-center items-end">

@@ -683,7 +683,7 @@
       {
         "name": "upsert_costing_lines",
         "title": "Create or update costing lines",
-        "description": "Create or update costing lines of a lead, exactly like editing the Custos table in the TCC. Totals and profit are recalculated with the same arithmetic. While selling, the save is refused when the margin drops below the company minimum. For leads already sold (payment registered, OPERATIONS stage or won status) the save goes through and returns a 'warning' with the margin instead. The answer also flags when the file needs CEO approval.",
+        "description": "Create or update costing lines of a lead, exactly like editing the Custos table in the TCC. Totals and profit are recalculated with the same arithmetic. Low margin never blocks saving: warnings reports margins below the configured reference. CEO approval requirements remain unchanged.",
         "annotations": {
           "readOnlyHint": false,
           "destructiveHint": false,
@@ -783,11 +783,11 @@
             },
             "allow_below_min_margin": {
               "type": "boolean",
-              "description": "Explicit override to save below the minimum margin (e.g. migrating sold files). Requires below_min_margin_reason."
+              "description": "Legacy compatibility parameter; optional and ignored. Low margin never blocks saving."
             },
             "below_min_margin_reason": {
               "type": "string",
-              "description": "Reason for the override; logged in the lead history."
+              "description": "Legacy compatibility parameter; optional and ignored. No reason is required."
             }
           },
           "required": [
