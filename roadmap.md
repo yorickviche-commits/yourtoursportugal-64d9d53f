@@ -1,3 +1,7 @@
+# Internal Costing downloads
+- [x] Add PDF/Excel menu next to Save with full descriptions and notes.
+- [x] Verify authenticated downloads on YT5057, all seven PDF pages, long-note continuation, Excel totals and zero formula errors; fixed orphaned PDF summary heading and unsupported minus glyph.
+
 # Margin reference — current request
 - [x] Audit database constraints, triggers, policies and report indicator; no database margin rejection found; informational comments migrated.
 - [x] Replace MCP rejection with warnings; mcp-agent-core deployed.

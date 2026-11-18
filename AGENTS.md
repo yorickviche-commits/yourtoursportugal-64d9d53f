@@ -1,3 +1,4 @@
+- Internal Costing exports use a read-only snapshot of the open editor version, with paginated text tables for PDF and wrapped continuation rows for Excel. Why: export full descriptions/notes without saving, mutating leads or reusing the client proposal.
 - Margin notices share pure margin/reference helpers between Costing UI and MCP; read the existing advisory setting with a non-blocking fallback. Why: keep warnings consistent without coupling them to write or approval gates.
 - Agent keys: scheduled agents use `/functions/v1/mcp-agent` (hand-written gateway, verifies `ytp_agent_` key) which forwards to the SDK-generated `mcp-agent-core` (src/lib/mcp/agent-entry.ts, same tools via toolset.ts). Why: @lovable.dev/mcp-js only supports OAuth issuer auth.
 - src/lib/mcp must use relative imports only (no `@/`). Why: the edge bundler turns `@/` into broken `npm:` specifiers.

@@ -1,5 +1,5 @@
 import { useState, useMemo, useCallback } from 'react';
-import { ChevronDown, ChevronRight, Plus, CheckCircle2, MinusCircle, XCircle, Sparkles, Pencil, Trash2, Save, Loader2, Wand2, GripVertical, Link2 } from 'lucide-react';
+import { ChevronDown, ChevronRight, Plus, CheckCircle2, MinusCircle, XCircle, Sparkles, Pencil, Trash2, Save, Loader2, Wand2, GripVertical, Link2, Download, FileText, Sheet } from 'lucide-react';
 import PaymentLinkDialog from '@/components/payments/PaymentLinkDialog';
 import { executionCostingItems } from '@/lib/productExecution';
 import { calculateProductRow } from '@/lib/productAddons';
@@ -22,6 +22,7 @@ import type { PlannerDay, PeriodKey } from './TravelPlannerEditor';
 import { eur, num2 } from '@/lib/money';
 import { useMarginReference } from '@/hooks/useMarginReference';
 import { lowMarginWarning, marginBreakdown, marginReferenceValue } from '@/lib/marginReference';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 
 // ─── Types ───────────────────────────────────────────
 export type CostLayer = 'transport' | 'guide' | 'experience' | 'accommodation' | 'meal' | 'operational';
@@ -287,6 +288,7 @@ const LeadCostingEditor = ({ costingDays, onChange, onSave, saving, plannerDays,
   const [payLinkOpen, setPayLinkOpen] = useState(false);
   const [importingTP, setImportingTP] = useState(false);
   const [smartImportOpen, setSmartImportOpen] = useState(false);
+  const [exporting, setExporting] = useState(false);
 
   const toggleDay = (day: number) => {
     setExpandedDays(prev => prev.includes(day) ? prev.filter(d => d !== day) : [...prev, day]);
@@ -637,6 +639,18 @@ const LeadCostingEditor = ({ costingDays, onChange, onSave, saving, plannerDays,
 
 
   const hasItems = costingDays.some(d => d.items.length > 0);
+  const downloadCosting = async (format: 'pdf' | 'xlsx') => {
+    setExporting(true);
+    try {
+      const { buildCostingPdf, buildCostingExcel, costingExportFilename, saveCostingBlob } = await import('@/lib/costingExport');
+      const input = { days: costingDays, leadCode, clientName, destination, version, pax, paxChildren, startDate, endDate, pvpOverride: templateMode ? null : pvpOverride };
+      const blob = await (format === 'pdf' ? buildCostingPdf(input) : buildCostingExcel(input));
+      saveCostingBlob(blob, costingExportFilename(input, format));
+      toast.success(format === 'pdf' ? 'PDF de Custos descarregado.' : 'Excel de Custos descarregado.');
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Não foi possível descarregar os Custos.');
+    } finally { setExporting(false); }
+  };
 
   return (
     <div className="space-y-3">
@@ -685,6 +699,18 @@ const LeadCostingEditor = ({ costingDays, onChange, onSave, saving, plannerDays,
             {saving ? <Loader2 className="h-3 w-3 animate-spin" /> : <Save className="h-3 w-3" />}
             Guardar Custos
           </Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button size="sm" variant="outline" className="text-xs gap-1" disabled={exporting || !hasItems}>
+                {exporting ? <Loader2 className="h-3 w-3 animate-spin" /> : <Download className="h-3 w-3" />}
+                Descarregar <ChevronDown className="h-3 w-3" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onSelect={() => void downloadCosting('pdf')}><FileText className="mr-2 h-4 w-4" />PDF</DropdownMenuItem>
+              <DropdownMenuItem onSelect={() => void downloadCosting('xlsx')}><Sheet className="mr-2 h-4 w-4" />Excel</DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </div>
 
