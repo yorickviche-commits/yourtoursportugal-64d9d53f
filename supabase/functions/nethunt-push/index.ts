@@ -30,7 +30,8 @@ serve(async (req) => {
       const { data } = await sb.from("leads")
         .select("id, nethunt_record_id, nethunt_stage, status").eq("id", id).maybeSingle();
       const lead = data as { id: string; nethunt_record_id: string | null; nethunt_stage: string | null; status: string } | null;
-      if (!lead?.nethunt_record_id) throw new Error("Lead sem record NetHunt associado");
+      if (!lead) throw new Error("Lead não encontrada");
+      if (!lead.nethunt_record_id) return json({ ok: true, skipped: "no_nethunt_record" });
 
       const actions: FieldAction[] = [];
       const sent: Vals = {};

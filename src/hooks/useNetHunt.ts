@@ -1,3 +1,4 @@
+import { toast } from 'sonner';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -116,26 +117,27 @@ async function push(entity: PushEntity, id: string | null, changes: Record<strin
   return data;
 }
 
-/** Updates the lead locally and immediately mirrors the change to NetHunt. */
+/**
+ * Updates the lead in the TCC (source of truth). NetHunt mirroring is best-effort:
+ * skipped when the push switch is off or the file has no NetHunt record, and a
+ * push failure never reverts the TCC change (DB triggers already ran).
+ */
 export const usePushLead = () => {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async ({ id, changes }: { id: string; changes: Record<string, unknown> }) => {
-      const previous = 'nethunt_stage' in changes
-        ? await supabase.from('leads').select('nethunt_stage,stage_changed_at').eq('id', id).single()
-        : null;
-      if (previous?.error) throw previous.error;
       const { error } = await supabase.from('leads').update(changes as any).eq('id', id);
       if (error) throw error;
+      const [{ data: lead }, { data: enabled }] = await Promise.all([
+        supabase.from('leads').select('nethunt_record_id').eq('id', id).maybeSingle(),
+        supabase.rpc('nethunt_push_enabled' as any),
+      ]);
+      if (enabled === false || !lead?.nethunt_record_id) return { ok: true, nethunt: 'skipped' };
       try {
         return await push('lead', id, changes);
-      } catch (error) {
-        if (previous?.data) {
-          // Conditional rollback must not undo another user's later move.
-          const rollback = await supabase.from('leads').update({ nethunt_stage: previous.data.nethunt_stage }).eq('id', id).eq('nethunt_stage', String(changes.nethunt_stage));
-          if (rollback.error) throw new Error(`Falha na sincronização e reversão: ${rollback.error.message}`);
-        }
-        throw error;
+      } catch (e) {
+        toast.warning('Gravado no TCC. NetHunt pendente — será repetido automaticamente.');
+        return { ok: true, nethunt: 'pending', error: (e as Error)?.message };
       }
     },
     onSuccess: (_d, v) => {

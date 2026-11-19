@@ -8197,6 +8197,7 @@ export type Database = {
         }
         Returns: number
       }
+      nethunt_push_enabled: { Args: never; Returns: boolean }
       nethunt_stage_code: { Args: { p_stage: string }; Returns: string }
       next_yt_id: { Args: never; Returns: string }
       peek_next_yt_id: { Args: never; Returns: string }
