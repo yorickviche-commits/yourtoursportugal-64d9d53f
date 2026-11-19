@@ -1,3 +1,7 @@
+# CRM WhatsApp — Phase B
+- [ ] Inbox, messages/media, linking/history, lead timeline and unread Kanban badges; human-only sending, no frontend publication.
+- [ ] Resolve inbound support before implementation: Lovable WhatsApp receiving requires the modern stack; current Classic project is unsupported. No WhatsApp connection available. Await choice of stack migration or an explicitly supported external receiver.
+
 # CRM pipelines — Phase A
 - [x] Local realtime Kanban, saved views, stage timestamp and shared badges; 328/328 leads stamped.
 - [x] Reuse stage mutation, creation, preview and legacy navigation; NetHunt sync functions unchanged.
