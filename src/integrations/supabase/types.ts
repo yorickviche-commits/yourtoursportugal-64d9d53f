@@ -1676,6 +1676,36 @@ export type Database = {
           },
         ]
       }
+      crm_saved_views: {
+        Row: {
+          created_at: string
+          filters: Json
+          id: string
+          name: string
+          pipeline: string
+          sort: Json
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          filters?: Json
+          id?: string
+          name: string
+          pipeline?: string
+          sort?: Json
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          filters?: Json
+          id?: string
+          name?: string
+          pipeline?: string
+          sort?: Json
+          user_id?: string
+        }
+        Relationships: []
+      }
       day_modules: {
         Row: {
           avg_rating: number | null
@@ -3269,6 +3299,7 @@ export type Database = {
           sales_owner: string | null
           service_language: string | null
           source: string
+          stage_changed_at: string | null
           status: string
           tags: string[]
           travel_dates: string | null
@@ -3326,6 +3357,7 @@ export type Database = {
           sales_owner?: string | null
           service_language?: string | null
           source?: string
+          stage_changed_at?: string | null
           status?: string
           tags?: string[]
           travel_dates?: string | null
@@ -3383,6 +3415,7 @@ export type Database = {
           sales_owner?: string | null
           service_language?: string | null
           source?: string
+          stage_changed_at?: string | null
           status?: string
           tags?: string[]
           travel_dates?: string | null

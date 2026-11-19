@@ -1,3 +1,9 @@
+# CRM pipelines — Phase A
+- [x] Local realtime Kanban, saved views, stage timestamp and shared badges; 328/328 leads stamped.
+- [x] Reuse stage mutation, creation, preview and legacy navigation; NetHunt sync functions unchanged.
+- [x] Nine rule tests; authenticated saved view/reload/delete, YT5057 preview, OPS confirmation and mocked failure reversal; mobile 390/360 without overflow; not published.
+- [ ] Live stage movement, second-client realtime and external Calendar effects: deliberately not exercised on real files to avoid operational side effects; existing push also rejects files without a NetHunt record.
+
 # Internal Costing downloads
 - [x] Add PDF/Excel menu next to Save with full descriptions and notes.
 - [x] Verify authenticated downloads on YT5057, all seven PDF pages, long-note continuation, Excel totals and zero formula errors; fixed orphaned PDF summary heading and unsupported minus glyph.

@@ -58,17 +58,19 @@
     --info-muted: 210 100% 96%;
 
     /* Lead pipeline stage colors (NetHunt) */
-    --stage-new: 330 85% 52%;
+    --crm-yt: 214 80% 40%;
+    --crm-yt-foreground: 0 0% 100%;
+    --stage-new: 0 72% 43%;
     --stage-budget: 32 95% 48%;
-    --stage-nego: 268 68% 56%;
-    --stage-archive-sales: 0 72% 51%;
-    --stage-deposit: 214 90% 50%;
+    --stage-nego: 142 65% 30%;
+    --stage-archive-sales: 215 12% 45%;
+    --stage-deposit: 155 65% 24%;
     --stage-suppliers: 187 72% 38%;
-    --stage-briefing: 243 58% 56%;
-    --stage-ready: 145 63% 36%;
-    --stage-posttrip: 199 22% 44%;
-    --stage-deferred: 22 58% 44%;
-    --stage-archive-ops: 355 52% 34%;
+    --stage-briefing: 195 80% 32%;
+    --stage-ready: 275 60% 42%;
+    --stage-posttrip: 325 65% 40%;
+    --stage-deferred: 215 10% 40%;
+    --stage-archive-ops: 215 12% 45%;
 
 
     --sidebar-background: 0 0% 100%;
@@ -108,6 +110,18 @@
     --spacing: 0.25rem;
   }
   .dark {
+    --crm-yt: 214 80% 40%;
+    --stage-new: 0 80% 72%;
+    --stage-budget: 32 95% 68%;
+    --stage-nego: 142 65% 65%;
+    --stage-deposit: 155 65% 58%;
+    --stage-suppliers: 175 65% 62%;
+    --stage-briefing: 195 80% 70%;
+    --stage-ready: 275 70% 75%;
+    --stage-posttrip: 325 75% 73%;
+    --stage-deferred: 215 10% 70%;
+    --stage-archive-sales: 215 12% 80%;
+    --stage-archive-ops: 215 12% 80%;
     --background: 222 47% 11%;
     --foreground: 210 40% 98%;
     --card: 217 32% 17%;
@@ -350,3 +364,18 @@
  .mobile-file-sheet:has(.ai-mobile-actions) .mobile-file-scroll { padding-bottom: 168px; }
  .ai-mobile-actions { position: fixed; inset-inline: 16px; bottom: 0; padding-bottom: calc(16px + env(safe-area-inset-bottom)); margin-top: 0; background: hsl(var(--background)); }
 }
+
+.crm-yt-ref { background: hsl(var(--crm-yt)); color: hsl(var(--crm-yt-foreground)); border-color: hsl(var(--crm-yt)); }
+.crm-stage { color: hsl(var(--crm-stage-color)); background: hsl(var(--crm-stage-color) / .12); border-color: hsl(var(--crm-stage-color) / .35); }
+.crm-stage-new { --crm-stage-color: var(--stage-new); }
+.crm-stage-budget { --crm-stage-color: var(--stage-budget); }
+.crm-stage-nego { --crm-stage-color: var(--stage-nego); }
+.crm-stage-deposit { --crm-stage-color: var(--stage-deposit); }
+.crm-stage-suppliers { --crm-stage-color: var(--stage-suppliers); }
+.crm-stage-briefing { --crm-stage-color: var(--stage-briefing); }
+.crm-stage-ready { --crm-stage-color: var(--stage-ready); }
+.crm-stage-posttrip { --crm-stage-color: var(--stage-posttrip); }
+.crm-stage-deferred { --crm-stage-color: var(--stage-deferred); }
+.crm-stage-archive-sales { --crm-stage-color: var(--stage-archive-sales); }
+.crm-stage-archive-ops { --crm-stage-color: var(--stage-archive-ops); }
+.crm-stage-unknown { --crm-stage-color: var(--muted-foreground); }

@@ -92,6 +92,8 @@ const CRMRecordDetailPage = () => {
     if (!folderId || !recordId) return;
     setLoading(true);
     try {
+      const linked = await supabase.from('leads').select('id').eq('nethunt_record_id', recordId).maybeSingle();
+      if (linked.data) { navigate(`/leads/${linked.data.id}`, { replace: true }); return; }
       const [recordRes, fieldsRes, commentsRes, changesRes, callLogsRes, driveFilesRes, emailsRes, notesRes, tasksRes] = await Promise.all([
         supabase.functions.invoke('nethunt-proxy', { body: { action: 'find-record-by-id', folderId, recordId } }),
         supabase.functions.invoke('nethunt-proxy', { body: { action: 'folder-fields', folderId } }),

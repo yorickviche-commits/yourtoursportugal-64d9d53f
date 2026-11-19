@@ -121,13 +121,28 @@ export const usePushLead = () => {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async ({ id, changes }: { id: string; changes: Record<string, unknown> }) => {
+      const previous = 'nethunt_stage' in changes
+        ? await supabase.from('leads').select('nethunt_stage,stage_changed_at').eq('id', id).single()
+        : null;
+      if (previous?.error) throw previous.error;
       const { error } = await supabase.from('leads').update(changes as any).eq('id', id);
       if (error) throw error;
-      return push('lead', id, changes);
+      try {
+        return await push('lead', id, changes);
+      } catch (error) {
+        if (previous?.data) {
+          // Conditional rollback must not undo another user's later move.
+          const rollback = await supabase.from('leads').update({ nethunt_stage: previous.data.nethunt_stage }).eq('id', id).eq('nethunt_stage', String(changes.nethunt_stage));
+          if (rollback.error) throw new Error(`Falha na sincronização e reversão: ${rollback.error.message}`);
+        }
+        throw error;
+      }
     },
     onSuccess: (_d, v) => {
       qc.invalidateQueries({ queryKey: ['lead', v.id] });
       qc.invalidateQueries({ queryKey: ['leads'] });
+      qc.invalidateQueries({ queryKey: ['crm-pipeline'] });
+      qc.invalidateQueries({ queryKey: ['lead-crm', v.id] });
     },
   });
 };

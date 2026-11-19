@@ -45,7 +45,7 @@ const emptyForm: FormData = {
   travelStyle: [], comfortLevel: '',
 };
 
-const NewLeadDialog = ({ open, onOpenChange }: { open: boolean; onOpenChange: (v: boolean) => void }) => {
+const NewLeadDialog = ({ open, onOpenChange, initialStage }: { open: boolean; onOpenChange: (v: boolean) => void; initialStage?: string }) => {
   const [mode, setMode] = useState<Mode>('manual');
   const [form, setForm] = useState<FormData>({ ...emptyForm });
   const [emailText, setEmailText] = useState('');
@@ -176,6 +176,7 @@ const NewLeadDialog = ({ open, onOpenChange }: { open: boolean; onOpenChange: (v
         dates_type: form.datesType,
         pax: form.pax,
         status: 'new',
+        nethunt_stage: initialStage,
         source: 'direct',
         budget_level: form.budget || '€€',
         sales_owner: 'Yorick',

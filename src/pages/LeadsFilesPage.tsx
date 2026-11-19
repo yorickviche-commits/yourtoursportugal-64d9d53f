@@ -17,6 +17,8 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import { Skeleton } from '@/components/ui/skeleton';
 import ClientTypeBadge from '@/components/ClientTypeBadge';
 import StatusBadge from '@/components/StatusBadge';
+import YtRefBadge from '@/components/crm/YtRefBadge';
+import StageBadge from '@/components/crm/StageBadge';
 import { displayLeadCode } from '@/lib/leadCode';
 import LeadAgentsCell from '@/components/LeadAgentsCell';
 
@@ -270,10 +272,10 @@ const LeadsFilesPage = () => {
                       <p className="text-xs text-muted-foreground mt-0.5">{lead.destination || '—'} · {lead.pax} pax · {lead.number_of_days || '—'} dias</p>
                       <div className="text-xs text-muted-foreground mt-0.5"><LeadDates lead={lead} /></div>
                     </div>
-                    <StatusBadge label={badge.label} className={badge.className} />
+                    <StageBadge stage={badge.stage} />
                   </div>
                   <div className="flex items-center justify-between mt-2 text-[11px]">
-                    <span className="text-muted-foreground">{displayLeadCode(lead)}</span>
+                    <YtRefBadge value={displayLeadCode(lead)} />
                     <span className="font-medium">
                       PVP: <span className={cn(!hasPvp && "text-muted-foreground")}>{hasPvp ? fmtMoney(cs.pvp) : '—'}</span>
                       <span className="mx-1.5 text-muted-foreground">·</span>
@@ -342,7 +344,7 @@ const LeadsFilesPage = () => {
                   return (
                     <tr key={lead.id} onClick={() => navigate(`/leads/${lead.id}`)}
                       className="border-b border-border last:border-0 hover:bg-muted/30 transition-colors cursor-pointer">
-                      <td className="px-2 py-2.5 text-[11px] text-muted-foreground truncate">{displayLeadCode(lead)}</td>
+                      <td className="px-2 py-2.5 text-[11px] truncate"><YtRefBadge value={displayLeadCode(lead)} /></td>
                       <td className="px-2 py-2.5"><p className="text-xs font-medium text-[hsl(var(--info))] hover:underline break-words leading-tight">{lead.client_name}</p></td>
                       <td className="px-1 py-2.5 text-center"><ClientTypeBadge value={(lead as any).client_type} /></td>
                       <td className="px-2 py-2.5 text-[11px] text-foreground break-words leading-tight">{lead.destination}</td>

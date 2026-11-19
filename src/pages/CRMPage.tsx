@@ -1,397 +1,893 @@
-import { useState, useEffect, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
-import AppLayout from '@/components/AppLayout';
-import { Card, CardContent } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { Skeleton } from '@/components/ui/skeleton';
-import { Input } from '@/components/ui/input';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { RefreshCw, ExternalLink, Search, GripVertical } from 'lucide-react';
-import { supabase } from '@/integrations/supabase/client';
-import { DragDropContext, Droppable, Draggable, DropResult } from '@hello-pangea/dnd';
-import { toast } from '@/hooks/use-toast';
-import NetHuntSyncBar from '@/components/crm/NetHuntSyncBar';
-
-interface NethuntFolder {
-  id: string;
-  name: string;
-}
-
-interface NethuntRecord {
-  id: string;
-  recordId: string;
-  createdAt?: string;
-  updatedAt?: string;
-  fields: Record<string, any>;
-}
-
-type PipelineType = 'sales' | 'operations';
-
-const SALES_STAGES = [
-  'SALES - New Lead / Incoming Request',
-  'SALES - Discovery Stage & Itinerary Creation',
-  'SALES -  -  Budgeting & Fine-Tuning',
-  'SALES - Final Negotiation & Ready to Book',
+import { useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  DragDropContext,
+  Droppable,
+  Draggable,
+  type DropResult,
+} from "@hello-pangea/dnd";
+import {
+  Plus,
+  MoreVertical,
+  Eye,
+  GripVertical,
+  RefreshCw,
+  Save,
+  Trash2,
+  ArrowDownUp,
+  MessageCircle,
+  CheckSquare,
+  Filter,
+} from "lucide-react";
+import AppLayout from "@/components/AppLayout";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Skeleton } from "@/components/ui/skeleton";
+import NewLeadDialog from "@/components/NewLeadDialog";
+import CrmLeadPreview from "@/components/crm/CrmLeadPreview";
+import YtRefBadge from "@/components/crm/YtRefBadge";
+import StageBadge from "@/components/crm/StageBadge";
+import { getStageColor, stageLabel } from "@/components/crm/stageAppearance";
+import { useCrmPipeline, type CrmLead } from "@/hooks/useCrmPipeline";
+import { usePushLead } from "@/hooks/useNetHunt";
+import { useIsMobile } from "@/hooks/use-mobile";
+import { useAuth } from "@/hooks/useAuth";
+import { toast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
+import {
+  CRM_LIMITS,
+  EMPTY_CRM_FILTERS,
+  ageDays,
+  pipelineStages,
+  matchesCrmFilters,
+  type CrmFilters,
+  type CrmSort,
+  type Pipeline,
+} from "@/lib/crmPipeline";
+import { displayLeadCode } from "@/lib/leadCode";
+import { cn } from "@/lib/utils";
+import type { Tables } from "@/integrations/supabase/types";
+const money = (v: number) =>
+  v.toLocaleString("pt-PT", { style: "currency", currency: "EUR" });
+const date = (v: string | null) =>
+  v ? new Date(v).toLocaleDateString("pt-PT") : "—";
+const SORTS = {
+  trip_start: "Início da viagem",
+  created_at: "Data de criação",
+  days: "Dias na etapa",
+  last_email: "Último email enviado",
+};
+const VIEWS: { name: string; pipeline: Pipeline }[] = [
+  { name: "YT Sales Pipeline", pipeline: "sales" },
+  { name: "YT Operations Pipeline", pipeline: "operations" },
+  { name: "Todas", pipeline: "all" },
 ];
-
-const OPERATIONS_STAGES = [
-  'OPERATIONS - Deposit/Payment Received',
-  'OPERATIONS - Suppliers Bookings & Confirmations',
-  'OPERATIONS - Technical Briefing (Internal & Suppliers)',
-  'OPERATIONS - Clients Final Briefing',
-  'OPERATIONS - Trip Ready / In Execution',
-  'OPERATIONS - Trip Confirmed & In Preparation',
-  'OPERATIONS - Trip Completed',
-];
-
-const getStageColor = (stage: string) => {
-  const s = stage.toLowerCase();
-  if (s.includes('new lead') || s.includes('incoming')) return 'bg-blue-500/10 border-blue-500/30 text-blue-700';
-  if (s.includes('discovery')) return 'bg-indigo-500/10 border-indigo-500/30 text-indigo-700';
-  if (s.includes('budgeting') || s.includes('fine-tuning')) return 'bg-amber-500/10 border-amber-500/30 text-amber-700';
-  if (s.includes('negotiation') || s.includes('ready to book')) return 'bg-orange-500/10 border-orange-500/30 text-orange-700';
-  if (s.includes('deposit') || s.includes('payment received')) return 'bg-green-500/10 border-green-500/30 text-green-700';
-  if (s.includes('suppliers bookings')) return 'bg-emerald-500/10 border-emerald-500/30 text-emerald-700';
-  if (s.includes('technical briefing')) return 'bg-cyan-500/10 border-cyan-500/30 text-cyan-700';
-  if (s.includes('clients final')) return 'bg-purple-500/10 border-purple-500/30 text-purple-700';
-  if (s.includes('trip ready') || s.includes('execution')) return 'bg-rose-500/10 border-rose-500/30 text-rose-700';
-  if (s.includes('completed')) return 'bg-teal-500/10 border-teal-500/30 text-teal-700';
-  return 'bg-muted/50 border-border text-foreground';
-};
-
-const getShortStageName = (stage: string): string => {
-  const parts = stage.split(' - ');
-  return parts.length > 1 ? parts.slice(1).join(' - ').trim() : stage;
-};
-
-const normalizeStage = (stage: string): string => stage.replace(/\s+/g, ' ').trim().toUpperCase();
-
-const getDaysSinceEmail = (record: NethuntRecord): number | null => {
-  const lastEmail = record.fields?.['Last Email Received'] || record.fields?.['Last Email Sent'];
-  if (!lastEmail) return null;
-  const d = new Date(lastEmail);
-  if (isNaN(d.getTime())) return null;
-  return Math.floor((Date.now() - d.getTime()) / (1000 * 60 * 60 * 24));
-};
-
-const getDaysOnStage = (record: NethuntRecord): number | null => {
-  const updated = record.updatedAt;
-  if (!updated) return null;
-  const d = new Date(updated);
-  if (isNaN(d.getTime())) return null;
-  return Math.floor((Date.now() - d.getTime()) / (1000 * 60 * 60 * 24));
-};
-
-const CRMPage = () => {
+export default function CRMPage() {
   const navigate = useNavigate();
-  const [folders, setFolders] = useState<NethuntFolder[]>([]);
-  const [selectedFolder, setSelectedFolder] = useState<NethuntFolder | null>(null);
-  const [records, setRecords] = useState<NethuntRecord[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [recordsLoading, setRecordsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [pipeline, setPipeline] = useState<PipelineType>('sales');
-  const [detectedStages, setDetectedStages] = useState<Set<string>>(new Set());
-
-  const fetchFolders = async () => {
-    setLoading(true);
-    setError(null);
+  const qc = useQueryClient();
+  const { user } = useAuth();
+  const isMobile = useIsMobile();
+  const query = useCrmPipeline();
+  const leads = query.data ?? [];
+  const push = usePushLead();
+  const [pipeline, setPipeline] = useState<Pipeline>("sales");
+  const [filters, setFilters] = useState<CrmFilters>(EMPTY_CRM_FILTERS);
+  const [sort, setSort] = useState<CrmSort>({
+    key: "trip_start",
+    direction: "asc",
+  });
+  const [filterOpen, setFilterOpen] = useState(false);
+  const [saveOpen, setSaveOpen] = useState(false);
+  const [name, setName] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [preview, setPreview] = useState<CrmLead | null>(null);
+  const [creation, setCreation] = useState<string | null>(null);
+  const [pending, setPending] = useState<{ id: string; stage: string } | null>(
+    null,
+  );
+  const [optimistic, setOptimistic] = useState<Record<string, string>>({});
+  const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
+  const [limits, setLimits] = useState<Record<string, number>>({});
+  const [columnSort, setColumnSort] = useState<Record<string, CrmSort>>({});
+  const [mobileStage, setMobileStage] = useState("");
+  const [touch, setTouch] = useState<number | null>(null);
+  const views = useQuery({
+    queryKey: ["crm-saved-views", user?.id],
+    enabled: !!user,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("crm_saved_views")
+        .select("*")
+        .order("created_at");
+      if (error) throw error;
+      return data;
+    },
+  });
+  const stages = pipelineStages(pipeline);
+  const currentStage = stages.includes(mobileStage) ? mobileStage : stages[0];
+  const filtered = useMemo(
+    () =>
+      leads
+        .map((l) => ({ ...l, stage: optimistic[l.id] ?? l.stage }))
+        .filter((l) => matchesCrmFilters(l, filters)),
+    [leads, filters, optimistic],
+  );
+  function ordered(rows: CrmLead[], rule: CrmSort) {
+    return [...rows].sort((a, b) => {
+      const av =
+        rule.key === "days"
+          ? ageDays(a.stage_changed_at)
+          : rule.key === "last_email"
+            ? a.last_email
+            : a[rule.key];
+      const bv =
+        rule.key === "days"
+          ? ageDays(b.stage_changed_at)
+          : rule.key === "last_email"
+            ? b.last_email
+            : b[rule.key];
+      if (av == null) return bv == null ? a.id.localeCompare(b.id) : 1;
+      if (bv == null) return -1;
+      const value =
+        typeof av === "number" && typeof bv === "number"
+          ? av - bv
+          : String(av).localeCompare(String(bv));
+      return (
+        (rule.direction === "asc" ? value : -value) || a.id.localeCompare(b.id)
+      );
+    });
+  }
+  async function move(id: string, stage: string) {
+    setPending(null);
+    setOptimistic((o) => ({ ...o, [id]: stage }));
     try {
-      const { data, error: fnError } = await supabase.functions.invoke('nethunt-proxy', {
-        body: { action: 'list-folders' },
-      });
-      if (fnError) throw fnError;
-      if (data?.error) throw new Error(data.error);
-      const folderList = Array.isArray(data) ? data : [];
-      setFolders(folderList);
-      if (folderList.length > 0 && !selectedFolder) {
-        fetchRecords(folderList[0]);
-      }
-    } catch (err: any) {
-      setError(err.message || 'Erro ao carregar pastas');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const fetchRecords = async (folder: NethuntFolder, query?: string) => {
-    setRecordsLoading(true);
-    setSelectedFolder(folder);
-    try {
-      const { data, error: fnError } = await supabase.functions.invoke('nethunt-proxy', {
-        body: {
-          action: query ? 'find-records' : 'updated-records',
-          folderId: folder.id,
-          query: query || undefined,
-          since: query ? undefined : '2026-01-01T00:00:00.000Z',
-          limit: 500,
-        },
-      });
-      if (fnError) throw fnError;
-      if (data?.error) throw new Error(data.error);
-      const recs = Array.from(
-        new Map((Array.isArray(data) ? data : []).map((r: NethuntRecord) => [r.recordId, r])).values()
-      ) as NethuntRecord[];
-      setRecords(recs);
-
-      const stageSet = new Set<string>();
-      recs.forEach((r: NethuntRecord) => {
-        const stage = r.fields?.Stage || r.fields?.stage;
-        if (stage && typeof stage === 'string') stageSet.add(stage);
-      });
-      setDetectedStages(stageSet);
-    } catch (err: any) {
-      setError(err.message || 'Erro ao carregar registos');
-    } finally {
-      setRecordsLoading(false);
-    }
-  };
-
-  useEffect(() => { fetchFolders(); }, []);
-
-  const getStagesForPipeline = (): string[] => {
-    const base = pipeline === 'sales' ? SALES_STAGES : OPERATIONS_STAGES;
-    const prefix = pipeline === 'sales' ? 'SALES' : 'OPERATIONS';
-    const liveStages = Array.from(detectedStages).filter(s => normalizeStage(s).startsWith(prefix));
-    if (!liveStages.length) return base;
-    const ordered = base
-      .map(stage => {
-        const shortStage = normalizeStage(getShortStageName(stage));
-        const meaningful = shortStage.split(' ').find(part => part.length > 3) || shortStage;
-        return liveStages.find(live => normalizeStage(live).includes(meaningful));
-      })
-      .filter(Boolean) as string[];
-    const extras = liveStages.filter(stage => !ordered.includes(stage)).sort((a, b) => a.localeCompare(b));
-    return [...ordered, ...extras];
-  };
-
-  const getRecordsByStage = (stage: string): NethuntRecord[] => {
-    return records.filter(r => (r.fields?.Stage || r.fields?.stage) === stage);
-  };
-
-  const getPipelineRecordCount = (): number => {
-    const prefix = pipeline === 'sales' ? 'SALES' : 'OPERATIONS';
-    return records.filter(r => {
-      const stage = r.fields?.Stage || r.fields?.stage || '';
-      return normalizeStage(stage).startsWith(prefix);
-    }).length;
-  };
-
-  const handleDragEnd = async (result: DropResult) => {
-    if (!result.destination || result.source.droppableId === result.destination.droppableId) return;
-
-    const destStage = result.destination.droppableId;
-    const recordId = result.draggableId;
-    const record = records.find(r => r.recordId === recordId);
-    if (!record) return;
-
-    const oldRecords = [...records];
-    setRecords(prev =>
-      prev.map(r => r.recordId === recordId ? { ...r, fields: { ...r.fields, Stage: destStage } } : r)
-    );
-
-    try {
-      const { data, error: fnError } = await supabase.functions.invoke('nethunt-proxy', {
-        body: {
-          action: 'update-record',
-          recordId,
-          fieldActions: { Stage: { overwrite: true, add: destStage } },
-        },
-      });
-      if (fnError) throw fnError;
-      if (data?.error) throw new Error(data.error);
+      await push.mutateAsync({ id, changes: { nethunt_stage: stage } });
+      toast({ title: "Etapa atualizada" });
+    } catch (e) {
       toast({
-        title: 'Stage atualizado',
-        description: `"${record.fields?.Name || recordId}" → ${getShortStageName(destStage)}`,
+        title: "Não foi possível mover a lead",
+        description: e instanceof Error ? e.message : String(e),
+        variant: "destructive",
       });
-    } catch (err: any) {
-      setRecords(oldRecords);
-      toast({ title: 'Erro ao atualizar stage', description: err.message, variant: 'destructive' });
+    } finally {
+      setOptimistic((o) => {
+        const next = { ...o };
+        delete next[id];
+        return next;
+      });
+      void query.refetch();
     }
-  };
-
-  const stages = getStagesForPipeline();
-
+  }
+  function requestMove(id: string, stage: string) {
+    if (leads.find((l) => l.id === id)?.stage === stage) return;
+    if (stage.startsWith("OPERATIONS")) setPending({ id, stage });
+    else void move(id, stage);
+  }
+  function drop(result: DropResult) {
+    if (
+      result.destination &&
+      result.destination.droppableId !== result.source.droppableId
+    )
+      requestMove(result.draggableId, result.destination.droppableId);
+  }
+  function chooseView(v: Tables<"crm_saved_views">) {
+    setPipeline(v.pipeline as Pipeline);
+    setFilters({ ...EMPTY_CRM_FILTERS, ...(v.filters as Partial<CrmFilters>) });
+    setSort({ ...sort, ...(v.sort as Partial<CrmSort>) });
+  }
+  async function saveView() {
+    if (!user || !name.trim()) return;
+    setSaving(true);
+    const { error } = await supabase
+      .from("crm_saved_views")
+      .insert({ user_id: user.id, name: name.trim(), pipeline, filters, sort });
+    setSaving(false);
+    if (error) {
+      toast({
+        title: "Erro ao guardar vista",
+        description: error.message,
+        variant: "destructive",
+      });
+      return;
+    }
+    setSaveOpen(false);
+    setName("");
+    void qc.invalidateQueries({ queryKey: ["crm-saved-views"] });
+  }
+  const owners = [
+    ...new Map(
+      leads.map((l) => [l.owner_id || l.sales_owner || "", l.owner_name]),
+    ).entries(),
+  ].filter(([id]) => id);
+  function renderColumn(stage: string) {
+    const rows = ordered(
+      filtered.filter((l) => l.stage === stage),
+      columnSort[stage] ?? sort,
+    );
+    const sum = rows.reduce((s, l) => s + (l.pvp ?? 0), 0);
+    const hasValue = rows.some((l) => l.pvp !== null);
+    return (
+      <section
+        key={stage}
+        className={cn(
+          "flex flex-col shrink-0 w-full md:w-[300px] h-[calc(100dvh-330px)] min-h-[360px] md:h-[calc(100dvh-225px)]",
+          collapsed[stage] && "md:w-[64px]",
+        )}
+        aria-label={stageLabel(stage)}
+      >
+        <div
+          className={cn(
+            "border rounded-t-md px-2 py-2 flex items-center gap-1 min-h-14",
+            getStageColor(stage),
+          )}
+        >
+          <h2 className="text-xs font-semibold flex-1 min-w-0" title={stage}>
+            {collapsed[stage] ? "…" : stageLabel(stage)} ({rows.length})
+          </h2>
+          {!collapsed[stage] && (
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-11 w-8"
+              aria-label={`Criar lead em ${stageLabel(stage)}`}
+              onClick={() => setCreation(stage)}
+            >
+              <Plus className="h-4 w-4" />
+            </Button>
+          )}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-11 w-8"
+                aria-label={`Opções ${stageLabel(stage)}`}
+              >
+                <MoreVertical className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent>
+              <DropdownMenuItem
+                onClick={() =>
+                  setCollapsed((c) => ({ ...c, [stage]: !c[stage] }))
+                }
+              >
+                {collapsed[stage] ? "Expandir" : "Colapsar"} coluna
+              </DropdownMenuItem>
+              {Object.entries(SORTS).map(([key, label]) => (
+                <DropdownMenuItem
+                  key={key}
+                  onClick={() =>
+                    setColumnSort((s) => ({
+                      ...s,
+                      [stage]: { key: key as CrmSort["key"], direction: "asc" },
+                    }))
+                  }
+                >
+                  {label}
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+        {!collapsed[stage] && (
+          <>
+            <div className="text-xs border-x border-b px-3 py-2 flex justify-between bg-card">
+              <span>Soma</span>
+              <strong>{hasValue ? money(sum) : "—"}</strong>
+            </div>
+            <Droppable droppableId={stage}>
+              {(provided) => (
+                <div
+                  {...provided.droppableProps}
+                  ref={provided.innerRef}
+                  className="flex-1 min-h-0 overflow-y-auto space-y-2 p-2 border border-t-0 rounded-b-md bg-muted/10"
+                >
+                  {rows
+                    .slice(0, limits[stage] ?? CRM_LIMITS.cardsPerPage)
+                    .map((lead, index) => {
+                      const title =
+                        lead.client_name.replace(/^YT[\d -]+\s*-\s*/i, "") +
+                        (lead.program ? ` - ${lead.program}` : "");
+                      const days = ageDays(lead.stage_changed_at);
+                      const emailAge = ageDays(lead.last_email);
+                      return (
+                        <Draggable
+                          key={lead.id}
+                          draggableId={lead.id}
+                          index={index}
+                          isDragDisabled={push.isPending}
+                        >
+                          {(drag) => (
+                            <article
+                              ref={drag.innerRef}
+                              {...drag.draggableProps}
+                              className="border rounded-md bg-card p-3 shadow-sm space-y-2"
+                            >
+                              <div className="flex items-start gap-1">
+                                <span
+                                  {...drag.dragHandleProps}
+                                  aria-label="Mover lead"
+                                  className="cursor-grab py-1"
+                                >
+                                  <GripVertical className="h-4 w-4 text-muted-foreground" />
+                                </span>
+                                <Button
+                                  variant="ghost"
+                                  className="p-0 h-auto min-h-11 flex-1 min-w-0 justify-start flex-wrap gap-1 text-left"
+                                  title={`${displayLeadCode(lead)} - ${title}`}
+                                  onClick={() => navigate(`/leads/${lead.id}`)}
+                                >
+                                  <YtRefBadge value={displayLeadCode(lead)} />
+                                  <span className="truncate text-xs w-full font-semibold">
+                                    {title}
+                                  </span>
+                                </Button>
+                                <Button
+                                  size="icon"
+                                  variant="ghost"
+                                  className="h-11 w-8"
+                                  aria-label={`Pré-visualizar ${displayLeadCode(lead)}`}
+                                  onClick={() => setPreview(lead)}
+                                >
+                                  <Eye className="h-4 w-4" />
+                                </Button>
+                              </div>
+                              <StageBadge stage={lead.stage} />
+                              <dl className="text-xs space-y-1">
+                                <div className="flex justify-between gap-2 font-semibold">
+                                  <dt>Início da viagem</dt>
+                                  <dd>{date(lead.trip_start)}</dd>
+                                </div>
+                                <div className="flex justify-between gap-2">
+                                  <dt>Fim da viagem</dt>
+                                  <dd>{date(lead.trip_finish)}</dd>
+                                </div>
+                                <div
+                                  className={cn(
+                                    "flex justify-between gap-2",
+                                    emailAge !== null &&
+                                      emailAge > CRM_LIMITS.emailWarningDays &&
+                                      "text-destructive",
+                                  )}
+                                >
+                                  <dt>Último email enviado</dt>
+                                  <dd>{date(lead.last_email)}</dd>
+                                </div>
+                                <div
+                                  className={cn(
+                                    "flex justify-between",
+                                    days !== null &&
+                                      days > CRM_LIMITS.stageWarningDays &&
+                                      "text-[hsl(var(--stage-budget))] font-semibold",
+                                  )}
+                                >
+                                  <dt>Dias na etapa</dt>
+                                  <dd>{days ?? "—"}</dd>
+                                </div>
+                              </dl>
+                              <div className="flex items-center gap-2 text-[10px] border-t pt-2">
+                                <span>{lead.client_type || "—"}</span>
+                                {lead.overdue > 0 && (
+                                  <span
+                                    className="text-destructive flex items-center gap-1"
+                                    title="Tarefas em atraso"
+                                  >
+                                    <CheckSquare className="h-3 w-3" />
+                                    {lead.overdue}
+                                  </span>
+                                )}
+                                <span
+                                  aria-label="WhatsApp ainda não ligado"
+                                  className="text-muted-foreground opacity-40"
+                                >
+                                  <MessageCircle className="h-3 w-3" />
+                                </span>
+                                <span className="flex-1" />
+                                {lead.pvp !== null && (
+                                  <span>{money(lead.pvp)}</span>
+                                )}
+                                <Avatar
+                                  className="h-6 w-6"
+                                  title={lead.owner_name || "Sem responsável"}
+                                >
+                                  {lead.avatar && (
+                                    <AvatarImage src={lead.avatar} />
+                                  )}
+                                  <AvatarFallback className="text-[9px]">
+                                    {lead.owner_name
+                                      .split(" ")
+                                      .map((n) => n[0])
+                                      .slice(0, 2)
+                                      .join("") || "—"}
+                                  </AvatarFallback>
+                                </Avatar>
+                              </div>
+                              <Select
+                                value={lead.stage}
+                                onValueChange={(value) =>
+                                  requestMove(lead.id, value)
+                                }
+                                disabled={push.isPending}
+                              >
+                                <SelectTrigger
+                                  aria-label={`Mover ${displayLeadCode(lead)}`}
+                                  className="md:hidden h-11 text-xs"
+                                >
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {pipelineStages("all").map((s) => (
+                                    <SelectItem key={s} value={s}>
+                                      {stageLabel(s)}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </article>
+                          )}
+                        </Draggable>
+                      );
+                    })}
+                  {provided.placeholder}
+                  {rows.length > (limits[stage] ?? 30) && (
+                    <Button
+                      variant="outline"
+                      className="w-full"
+                      onClick={() =>
+                        setLimits((l) => ({
+                          ...l,
+                          [stage]: (l[stage] ?? 30) + 30,
+                        }))
+                      }
+                    >
+                      Mostrar mais ({rows.length - (limits[stage] ?? 30)})
+                    </Button>
+                  )}
+                  {!rows.length && (
+                    <p className="text-xs text-muted-foreground text-center py-8">
+                      Sem ficheiros
+                    </p>
+                  )}
+                </div>
+              )}
+            </Droppable>
+          </>
+        )}
+      </section>
+    );
+  }
   return (
     <AppLayout>
-      <div className="flex flex-col gap-3 h-full">
-        {/* Header */}
-        <div className="flex items-center justify-between flex-shrink-0">
-          <div>
-            <h1 className="text-xl font-bold text-foreground">CRM Pipeline</h1>
-            <p className="text-xs text-muted-foreground mt-0.5">
-              Sincronizado com NetHunt • Drag & drop entre stages
-            </p>
-          </div>
-          <div className="flex gap-2">
-            <Button variant="outline" size="sm" onClick={() => selectedFolder && fetchRecords(selectedFolder)}>
-              <RefreshCw className="h-3 w-3 mr-1" /> Atualizar
-            </Button>
-            <a href="https://nethunt.com" target="_blank" rel="noopener noreferrer">
-              <Button variant="ghost" size="sm">
-                <ExternalLink className="h-3 w-3 mr-1" /> NetHunt
-              </Button>
-            </a>
-          </div>
-        </div>
-
-        <NetHuntSyncBar onDone={() => selectedFolder && fetchRecords(selectedFolder)} />
-
-        {error && (
-          <div className="bg-destructive/10 text-destructive text-sm p-3 rounded-md flex-shrink-0">
-            {error}
-            <Button variant="link" size="sm" onClick={() => { setError(null); fetchFolders(); }}>Tentar novamente</Button>
-          </div>
-        )}
-
-        {/* Folder tabs */}
-        <div className="flex gap-2 flex-shrink-0 flex-wrap">
-          {loading ? (
-            [1, 2, 3].map(i => <Skeleton key={i} className="h-8 w-28" />)
-          ) : (
-            folders.map(folder => (
+      <div className="space-y-3 min-w-0">
+        <header className="flex justify-between items-center">
+          <h1 className="text-lg font-bold">CRM · Pipelines</h1>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => query.refetch()}
+            disabled={query.isFetching}
+          >
+            <RefreshCw
+              className={cn("h-4 w-4 mr-2", query.isFetching && "animate-spin")}
+            />
+            Atualizar
+          </Button>
+        </header>
+        <div className="flex gap-4 min-w-0">
+          <aside className="hidden md:flex flex-col w-48 shrink-0 gap-1 border-r pr-3">
+            <h2 className="text-xs font-semibold text-muted-foreground py-2">
+              Vistas
+            </h2>
+            {VIEWS.map((v) => (
               <Button
-                key={folder.id}
-                variant={selectedFolder?.id === folder.id ? 'default' : 'outline'}
-                size="sm"
-                className="text-xs"
-                onClick={() => fetchRecords(folder)}
+                key={v.pipeline}
+                variant={pipeline === v.pipeline ? "secondary" : "ghost"}
+                className="justify-between h-auto py-3 text-xs whitespace-normal text-left"
+                onClick={() => {
+                  setPipeline(v.pipeline);
+                  setFilters(EMPTY_CRM_FILTERS);
+                }}
               >
-                {folder.name}
+                <span>{v.name}</span>
+                <span>
+                  {
+                    leads.filter((l) =>
+                      pipelineStages(v.pipeline).includes(
+                        optimistic[l.id] ?? l.stage,
+                      ),
+                    ).length
+                  }
+                </span>
               </Button>
-            ))
-          )}
-        </div>
-
-        {/* Pipeline tabs + Search */}
-        {selectedFolder && (
-          <div className="flex items-center gap-3 flex-shrink-0 flex-wrap">
-            <Tabs value={pipeline} onValueChange={(v) => setPipeline(v as PipelineType)} className="flex-shrink-0">
-              <TabsList className="h-9">
-                <TabsTrigger value="sales" className="text-xs px-4">
-                  🟡 Sales Pipeline
-                </TabsTrigger>
-                <TabsTrigger value="operations" className="text-xs px-4">
-                  🟢 Operations Pipeline
-                </TabsTrigger>
-              </TabsList>
-            </Tabs>
-
-            <div className="relative flex-1 max-w-sm">
-              <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-muted-foreground" />
-              <Input
-                placeholder="Pesquisar ficheiros..."
-                value={searchQuery}
-                onChange={e => setSearchQuery(e.target.value)}
-                onKeyDown={e => { if (e.key === 'Enter') fetchRecords(selectedFolder, searchQuery); }}
-                className="pl-8 h-9 text-sm"
-              />
-            </div>
-            <Badge variant="secondary" className="flex-shrink-0">{getPipelineRecordCount()} ficheiros</Badge>
-          </div>
-        )}
-
-        {/* Kanban Board */}
-        {recordsLoading ? (
-          <div className="flex gap-3 overflow-x-auto flex-1 pb-4">
-            {[1, 2, 3, 4].map(i => (
-              <div key={i} className="min-w-[280px] flex-shrink-0">
-                <Skeleton className="h-8 w-full mb-2" />
-                <Skeleton className="h-24 w-full mb-2" />
-                <Skeleton className="h-24 w-full" />
+            ))}
+            {views.error && (
+              <p className="text-xs text-destructive">
+                Erro ao carregar vistas
+              </p>
+            )}
+            {views.data?.map((v) => (
+              <div key={v.id} className="flex items-center">
+                <Button
+                  variant="ghost"
+                  className="text-xs flex-1 min-w-0 justify-between"
+                  onClick={() => chooseView(v)}
+                >
+                  <span className="truncate">{v.name}</span>
+                  <span>
+                    {
+                      leads.filter(
+                        (l) =>
+                          pipelineStages(v.pipeline as Pipeline).includes(
+                            l.stage,
+                          ) &&
+                          matchesCrmFilters(l, {
+                            ...EMPTY_CRM_FILTERS,
+                            ...(v.filters as Partial<CrmFilters>),
+                          }),
+                      ).length
+                    }
+                  </span>
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  aria-label={`Apagar vista ${v.name}`}
+                  onClick={async () => {
+                    const { error } = await supabase
+                      .from("crm_saved_views")
+                      .delete()
+                      .eq("id", v.id);
+                    if (error)
+                      toast({ title: error.message, variant: "destructive" });
+                    else
+                      void qc.invalidateQueries({
+                        queryKey: ["crm-saved-views"],
+                      });
+                  }}
+                >
+                  <Trash2 className="h-3 w-3" />
+                </Button>
               </div>
             ))}
-          </div>
-        ) : (
-          <DragDropContext onDragEnd={handleDragEnd}>
-            <div className="flex gap-3 overflow-x-auto flex-1 pb-4 min-h-0">
-              {stages.map(stage => {
-                const stageRecords = getRecordsByStage(stage);
-                return (
-                  <div key={stage} className="min-w-[280px] max-w-[300px] flex-shrink-0 flex flex-col">
-                    <div className={`px-3 py-2 rounded-t-lg border ${getStageColor(stage)} flex items-center justify-between`}>
-                      <span className="text-xs font-semibold truncate">{getShortStageName(stage)}</span>
-                      <Badge variant="outline" className="text-[10px] ml-1 flex-shrink-0">{stageRecords.length}</Badge>
-                    </div>
-
-                    <Droppable droppableId={stage}>
-                      {(provided, snapshot) => (
-                        <div
-                          ref={provided.innerRef}
-                          {...provided.droppableProps}
-                          className={`flex-1 overflow-y-auto p-1.5 rounded-b-lg border border-t-0 border-border space-y-1.5 min-h-[80px] transition-colors ${
-                            snapshot.isDraggingOver ? 'bg-primary/5' : 'bg-muted/20'
-                          }`}
-                        >
-                          {stageRecords.map((record, index) => {
-                            const daysSinceEmail = getDaysSinceEmail(record);
-                            const daysOnStage = getDaysOnStage(record);
-                            return (
-                              <Draggable key={record.recordId} draggableId={record.recordId} index={index}>
-                                {(dragProvided, dragSnapshot) => (
-                                  <div
-                                    ref={dragProvided.innerRef}
-                                    {...dragProvided.draggableProps}
-                                    className={`group ${dragSnapshot.isDragging ? 'rotate-2 shadow-lg' : ''}`}
-                                  >
-                                    <Card
-                                      className="cursor-pointer hover:border-primary/40 transition-all"
-                                      onClick={() => navigate(`/crm/${selectedFolder!.id}/${record.recordId}`)}
-                                    >
-                                      <CardContent className="p-2.5">
-                                        <div className="flex items-start gap-1.5">
-                                          <div
-                                            {...dragProvided.dragHandleProps}
-                                            className="mt-0.5 opacity-0 group-hover:opacity-100 transition-opacity cursor-grab"
-                                          >
-                                            <GripVertical className="h-3.5 w-3.5 text-muted-foreground" />
-                                          </div>
-                                          <div className="flex-1 min-w-0">
-                                            <p className="text-xs font-medium truncate">{record.fields?.Name || record.recordId}</p>
-                                            <p className="text-[10px] text-muted-foreground mt-0.5 truncate">
-                                              Stage: <span className="font-medium">{getShortStageName(record.fields?.Stage || '')}</span>
-                                            </p>
-                                            {record.fields?.['Close date'] && (
-                                              <p className="text-[10px] text-muted-foreground">
-                                                Close: {record.fields['Close date']}
-                                              </p>
-                                            )}
-                                            <div className="flex items-center gap-2 mt-1 flex-wrap">
-                                              {daysSinceEmail !== null && (
-                                                <span className={`text-[10px] ${daysSinceEmail > 7 ? 'text-destructive font-medium' : 'text-muted-foreground'}`}>
-                                                  📧 {daysSinceEmail}d
-                                                </span>
-                                              )}
-                                              {daysOnStage !== null && (
-                                                <span className={`text-[10px] ${daysOnStage > 14 ? 'text-amber-600 font-medium' : 'text-muted-foreground'}`}>
-                                                  ⏱ {daysOnStage}d on stage
-                                                </span>
-                                              )}
-                                            </div>
-                                          </div>
-                                        </div>
-                                      </CardContent>
-                                    </Card>
-                                  </div>
-                                )}
-                              </Draggable>
-                            );
-                          })}
-                          {provided.placeholder}
-                        </div>
-                      )}
-                    </Droppable>
-                  </div>
-                );
-              })}
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setSaveOpen(true)}
+            >
+              <Save className="h-3 w-3 mr-2" />
+              Guardar vista
+            </Button>
+          </aside>
+          <main className="flex-1 min-w-0 space-y-3">
+            <div className="md:hidden">
+              <Select
+                value={pipeline}
+                onValueChange={(v) => {
+                  const saved = views.data?.find(
+                    (view) => `view:${view.id}` === v,
+                  );
+                  if (saved) chooseView(saved);
+                  else setPipeline(v as Pipeline);
+                }}
+              >
+                <SelectTrigger className="h-11">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {VIEWS.map((v) => (
+                    <SelectItem key={v.pipeline} value={v.pipeline}>
+                      {v.name} (
+                      {
+                        leads.filter((l) =>
+                          pipelineStages(v.pipeline).includes(l.stage),
+                        ).length
+                      }
+                      )
+                    </SelectItem>
+                  ))}
+                  {views.data?.map((v) => (
+                    <SelectItem key={v.id} value={`view:${v.id}`}>
+                      {v.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
-          </DragDropContext>
-        )}
+            <div className="flex gap-2 flex-wrap">
+              <Select value="stage">
+                <SelectTrigger
+                  className="w-44 h-11 md:h-9 text-xs"
+                  aria-label="Agrupar cartões"
+                >
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="stage">Cartões por etapa</SelectItem>
+                </SelectContent>
+              </Select>
+              <Select
+                value={sort.key}
+                onValueChange={(key) =>
+                  setSort((s) => ({ ...s, key: key as CrmSort["key"] }))
+                }
+              >
+                <SelectTrigger
+                  className="w-44 h-11 md:h-9 text-xs"
+                  aria-label="Ordenar por"
+                >
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {Object.entries(SORTS).map(([key, label]) => (
+                    <SelectItem key={key} value={key}>
+                      {label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Button
+                variant="outline"
+                size="icon"
+                aria-label="Inverter ordenação"
+                onClick={() =>
+                  setSort((s) => ({
+                    ...s,
+                    direction: s.direction === "asc" ? "desc" : "asc",
+                  }))
+                }
+              >
+                <ArrowDownUp className="h-4 w-4" />
+              </Button>
+              <Input
+                className="flex-1 min-w-36 h-11 md:h-9 text-base md:text-sm"
+                placeholder="Pesquisar YT, cliente, programa…"
+                value={filters.search}
+                onChange={(e) =>
+                  setFilters((f) => ({ ...f, search: e.target.value }))
+                }
+              />
+              <Button
+                variant="outline"
+                size="icon"
+                aria-label="Filtros"
+                onClick={() => setFilterOpen(!filterOpen)}
+              >
+                <Filter className="h-4 w-4" />
+              </Button>
+              <Button
+                variant="outline"
+                size="icon"
+                className="md:hidden"
+                aria-label="Guardar vista"
+                onClick={() => setSaveOpen(true)}
+              >
+                <Save className="h-4 w-4" />
+              </Button>
+            </div>
+            {filterOpen && (
+              <div className="grid grid-cols-2 lg:grid-cols-5 gap-2 border-y py-3">
+                {[
+                  ["owner", "Responsável", owners],
+                  [
+                    "client_type",
+                    "Tipo",
+                    [
+                      ["B2B", "B2B"],
+                      ["B2C", "B2C"],
+                    ],
+                  ],
+                  [
+                    "source",
+                    "Origem",
+                    [
+                      ...new Set(leads.map((l) => l.source).filter(Boolean)),
+                    ].map((s) => [s, s]),
+                  ],
+                ].map(([key, label, options]) => (
+                  <Select
+                    key={String(key)}
+                    value={filters[key as keyof CrmFilters] || "any"}
+                    onValueChange={(v) =>
+                      setFilters((f) => ({
+                        ...f,
+                        [String(key)]: v === "any" ? "" : v,
+                      }))
+                    }
+                  >
+                    <SelectTrigger
+                      className="h-11 text-xs"
+                      aria-label={String(label)}
+                    >
+                      <SelectValue placeholder={String(label)} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="any">
+                        {String(label)} · Todos
+                      </SelectItem>
+                      {(options as string[][]).map(([value, text]) => (
+                        <SelectItem key={value} value={value}>
+                          {text || value}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                ))}
+                <label className="text-xs">
+                  Viagem desde
+                  <Input
+                    type="date"
+                    className="h-11 text-base"
+                    value={filters.from}
+                    onChange={(e) =>
+                      setFilters((f) => ({ ...f, from: e.target.value }))
+                    }
+                  />
+                </label>
+                <label className="text-xs">
+                  Viagem até
+                  <Input
+                    type="date"
+                    className="h-11 text-base"
+                    value={filters.to}
+                    onChange={(e) =>
+                      setFilters((f) => ({ ...f, to: e.target.value }))
+                    }
+                  />
+                </label>
+                <Button
+                  variant="ghost"
+                  onClick={() => setFilters(EMPTY_CRM_FILTERS)}
+                >
+                  Limpar filtros
+                </Button>
+              </div>
+            )}
+            {query.error && (
+              <div className="text-destructive text-sm" role="alert">
+                Não foi possível carregar os pipelines:{" "}
+                {query.error instanceof Error
+                  ? query.error.message
+                  : String(query.error)}
+              </div>
+            )}
+            <div className="md:hidden">
+              <Select value={currentStage} onValueChange={setMobileStage}>
+                <SelectTrigger
+                  className="h-11 text-xs"
+                  aria-label="Etapa visível"
+                >
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {stages.map((s) => (
+                    <SelectItem key={s} value={s}>
+                      {stageLabel(s)} (
+                      {filtered.filter((l) => l.stage === s).length})
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            {query.isLoading ? (
+              <div className="flex gap-3">
+                {[1, 2, 3].map((i) => (
+                  <Skeleton key={i} className="h-96 w-full md:w-72" />
+                ))}
+              </div>
+            ) : (
+              <DragDropContext onDragEnd={drop}>
+                {!isMobile && (
+                  <div className="flex gap-3 overflow-x-auto pb-3">
+                    {stages.map(renderColumn)}
+                  </div>
+                )}
+                {isMobile && (
+                  <div
+                    onTouchStart={(e) =>
+                      setTouch(e.touches[0]?.clientX ?? null)
+                    }
+                    onTouchEnd={(e) => {
+                      const end = e.changedTouches[0]?.clientX;
+                      if (
+                        touch !== null &&
+                        end !== undefined &&
+                        Math.abs(end - touch) > 70
+                      ) {
+                        const next =
+                          stages[
+                            stages.indexOf(currentStage) +
+                              (end < touch ? 1 : -1)
+                          ];
+                        if (next) setMobileStage(next);
+                      }
+                      setTouch(null);
+                    }}
+                  >
+                    {renderColumn(currentStage)}
+                  </div>
+                )}
+              </DragDropContext>
+            )}
+          </main>
+        </div>
+        <CrmLeadPreview lead={preview} onClose={() => setPreview(null)} />
+        <NewLeadDialog
+          open={!!creation}
+          onOpenChange={(open) => {
+            if (!open) setCreation(null);
+          }}
+          initialStage={creation ?? undefined}
+        />
+        <Dialog
+          open={!!pending}
+          onOpenChange={(open) => {
+            if (!open) setPending(null);
+          }}
+        >
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Mover para Operações?</DialogTitle>
+            </DialogHeader>
+            <p className="text-sm">
+              {pending && stageLabel(pending.stage)}. Esta alteração segue o
+              processo atual de operações e sincronização.
+            </p>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setPending(null)}>
+                Cancelar
+              </Button>
+              <Button
+                onClick={() => {
+                  if (pending) void move(pending.id, pending.stage);
+                }}
+              >
+                Confirmar mudança
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+        <Dialog open={saveOpen} onOpenChange={setSaveOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Guardar vista pessoal</DialogTitle>
+            </DialogHeader>
+            <Input
+              aria-label="Nome da vista"
+              placeholder="Nome da vista"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+            />
+            <DialogFooter>
+              <Button onClick={saveView} disabled={saving || !name.trim()}>
+                Guardar vista
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
     </AppLayout>
   );
-};
-
-export default CRMPage;
+}

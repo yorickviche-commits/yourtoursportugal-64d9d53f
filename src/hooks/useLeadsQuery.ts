@@ -19,6 +19,7 @@ export interface DbLead {
   pax_children: number;
   pax_infants: number;
   status: string;
+  nethunt_stage?: string | null;
   source: string;
   budget_level: string;
   sales_owner: string;
@@ -86,6 +87,7 @@ export const useCreateLead = () => {
           pax_children: lead.pax_children || 0,
           pax_infants: lead.pax_infants || 0,
           status: lead.status || 'new',
+          ...(lead.nethunt_stage ? { nethunt_stage: lead.nethunt_stage } : {}),
           source: lead.source || 'direct',
           budget_level: lead.budget_level || '€€',
           sales_owner: lead.sales_owner || '',
