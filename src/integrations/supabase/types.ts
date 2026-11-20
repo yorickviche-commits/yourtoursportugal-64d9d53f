@@ -3773,6 +3773,186 @@ export type Database = {
         }
         Relationships: []
       }
+      nethunt_archive_items: {
+        Row: {
+          binary_bytes: number | null
+          binary_sha256: string | null
+          captured_at: string
+          folder_id: string
+          id: string
+          kind: string
+          lead_id: string | null
+          media_checked_at: string | null
+          media_error: string | null
+          media_status: string
+          payload: Json
+          payload_sha256: string
+          record_id: string | null
+          run_id: string
+          source_id: string
+          source_time: string | null
+          storage_path: string | null
+        }
+        Insert: {
+          binary_bytes?: number | null
+          binary_sha256?: string | null
+          captured_at?: string
+          folder_id: string
+          id?: string
+          kind: string
+          lead_id?: string | null
+          media_checked_at?: string | null
+          media_error?: string | null
+          media_status?: string
+          payload: Json
+          payload_sha256: string
+          record_id?: string | null
+          run_id: string
+          source_id: string
+          source_time?: string | null
+          storage_path?: string | null
+        }
+        Update: {
+          binary_bytes?: number | null
+          binary_sha256?: string | null
+          captured_at?: string
+          folder_id?: string
+          id?: string
+          kind?: string
+          lead_id?: string | null
+          media_checked_at?: string | null
+          media_error?: string | null
+          media_status?: string
+          payload?: Json
+          payload_sha256?: string
+          record_id?: string | null
+          run_id?: string
+          source_id?: string
+          source_time?: string | null
+          storage_path?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "nethunt_archive_items_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "nethunt_archive_items_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "rpt_files"
+            referencedColumns: ["lead_id"]
+          },
+          {
+            foreignKeyName: "nethunt_archive_items_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_task_queue"
+            referencedColumns: ["lead_id"]
+          },
+          {
+            foreignKeyName: "nethunt_archive_items_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "v_lead_economics"
+            referencedColumns: ["lead_id"]
+          },
+          {
+            foreignKeyName: "nethunt_archive_items_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "v_lead_outcomes"
+            referencedColumns: ["lead_id"]
+          },
+          {
+            foreignKeyName: "nethunt_archive_items_run_id_fkey"
+            columns: ["run_id"]
+            isOneToOne: false
+            referencedRelation: "nethunt_archive_runs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      nethunt_archive_runs: {
+        Row: {
+          created_by: string
+          finished_at: string | null
+          id: string
+          scope: Json
+          started_at: string
+          status: string
+        }
+        Insert: {
+          created_by: string
+          finished_at?: string | null
+          id?: string
+          scope?: Json
+          started_at?: string
+          status?: string
+        }
+        Update: {
+          created_by?: string
+          finished_at?: string | null
+          id?: string
+          scope?: Json
+          started_at?: string
+          status?: string
+        }
+        Relationships: []
+      }
+      nethunt_archive_sources: {
+        Row: {
+          archived_count: number | null
+          checked_at: string | null
+          detail: Json
+          digest: string | null
+          folder_id: string
+          folder_name: string
+          id: string
+          kind: string
+          run_id: string
+          source_count: number | null
+          status: string
+        }
+        Insert: {
+          archived_count?: number | null
+          checked_at?: string | null
+          detail?: Json
+          digest?: string | null
+          folder_id: string
+          folder_name: string
+          id?: string
+          kind: string
+          run_id: string
+          source_count?: number | null
+          status?: string
+        }
+        Update: {
+          archived_count?: number | null
+          checked_at?: string | null
+          detail?: Json
+          digest?: string | null
+          folder_id?: string
+          folder_name?: string
+          id?: string
+          kind?: string
+          run_id?: string
+          source_count?: number | null
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "nethunt_archive_sources_run_id_fkey"
+            columns: ["run_id"]
+            isOneToOne: false
+            referencedRelation: "nethunt_archive_runs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       nethunt_conflicts: {
         Row: {
           created_at: string

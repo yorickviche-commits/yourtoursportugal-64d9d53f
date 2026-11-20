@@ -1,0 +1,2 @@
+REVOKE ALL ON public.nethunt_archive_runs, public.nethunt_archive_sources, public.nethunt_archive_items FROM anon;
+REVOKE ALL ON public.nethunt_archive_runs, public.nethunt_archive_sources, public.nethunt_archive_items FROM PUBLIC;

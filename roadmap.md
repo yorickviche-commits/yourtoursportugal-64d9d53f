@@ -1,4 +1,11 @@
-# Native CRM comments and tasks — current request
+# NetHunt final backfill — current request
+- [x] Archive 23,866 raw objects from four accessible folders; 24 sources verified by read-back hashes, four email sources explicitly unsupported; no lead/stage or sync cursor writes.
+- [x] Recover 742 completed missing tasks and 213 missing timeline events, preserve existing tasks, replay tasks with zero inserts; copy and hash-verify all 13 Drive files in private storage.
+- [x] Dated coverage/gap report; authenticated task-board and private file read-back; eight safety tests.
+- [x] Keep push/pull, frontend publication and WhatsApp unchanged.
+- [ ] Before cutoff: independent NetHunt folder totals, historical Gmail/attachments coverage, WhatsApp/users/automations export and reconciliation of 663 raw-only files / unlinked tasks; blocked by exports/data unavailable through the current API and human review. No shutdown authorized.
+
+# Native CRM comments and tasks
 - [x] Local comments/tasks in lead CRM and Gmail add-on; no NetHunt calls or task enqueue triggers.
 - [x] Authenticated YTteste comment/task write and reload, completion persisted, zero NetHunt calls and runtime errors; 14 Vitest + 9 add-on tests passed; crm-addon deployed, frontend not published.
 

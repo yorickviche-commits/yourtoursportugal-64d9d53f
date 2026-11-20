@@ -26,3 +26,4 @@
 - CRM Kanban reads paginated local leads with a unique Realtime subscription, uses NETHUNT_STAGES and usePushLead for moves, and stores user-owned views; stage age is trigger-maintained. Why: preserve sync ownership and avoid remote CRM reads or approximate stage dates.
 
 - Native CRM comments use item_notes and tasks use tasks through the shared crm-local actions in the lead UI and Gmail add-on; task mutations never enqueue NetHunt, and historical timeline rows remain readable. Why: local writes must succeed without any external CRM, while preserving history and audit attribution.
+- Final NetHunt backfill uses independent raw run/source/item snapshots, unlimited documented GETs and read-back hashes; only missing tasks/timeline rows are inserted, and Drive binaries go to private storage with byte/hash verification. Why: preserve unmatched records and local edits without stage, Calendar, sync cursor or remote mutations; API gaps always require review before cutoff.
