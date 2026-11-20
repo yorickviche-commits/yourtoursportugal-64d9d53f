@@ -1,4 +1,8 @@
-# CRM WhatsApp — Phase B
+# Native CRM comments and tasks — current request
+- [x] Local comments/tasks in lead CRM and Gmail add-on; no NetHunt calls or task enqueue triggers.
+- [x] Authenticated YTteste comment/task write and reload, completion persisted, zero NetHunt calls and runtime errors; 14 Vitest + 9 add-on tests passed; crm-addon deployed, frontend not published.
+
+# CRM WhatsApp — Phase B (deferred by user; not part of this request)
 - [ ] Inbox, messages/media, linking/history, lead timeline and unread Kanban badges; human-only sending, no frontend publication.
 - [ ] Resolve inbound support before implementation: Lovable WhatsApp receiving requires the modern stack; current Classic project is unsupported. No WhatsApp connection available. Await choice of stack migration or an explicitly supported external receiver.
 

@@ -8,7 +8,7 @@ import { gmailGet, gmailBatch, META_QS, MAILBOX_KEY_RE, gmailThreadUrl } from '.
 import { toMeta } from '../_shared/email-link.ts';
 
 import { extractWithFailover } from '../_shared/lead-extract.ts';
-import { createComment } from '../_shared/nethunt.ts';
+import { addLocalComment, createLocalTask, setLocalTaskCompleted } from '../_shared/crm-local.ts';
 import { ITEMS, addonChecklist } from '../_shared/workbenchChecklist.ts';
 import { workbenchSide, withDerivedDates } from '../_shared/workbenchScope.ts';
 import { gateway } from '../_shared/workbench.ts';
@@ -236,11 +236,7 @@ export async function handle(sb: any, action: string, data: any, actor: Actor) {
       const task = await sb.from('tasks').select('id,lead_id,title').eq('id',d.task_id).maybeSingle();
       if (task.error) throw task.error;
       if (!task.data?.lead_id) return {ok:false,error:'Tarefa ligada a uma file não encontrada'};
-      const r = await sb.from('tasks').update({completed:true,status:'done'}).eq('id',d.task_id);
-      if (r.error) throw r.error;
-      const sync = await sb.rpc('enqueue_sync',{p_target:'nethunt',p_entity:'task',p_entity_id:d.task_id,p_fields:[],p_reason:'crm_addon'});
-      if (sync.error) throw sync.error;
-      await audit(sb,actor,task.data.lead_id,'task_completed',{task_id:d.task_id,title:task.data.title});
+      await setLocalTaskCompleted(sb, actor, d.task_id, true);
       return {ok:true,linked:await leadCard(sb,task.data.lead_id)};
     }
     case 'list_events': {
@@ -411,24 +407,12 @@ export async function handle(sb: any, action: string, data: any, actor: Actor) {
     }
     case 'add_note': {
       const d = z.object({ lead_id: z.string().uuid(), text: z.string().trim().min(1).max(5000) }).parse(data);
-      const lead = await sb.from('leads').select('nethunt_record_id').eq('id', d.lead_id).maybeSingle();
-      const text = `${d.text}\n— ${actor.label}`;
-      if (lead.data?.nethunt_record_id) {
-        await createComment(lead.data.nethunt_record_id, text);
-        const now = new Date().toISOString();
-        await sb.from('nethunt_timeline').upsert({ lead_id: d.lead_id, nethunt_record_id: lead.data.nethunt_record_id, event_id: `local-comment:${d.lead_id}:${Date.now()}`, event_type: 'comment', event_time: now, creator_email: actor.email, creator_name: actor.label, snippet: text.slice(0, 300), body_html: text, payload: { local: true, text }, synced_at: now }, { onConflict: 'event_id' });
-      } else {
-        const r = await sb.from('item_notes').insert({ entity_type: 'lead', entity_id: d.lead_id, entity_key: d.lead_id, note_text: text, created_by: actor.userId }); if (r.error) throw r.error;
-      }
-      await audit(sb, actor, d.lead_id, 'note_added', {});
+      await addLocalComment(sb, actor, d.lead_id, d.text);
       return { ok: true, linked: await leadCard(sb, d.lead_id) };
     }
     case 'add_task': {
       const d = z.object({ lead_id: z.string().uuid(), title: z.string().trim().min(1).max(300), due_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional().nullable() }).parse(data);
-      const r = await sb.from('tasks').insert({ lead_id: d.lead_id, title: d.title, due_date: d.due_date || null, status: 'todo', priority: 'medium', team: 'sales', category: 'general', creator_email: actor.email, created_by: actor.userId, description: actor.label }).select('id').single();
-      if (r.error) throw r.error;
-      await sb.rpc('enqueue_sync', { p_target: 'nethunt', p_entity: 'task', p_entity_id: r.data.id, p_fields: [], p_reason: 'crm_addon' });
-      await audit(sb, actor, d.lead_id, 'task_created', { title: d.title });
+      await createLocalTask(sb, actor, d);
       return { ok: true, linked: await leadCard(sb, d.lead_id) };
     }
     case 'timeline': {

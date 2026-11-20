@@ -145,22 +145,7 @@ export default function LeadCrmTab({ leadId }: Props) {
   if (!lead) return <p className="text-xs text-muted-foreground">Lead não encontrada.</p>;
 
   const linked = !!lead.nethunt_record_id;
-  const hasHistory = (timeline.data?.length ?? 0) > 0 || (gmail.data?.length ?? 0) > 0;
 
-  if (!linked && !hasHistory) {
-    return (
-      <div className="space-y-4">
-      <LeadEmailLinks leadId={leadId} />
-      <div className="bg-card border rounded-lg p-6 text-center space-y-3">
-        <p className="text-sm font-medium">Esta lead ainda não está ligada a um record do NetHunt.</p>
-        <p className="text-xs text-muted-foreground">A ligação é feita automaticamente pela referência YT ({lead.yt_id || '—'}) na próxima sincronização.</p>
-        <Button size="sm" variant="outline" className="text-xs" onClick={() => syncNow.mutate({ period: '7d' })} disabled={syncNow.isPending}>
-          {syncNow.isPending ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : <RefreshCw className="h-3 w-3 mr-1" />} Sincronizar agora
-        </Button>
-      </div>
-      </div>
-    );
-  }
 
   return (
     <div className="space-y-4">
@@ -273,16 +258,18 @@ export default function LeadCrmTab({ leadId }: Props) {
       </div>
 
       {/* Tasks */}
+      {tasks.error && <p role="alert" className="text-sm text-destructive">Não foi possível carregar as tarefas: {tasks.error.message}</p>}
       <LeadTasks leadId={leadId} tasks={tasks.data || []} loading={tasks.isLoading} />
+      {timeline.error && <p role="alert" className="text-sm text-destructive">Não foi possível carregar o histórico: {timeline.error.message}</p>}
 
       {/* Comment box */}
       <div className="bg-card border rounded-lg p-4 space-y-2">
         <Textarea value={comment} onChange={e => setComment(e.target.value)} rows={2}
-          placeholder="Escrever comentário no NetHunt..." className="text-xs" />
+          placeholder="Escrever comentário na file..." className="text-xs" />
         <div className="flex justify-end">
           <Button size="sm" className="text-xs" disabled={!comment.trim() || addComment.isPending}
             onClick={() => addComment.mutate({ leadId, text: comment.trim() }, {
-              onSuccess: () => { setComment(''); timeline.refetch(); toast({ title: 'Comentário criado no NetHunt' }); },
+              onSuccess: () => { setComment(''); timeline.refetch(); toast({ title: 'Comentário guardado no TCC' }); },
               onError: (e: any) => toast({ title: 'Erro', description: e.message, variant: 'destructive' }),
             })}>
             {addComment.isPending ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : <Send className="h-3 w-3 mr-1" />} Comentar
@@ -384,7 +371,7 @@ function LeadTasks({ leadId, tasks, loading }: { leadId: string; tasks: any[]; l
       assignee_emails: form.assignee ? form.assignee.split(',').map(s => s.trim()).filter(Boolean) : [],
       lead_id: leadId,
     }, {
-      onSuccess: () => { setOpen(false); setForm({ title: '', description: '', due: '', allDay: false, priority: 'medium', assignee: '' }); toast({ title: 'Task criada no NetHunt' }); },
+      onSuccess: () => { setOpen(false); setForm({ title: '', description: '', due: '', allDay: false, priority: 'medium', assignee: '' }); toast({ title: 'Tarefa criada no TCC' }); },
       onError: (e: any) => toast({ title: 'Erro', description: e.message, variant: 'destructive' }),
     });
   };
@@ -392,13 +379,13 @@ function LeadTasks({ leadId, tasks, loading }: { leadId: string; tasks: any[]; l
   return (
     <div className="bg-card border rounded-lg">
       <div className="px-4 py-3 border-b flex items-center justify-between">
-        <h3 className="text-sm font-semibold">Tasks NetHunt</h3>
+        <h3 className="text-sm font-semibold">Tarefas</h3>
         <Dialog open={open} onOpenChange={setOpen}>
-          <DialogTrigger asChild><Button size="sm" variant="outline" className="text-xs"><Plus className="h-3 w-3 mr-1" /> Nova task</Button></DialogTrigger>
+          <DialogTrigger asChild><Button size="sm" variant="outline" className="text-xs"><Plus className="h-3 w-3 mr-1" /> Nova tarefa</Button></DialogTrigger>
           <DialogContent className="max-w-md">
-            <DialogHeader><DialogTitle className="text-sm">Nova task</DialogTitle></DialogHeader>
+            <DialogHeader><DialogTitle className="text-sm">Nova tarefa</DialogTitle></DialogHeader>
             <div className="space-y-3">
-              <Input placeholder="Nome da task" value={form.title} onChange={e => setForm({ ...form, title: e.target.value })} className="h-9 text-xs" />
+              <Input placeholder="Nome da tarefa" value={form.title} onChange={e => setForm({ ...form, title: e.target.value })} className="h-9 text-xs" />
               <Textarea placeholder="Descrição" rows={2} value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} className="text-xs" />
               <div className="grid grid-cols-2 gap-2">
                 <Input type="datetime-local" value={form.due} onChange={e => setForm({ ...form, due: e.target.value })} className="h-9 text-xs" />
@@ -407,7 +394,7 @@ function LeadTasks({ leadId, tasks, loading }: { leadId: string; tasks: any[]; l
                   <SelectContent>{PRIORITIES.map(p => <SelectItem key={p.value} value={p.value} className="text-xs">{p.label}</SelectItem>)}</SelectContent>
                 </Select>
               </div>
-              <Input placeholder="Assignee (emails separados por vírgula)" value={form.assignee} onChange={e => setForm({ ...form, assignee: e.target.value })} className="h-9 text-xs" />
+              <Input placeholder="Responsáveis (emails separados por vírgula)" value={form.assignee} onChange={e => setForm({ ...form, assignee: e.target.value })} className="h-9 text-xs" />
               <div className="flex items-center justify-between">
                 <span className="text-xs text-muted-foreground">Todo o dia</span>
                 <Switch checked={form.allDay} onCheckedChange={v => setForm({ ...form, allDay: v })} />
@@ -423,9 +410,13 @@ function LeadTasks({ leadId, tasks, loading }: { leadId: string; tasks: any[]; l
         {loading && <div className="p-4"><Skeleton className="h-10 w-full" /></div>}
         {tasks.map(t => (
           <div key={t.id} className="flex items-center gap-3 px-4 py-2.5">
-            <button onClick={() => updateTask.mutate({ id: t.id, changes: { completed: !t.completed } })}>
+            <Button variant="ghost" size="icon" className="h-11 w-11 shrink-0" aria-label={t.completed ? `Reabrir ${t.title}` : `Concluir ${t.title}`} disabled={updateTask.isPending}
+              onClick={() => updateTask.mutate({ id: t.id, changes: { completed: !t.completed } }, {
+                onSuccess: () => toast({ title: t.completed ? 'Tarefa reaberta' : 'Tarefa concluída' }),
+                onError: (e: Error) => toast({ title: 'Não foi possível guardar a tarefa', description: e.message, variant: 'destructive' }),
+              })}>
               {t.completed ? <CheckCircle2 className="h-4 w-4 text-[hsl(var(--success))]" /> : <Circle className="h-4 w-4 text-muted-foreground" />}
-            </button>
+            </Button>
             <div className="flex-1 min-w-0">
               <p className={cn('text-xs font-medium truncate', t.completed && 'line-through text-muted-foreground')}>{t.title}</p>
               {t.description && <p className="text-[10px] text-muted-foreground line-clamp-1">{t.description}</p>}
@@ -434,7 +425,7 @@ function LeadTasks({ leadId, tasks, loading }: { leadId: string; tasks: any[]; l
             {t.assignee_emails?.length ? <span className="text-[10px] text-muted-foreground hidden sm:inline">{t.assignee_emails[0]}</span> : null}
           </div>
         ))}
-        {!loading && tasks.length === 0 && <p className="text-xs text-muted-foreground text-center py-6">Sem tasks ligadas.</p>}
+        {!loading && tasks.length === 0 && <p className="text-xs text-muted-foreground text-center py-6">Sem tarefas ligadas.</p>}
       </div>
     </div>
   );

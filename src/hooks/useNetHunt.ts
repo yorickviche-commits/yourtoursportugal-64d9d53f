@@ -1,6 +1,15 @@
 import { toast } from 'sonner';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { addLocalComment, createLocalTask, setLocalTaskCompleted } from '../../supabase/functions/_shared/crm-local';
+
+async function localActor() {
+  const { data, error } = await supabase.auth.getUser();
+  if (error) throw error;
+  if (!data.user) throw new Error('Sessão expirada');
+  const profile = await supabase.from('profiles').select('full_name').eq('id', data.user.id).maybeSingle();
+  return { userId: data.user.id, email: data.user.email || '', label: profile.data?.full_name || data.user.email || 'Equipa TCC' };
+}
 
 /** Exact NetHunt stage options, grouped for the UI select. */
 export const NETHUNT_STAGES = {
@@ -80,14 +89,18 @@ export const useLeadTimeline = (leadId?: string) =>
     queryKey: ['nethunt-timeline', leadId],
     enabled: !!leadId,
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('nethunt_timeline')
-        .select('*')
-        .eq('lead_id', leadId!)
-        .order('event_time', { ascending: false })
-        .limit(300);
-      if (error) throw error;
-      return (data || []) as unknown as TimelineEvent[];
+      if (!leadId) return [];
+      const [history, notes] = await Promise.all([
+        supabase.from('nethunt_timeline').select('*').eq('lead_id', leadId).order('event_time', { ascending: false }).limit(300),
+        supabase.from('item_notes').select('*').eq('entity_type', 'lead').eq('entity_key', leadId).order('created_at', { ascending: false }).limit(300),
+      ]);
+      if (history.error) throw history.error;
+      if (notes.error) throw notes.error;
+      const local = (notes.data || []).map(n => ({ id: n.id, lead_id: leadId, nethunt_record_id: null,
+        event_id: `tcc-note:${n.id}`, event_type: 'comment', event_time: n.created_at, pinned: false,
+        creator_name: null, creator_email: null, subject: 'Comentário TCC', snippet: n.note_text,
+        body_html: null, payload: { local: true } }));
+      return [...(history.data || []), ...local].sort((a, b) => (b.event_time || '').localeCompare(a.event_time || '')) as TimelineEvent[];
     },
   });
 
@@ -153,7 +166,7 @@ export const useAddComment = () => {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async ({ leadId, text }: { leadId: string; text: string }) =>
-      push('comment', leadId, { text }),
+      addLocalComment(supabase, await localActor(), leadId, text),
     onSuccess: (_d, v) => qc.invalidateQueries({ queryKey: ['nethunt-timeline', v.leadId] }),
   });
 };
@@ -161,7 +174,7 @@ export const useAddComment = () => {
 export const useCreateNHTask = () => {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (changes: Record<string, unknown>) => push('task_create', null, changes),
+    mutationFn: async (changes: Parameters<typeof createLocalTask>[2]) => createLocalTask(supabase, await localActor(), changes),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['nethunt-tasks'] });
       qc.invalidateQueries({ queryKey: ['tasks'] });
@@ -173,7 +186,7 @@ export const useUpdateNHTask = () => {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async ({ id, changes }: { id: string; changes: Record<string, unknown> }) =>
-      push('task', id, changes),
+      setLocalTaskCompleted(supabase, await localActor(), id, Boolean(changes.completed)),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['nethunt-tasks'] });
       qc.invalidateQueries({ queryKey: ['tasks'] });

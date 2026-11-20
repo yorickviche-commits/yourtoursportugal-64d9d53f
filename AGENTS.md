@@ -24,3 +24,5 @@
 - Gmail labels are owned by explicit mailbox registries; database link/lead triggers enqueue thread refreshes, consumed in small batches by the existing email cron. Only registered labels may be patched/removed, with per-mailbox failures recorded. Why: preserve unrelated labels and mailbox state without another scheduler.
 - Report execution and its summary helper use SECURITY INVOKER with no anonymous execution. Why: dynamic report queries must obey the caller's existing row-level access rules in both modes.
 - CRM Kanban reads paginated local leads with a unique Realtime subscription, uses NETHUNT_STAGES and usePushLead for moves, and stores user-owned views; stage age is trigger-maintained. Why: preserve sync ownership and avoid remote CRM reads or approximate stage dates.
+
+- Native CRM comments use item_notes and tasks use tasks through the shared crm-local actions in the lead UI and Gmail add-on; task mutations never enqueue NetHunt, and historical timeline rows remain readable. Why: local writes must succeed without any external CRM, while preserving history and audit attribution.
