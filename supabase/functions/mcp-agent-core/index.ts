@@ -3,10 +3,10 @@
 // supabase function: mcp-agent-core
 // Bundled from src/lib/mcp/agent-entry.ts by @lovable.dev/mcp-js.
 // src/lib/mcp/agent-entry.ts
-import { auth, defineMcp, ToolError as ToolError53 } from "npm:@lovable.dev/mcp-js@0.26.1";
+import { auth, defineMcp, ToolError as ToolError53 } from "npm:@lovable.dev/mcp-js@0.26.3";
 
 // src/lib/mcp/tools/list-leads.ts
-import { defineTool, ToolError as ToolError4 } from "npm:@lovable.dev/mcp-js@0.26.1";
+import { defineTool, ToolError as ToolError4 } from "npm:@lovable.dev/mcp-js@0.26.3";
 import { z } from "npm:zod@^3.25.76";
 
 // src/lib/mcp/supabase.ts
@@ -59,13 +59,13 @@ function supabaseForUser(ctx) {
 }
 
 // src/lib/mcp/lead.ts
-import { ToolError as ToolError3 } from "npm:@lovable.dev/mcp-js@0.26.1";
+import { ToolError as ToolError3 } from "npm:@lovable.dev/mcp-js@0.26.3";
 
 // src/lib/mcp/agent.ts
-import { ToolError as ToolError2 } from "npm:@lovable.dev/mcp-js@0.26.1";
+import { ToolError as ToolError2 } from "npm:@lovable.dev/mcp-js@0.26.3";
 
 // src/lib/mcp/versions.ts
-import { ToolError } from "npm:@lovable.dev/mcp-js@0.26.1";
+import { ToolError } from "npm:@lovable.dev/mcp-js@0.26.3";
 
 // src/lib/proposalSlug.ts
 var MONTHS = ["jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec"];
@@ -446,7 +446,7 @@ var list_leads_default = defineTool({
 });
 
 // src/lib/mcp/tools/get-lead.ts
-import { defineTool as defineTool2, ToolError as ToolError5 } from "npm:@lovable.dev/mcp-js@0.26.1";
+import { defineTool as defineTool2, ToolError as ToolError5 } from "npm:@lovable.dev/mcp-js@0.26.3";
 import { z as z2 } from "npm:zod@^3.25.76";
 var get_lead_default = defineTool2({
   name: "get_lead",
@@ -484,7 +484,7 @@ var get_lead_default = defineTool2({
 });
 
 // src/lib/mcp/tools/list-upcoming-trips.ts
-import { defineTool as defineTool3, ToolError as ToolError6 } from "npm:@lovable.dev/mcp-js@0.26.1";
+import { defineTool as defineTool3, ToolError as ToolError6 } from "npm:@lovable.dev/mcp-js@0.26.3";
 import { z as z3 } from "npm:zod@^3.25.76";
 var list_upcoming_trips_default = defineTool3({
   name: "list_upcoming_trips",
@@ -516,7 +516,7 @@ var list_upcoming_trips_default = defineTool3({
 });
 
 // src/lib/mcp/tools/list-tasks.ts
-import { defineTool as defineTool4, ToolError as ToolError7 } from "npm:@lovable.dev/mcp-js@0.26.1";
+import { defineTool as defineTool4, ToolError as ToolError7 } from "npm:@lovable.dev/mcp-js@0.26.3";
 import { z as z4 } from "npm:zod@^3.25.76";
 var list_tasks_default = defineTool4({
   name: "list_tasks",
@@ -548,7 +548,7 @@ var list_tasks_default = defineTool4({
 });
 
 // src/lib/mcp/tools/create-task.ts
-import { defineTool as defineTool5, ToolError as ToolError8 } from "npm:@lovable.dev/mcp-js@0.26.1";
+import { defineTool as defineTool5, ToolError as ToolError8 } from "npm:@lovable.dev/mcp-js@0.26.3";
 import { z as z5 } from "npm:zod@^3.25.76";
 var create_task_default = defineTool5({
   name: "create_task",
@@ -606,7 +606,7 @@ var create_task_default = defineTool5({
 });
 
 // src/lib/mcp/tools/update-task.ts
-import { defineTool as defineTool6, ToolError as ToolError9 } from "npm:@lovable.dev/mcp-js@0.26.1";
+import { defineTool as defineTool6, ToolError as ToolError9 } from "npm:@lovable.dev/mcp-js@0.26.3";
 import { z as z6 } from "npm:zod@^3.25.76";
 var update_task_default = defineTool6({
   name: "update_task",
@@ -648,7 +648,7 @@ var update_task_default = defineTool6({
 });
 
 // src/lib/mcp/tools/list-lead-stages.ts
-import { defineTool as defineTool7, ToolError as ToolError10 } from "npm:@lovable.dev/mcp-js@0.26.1";
+import { defineTool as defineTool7, ToolError as ToolError10 } from "npm:@lovable.dev/mcp-js@0.26.3";
 var list_lead_stages_default = defineTool7({
   name: "list_lead_stages",
   title: "List lead stages",
@@ -666,7 +666,7 @@ var list_lead_stages_default = defineTool7({
 });
 
 // src/lib/mcp/tools/list-regions.ts
-import { defineTool as defineTool8, ToolError as ToolError11 } from "npm:@lovable.dev/mcp-js@0.26.1";
+import { defineTool as defineTool8, ToolError as ToolError11 } from "npm:@lovable.dev/mcp-js@0.26.3";
 var list_regions_default = defineTool8({
   name: "list_regions",
   title: "List regions (Portugal + Spain)",
@@ -693,7 +693,7 @@ var list_regions_default = defineTool8({
 });
 
 // src/lib/mcp/tools/update-lead-stage.ts
-import { defineTool as defineTool9, ToolError as ToolError12 } from "npm:@lovable.dev/mcp-js@0.26.1";
+import { defineTool as defineTool9, ToolError as ToolError12 } from "npm:@lovable.dev/mcp-js@0.26.3";
 import { z as z7 } from "npm:zod@^3.25.76";
 var update_lead_stage_default = defineTool9({
   name: "update_lead_stage",
@@ -758,7 +758,7 @@ var update_lead_stage_default = defineTool9({
 });
 
 // src/lib/mcp/tools/assign-lead-agents.ts
-import { defineTool as defineTool10, ToolError as ToolError13 } from "npm:@lovable.dev/mcp-js@0.26.1";
+import { defineTool as defineTool10, ToolError as ToolError13 } from "npm:@lovable.dev/mcp-js@0.26.3";
 import { z as z8 } from "npm:zod@^3.25.76";
 var assign_lead_agents_default = defineTool10({
   name: "assign_lead_agents",
@@ -822,7 +822,7 @@ var assign_lead_agents_default = defineTool10({
 });
 
 // src/lib/mcp/tools/update-lead-general-data.ts
-import { defineTool as defineTool11, ToolError as ToolError14 } from "npm:@lovable.dev/mcp-js@0.26.1";
+import { defineTool as defineTool11, ToolError as ToolError14 } from "npm:@lovable.dev/mcp-js@0.26.3";
 import { z as z9 } from "npm:zod@^3.25.76";
 
 // src/lib/participantsLabel.ts
@@ -953,7 +953,7 @@ var update_lead_general_data_default = defineTool11({
 });
 
 // src/lib/mcp/tools/add-lead-note.ts
-import { defineTool as defineTool12, ToolError as ToolError15 } from "npm:@lovable.dev/mcp-js@0.26.1";
+import { defineTool as defineTool12, ToolError as ToolError15 } from "npm:@lovable.dev/mcp-js@0.26.3";
 import { z as z10 } from "npm:zod@^3.25.76";
 var add_lead_note_default = defineTool12({
   name: "add_lead_note",
@@ -990,7 +990,7 @@ var add_lead_note_default = defineTool12({
 });
 
 // src/lib/mcp/tools/get-travel-plan.ts
-import { defineTool as defineTool13, ToolError as ToolError16 } from "npm:@lovable.dev/mcp-js@0.26.1";
+import { defineTool as defineTool13, ToolError as ToolError16 } from "npm:@lovable.dev/mcp-js@0.26.3";
 import { z as z11 } from "npm:zod@^3.25.76";
 var strip = (s) => String(s ?? "").replace(/\*\*/g, "").trim();
 var get_travel_plan_default = defineTool13({
@@ -1055,7 +1055,7 @@ var get_travel_plan_default = defineTool13({
 });
 
 // src/lib/mcp/tools/export-travel-plan-pdf.ts
-import { defineTool as defineTool14, ToolError as ToolError17 } from "npm:@lovable.dev/mcp-js@0.26.1";
+import { defineTool as defineTool14, ToolError as ToolError17 } from "npm:@lovable.dev/mcp-js@0.26.3";
 import { z as z12 } from "npm:zod@^3.25.76";
 
 // src/lib/mcp/pdf.ts
@@ -1870,11 +1870,11 @@ var export_travel_plan_pdf_default = defineTool14({
 });
 
 // src/lib/mcp/tools/list-pending-approvals.ts
-import { defineTool as defineTool15, ToolError as ToolError19 } from "npm:@lovable.dev/mcp-js@0.26.1";
+import { defineTool as defineTool15, ToolError as ToolError19 } from "npm:@lovable.dev/mcp-js@0.26.3";
 import { z as z13 } from "npm:zod@^3.25.76";
 
 // src/lib/mcp/queue.ts
-import { ToolError as ToolError18 } from "npm:@lovable.dev/mcp-js@0.26.1";
+import { ToolError as ToolError18 } from "npm:@lovable.dev/mcp-js@0.26.3";
 async function enqueueAction(supabase, ctx, lead6, args) {
   const key = `${args.type}:${lead6.id}:${args.idempotencyKey}`;
   const find = async () => {
@@ -1955,7 +1955,7 @@ var list_pending_approvals_default = defineTool15({
 });
 
 // src/lib/mcp/tools/get-approval-status.ts
-import { defineTool as defineTool16, ToolError as ToolError20 } from "npm:@lovable.dev/mcp-js@0.26.1";
+import { defineTool as defineTool16, ToolError as ToolError20 } from "npm:@lovable.dev/mcp-js@0.26.3";
 import { z as z14 } from "npm:zod@^3.25.76";
 var get_approval_status_default = defineTool16({
   name: "get_approval_status",
@@ -1978,11 +1978,11 @@ var get_approval_status_default = defineTool16({
 });
 
 // src/lib/mcp/tools/get-costing.ts
-import { defineTool as defineTool17, ToolError as ToolError22 } from "npm:@lovable.dev/mcp-js@0.26.1";
+import { defineTool as defineTool17, ToolError as ToolError22 } from "npm:@lovable.dev/mcp-js@0.26.3";
 import { z as z15 } from "npm:zod@^3.25.76";
 
 // src/lib/mcp/costing.ts
-import { ToolError as ToolError21 } from "npm:@lovable.dev/mcp-js@0.26.1";
+import { ToolError as ToolError21 } from "npm:@lovable.dev/mcp-js@0.26.3";
 
 // src/lib/businessConfig.ts
 var BUSINESS_CONFIG = {
@@ -2149,7 +2149,7 @@ var get_costing_default = defineTool17({
 });
 
 // src/lib/mcp/tools/upsert-costing-lines.ts
-import { defineTool as defineTool18, ToolError as ToolError23 } from "npm:@lovable.dev/mcp-js@0.26.1";
+import { defineTool as defineTool18, ToolError as ToolError23 } from "npm:@lovable.dev/mcp-js@0.26.3";
 import { z as z16 } from "npm:zod@^3.25.76";
 var lineSchema = z16.object({
   day_number: z16.number().int().min(0).describe("Day of the programme (0 = accommodation block)."),
@@ -2259,7 +2259,7 @@ var upsert_costing_lines_default = defineTool18({
 });
 
 // src/lib/mcp/tools/remove-costing-line.ts
-import { defineTool as defineTool19, ToolError as ToolError24 } from "npm:@lovable.dev/mcp-js@0.26.1";
+import { defineTool as defineTool19, ToolError as ToolError24 } from "npm:@lovable.dev/mcp-js@0.26.3";
 import { z as z17 } from "npm:zod@^3.25.76";
 var remove_costing_line_default = defineTool19({
   name: "remove_costing_line",
@@ -2304,11 +2304,11 @@ var remove_costing_line_default = defineTool19({
 });
 
 // src/lib/mcp/tools/autofill-costing-from-plan.ts
-import { defineTool as defineTool20, ToolError as ToolError26 } from "npm:@lovable.dev/mcp-js@0.26.1";
+import { defineTool as defineTool20, ToolError as ToolError26 } from "npm:@lovable.dev/mcp-js@0.26.3";
 import { z as z18 } from "npm:zod@^3.25.76";
 
 // src/lib/mcp/travelPlan.ts
-import { ToolError as ToolError25 } from "npm:@lovable.dev/mcp-js@0.26.1";
+import { ToolError as ToolError25 } from "npm:@lovable.dev/mcp-js@0.26.3";
 var bulletText = (b) => typeof b === "string" ? b : String(b?.text ?? "");
 async function loadPlan(supabase, lead6, version) {
   const { data, error } = await supabase.from("travel_plans").select("id, trip_title, narrative, days, extra_instructions").eq("lead_id", lead6.id).eq("version", version).order("updated_at", { ascending: false }).limit(1).maybeSingle();
@@ -2558,7 +2558,7 @@ var autofill_costing_from_plan_default = defineTool20({
 });
 
 // src/lib/mcp/tools/get-operations.ts
-import { defineTool as defineTool21, ToolError as ToolError27 } from "npm:@lovable.dev/mcp-js@0.26.1";
+import { defineTool as defineTool21, ToolError as ToolError27 } from "npm:@lovable.dev/mcp-js@0.26.3";
 import { z as z19 } from "npm:zod@^3.25.76";
 
 // src/components/leads/opsConstants.ts
@@ -2771,7 +2771,7 @@ var get_operations_default = defineTool21({
 });
 
 // src/lib/mcp/tools/update-operation-item.ts
-import { defineTool as defineTool22, ToolError as ToolError28 } from "npm:@lovable.dev/mcp-js@0.26.1";
+import { defineTool as defineTool22, ToolError as ToolError28 } from "npm:@lovable.dev/mcp-js@0.26.3";
 import { z as z20 } from "npm:zod@^3.25.76";
 var values = (opts) => opts.map((o) => o.value);
 var update_operation_item_default = defineTool22({
@@ -2866,7 +2866,7 @@ var update_operation_item_default = defineTool22({
 });
 
 // src/lib/mcp/tools/update-day-ops.ts
-import { defineTool as defineTool23, ToolError as ToolError29 } from "npm:@lovable.dev/mcp-js@0.26.1";
+import { defineTool as defineTool23, ToolError as ToolError29 } from "npm:@lovable.dev/mcp-js@0.26.3";
 import { z as z21 } from "npm:zod@^3.25.76";
 var update_day_ops_default = defineTool23({
   name: "update_day_ops",
@@ -2906,7 +2906,7 @@ var update_day_ops_default = defineTool23({
 });
 
 // src/lib/mcp/tools/update-trip-briefing.ts
-import { defineTool as defineTool24, ToolError as ToolError30 } from "npm:@lovable.dev/mcp-js@0.26.1";
+import { defineTool as defineTool24, ToolError as ToolError30 } from "npm:@lovable.dev/mcp-js@0.26.3";
 import { z as z22 } from "npm:zod@^3.25.76";
 var update_trip_briefing_default = defineTool24({
   name: "update_trip_briefing",
@@ -2947,7 +2947,7 @@ var update_trip_briefing_default = defineTool24({
 });
 
 // src/lib/mcp/tools/validate-lead.ts
-import { defineTool as defineTool25, ToolError as ToolError31 } from "npm:@lovable.dev/mcp-js@0.26.1";
+import { defineTool as defineTool25, ToolError as ToolError31 } from "npm:@lovable.dev/mcp-js@0.26.3";
 import { z as z23 } from "npm:zod@^3.25.76";
 var days = (from, to) => {
   if (!from || !to) return null;
@@ -3036,7 +3036,7 @@ var validate_lead_default = defineTool25({
 });
 
 // src/lib/mcp/tools/generate-travel-plan.ts
-import { defineTool as defineTool26, ToolError as ToolError32 } from "npm:@lovable.dev/mcp-js@0.26.1";
+import { defineTool as defineTool26, ToolError as ToolError32 } from "npm:@lovable.dev/mcp-js@0.26.3";
 import { z as z24 } from "npm:zod@^3.25.76";
 var generate_travel_plan_default = defineTool26({
   name: "generate_travel_plan",
@@ -3131,7 +3131,7 @@ var generate_travel_plan_default = defineTool26({
 });
 
 // src/lib/mcp/tools/update-travel-plan-day.ts
-import { defineTool as defineTool27, ToolError as ToolError33 } from "npm:@lovable.dev/mcp-js@0.26.1";
+import { defineTool as defineTool27, ToolError as ToolError33 } from "npm:@lovable.dev/mcp-js@0.26.3";
 import { z as z25 } from "npm:zod@^3.25.76";
 var update_travel_plan_day_default = defineTool27({
   name: "update_travel_plan_day",
@@ -3206,7 +3206,7 @@ var update_travel_plan_day_default = defineTool27({
 });
 
 // src/lib/mcp/tools/update-travel-plan-header.ts
-import { defineTool as defineTool28, ToolError as ToolError34 } from "npm:@lovable.dev/mcp-js@0.26.1";
+import { defineTool as defineTool28, ToolError as ToolError34 } from "npm:@lovable.dev/mcp-js@0.26.3";
 import { z as z26 } from "npm:zod@^3.25.76";
 var update_travel_plan_header_default = defineTool28({
   name: "update_travel_plan_header",
@@ -3258,7 +3258,7 @@ var update_travel_plan_header_default = defineTool28({
 });
 
 // src/lib/mcp/tools/fill-travel-plan-images.ts
-import { defineTool as defineTool29, ToolError as ToolError35 } from "npm:@lovable.dev/mcp-js@0.26.1";
+import { defineTool as defineTool29, ToolError as ToolError35 } from "npm:@lovable.dev/mcp-js@0.26.3";
 import { z as z27 } from "npm:zod@^3.25.76";
 var fill_travel_plan_images_default = defineTool29({
   name: "fill_travel_plan_images",
@@ -3330,7 +3330,7 @@ var fill_travel_plan_images_default = defineTool29({
 });
 
 // src/lib/mcp/tools/request-payment-link.ts
-import { defineTool as defineTool30, ToolError as ToolError36 } from "npm:@lovable.dev/mcp-js@0.26.1";
+import { defineTool as defineTool30, ToolError as ToolError36 } from "npm:@lovable.dev/mcp-js@0.26.3";
 import { z as z28 } from "npm:zod@^3.25.76";
 var KINDS = {
   deposit_25: 0.25,
@@ -3408,7 +3408,7 @@ var request_payment_link_default = defineTool30({
 });
 
 // src/lib/mcp/tools/draft-fse-requests.ts
-import { defineTool as defineTool31, ToolError as ToolError37 } from "npm:@lovable.dev/mcp-js@0.26.1";
+import { defineTool as defineTool31, ToolError as ToolError37 } from "npm:@lovable.dev/mcp-js@0.26.3";
 import { z as z29 } from "npm:zod@^3.25.76";
 var ptDate = (d) => {
   if (!d) return "a confirmar";
@@ -3515,7 +3515,7 @@ ${lines}
 });
 
 // src/lib/mcp/tools/draft-client-email.ts
-import { defineTool as defineTool32, ToolError as ToolError38 } from "npm:@lovable.dev/mcp-js@0.26.1";
+import { defineTool as defineTool32, ToolError as ToolError38 } from "npm:@lovable.dev/mcp-js@0.26.3";
 import { z as z30 } from "npm:zod@^3.25.76";
 var TEMPLATE = {
   proposal: "sales_proposal",
@@ -3613,7 +3613,7 @@ var draft_client_email_default = defineTool32({
 });
 
 // src/lib/mcp/tools/import-lead-ai.ts
-import { defineTool as defineTool33, ToolError as ToolError39 } from "npm:@lovable.dev/mcp-js@0.26.1";
+import { defineTool as defineTool33, ToolError as ToolError39 } from "npm:@lovable.dev/mcp-js@0.26.3";
 import { z as z31 } from "npm:zod@^3.25.76";
 var SOURCES = { direct: "direct", site: "website", ota: "ota", b2b_partner: "b2b" };
 var toDate = (s) => {
@@ -3775,7 +3775,7 @@ var import_lead_ai_default = defineTool33({
 });
 
 // src/lib/mcp/tools/create-nethunt-deal.ts
-import { defineTool as defineTool34, ToolError as ToolError40 } from "npm:@lovable.dev/mcp-js@0.26.1";
+import { defineTool as defineTool34, ToolError as ToolError40 } from "npm:@lovable.dev/mcp-js@0.26.3";
 import { z as z32 } from "npm:zod@^3.25.76";
 var create_nethunt_deal_default = defineTool34({
   name: "create_nethunt_deal",
@@ -3803,7 +3803,7 @@ var create_nethunt_deal_default = defineTool34({
 });
 
 // src/lib/mcp/tools/log-ai-session.ts
-import { defineTool as defineTool35, ToolError as ToolError41 } from "npm:@lovable.dev/mcp-js@0.26.1";
+import { defineTool as defineTool35, ToolError as ToolError41 } from "npm:@lovable.dev/mcp-js@0.26.3";
 import { z as z33 } from "npm:zod@^3.25.76";
 
 // src/lib/mcp/usage.ts
@@ -3921,7 +3921,7 @@ var log_ai_session_default = defineTool35({
 });
 
 // src/lib/mcp/tools/list-workbench-state.ts
-import { defineTool as defineTool36, ToolError as ToolError42 } from "npm:@lovable.dev/mcp-js@0.26.1";
+import { defineTool as defineTool36, ToolError as ToolError42 } from "npm:@lovable.dev/mcp-js@0.26.3";
 import { z as z34 } from "npm:zod@^3.25.76";
 
 // supabase/functions/_shared/workbenchScope.ts
@@ -4043,7 +4043,7 @@ var list_workbench_state_default = defineTool36({
 });
 
 // src/lib/mcp/tools/upsert-workbench-thread-reading.ts
-import { defineTool as defineTool37, ToolError as ToolError43 } from "npm:@lovable.dev/mcp-js@0.26.1";
+import { defineTool as defineTool37, ToolError as ToolError43 } from "npm:@lovable.dev/mcp-js@0.26.3";
 import { z as z35 } from "npm:zod@^3.25.76";
 var lead2 = { lead_id: z35.string().optional().describe("Lead uuid."), lead_code: z35.string().optional().describe("Lead code such as YT5130 or YT-2026-4474.") };
 var fail2 = (e) => {
@@ -4068,7 +4068,7 @@ var upsert_workbench_thread_reading_default = defineTool37({
 });
 
 // src/lib/mcp/tools/set-checklist-status.ts
-import { defineTool as defineTool38, ToolError as ToolError44 } from "npm:@lovable.dev/mcp-js@0.26.1";
+import { defineTool as defineTool38, ToolError as ToolError44 } from "npm:@lovable.dev/mcp-js@0.26.3";
 import { z as z36 } from "npm:zod@^3.25.76";
 var lead3 = { lead_id: z36.string().optional().describe("Lead uuid."), lead_code: z36.string().optional().describe("Lead code such as YT5130 or YT-2026-4474.") };
 var sideOf = (l) => l.nethunt_stage?.startsWith("OPERATIONS") || !l.nethunt_stage && l.status === "won" ? "ops" : "sales";
@@ -4095,7 +4095,7 @@ var set_checklist_status_default = defineTool38({
 });
 
 // src/lib/mcp/tools/add-auto-log-entry.ts
-import { defineTool as defineTool39, ToolError as ToolError45 } from "npm:@lovable.dev/mcp-js@0.26.1";
+import { defineTool as defineTool39, ToolError as ToolError45 } from "npm:@lovable.dev/mcp-js@0.26.3";
 import { z as z37 } from "npm:zod@^3.25.76";
 var lead4 = { lead_id: z37.string().optional().describe("Lead uuid."), lead_code: z37.string().optional().describe("Lead code such as YT5130 or YT-2026-4474.") };
 var sideOf2 = (l) => l.nethunt_stage?.startsWith("OPERATIONS") || !l.nethunt_stage && l.status === "won" ? "ops" : "sales";
@@ -4118,7 +4118,7 @@ var add_auto_log_entry_default = defineTool39({
 });
 
 // src/lib/mcp/tools/open-workbench-alert.ts
-import { defineTool as defineTool40, ToolError as ToolError46 } from "npm:@lovable.dev/mcp-js@0.26.1";
+import { defineTool as defineTool40, ToolError as ToolError46 } from "npm:@lovable.dev/mcp-js@0.26.3";
 import { z as z38 } from "npm:zod@^3.25.76";
 var lead5 = { lead_id: z38.string().optional().describe("Lead uuid."), lead_code: z38.string().optional().describe("Lead code such as YT5130 or YT-2026-4474.") };
 var sideOf3 = (l) => l.nethunt_stage?.startsWith("OPERATIONS") || !l.nethunt_stage && l.status === "won" ? "ops" : "sales";
@@ -4140,11 +4140,11 @@ var open_workbench_alert_default = defineTool40({
 });
 
 // src/lib/mcp/tools/list-payments.ts
-import { defineTool as defineTool41, ToolError as ToolError48 } from "npm:@lovable.dev/mcp-js@0.26.1";
+import { defineTool as defineTool41, ToolError as ToolError48 } from "npm:@lovable.dev/mcp-js@0.26.3";
 import { z as z40 } from "npm:zod@^3.25.76";
 
 // src/lib/mcp/finance.ts
-import { ToolError as ToolError47 } from "npm:@lovable.dev/mcp-js@0.26.1";
+import { ToolError as ToolError47 } from "npm:@lovable.dev/mcp-js@0.26.3";
 import { z as z39 } from "npm:zod@^3.25.76";
 var CHANNELS = ["wetravel", "fareharbor_stripe", "bokun", "viator", "getyourguide", "transfer_b2b", "other"];
 var PAY_STATUS = ["requested", "paid_channel", "invoiced", "bank_received", "receipt_issued", "reconciled", "exception"];
@@ -4180,7 +4180,7 @@ var list_payments_default = defineTool41({
 });
 
 // src/lib/mcp/tools/register-payment.ts
-import { defineTool as defineTool42, ToolError as ToolError49 } from "npm:@lovable.dev/mcp-js@0.26.1";
+import { defineTool as defineTool42, ToolError as ToolError49 } from "npm:@lovable.dev/mcp-js@0.26.3";
 import { z as z41 } from "npm:zod@^3.25.76";
 var register_payment_default = defineTool42({
   name: "register_payment",
@@ -4230,7 +4230,7 @@ var register_payment_default = defineTool42({
 });
 
 // src/lib/mcp/tools/propose-finance-batch.ts
-import { defineTool as defineTool43, ToolError as ToolError50 } from "npm:@lovable.dev/mcp-js@0.26.1";
+import { defineTool as defineTool43, ToolError as ToolError50 } from "npm:@lovable.dev/mcp-js@0.26.3";
 import { z as z42 } from "npm:zod@^3.25.76";
 var propose_finance_batch_default = defineTool43({
   name: "propose_finance_batch",
@@ -4269,7 +4269,7 @@ var propose_finance_batch_default = defineTool43({
 });
 
 // src/lib/mcp/tools/list-finance-batch.ts
-import { defineTool as defineTool44, ToolError as ToolError51 } from "npm:@lovable.dev/mcp-js@0.26.1";
+import { defineTool as defineTool44, ToolError as ToolError51 } from "npm:@lovable.dev/mcp-js@0.26.3";
 import { z as z43 } from "npm:zod@^3.25.76";
 var list_finance_batch_default = defineTool44({
   name: "list_finance_batch",
@@ -4289,7 +4289,7 @@ var list_finance_batch_default = defineTool44({
 });
 
 // src/lib/mcp/tools/mark-finance-item-executed.ts
-import { defineTool as defineTool45, ToolError as ToolError52 } from "npm:@lovable.dev/mcp-js@0.26.1";
+import { defineTool as defineTool45, ToolError as ToolError52 } from "npm:@lovable.dev/mcp-js@0.26.3";
 import { z as z44 } from "npm:zod@^3.25.76";
 var mark_finance_item_executed_default = defineTool45({
   name: "mark_finance_item_executed",
@@ -4389,5 +4389,5 @@ var agent_entry_default = defineMcp({
 });
 
 // lovable-mcp-supabase-entry.ts
-import { createSupabaseHandler } from "npm:@lovable.dev/mcp-js@0.26.1/stacks/supabase";
+import { createSupabaseHandler } from "npm:@lovable.dev/mcp-js@0.26.3/stacks/supabase";
 Deno.serve(createSupabaseHandler(agent_entry_default, { functionName: "mcp-agent-core" }));
