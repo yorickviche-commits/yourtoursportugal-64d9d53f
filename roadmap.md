@@ -1,3 +1,7 @@
+# Lead removal and archive policy — current request
+- [x] Correct eight restrictive lead references; cascade Workbench/tasks and preserve archive/approvals/trips with SET NULL. Transactional regression and authenticated mobile Remover/checklist read-back passed; no production lead deleted, zero test leads left.
+- [x] Record past-as-archive and today/future completeness priority in memory/report; NetHunt sync and publication unchanged. 38 existing tests passed; raw archive remains 23,866 objects / 13 copied files.
+
 # NetHunt final backfill — current request
 - [x] Archive 23,866 raw objects from four accessible folders; 24 sources verified by read-back hashes, four email sources explicitly unsupported; no lead/stage or sync cursor writes.
 - [x] Recover 742 completed missing tasks and 213 missing timeline events, preserve existing tasks, replay tasks with zero inserts; copy and hash-verify all 13 Drive files in private storage.

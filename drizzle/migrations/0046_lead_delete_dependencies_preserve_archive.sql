@@ -1,0 +1,11 @@
+ALTER TABLE public.workbench_checklist DROP CONSTRAINT workbench_checklist_lead_id_fkey, ADD CONSTRAINT workbench_checklist_lead_id_fkey FOREIGN KEY (lead_id) REFERENCES public.leads(id) ON DELETE CASCADE;
+ALTER TABLE public.workbench_threads DROP CONSTRAINT workbench_threads_lead_id_fkey, ADD CONSTRAINT workbench_threads_lead_id_fkey FOREIGN KEY (lead_id) REFERENCES public.leads(id) ON DELETE CASCADE;
+ALTER TABLE public.workbench_alerts DROP CONSTRAINT workbench_alerts_lead_id_fkey, ADD CONSTRAINT workbench_alerts_lead_id_fkey FOREIGN KEY (lead_id) REFERENCES public.leads(id) ON DELETE CASCADE;
+ALTER TABLE public.workbench_auto_log DROP CONSTRAINT workbench_auto_log_lead_id_fkey, ADD CONSTRAINT workbench_auto_log_lead_id_fkey FOREIGN KEY (lead_id) REFERENCES public.leads(id) ON DELETE CASCADE;
+ALTER TABLE public.tasks DROP CONSTRAINT tasks_lead_id_fkey, ADD CONSTRAINT tasks_lead_id_fkey FOREIGN KEY (lead_id) REFERENCES public.leads(id) ON DELETE CASCADE;
+ALTER TABLE public.nethunt_archive_items DROP CONSTRAINT nethunt_archive_items_lead_id_fkey, ADD CONSTRAINT nethunt_archive_items_lead_id_fkey FOREIGN KEY (lead_id) REFERENCES public.leads(id) ON DELETE SET NULL;
+ALTER TABLE public.approvals DROP CONSTRAINT approvals_lead_id_fkey, ADD CONSTRAINT approvals_lead_id_fkey FOREIGN KEY (lead_id) REFERENCES public.leads(id) ON DELETE SET NULL;
+ALTER TABLE public.trips DROP CONSTRAINT trips_lead_id_fkey, ADD CONSTRAINT trips_lead_id_fkey FOREIGN KEY (lead_id) REFERENCES public.leads(id) ON DELETE SET NULL;
+COMMENT ON CONSTRAINT nethunt_archive_items_lead_id_fkey ON public.nethunt_archive_items IS 'Lead removal unlinks the immutable historical snapshot; payload, source identifiers and verified binaries are preserved.';
+COMMENT ON CONSTRAINT approvals_lead_id_fkey ON public.approvals IS 'Preserve approval records when a lead is removed; existing access rules remain unchanged.';
+COMMENT ON CONSTRAINT trips_lead_id_fkey ON public.trips IS 'Preserve trip records when a lead is removed; existing access rules remain unchanged.';

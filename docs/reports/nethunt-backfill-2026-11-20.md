@@ -51,12 +51,22 @@ Fonte técnica: https://nethunt.com/integration-api
 
 ## 5. Ordem recomendada
 
-1. Rever as lacunas acima e obter as exportações que a API não fornece.
-2. Reconciliar totais por pasta e associações locais; aceitar explicitamente quaisquer exceções.
-3. Validar a independência operacional (incluindo Gmail e automações) e só depois executar o corte faseado já planeado.
-4. No dia do corte, fazer captura final/delta e guardar novo relatório antes de terminar a subscrição.
+1. **Prioridade aprovada por Yorick:** dados passados ficam preservados para arquivo e consulta, sem encher o trabalho ativo; trabalho de hoje em diante (data de Lisboa) deve estar completo, atualizado e populado no TCC.
+2. Reconciliar primeiro files atuais/futuras, propostas abertas, tarefas pendentes, emails/anexos relevantes, responsáveis, planos e custos. As 663 files brutas e 1.065 tarefas sem associação única ainda não foram classificadas por este recorte: não se certifica completude operacional nesta fase. Dados históricos continuam a exigir preservação, não importação indiscriminada nos pipelines.
+3. Rever as restantes lacunas, obter as exportações que a API não fornece e reconciliar os totais; aceitar explicitamente quaisquer exceções.
+4. Validar a independência operacional (incluindo Gmail e automações) e só depois executar o corte faseado já planeado.
+5. No dia do corte, fazer captura final/delta e guardar novo relatório antes de terminar a subscrição.
 
 **Este relatório não autoriza desligar o NetHunt nem certifica perda zero em categorias que a API não expõe.**
+
+## 6. Correção de remoção de leads — 20/11/2026
+
+- Migration `0046_lead_delete_dependencies_preserve_archive.sql` aplicada: checklist, threads, alertas, auto-log do Workbench e tarefas passam a ser removidos com a lead; arquivo bruto, aprovações e viagens mantêm-se, apenas sem a ligação à lead removida. Permissões não foram alteradas.
+- Auditoria de todas as referências diretas a `leads`: **zero chaves estrangeiras restritivas** após a correção.
+- Teste transacional com as oito dependências passou, com reversão integral: confirmou eliminação das linhas operacionais e preservação de conteúdo histórico, identificadores, hashes e metadados de ficheiros privados, viagens e aprovações.
+- Teste autenticado do botão **Remover** em 402×786 passou numa lead exclusivamente temporária com checklist: voltou à lista, confirmou remoção da lead e checklist. Zero leads temporárias restantes; nenhuma file operacional foi removida.
+- **38 testes existentes passaram** (8 arquivo + 5 CRM local + 25 âmbito Workbench); aplicação sem erros de compilação. Arquivo relido: **23.866 objetos e 13 ficheiros copiados**, intactos.
+- Sem publicação de frontend, sem desligar push/pull ou alterar os respetivos crons. A prioridade de completude atual/futura foi registada; a reconciliação/população desse conjunto continua por executar e não é certificada por esta correção.
 
 ## Anexo técnico
 
