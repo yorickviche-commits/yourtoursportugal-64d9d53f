@@ -1829,9 +1829,14 @@ export type Database = {
       }
       decisions: {
         Row: {
+          agent_close_at: string | null
+          agent_close_label: string | null
+          agent_close_reason: string | null
+          agent_dedupe: string | null
           candidate_reason: string | null
           candidate_rule: string | null
           checked_at: string | null
+          checked_by_label: string | null
           checked_note: string | null
           close_params: Json
           close_rule: string
@@ -1840,10 +1845,12 @@ export type Database = {
           created_by_label: string | null
           decided_at: string | null
           decided_by: string | null
+          decided_by_label: string | null
           dedupe_key: string
           executed_at: string | null
           execution_error: string | null
           execution_result: Json | null
+          human_quote: string | null
           id: string
           kind: string
           lead_id: string | null
@@ -1858,13 +1865,20 @@ export type Database = {
           status: string
           title: string
           updated_at: string
+          urgency: string | null
+          via_chat: boolean
           why: string
           yt_ref: string | null
         }
         Insert: {
+          agent_close_at?: string | null
+          agent_close_label?: string | null
+          agent_close_reason?: string | null
+          agent_dedupe?: string | null
           candidate_reason?: string | null
           candidate_rule?: string | null
           checked_at?: string | null
+          checked_by_label?: string | null
           checked_note?: string | null
           close_params?: Json
           close_rule?: string
@@ -1873,10 +1887,12 @@ export type Database = {
           created_by_label?: string | null
           decided_at?: string | null
           decided_by?: string | null
+          decided_by_label?: string | null
           dedupe_key: string
           executed_at?: string | null
           execution_error?: string | null
           execution_result?: Json | null
+          human_quote?: string | null
           id?: string
           kind: string
           lead_id?: string | null
@@ -1891,13 +1907,20 @@ export type Database = {
           status?: string
           title: string
           updated_at?: string
+          urgency?: string | null
+          via_chat?: boolean
           why: string
           yt_ref?: string | null
         }
         Update: {
+          agent_close_at?: string | null
+          agent_close_label?: string | null
+          agent_close_reason?: string | null
+          agent_dedupe?: string | null
           candidate_reason?: string | null
           candidate_rule?: string | null
           checked_at?: string | null
+          checked_by_label?: string | null
           checked_note?: string | null
           close_params?: Json
           close_rule?: string
@@ -1906,10 +1929,12 @@ export type Database = {
           created_by_label?: string | null
           decided_at?: string | null
           decided_by?: string | null
+          decided_by_label?: string | null
           dedupe_key?: string
           executed_at?: string | null
           execution_error?: string | null
           execution_result?: Json | null
+          human_quote?: string | null
           id?: string
           kind?: string
           lead_id?: string | null
@@ -1924,6 +1949,8 @@ export type Database = {
           status?: string
           title?: string
           updated_at?: string
+          urgency?: string | null
+          via_chat?: boolean
           why?: string
           yt_ref?: string | null
         }
@@ -8630,6 +8657,7 @@ export type Database = {
       }
       is_admin: { Args: { _user_id: string }; Returns: boolean }
       is_agent_user: { Args: { _user_id: string }; Returns: boolean }
+      is_chat_relay: { Args: never; Returns: boolean }
       is_cockpit_human: { Args: never; Returns: boolean }
       is_finance_human: { Args: { _user_id: string }; Returns: boolean }
       is_internal_user: { Args: { _user_id: string }; Returns: boolean }
@@ -8655,6 +8683,57 @@ export type Database = {
       map_destino_resolved: {
         Args: { district: string; region: string }
         Returns: string
+      }
+      mcp_actor_label: { Args: never; Returns: string }
+      mcp_apply_human_decision: {
+        Args: {
+          p_action: string
+          p_id: string
+          p_note?: string
+          p_quote: string
+          p_until?: string
+        }
+        Returns: Json
+      }
+      mcp_can_use_decisions: { Args: never; Returns: boolean }
+      mcp_decision_by_dedupe: {
+        Args: { p_kind: string; p_lead: string; p_reason: string }
+        Returns: Json
+      }
+      mcp_decision_updates: {
+        Args: { p_limit?: number; p_since: string }
+        Returns: Json
+      }
+      mcp_list_decisions: {
+        Args: {
+          p_kind?: string
+          p_lead?: string
+          p_limit?: number
+          p_older_than_days?: number
+          p_side?: string
+          p_status?: string
+          p_updated_since?: string
+        }
+        Returns: Json
+      }
+      mcp_set_decision_meta: {
+        Args: {
+          p_checked_note: string
+          p_close_params: Json
+          p_close_rule: string
+          p_dedupe: string
+          p_id: string
+          p_prepared: Json
+          p_source_id: string
+          p_source_table: string
+          p_urgency: string
+          p_why: string
+        }
+        Returns: Json
+      }
+      mcp_touch_decision: {
+        Args: { p_checked_note: string; p_close_reason?: string; p_id: string }
+        Returns: Json
       }
       move_to_dlq: {
         Args: {

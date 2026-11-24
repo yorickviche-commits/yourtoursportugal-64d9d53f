@@ -22,7 +22,9 @@ Deno.serve(async req=>{
  // Existing refresh closes stale alerts; no scheduled work or lead-stage writes.
  const inactiveIds=everyLead.filter(l=>!workbenchScope(l,today).active).map(l=>l.id);
  let closedAlerts=0;
- for(let i=0;i<inactiveIds.length;i+=150){const r=await db.from('workbench_alerts').update({status:'handled',handled_at:new Date().toISOString()}).in('lead_id',inactiveIds.slice(i,i+150)).neq('status','handled').select('id');if(r.error)throw r.error;closedAlerts+=(r.data||[]).length;}
+ // Closing alerts of inactive files is a cleanup rule: only after a human pressed 'Fechar todos' in the Cockpit.
+ const ctl=await db.from('decisions_control').select('auto_close_enabled').eq('singleton',true).maybeSingle();
+ if(ctl.data?.auto_close_enabled) for(let i=0;i<inactiveIds.length;i+=150){const r=await db.from('workbench_alerts').update({status:'handled',handled_at:new Date().toISOString()}).in('lead_id',inactiveIds.slice(i,i+150)).neq('status','handled').select('id');if(r.error)throw r.error;closedAlerts+=(r.data||[]).length;}
  const ids=leads.map(l=>l.id);
  const [plans,costs,operations,days,payments,links,versions,tasks,settings,checks,alerts,travelPlans,threads]=await Promise.all([
   all(db,'lead_planner_data','lead_id,version',ids),all(db,'lead_costing_data','lead_id,version,items',ids),

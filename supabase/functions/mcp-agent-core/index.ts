@@ -3,7 +3,7 @@
 // supabase function: mcp-agent-core
 // Bundled from src/lib/mcp/agent-entry.ts by @lovable.dev/mcp-js.
 // src/lib/mcp/agent-entry.ts
-import { auth, defineMcp, ToolError as ToolError53 } from "npm:@lovable.dev/mcp-js@0.26.1";
+import { auth, defineMcp, ToolError as ToolError59 } from "npm:@lovable.dev/mcp-js@0.26.1";
 
 // src/lib/mcp/tools/list-leads.ts
 import { defineTool, ToolError as ToolError4 } from "npm:@lovable.dev/mcp-js@0.26.1";
@@ -4310,8 +4310,179 @@ var mark_finance_item_executed_default = defineTool45({
   }
 });
 
+// src/lib/mcp/tools/list-decisions.ts
+import { defineTool as defineTool46, ToolError as ToolError54 } from "npm:@lovable.dev/mcp-js@0.26.1";
+import { z as z45 } from "npm:zod@^3.25.76";
+
+// src/lib/mcp/decisions.ts
+import { ToolError as ToolError53 } from "npm:@lovable.dev/mcp-js@0.26.1";
+var APP_URL = "https://yourtoursportugal.lovable.app";
+var SIDES = ["sales", "ops", "finance", "management"];
+var KINDS2 = ["client_email", "fse_email", "payment_link", "finance_item", "alert", "task"];
+async function rpc(db, fn, args) {
+  const { data, error } = await db.rpc(fn, args);
+  if (error) throw new ToolError53(error.message);
+  return data;
+}
+var withLink = (d) => ({
+  ...d,
+  lead_url: d.lead_path ? `${APP_URL}${d.lead_path}` : null,
+  cockpit_url: d.id ? `${APP_URL}/cockpit#decision-${d.id}` : null
+});
+
+// src/lib/mcp/tools/list-decisions.ts
+var list_decisions_default = defineTool46({
+  name: "list_decisions",
+  title: "List 'Precisa de ti' decisions",
+  description: "Read the YT Cockpit decision queue (default: open cards), with why, what is prepared, last check, age and whether it is human-approval only.",
+  inputSchema: {
+    status: z45.enum(["open", "snoozed", "approved", "rejected", "auto_closed", "executed", "failed", "all"]).optional().describe("Default open."),
+    side: z45.enum(SIDES).optional(),
+    kind: z45.enum(KINDS2).optional(),
+    lead_code: z45.string().optional().describe("Lead code such as YT5130."),
+    older_than_days: z45.number().int().min(0).max(365).optional(),
+    updated_since: z45.string().optional().describe("ISO timestamp."),
+    limit: z45.number().int().min(1).max(300).optional()
+  },
+  annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
+  handler: async (a, ctx) => {
+    if (!ctx.isAuthenticated()) throw new ToolError54("Not authenticated");
+    const db = supabaseForUser(ctx);
+    const lead6 = a.lead_code ? await resolveLead(db, { lead_code: a.lead_code }, "id") : null;
+    const rows = (await rpc(db, "mcp_list_decisions", { p_status: a.status ?? "open", p_side: a.side ?? null, p_kind: a.kind ?? null, p_lead: lead6?.id ?? null, p_older_than_days: a.older_than_days ?? null, p_updated_since: a.updated_since ?? null, p_limit: a.limit ?? 100 })).map(withLink);
+    return { content: [{ type: "text", text: `${rows.length} decision(s).
+` + JSON.stringify(rows) }], structuredContent: { decisions: rows } };
+  }
+});
+
+// src/lib/mcp/tools/propose-decision.ts
+import { defineTool as defineTool47, ToolError as ToolError55 } from "npm:@lovable.dev/mcp-js@0.26.1";
+import { z as z46 } from "npm:zod@^3.25.76";
+var propose_decision_default = defineTool47({
+  name: "propose_decision",
+  title: "Propose or update a decision card",
+  description: "Create or update one 'Precisa de ti' card (one per lead + kind + reason). Emails and payment links also enter the approval queue; nothing is sent or created. Recently rejected cards are not recreated.",
+  inputSchema: {
+    lead_code: z46.string().describe("Lead code such as YT5130."),
+    side: z46.enum(["sales", "ops"]).optional().describe("Default from kind."),
+    kind: z46.enum(["fse_email", "client_email", "payment_link", "alert"]),
+    title: z46.string().min(3).max(200),
+    why: z46.string().min(3).max(300).describe("One line: why this needs a human."),
+    reason: z46.string().max(200).optional().describe("Stable motive used for dedupe; defaults to title."),
+    prepared: z46.record(z46.unknown()).optional().describe("Email: to, subject, body. Payment link: amount, description, trip_ref. Alert: next_step."),
+    checked_note: z46.string().max(300).optional().describe("What was verified, e.g. 'TCC + calend\xE1rio'."),
+    close_rule: z46.string().max(100).optional(),
+    close_params: z46.record(z46.unknown()).optional(),
+    urgency: z46.enum(["low", "normal", "high", "urgent"]).optional()
+  },
+  annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false },
+  handler: async (a, ctx) => {
+    if (!ctx.isAuthenticated()) throw new ToolError55("Not authenticated");
+    const db = supabaseForUser(ctx);
+    const lead6 = await resolveLead(db, { lead_code: a.lead_code }, "*");
+    const found = await rpc(db, "mcp_decision_by_dedupe", { p_lead: lead6.id, p_kind: a.kind, p_reason: a.reason ?? a.title });
+    if (found.id && found.status === "rejected")
+      return { content: [{ type: "text", text: `Rejeitado em ${String(found.decided_at).slice(0, 10)}: ${found.note ?? "sem nota"}. Not recreated.` }], structuredContent: { rejected: true, decision_id: found.id, decided_at: found.decided_at, note: found.note ?? null } };
+    const meta = { p_dedupe: found.dedupe, p_why: a.why, p_prepared: a.prepared ?? null, p_checked_note: a.checked_note ?? null, p_close_rule: a.close_rule ?? null, p_close_params: a.close_params ?? null, p_urgency: a.urgency ?? null };
+    if (found.id) {
+      await rpc(db, "mcp_set_decision_meta", { p_id: found.id, p_source_table: null, p_source_id: null, ...meta });
+      return { content: [{ type: "text", text: `Updated existing open card ${found.id}.` }], structuredContent: { decision_id: found.id, created: false } };
+    }
+    let table, sourceId;
+    if (a.kind === "alert") {
+      const side = a.side ?? (lead6.nethunt_stage?.startsWith("OPERATIONS") ? "ops" : "sales");
+      const r = await db.from("workbench_alerts").insert({ lead_id: lead6.id, side, title: lead6.yt_id || "File", reason: a.why, next_step: a.prepared?.next_step ?? null }).select("id").maybeSingle();
+      let id = r.data?.id;
+      if (r.error) {
+        if (r.error.code !== "23505") throw new ToolError55(r.error.message);
+        const ex = await db.from("workbench_alerts").select("id").eq("lead_id", lead6.id).in("status", ["open", "snoozed"]).order("created_at", { ascending: false }).limit(1);
+        id = ex.data?.[0]?.id;
+      }
+      if (!id) throw new ToolError55("Alert could not be created");
+      table = "workbench_alerts";
+      sourceId = id;
+      await db.from("workbench_auto_log").insert({ lead_id: lead6.id, side, what: "Alerta aberto", trace: a.why, created_by_agent: agentActor(await agentIdentity(db, ctx)) });
+    } else {
+      const { item } = await enqueueAction(db, ctx, lead6, { type: a.kind, title: a.title, subtitle: a.why, payload: a.prepared ?? {}, idempotencyKey: `${found.dedupe.split(":").pop()}:${(/* @__PURE__ */ new Date()).toISOString().slice(0, 10)}` });
+      table = "ai_action_queue";
+      sourceId = item.id;
+    }
+    const out = await rpc(db, "mcp_set_decision_meta", { p_id: null, p_source_table: table, p_source_id: sourceId, ...meta });
+    return { content: [{ type: "text", text: `Card ${out.id} open for human decision: ${APP_URL}/cockpit#decision-${out.id}` }], structuredContent: { decision_id: out.id, created: true } };
+  }
+});
+
+// src/lib/mcp/tools/list-decision-updates.ts
+import { defineTool as defineTool48, ToolError as ToolError56 } from "npm:@lovable.dev/mcp-js@0.26.1";
+import { z as z47 } from "npm:zod@^3.25.76";
+var diff = (b, a) => {
+  if (!b || !a || typeof b !== "object" || typeof a !== "object") return null;
+  return Object.keys({ ...b, ...a }).filter((k) => JSON.stringify(b[k]) !== JSON.stringify(a[k])).map((k) => `${k}: ${String(b[k] ?? "").slice(0, 120)} \u2192 ${String(a[k] ?? "").slice(0, 120)}`).join(" | ");
+};
+var list_decision_updates_default = defineTool48({
+  name: "list_decision_updates",
+  title: "List human decisions since",
+  description: "What humans decided on queue cards since a date: approved, rejected (with note), edited (diff summary), snoozed, executed/failed. Use it to learn and avoid re-proposing rejected work.",
+  inputSchema: { since: z47.string().describe("ISO date/time."), limit: z47.number().int().min(1).max(500).optional() },
+  annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
+  handler: async ({ since, limit }, ctx) => {
+    if (!ctx.isAuthenticated()) throw new ToolError56("Not authenticated");
+    const rows = (await rpc(supabaseForUser(ctx), "mcp_decision_updates", { p_since: since, p_limit: limit ?? 200 })).map(({ before, after, ...r }) => ({ ...r, edit_summary: r.action === "edit" ? diff(before, after) : null }));
+    return { content: [{ type: "text", text: `${rows.length} update(s).
+` + JSON.stringify(rows) }], structuredContent: { updates: rows } };
+  }
+});
+
+// src/lib/mcp/tools/touch-decision.ts
+import { defineTool as defineTool49, ToolError as ToolError57 } from "npm:@lovable.dev/mcp-js@0.26.1";
+import { z as z48 } from "npm:zod@^3.25.76";
+var touch_decision_default = defineTool49({
+  name: "touch_decision",
+  title: "Re-check a decision card",
+  description: "Record that you re-verified an open card, or propose closing it with a reason. A proposed close is only a candidate for a human; it never closes the card.",
+  inputSchema: {
+    decision_id: z48.string().uuid(),
+    checked_note: z48.string().min(3).max(300).describe("What you verified and against what."),
+    propose_close_reason: z48.string().min(3).max(300).optional().describe("e.g. 'obsoleto: cliente j\xE1 pagou por transfer\xEAncia'.")
+  },
+  annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false },
+  handler: async (a, ctx) => {
+    if (!ctx.isAuthenticated()) throw new ToolError57("Not authenticated");
+    const r = await rpc(supabaseForUser(ctx), "mcp_touch_decision", { p_id: a.decision_id, p_checked_note: a.checked_note, p_close_reason: a.propose_close_reason ?? null });
+    return { content: [{ type: "text", text: r.close_proposed ? "Checked; close proposed as a candidate for human review." : "Checked." }], structuredContent: r };
+  }
+});
+
+// src/lib/mcp/tools/apply-human-decision.ts
+import { defineTool as defineTool50, ToolError as ToolError58 } from "npm:@lovable.dev/mcp-js@0.26.1";
+import { z as z49 } from "npm:zod@^3.25.76";
+var apply_human_decision_default = defineTool50({
+  name: "apply_human_decision",
+  title: "Relay Yorick's chat decision",
+  description: "Relay a decision Yorick wrote in chat (e.g. 'ok 1, n\xE3o 2') for supplier emails, alerts and tasks only. Client emails, payment links and finance items are refused: Cockpit only. Orquestrador key or interactive claude.ai session only.",
+  inputSchema: {
+    decision_id: z49.string().uuid(),
+    action: z49.enum(["approve", "reject", "snooze"]),
+    human_quote: z49.string().min(1).max(1e3).describe("Yorick's literal words."),
+    note: z49.string().max(300).optional(),
+    snooze_until: z49.string().optional().describe("ISO date/time, required for snooze.")
+  },
+  annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: true },
+  handler: async (a, ctx) => {
+    if (!ctx.isAuthenticated()) throw new ToolError58("Not authenticated");
+    const db = supabaseForUser(ctx);
+    const r = await rpc(db, "mcp_apply_human_decision", { p_id: a.decision_id, p_action: a.action, p_quote: a.human_quote, p_note: a.note ?? null, p_until: a.snooze_until ?? null });
+    let execution = null;
+    if (r.needs_execution) {
+      const res = await fetch(`${supabaseProjectUrl()}/functions/v1/execute-decision`, { method: "POST", signal: ctx.signal, headers: { Authorization: `Bearer ${ctx.getToken()}`, apikey: supabasePublishableKey(), "Content-Type": "application/json" }, body: JSON.stringify({ decision_id: a.decision_id }) });
+      execution = await res.json().catch(() => ({ error: `HTTP ${res.status}` }));
+    }
+    return { content: [{ type: "text", text: `${a.action} recorded via chat. ${execution ? JSON.stringify(execution) : ""} ${APP_URL}/cockpit#decision-${a.decision_id}` }], structuredContent: { ...r, execution } };
+  }
+});
+
 // src/lib/mcp/toolset.ts
-var INSTRUCTIONS = "Operations tools for Your Tours Portugal (TCC). Read the pipeline with `list_leads` / `get_lead`, the programme with `get_travel_plan`, departures with `list_upcoming_trips`, and follow-up with `list_tasks` / `create_task` / `update_task`. Prepare sales files with `update_lead_stage` (stages from `list_lead_stages`), `assign_lead_agents`, `update_lead_general_data`, `add_lead_note` and `export_travel_plan_pdf`. Leads accept the everyday code format such as YT5130. Every write is logged in the lead history as 'AI agent (MCP)' and mirrored to NetHunt when the lead is linked. These tools never send emails, never create payment links and never delete leads or versions. Client emails, supplier emails and payment links are only proposed into the 'Aprova\xE7\xF5es AI' queue (list_pending_approvals / get_approval_status); a person approves before anything is executed. Create leads with `import_lead_ai`, check them with `validate_lead`, build the programme with `generate_travel_plan` and the update_travel_plan_* tools, and the budget with the costing tools. Scheduled agents (Grok Worker, Claude Supervisor) connect to /functions/v1/mcp-agent with a personal `ytp_agent_` key: each key only runs its allowed tools within a daily limit, every write is stamped with the agent label and model, and agents work in proposal mode \u2014 generate_travel_plan and the travel plan / costing edits land on a non-LIVE 'Proposta AI' version that a person promotes with 'Tornar LIVE'; YT Cockpit tools (list_workbench_state, upsert_workbench_thread_reading, set_checklist_status, add_auto_log_entry, open_workbench_alert) only record readings, automatic checklist values, logs and alerts; Finance tools (list_payments, register_payment, propose_finance_batch, list_finance_batch, mark_finance_item_executed) record payments and propose the daily batch for human validation in YT Cockpit \u2192 Finan\xE7as; only approved items can be marked executed; agents can never approve queue or finance items, move a lead to OPERATIONS or create payment links.";
+var INSTRUCTIONS = "Operations tools for Your Tours Portugal (TCC). Read the pipeline with `list_leads` / `get_lead`, the programme with `get_travel_plan`, departures with `list_upcoming_trips`, and follow-up with `list_tasks` / `create_task` / `update_task`. Prepare sales files with `update_lead_stage` (stages from `list_lead_stages`), `assign_lead_agents`, `update_lead_general_data`, `add_lead_note` and `export_travel_plan_pdf`. Leads accept the everyday code format such as YT5130. Every write is logged in the lead history as 'AI agent (MCP)' and mirrored to NetHunt when the lead is linked. These tools never send emails, never create payment links and never delete leads or versions. Client emails, supplier emails and payment links are only proposed into the 'Aprova\xE7\xF5es AI' queue (list_pending_approvals / get_approval_status); a person approves before anything is executed. Create leads with `import_lead_ai`, check them with `validate_lead`, build the programme with `generate_travel_plan` and the update_travel_plan_* tools, and the budget with the costing tools. Scheduled agents (Grok Worker, Claude Supervisor) connect to /functions/v1/mcp-agent with a personal `ytp_agent_` key: each key only runs its allowed tools within a daily limit, every write is stamped with the agent label and model, and agents work in proposal mode \u2014 generate_travel_plan and the travel plan / costing edits land on a non-LIVE 'Proposta AI' version that a person promotes with 'Tornar LIVE'; YT Cockpit tools (list_workbench_state, upsert_workbench_thread_reading, set_checklist_status, add_auto_log_entry, open_workbench_alert) only record readings, automatic checklist values, logs and alerts; Finance tools (list_payments, register_payment, propose_finance_batch, list_finance_batch, mark_finance_item_executed) record payments and propose the daily batch for human validation in YT Cockpit \u2192 Finan\xE7as; only approved items can be marked executed; agents can never approve queue or finance items, move a lead to OPERATIONS or create payment links.\n\nDecision queue ('Precisa de ti' in YT Cockpit): one card per lead + kind + reason indexes everything waiting for a human.\n- `list_decisions` reads cards (default open) with why, what is prepared, last check, age and the human-only flag.\n- `propose_decision` creates or updates a card; emails/payment links also enter the approval queue; cards Yorick rejected in the last 30 days are not recreated.\n- `touch_decision` records a re-check or proposes a close, which stays a candidate until a human closes it.\n- `list_decision_updates` returns what humans approved, rejected, edited, snoozed, and what executed or failed \u2014 learn from it.\n- `apply_human_decision` relays Yorick's literal chat words (human_quote) for fse_email, alert and task only; Orquestrador key or claude.ai session only.\n- Client emails, payment links and finance items are approved only by a human in the Cockpit \u2014 never via chat or agents.\n- open_workbench_alert and propose_finance_batch also create queue cards automatically.";
 var ALL_TOOLS = [
   list_leads_default,
   get_lead_default,
@@ -4357,7 +4528,12 @@ var ALL_TOOLS = [
   register_payment_default,
   propose_finance_batch_default,
   list_finance_batch_default,
-  mark_finance_item_executed_default
+  mark_finance_item_executed_default,
+  list_decisions_default,
+  propose_decision_default,
+  list_decision_updates_default,
+  touch_decision_default,
+  apply_human_decision_default
 ];
 
 // src/lib/mcp/agent-entry.ts
@@ -4367,10 +4543,10 @@ var guarded = ALL_TOOLS.map((tool) => {
   return {
     ...t,
     handler: async (args, ctx) => {
-      if (!ctx.isAuthenticated()) throw new ToolError53("Not authenticated");
+      if (!ctx.isAuthenticated()) throw new ToolError59("Not authenticated");
       const agent = await agentIdentity(supabaseForUser(ctx), ctx);
-      if (!agent) throw new ToolError53("This endpoint only accepts agent keys (ytp_agent_...)");
-      if (!agent.scopes.includes(t.name)) throw new ToolError53(`Tool ${t.name} is not in this agent key's scopes`);
+      if (!agent) throw new ToolError59("This endpoint only accepts agent keys (ytp_agent_...)");
+      if (!agent.scopes.includes(t.name)) throw new ToolError59(`Tool ${t.name} is not in this agent key's scopes`);
       return t.handler(args, ctx);
     }
   };

@@ -400,6 +400,13 @@
       "when": 1795518636249,
       "tag": "0056_protected_execution_requires_human_review",
       "breakpoints": true
+    },
+    {
+      "idx": 57,
+      "version": "7",
+      "when": 1795535632699,
+      "tag": "0057_mcp_decision_tools",
+      "breakpoints": true
     }
   ]
 }

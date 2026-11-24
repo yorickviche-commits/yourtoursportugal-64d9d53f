@@ -2264,6 +2264,284 @@
           "$schema": "http://json-schema.org/draft-07/schema#"
         },
         "outputSchema": null
+      },
+      {
+        "name": "list_decisions",
+        "title": "List 'Precisa de ti' decisions",
+        "description": "Read the YT Cockpit decision queue (default: open cards), with why, what is prepared, last check, age and whether it is human-approval only.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "status": {
+              "type": "string",
+              "enum": [
+                "open",
+                "snoozed",
+                "approved",
+                "rejected",
+                "auto_closed",
+                "executed",
+                "failed",
+                "all"
+              ],
+              "description": "Default open."
+            },
+            "side": {
+              "type": "string",
+              "enum": [
+                "sales",
+                "ops",
+                "finance",
+                "management"
+              ]
+            },
+            "kind": {
+              "type": "string",
+              "enum": [
+                "client_email",
+                "fse_email",
+                "payment_link",
+                "finance_item",
+                "alert",
+                "task"
+              ]
+            },
+            "lead_code": {
+              "type": "string",
+              "description": "Lead code such as YT5130."
+            },
+            "older_than_days": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 365
+            },
+            "updated_since": {
+              "type": "string",
+              "description": "ISO timestamp."
+            },
+            "limit": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 300
+            }
+          },
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "propose_decision",
+        "title": "Propose or update a decision card",
+        "description": "Create or update one 'Precisa de ti' card (one per lead + kind + reason). Emails and payment links also enter the approval queue; nothing is sent or created. Recently rejected cards are not recreated.",
+        "annotations": {
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "lead_code": {
+              "type": "string",
+              "description": "Lead code such as YT5130."
+            },
+            "side": {
+              "type": "string",
+              "enum": [
+                "sales",
+                "ops"
+              ],
+              "description": "Default from kind."
+            },
+            "kind": {
+              "type": "string",
+              "enum": [
+                "fse_email",
+                "client_email",
+                "payment_link",
+                "alert"
+              ]
+            },
+            "title": {
+              "type": "string",
+              "minLength": 3,
+              "maxLength": 200
+            },
+            "why": {
+              "type": "string",
+              "minLength": 3,
+              "maxLength": 300,
+              "description": "One line: why this needs a human."
+            },
+            "reason": {
+              "type": "string",
+              "maxLength": 200,
+              "description": "Stable motive used for dedupe; defaults to title."
+            },
+            "prepared": {
+              "type": "object",
+              "additionalProperties": {},
+              "description": "Email: to, subject, body. Payment link: amount, description, trip_ref. Alert: next_step."
+            },
+            "checked_note": {
+              "type": "string",
+              "maxLength": 300,
+              "description": "What was verified, e.g. 'TCC + calendário'."
+            },
+            "close_rule": {
+              "type": "string",
+              "maxLength": 100
+            },
+            "close_params": {
+              "type": "object",
+              "additionalProperties": {}
+            },
+            "urgency": {
+              "type": "string",
+              "enum": [
+                "low",
+                "normal",
+                "high",
+                "urgent"
+              ]
+            }
+          },
+          "required": [
+            "lead_code",
+            "kind",
+            "title",
+            "why"
+          ],
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "list_decision_updates",
+        "title": "List human decisions since",
+        "description": "What humans decided on queue cards since a date: approved, rejected (with note), edited (diff summary), snoozed, executed/failed. Use it to learn and avoid re-proposing rejected work.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "since": {
+              "type": "string",
+              "description": "ISO date/time."
+            },
+            "limit": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 500
+            }
+          },
+          "required": [
+            "since"
+          ],
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "touch_decision",
+        "title": "Re-check a decision card",
+        "description": "Record that you re-verified an open card, or propose closing it with a reason. A proposed close is only a candidate for a human; it never closes the card.",
+        "annotations": {
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "decision_id": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "checked_note": {
+              "type": "string",
+              "minLength": 3,
+              "maxLength": 300,
+              "description": "What you verified and against what."
+            },
+            "propose_close_reason": {
+              "type": "string",
+              "minLength": 3,
+              "maxLength": 300,
+              "description": "e.g. 'obsoleto: cliente já pagou por transferência'."
+            }
+          },
+          "required": [
+            "decision_id",
+            "checked_note"
+          ],
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "apply_human_decision",
+        "title": "Relay Yorick's chat decision",
+        "description": "Relay a decision Yorick wrote in chat (e.g. 'ok 1, não 2') for supplier emails, alerts and tasks only. Client emails, payment links and finance items are refused: Cockpit only. Orquestrador key or interactive claude.ai session only.",
+        "annotations": {
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "idempotentHint": false,
+          "openWorldHint": true
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "decision_id": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "action": {
+              "type": "string",
+              "enum": [
+                "approve",
+                "reject",
+                "snooze"
+              ]
+            },
+            "human_quote": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 1000,
+              "description": "Yorick's literal words."
+            },
+            "note": {
+              "type": "string",
+              "maxLength": 300
+            },
+            "snooze_until": {
+              "type": "string",
+              "description": "ISO date/time, required for snooze."
+            }
+          },
+          "required": [
+            "decision_id",
+            "action",
+            "human_quote"
+          ],
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
       }
     ]
   }

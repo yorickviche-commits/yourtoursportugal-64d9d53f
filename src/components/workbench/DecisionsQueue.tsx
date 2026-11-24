@@ -115,6 +115,7 @@ export default function DecisionsQueue() {
     const checked = minutes(d.checked_at, now);
     return <article key={d.id} id={`decision-${d.id}`} data-decision-id={d.id} className="border border-border rounded-lg bg-card p-4 space-y-3 min-w-0">
       <div className="flex flex-wrap justify-between items-start gap-2"><h4 className="font-semibold text-sm break-words flex-1 min-w-0">{d.title}</h4><Badge variant={age.urgent ? 'destructive' : 'secondary'}>{age.label}</Badge></div>
+      {(d as any).via_chat && <Badge variant="outline" className="text-xs" title={(d as any).decided_by_label ?? undefined}>via chat</Badge>}
       {['client_email', 'payment_link', 'finance_item'].includes(d.kind) && <Badge variant="outline" className="text-xs text-muted-foreground">só aprovação humana</Badge>}
       <p className="text-sm break-words">{d.why}</p><Prepared decision={d} />
       <p className="text-xs text-muted-foreground break-words">{checked == null ? 'Ainda não verificado' : `Verificado há ${checked} min — contra ${d.checked_note || 'TCC'}`}</p>
