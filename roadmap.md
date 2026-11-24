@@ -1,3 +1,7 @@
+# Gmail add-on timeline and speed (24 nov 2026)
+- [x] Add email parties and bounded Calendar details/cache; preserve existing response keys and sync ownership. Linked-event details persist; their 6h freshness is isolate-local because only calendar_events was authorized a details_synced_at column.
+- [x] Optimize context/link/search/auth paths; 16 tests passed including existing authenticated reads; YT5148 verified four OgoTours FSE emails and nine complete events with zero writes/Gmail calls. Final fresh-request medians before→after: linked 212→190ms, unlinked 338→124ms, search 145→47ms; crm-addon alone deployed, no app publication. Actual Apps Script ID-token round trip not available in this session.
+
 # Cockpit decisions — Lote 2 (24 nov 2026)
 - [x] Adjustment: protect client_email/payment_link/finance_item at RPC/trigger/restrictive RLS level; agent and MCP OAuth (client_id/azp) rejection verified on all three kinds, including after human approval; human schedule and trusted executor proven with rolled-back fixtures. Label checked as Yorick at 390/1440px; no publication or external sends. apply_human_decision remains unimplemented with B, restricted to fse_email/alert/task when built.
 - [x] 0: Carter approved by Yorick; source done, unchanged. YT5124 handled without actor/event; no evidence identifying a test, left unchanged rather than invent attribution.

@@ -41,7 +41,7 @@ Deno.test({name:'YT5057 internal real reads and mutation errors without any writ
  const sb=createClient(Deno.env.get('SUPABASE_URL')||'',Deno.env.get('SUPABASE_ANON_KEY')||'',{global:{headers:{Authorization:`Bearer ${session.access_token}`}},auth:{persistSession:false}});
  const readonly={from:(table:string)=>new Proxy(sb.from(table),{get(target,key){if(['insert','update','upsert','delete'].includes(String(key)))throw new Error('Write attempted during read-only test');const v=Reflect.get(target,key);return typeof v==='function'?v.bind(target):v}}),rpc:()=>{throw new Error('RPC prohibited during test')}};
  const actor={email:'internal-test@yourtours.pt',label:'Internal read-only test',userId:null};
- const card=await leadCard(readonly,id);assert(card?.yt_id==='YT5057');assert(card.checklist.side==='ops');assert(card.open_tasks.length<=10);
+ const card=await leadCard(readonly,id,null,false);assert(card?.yt_id==='YT5057');assert(card.checklist.side==='ops');assert(card.open_tasks.length<=10);
  const rows=await sb.from('workbench_checklist').select('item_key,status,source,note').eq('lead_id',id);assert(!rows.error);
  assert(JSON.stringify(card.checklist)===JSON.stringify(addonChecklist('ops',rows.data||[],card.open_tasks)));
  for(const action of ['set_checklist','complete_task','update_lead']){

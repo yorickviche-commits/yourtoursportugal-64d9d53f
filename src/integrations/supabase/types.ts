@@ -1199,11 +1199,14 @@ export type Database = {
         Row: {
           calendar_id: string
           created_at: string
+          description: string | null
+          end_at: string | null
           event_id: string
           html_link: string | null
           id: string
           lead_id: string
           link_source: string
+          location: string | null
           start_at: string | null
           title: string | null
           unlinked: boolean
@@ -1211,11 +1214,14 @@ export type Database = {
         Insert: {
           calendar_id: string
           created_at?: string
+          description?: string | null
+          end_at?: string | null
           event_id: string
           html_link?: string | null
           id?: string
           lead_id: string
           link_source?: string
+          location?: string | null
           start_at?: string | null
           title?: string | null
           unlinked?: boolean
@@ -1223,11 +1229,14 @@ export type Database = {
         Update: {
           calendar_id?: string
           created_at?: string
+          description?: string | null
+          end_at?: string | null
           event_id?: string
           html_link?: string | null
           id?: string
           lead_id?: string
           link_source?: string
+          location?: string | null
           start_at?: string | null
           title?: string | null
           unlinked?: boolean
@@ -1316,49 +1325,70 @@ export type Database = {
         Row: {
           created_at: string
           day_date: string
+          description: string | null
+          details_synced_at: string | null
+          end_at: string | null
           google_etag: string | null
           google_event_id: string | null
           google_updated_at: string | null
+          html_link: string | null
           id: string
           last_payload_hash: string | null
           last_synced_at: string | null
           lead_id: string
+          location: string | null
           manual_edit_detected_at: string | null
           protection_status: string
+          start_at: string | null
           status: string | null
           sync_error: string | null
+          title: string | null
           updated_at: string
         }
         Insert: {
           created_at?: string
           day_date: string
+          description?: string | null
+          details_synced_at?: string | null
+          end_at?: string | null
           google_etag?: string | null
           google_event_id?: string | null
           google_updated_at?: string | null
+          html_link?: string | null
           id?: string
           last_payload_hash?: string | null
           last_synced_at?: string | null
           lead_id: string
+          location?: string | null
           manual_edit_detected_at?: string | null
           protection_status?: string
+          start_at?: string | null
           status?: string | null
           sync_error?: string | null
+          title?: string | null
           updated_at?: string
         }
         Update: {
           created_at?: string
           day_date?: string
+          description?: string | null
+          details_synced_at?: string | null
+          end_at?: string | null
           google_etag?: string | null
           google_event_id?: string | null
           google_updated_at?: string | null
+          html_link?: string | null
           id?: string
           last_payload_hash?: string | null
           last_synced_at?: string | null
           lead_id?: string
+          location?: string | null
           manual_edit_detected_at?: string | null
           protection_status?: string
+          start_at?: string | null
           status?: string | null
           sync_error?: string | null
+          title?: string | null
           updated_at?: string
         }
         Relationships: [

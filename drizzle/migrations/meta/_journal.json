@@ -407,6 +407,13 @@
       "when": 1795535632699,
       "tag": "0057_mcp_decision_tools",
       "breakpoints": true
+    },
+    {
+      "idx": 58,
+      "version": "7",
+      "when": 1795559616573,
+      "tag": "0058_crm_addon_event_details_search_cache",
+      "breakpoints": true
     }
   ]
 }

@@ -3,7 +3,7 @@ import { createClient } from 'npm:@supabase/supabase-js@2';
 import { corsHeaders } from 'npm:@supabase/supabase-js@2/cors';
 import { createRemoteJWKSet, jwtVerify, decodeJwt } from 'npm:jose@5';
 import { z } from 'npm:zod@3';
-import { loadLeadIndex, extractRefs, matchByRefs, matchByEmail, parseAddress, parseAddressList, isInternalEmail } from '../_shared/lead-matcher.ts';
+import { extractRefs, parseAddress, parseAddressList, isInternalEmail } from '../_shared/lead-matcher.ts';
 import { gmailGet, gmailBatch, META_QS, MAILBOX_KEY_RE, gmailThreadUrl } from '../_shared/gmail.ts';
 import { toMeta } from '../_shared/email-link.ts';
 
@@ -13,6 +13,7 @@ import { ITEMS, addonChecklist } from '../_shared/workbenchChecklist.ts';
 import { workbenchSide, withDerivedDates } from '../_shared/workbenchScope.ts';
 import { gateway } from '../_shared/workbench.ts';
 import { SetChecklist, CompleteTask, ListEvents, UpdateLead, eventWindow } from './contracts.ts';
+import { background, emailParty, supplierMap, excerpt, eventDetails, hydrateEvents } from './details.ts';
 import { refreshLeadLabels } from '../_shared/gmail-labels.ts';
 
 const APP = 'https://yourtoursportugal.lovable.app';
@@ -37,7 +38,12 @@ const STAGES = [
 const stageOf = (code: string | null, status?: string | null) => STAGES.find((s) => s[0] === code) ?? (status === 'won' ? STAGES[4] : null);
 
 type Actor = { email: string; label: string; userId: string | null };
-const db = () => createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!, { auth: { persistSession: false } });
+const db = () => {
+  const url = Deno.env.get('SUPABASE_URL'), key = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+  if (!url || !key) throw new Error('Configuração indisponível');
+  return createClient(url, key, { auth: { persistSession: false } });
+};
+const actors = new Map<string, { actor: Actor; expires: number }>();
 
 async function authenticate(req: Request, sb: any): Promise<Actor | Response> {
   const h = req.headers.get('Authorization') || '';
@@ -52,13 +58,18 @@ async function authenticate(req: Request, sb: any): Promise<Actor | Response> {
   catch { return fail('Token Google inválido ou expirado', 401); }
   if (!p.email_verified || p.hd !== 'yourtours.pt') return fail('Conta não autorizada (só @yourtours.pt)', 403);
   const email = String(p.email).toLowerCase();
-  const prof = await sb.from('profiles').select('id,full_name').ilike('email', email).maybeSingle();
-  if (prof.data?.id) {
-    const roles = await sb.from('user_roles').select('role').eq('user_id', prof.data.id).limit(1);
-    if (roles.data?.length) return { email, userId: prof.data.id, label: `Add-on Gmail (${email})` };
-  }
-  const shared = await sb.from('workbench_settings').select('value').eq('key', 'addon_shared_mailboxes').maybeSingle();
-  if (((shared.data?.value as string[]) || []).map((x) => x.toLowerCase()).includes(email)) return { email, userId: null, label: `Add-on Gmail (Caixa ${email})` };
+  const cached = actors.get(email);
+  if (cached && cached.expires > Date.now()) return cached.actor;
+  const [prof, roles, shared] = await Promise.all([
+    sb.from('profiles').select('id,full_name').ilike('email', email).maybeSingle(),
+    sb.from('user_roles').select('user_id,role'),
+    sb.from('workbench_settings').select('value').eq('key', 'addon_shared_mailboxes').maybeSingle(),
+  ]);
+  if (prof.error || roles.error || shared.error) return fail('Não foi possível verificar acesso ao TCC', 503);
+  let actor: Actor | null = null;
+  if (prof.data?.id && roles.data?.some((r: any) => r.user_id === prof.data.id)) actor = { email, userId: prof.data.id, label: `Add-on Gmail (${email})` };
+  else if (((shared.data?.value as string[]) || []).map(x => x.toLowerCase()).includes(email)) actor = { email, userId: null, label: `Add-on Gmail (Caixa ${email})` };
+  if (actor) { actors.set(email, { actor, expires: Date.now() + 5 * 60000 }); return actor; }
   return fail('Utilizador sem acesso ao TCC', 403);
 }
 
@@ -66,29 +77,32 @@ async function authenticate(req: Request, sb: any): Promise<Actor | Response> {
 const LEAD_COLS = 'id,yt_id,client_name,email,phone,nethunt_stage,status,trip_start,trip_finish,travel_dates,travel_end_date,pax,pax_children,destination,pvp_override,estimated_value,active_version,client_type,source,booking_origin,assigned_agents,language,updated_at,nethunt_record_id';
 const iso = (v: string | null) => (v && /^\d{4}-\d{2}-\d{2}/.test(v) ? v.slice(0, 10) : null);
 
-async function timeline(sb: any, leadId: string, before?: string) {
+export async function timeline(sb: any, leadId: string, before?: string, lead?: any, writeCache = true) {
   const lim = 25, b = before || '9999-12-31';
-  const [em, ev, cl, nt, nn, tk, st] = await Promise.all([
-    sb.from('email_links').select('mailbox,gmail_thread_id,direction,from_email,from_name,to_emails,subject,snippet,sent_at').eq('lead_id', leadId).eq('unlinked', false).lt('sent_at', b).order('sent_at', { ascending: false }).limit(lim),
-    sb.from('calendar_events').select('google_event_id,day_date').eq('lead_id', leadId).lt('day_date', b).order('day_date', { ascending: false }).limit(lim),
-    sb.from('calendar_event_links').select('title,start_at,html_link,event_id').eq('lead_id', leadId).eq('unlinked', false).lt('start_at', b).order('start_at', { ascending: false }).limit(lim),
+  const [em, ev, cl, nt, nn, tk, st, lr, map] = await Promise.all([
+    sb.from('email_links').select('mailbox,gmail_thread_id,direction,from_email,from_name,to_emails,subject,snippet,body_excerpt,sent_at').eq('lead_id', leadId).eq('unlinked', false).lt('sent_at', b).order('sent_at', { ascending: false }).limit(lim),
+    sb.from('calendar_events').select('id,google_event_id,day_date,title,start_at,end_at,location,description,html_link,details_synced_at').eq('lead_id', leadId).lt('day_date', b).order('day_date', { ascending: false }).limit(lim),
+    sb.from('calendar_event_links').select('id,calendar_id,title,start_at,end_at,location,description,html_link,event_id').eq('lead_id', leadId).eq('unlinked', false).lt('start_at', b).order('start_at', { ascending: false }).limit(lim),
     sb.from('nethunt_timeline').select('event_time,snippet,creator_name').eq('lead_id', leadId).eq('event_type', 'comment').lt('event_time', b).order('event_time', { ascending: false }).limit(lim),
     sb.from('item_notes').select('created_at,note_text').eq('entity_type', 'lead').eq('entity_key', leadId).lt('created_at', b).order('created_at', { ascending: false }).limit(lim),
     sb.from('tasks').select('title,due_date,created_at,completed').eq('lead_id', leadId).lt('created_at', b).order('created_at', { ascending: false }).limit(lim),
     sb.from('lead_stage_history').select('stage_label,stage_code,entered_at,source').eq('lead_id', leadId).lt('entered_at', b).order('entered_at', { ascending: false }).limit(lim),
+    lead ? { data: lead } : sb.from('leads').select('email,client_name').eq('id', leadId).maybeSingle(),
+    supplierMap(sb),
   ]);
   const items: any[] = [];
-  for (const e of em.data || []) items.push({ type: 'email', at: e.sent_at, title: e.subject || '(sem assunto)', subtitle: `${e.mailbox} · ${e.direction === 'out' ? (e.to_emails || []).join(', ') : e.from_name || e.from_email} · ${(e.snippet || '').slice(0, 120)}`, direction: e.direction, mailbox: e.mailbox, url: gmailThreadUrl(e.mailbox, e.gmail_thread_id) });
-  for (const e of ev.data || []) items.push({ type: 'event', at: `${e.day_date}T09:00:00Z`, title: 'Evento Reservas YT', subtitle: e.day_date, direction: null, mailbox: null, url: null });
-  for (const e of cl.data || []) items.push({ type: 'event', at: e.start_at, title: e.title || 'Evento', subtitle: 'Evento ligado', direction: null, mailbox: null, url: e.html_link });
+  for (const e of em.data || []) items.push({ type: 'email', at: e.sent_at, title: e.subject || '(sem assunto)', subtitle: `${e.mailbox} · ${e.direction === 'out' ? (e.to_emails || []).join(', ') : e.from_name || e.from_email} · ${(e.snippet || '').slice(0, 120)}`, direction: e.direction, mailbox: e.mailbox, url: gmailThreadUrl(e.mailbox, e.gmail_thread_id), ...emailParty(e, lr.data || {}, map), from_email: e.from_email, from_name: e.from_name, to_emails: e.to_emails || [], body: excerpt(e.body_excerpt || e.snippet) });
+  for (const e of ev.data || []) items.push({ type: 'event', at: e.start_at || `${e.day_date}T09:00:00Z`, title: e.title || 'Evento Reservas YT', subtitle: e.day_date, direction: null, mailbox: null, url: e.html_link, _row: e, _table: 'calendar_events' });
+  for (const e of cl.data || []) items.push({ type: 'event', at: e.start_at, title: e.title || 'Evento', subtitle: 'Evento ligado', direction: null, mailbox: null, url: e.html_link, _row: e, _table: 'calendar_event_links' });
   for (const n of nt.data || []) items.push({ type: 'note', at: n.event_time, title: (n.snippet || '').slice(0, 140), subtitle: n.creator_name || 'Nota', direction: null, mailbox: null, url: null });
   for (const n of nn.data || []) items.push({ type: 'note', at: n.created_at, title: (n.note_text || '').slice(0, 140), subtitle: 'Nota TCC', direction: null, mailbox: null, url: null });
   for (const t of tk.data || []) items.push({ type: 'task', at: t.created_at, title: t.title, subtitle: `${t.completed ? 'Concluída' : 'Aberta'}${t.due_date ? ` · ${t.due_date}` : ''}`, direction: null, mailbox: null, url: null });
   for (const s of st.data || []) items.push({ type: 'stage', at: s.entered_at, title: s.stage_label || s.stage_code, subtitle: s.source || '', direction: null, mailbox: null, url: null });
-  return items.filter((x) => x.at).sort((a, c) => String(c.at).localeCompare(String(a.at))).slice(0, lim);
+  const page = items.filter((x) => x.at).sort((a, c) => String(c.at).localeCompare(String(a.at))).slice(0, lim);
+  return page.some(x => x.type === 'event') ? hydrateEvents(sb, page, writeCache) : page;
 }
 
-export async function leadCard(sb: any, leadId: string, linkSource: string | null = null) {
+export async function leadCard(sb: any, leadId: string, linkSource: string | null = null, writeCache = true) {
   const r = await sb.from('leads').select(LEAD_COLS).eq('id', leadId).maybeSingle();
   if (!r.data) return null;
   const l = r.data;
@@ -97,7 +111,7 @@ export async function leadCard(sb: any, leadId: string, linkSource: string | nul
     sb.from('payments_ledger').select('amount_gross,payment_type,status').eq('lead_id', leadId),
     (l.assigned_agents || []).length ? sb.from('profiles').select('full_name,email').in('id', l.assigned_agents) : { data: [] },
     sb.from('tasks').select('id,title,due_date').eq('lead_id', leadId).eq('completed', false).neq('status', 'done').order('due_date', { ascending: true, nullsFirst: false }).order('created_at', { ascending: true }).limit(10),
-    timeline(sb, leadId),
+    timeline(sb, leadId, undefined, l, writeCache),
     sb.from('workbench_checklist').select('item_key,status,source,note').eq('lead_id', leadId),
   ]);
   if (checks.error) throw checks.error;
@@ -123,10 +137,54 @@ export async function leadCard(sb: any, leadId: string, linkSource: string | nul
     origin: l.booking_origin || l.source || null, agents: (agents.data || []).map((a: any) => a.full_name || a.email),
     language: l.language || null, next_task: task.data?.[0] ? { title: task.data[0].title, due_date: task.data[0].due_date } : null,
     last_activity_at: lastAt || null, link_source: linkSource,
-    tcc_url: `${APP}/leads/${l.id}`, cockpit_url: `${APP}/cockpit?lead=${l.id}`, timeline: tl,
+    tcc_url: `${APP}/leads/${l.id}`, timeline_url: `${APP}/leads/${l.id}`, cockpit_url: `${APP}/cockpit?lead=${l.id}`, timeline: tl,
   };
 }
-const cards = async (sb: any, ids: string[]) => (await Promise.all([...new Set(ids)].slice(0, 10).map((id) => leadCard(sb, id)))).filter(Boolean);
+// Candidate/search rows retain legacy keys but defer expensive detail data to `lead`.
+function lightCard(l: any) {
+  const stage = stageOf(l.nethunt_stage, l.status), program = l.client_name || '';
+  return {
+    id: l.id, yt_id: l.yt_id, client_name: program.replace(/^YT\s*-?\s*\d+\s*-\s*/i, '').split(/\s+[-|]\s+/)[0] || program, program_name: program,
+    phone: l.phone ?? null, email: l.email ?? null, pax_adults: l.pax ?? null, pax_children: l.pax_children ?? null,
+    trip_start: l.trip_start ?? null, trip_finish: l.trip_finish ?? null, pvp_override: l.pvp_override ?? null,
+    checklist: null, open_tasks: [], stage_key: stage?.[0] ?? l.nethunt_stage ?? null, stage_label: stage?.[1] ?? l.nethunt_stage ?? null, side: stage?.[2] ?? 'sales',
+    start_date: iso(l.trip_start) ?? iso(l.travel_dates), end_date: iso(l.trip_finish) ?? iso(l.travel_end_date),
+    pax: (Number(l.pax) || 0) + (Number(l.pax_children) || 0) || null, destination: l.destination || null,
+    value_pvp: l.pvp_override ?? l.estimated_value ?? null, currency: 'EUR', paid_amount: null,
+    b2x: ['B2B','B2C'].includes(l.client_type) ? l.client_type : null, origin: l.booking_origin || l.source || null,
+    agents: [], language: l.language || null, next_task: null, last_activity_at: l.updated_at || null, link_source: null,
+    tcc_url: `${APP}/leads/${l.id}`, timeline_url: `${APP}/leads/${l.id}`, cockpit_url: `${APP}/cockpit?lead=${l.id}`, timeline: [], lightweight: true,
+  };
+}
+const cards = async (sb: any, ids: string[]) => {
+  if (!ids.length) return [];
+  const r = await sb.from('leads').select(LEAD_COLS).in('id', [...new Set(ids)].slice(0, 10));
+  if (r.error) throw r.error;
+  return (r.data || []).map(lightCard);
+};
+export async function directCandidates(sb: any, text: string, emails: string[] = [], blocked: string | null = null, allowEmail = true) {
+  const refs = extractRefs(text);
+  // Bókun stores both documented hyphenated and normalized confirmation codes.
+  const codes = [...new Set([...refs, ...(text.match(/\b[A-Z]{2,5}-\d{5,}\b/g) || [])])];
+  const ext = [...new Set(emails.map(e => e.trim().toLowerCase()).filter(e => e && !isInternalEmail(e)))];
+  const [yt, bokun, mail] = await Promise.all([
+    refs.length ? sb.from('leads').select('id').in('yt_id', refs).limit(10) : { data: [] },
+    codes.length ? sb.from('leads').select('id').in('bokun_confirmation_code', codes).limit(10) : { data: [] },
+    allowEmail && ext.length ? sb.from('leads').select('id').or(ext.map(e => `email.ilike.${e.replace(/[%,()]/g, '')}`).join(',')).limit(10) : { data: [] },
+  ]);
+  for (const r of [yt,bokun,mail]) if (r.error) throw r.error;
+  const refIds = [...new Set([...yt.data || [], ...bokun.data || []].map((r: any) => r.id))].filter(id => id !== blocked);
+  const ids = [...refIds, ...(mail.data || []).map((r: any) => r.id)].filter(id => id !== blocked);
+  if (!ids.length && allowEmail) {
+    const dom = ext.map(e => e.split('@')[1]).find(d => d && !/^(gmail|hotmail|outlook|yahoo|icloud|live|me|aol|msn)\./i.test(d));
+    if (dom && /^[a-z0-9.-]+$/.test(dom)) {
+      const r = await sb.from('leads').select('id').ilike('email', `%@${dom}`).limit(10);
+      if (r.error) throw r.error;
+      ids.push(...(r.data || []).map((l: any) => l.id).filter((id: string) => id !== blocked));
+    }
+  }
+  return { refIds, ids: [...new Set(ids)].slice(0, 10) };
+}
 
 // ---------- email helpers ----------
 const EmailData = z.object({
@@ -147,7 +205,7 @@ function emailRow(d: EmailIn) {
 }
 async function existingLink(sb: any, d: EmailIn) {
   const mb = d.mailbox.toLowerCase();
-  const own = await sb.from('email_links').select('lead_id,link_source,unlinked').eq('mailbox', mb).eq('gmail_message_id', d.gmail_message_id).maybeSingle();
+  const own = await sb.from('email_links').select('lead_id,link_source,unlinked,gmail_message_id,mailbox').eq('mailbox', mb).eq('gmail_message_id', d.gmail_message_id).maybeSingle();
   if (own.data) return own.data;
   if (d.rfc822_message_id) { const r = await sb.from('email_links').select('lead_id,link_source,unlinked').eq('rfc822_message_id', d.rfc822_message_id).eq('unlinked', false).limit(1); if (r.data?.[0]) return { ...r.data[0], link_source: 'thread' }; }
   if (d.gmail_thread_id) { const r = await sb.from('email_links').select('lead_id,link_source,unlinked').eq('mailbox', mb).eq('gmail_thread_id', d.gmail_thread_id).eq('unlinked', false).limit(1); if (r.data?.[0]) return { ...r.data[0], link_source: 'thread' }; }
@@ -157,59 +215,60 @@ async function mailboxKey(sb: any, mailbox: string) {
   const r = await sb.from('mailbox_sync_state').select('secret_name').eq('mailbox', mailbox).maybeSingle();
   const k = r.data?.secret_name; return k && MAILBOX_KEY_RE.test(k) && Deno.env.get(k) ? k : null;
 }
-/** Links one message and, when the mailbox connection exists, every message of its thread. */
-async function linkThread(sb: any, d: EmailIn, leadId: string, source: string, actor: Actor) {
+export async function linkCurrent(sb: any, d: EmailIn, leadId: string, source: string, actor: Actor, restOfThread = false, labels = true) {
   const row = { ...emailRow(d), lead_id: leadId, link_source: source, linked_by: actor.label, unlinked: false };
-  const u = await sb.from('email_links').upsert(row, { onConflict: 'mailbox,gmail_message_id' }); if (u.error) throw u.error;
+  // ignoreDuplicates preserves explicit manual unlinking if another request races us.
+  const u = await sb.from('email_links').upsert(row, { onConflict: 'mailbox,gmail_message_id', ignoreDuplicates: source !== 'manual' });
+  if (u.error) throw u.error;
   if (source === 'manual' && d.gmail_thread_id) {
-    await sb.from('email_links').update({ lead_id: leadId, unlinked: false, link_source: 'manual', linked_by: actor.label }).eq('mailbox', row.mailbox).eq('gmail_thread_id', d.gmail_thread_id);
-    const key = await mailboxKey(sb, row.mailbox);
-    if (key) {
-      const t = await gmailGet(key, `/threads/${d.gmail_thread_id}?format=minimal`);
-      const ids = (t.body?.messages || []).map((m: any) => m.id).filter((id: string) => id !== d.gmail_message_id);
-      if (ids.length) {
-        const res = await gmailBatch(key, ids.map((id: string) => `/messages/${id}${META_QS}`));
-        const rows = res.filter((x) => x.status === 200).map((x) => { const { refs_header: _r, ...m } = toMeta(row.mailbox, x.body); return { ...m, lead_id: leadId, link_source: 'thread', linked_by: actor.label }; });
-        if (rows.length) await sb.from('email_links').upsert(rows, { onConflict: 'mailbox,gmail_message_id', ignoreDuplicates: true });
+    const r = await sb.from('email_links').update({ lead_id: leadId, unlinked: false, link_source: 'manual', linked_by: actor.label }).eq('mailbox', row.mailbox).eq('gmail_thread_id', d.gmail_thread_id);
+    if (r.error) throw r.error;
+  }
+  background((async () => {
+    if (restOfThread && d.gmail_thread_id) {
+      const key = await mailboxKey(sb, row.mailbox);
+      if (key) {
+        const t = await gmailGet(key, `/threads/${d.gmail_thread_id}?format=minimal`);
+        if (t.status !== 200) throw new Error(`Gmail thread [${t.status}]`);
+        const ids = (t.body?.messages || []).map((m: any) => m.id).filter((id: string) => id !== d.gmail_message_id);
+        if (ids.length) {
+          const res = await gmailBatch(key, ids.map((id: string) => `/messages/${id}${META_QS}`));
+          const rows = res.filter(x => x.status === 200).map(x => { const { refs_header: _r, ...m } = toMeta(row.mailbox, x.body); return { ...m, lead_id: leadId, link_source: 'thread', linked_by: actor.label }; });
+          if (rows.length) { const r = await sb.from('email_links').upsert(rows, { onConflict: 'mailbox,gmail_message_id', ignoreDuplicates: true }); if (r.error) throw r.error; }
+          for (const r of res) if (r.status !== 200) console.error('crm-addon thread message', r.status);
+        }
       }
     }
-  }
-  await audit(sb, actor, leadId, 'email_linked', { mailbox: row.mailbox, subject: row.subject, source });
-  await refreshLeadLabels(sb, leadId).catch(e=>console.error('Gmail labels',String(e)));
+  })().finally(async () => {
+    await audit(sb, actor, leadId, 'email_linked', { mailbox: row.mailbox, subject: row.subject, source });
+    // On automatic context opens DB triggers enqueue labels; no Gmail API calls.
+    if (labels) await refreshLeadLabels(sb, leadId);
+  }));
 }
+const linkThread = (sb: any, d: EmailIn, leadId: string, source: string, actor: Actor) => linkCurrent(sb, d, leadId, source, actor, source === 'manual');
 async function audit(sb: any, actor: Actor, leadId: string, action: string, details: Record<string, unknown>) {
   await sb.from('activity_logs').insert({ action_type: action, entity_type: 'lead', entity_id: leadId, user_id: actor.userId, details: { actor: actor.label, actor_email: actor.email, ...details } });
 }
 
 // ---------- actions ----------
-async function emailContext(sb: any, d: EmailIn, actor: Actor) {
-  const ex = await existingLink(sb, d);
+export async function emailContext(sb: any, d: EmailIn, actor: Actor, writeCache = true) {
+  const [ex, supplier] = await Promise.all([existingLink(sb, d), supplierOf(sb, d)]);
   if (ex && !ex.unlinked) {
-    if (ex.link_source === 'thread') await linkThread(sb, d, ex.lead_id, 'thread', actor).catch(() => null);
-    return { ok: true, linked: await leadCard(sb, ex.lead_id, ex.link_source), candidates: [], supplier: await supplierOf(sb, d) };
+    if (ex.gmail_message_id !== d.gmail_message_id || ex.mailbox !== d.mailbox.toLowerCase()) await linkCurrent(sb, d, ex.lead_id, 'thread', actor, false, false);
+    return { ok: true, linked: await leadCard(sb, ex.lead_id, ex.link_source, writeCache), candidates: [], supplier };
   }
-  const blocked = ex?.unlinked ? ex.lead_id : null;
-  const leads = await loadLeadIndex(sb);
-  const refs = matchByRefs(leads, extractRefs(`${d.subject} ${d.body_excerpt}`)).filter((l) => l.id !== blocked);
-  const supplier = await supplierOf(sb, d);
-  if (refs.length === 1 && !blocked) { await linkThread(sb, d, refs[0].id, 'auto_ref', actor); return { ok: true, linked: await leadCard(sb, refs[0].id, 'auto_ref'), candidates: [], supplier }; }
-  let cand = refs.map((l) => l.id);
-  if (!supplier) {
-    const row = emailRow(d);
-    const ext = [row.from_email, ...row.to_emails].filter((e) => e && !isInternalEmail(e));
-    cand.push(...ext.flatMap((e) => matchByEmail(leads, e).map((l) => l.id)));
-    if (!cand.length) {
-      const dom = ext.map((e) => e.split('@')[1]).find((x) => x && !/^(gmail|hotmail|outlook|yahoo|icloud|live|me|aol|msn)\./i.test(x));
-      if (dom) cand.push(...leads.filter((l) => l.email?.toLowerCase().endsWith('@' + dom)).map((l) => l.id));
-    }
+  const row = emailRow(d);
+  const matched = await directCandidates(sb, `${d.subject} ${d.body_excerpt}`, [row.from_email, ...row.to_emails], ex?.unlinked ? ex.lead_id : null, !supplier);
+  if (matched.refIds.length === 1 && !ex?.unlinked) {
+    const id = matched.refIds[0];
+    await linkCurrent(sb, d, id, 'auto_ref', actor, false, false);
+    return { ok: true, linked: await leadCard(sb, id, 'auto_ref', writeCache), candidates: [], supplier };
   }
-  cand = cand.filter((x) => x !== blocked);
-  return { ok: true, linked: null, candidates: await cards(sb, cand), supplier };
+  return { ok: true, linked: null, candidates: await cards(sb, matched.ids), supplier };
 }
 async function supplierOf(sb: any, d: EmailIn) {
-  const e = parseAddress(d.from).email; if (!e) return null;
-  const r = await sb.from('suppliers').select('id,name').ilike('contact_email', `%${e}%`).limit(1);
-  return r.data?.[0] ?? null;
+  const map = await supplierMap(sb), row = emailRow(d);
+  return map.get(row.direction === 'out' ? row.to_emails[0] : row.from_email) || null;
 }
 const normEvent = (id: string) => id.replace(/_\d{8}(T\d{6}Z?)?$/, '');
 
@@ -253,7 +312,7 @@ export async function handle(sb: any, action: string, data: any, actor: Actor) {
         const meta = await (await gateway('google_calendar','GOOGLE_CALENDAR_API_KEY',base)).json();
         const qs = new URLSearchParams({singleEvents:'true',orderBy:'startTime',maxResults:'20',timeMin:window.from,timeMax:window.to,...(d.q?{q:d.q}:{})});
         const res = await (await gateway('google_calendar','GOOGLE_CALENDAR_API_KEY',`${base}/events?${qs}`)).json();
-        return (res.items||[]).filter((e:any)=>e.status!=='cancelled').map((e:any)=>({calendar_id,calendar_alias:meta.id||calendar_id,calendar_name:meta.summary||calendar_id,event_id:e.id,title:e.summary||'',start:e.start?.dateTime||e.start?.date||null,end:e.end?.dateTime||e.end?.date||null}));
+        return (res.items||[]).filter((e:any)=>e.status!=='cancelled').map((e:any)=>({calendar_id,calendar_alias:meta.id||calendar_id,calendar_name:meta.summary||calendar_id,event_id:e.id,title:e.summary||'',start:e.start?.dateTime||e.start?.date||null,end:e.end?.dateTime||e.end?.date||null,location:e.location||'',description:eventDetails(e).description,url:e.htmlLink||null}));
       }))).flat().sort((a,b)=>String(a.start).localeCompare(String(b.start))).slice(0,20);
       const ids = [...new Set(events.flatMap(e=>[e.event_id,normEvent(e.event_id)]))];
       if (!ids.length) return {ok:true,events:[]};
@@ -306,12 +365,15 @@ export async function handle(sb: any, action: string, data: any, actor: Actor) {
     case 'email_context': return emailContext(sb, EmailData.parse(data), actor);
     case 'search': {
       const q = z.object({ q: z.string().trim().min(2) }).parse(data).q.replace(/[%,()]/g, ' ');
-      const digits = q.replace(/\D/g, '');
-      const filters = [`client_name.ilike.%${q}%`, `email.ilike.%${q}%`, `yt_id.ilike.%${q}%`];
-      if (/^YT\s*-?\s*\d+$/i.test(q) && digits) filters.push(`yt_id.ilike.%${digits}%`);
-      const r = await sb.from('leads').select('id').or(filters.join(',')).order('updated_at', { ascending: false }).limit(10);
+      const exact = /^YT\s*-?\s*\d+$/i.test(q) ? q.toUpperCase().replace(/[\s-]/g, '') : null;
+      if (exact) {
+        const r = await sb.from('leads').select(LEAD_COLS).eq('yt_id', exact).limit(10);
+        if (r.error) throw r.error;
+        if (r.data?.length) return { ok: true, results: r.data.map(lightCard) };
+      }
+      const r = await sb.from('leads').select(LEAD_COLS).or([`client_name.ilike.%${q}%`, `email.ilike.%${q}%`, `yt_id.ilike.%${q}%`].join(',')).order('updated_at', { ascending: false }).limit(10);
       if (r.error) throw r.error;
-      return { ok: true, results: await cards(sb, (r.data || []).map((x: any) => x.id)) };
+      return { ok: true, results: (r.data || []).map(lightCard) };
     }
     case 'link_email': {
       const d = EmailData.extend({ lead_id: z.string().uuid() }).parse(data);
@@ -337,12 +399,13 @@ export async function handle(sb: any, action: string, data: any, actor: Actor) {
         const r = await fetch(`https://connector-gateway.lovable.dev/google_calendar/calendar/v3/calendars/${encodeURIComponent(d.calendar_id)}/events/${encodeURIComponent(d.event_id)}`, { headers: { Authorization: `Bearer ${api}`, 'X-Connection-Api-Key': key } });
         if (r.ok) ev = await r.json(); else await r.text();
       }
-      const event = ev ? { title: ev.summary || '', start: ev.start?.dateTime || ev.start?.date || null, end: ev.end?.dateTime || ev.end?.date || null } : null;
+      const details = ev ? eventDetails(ev) : null;
+      const event = ev ? { title: ev.summary || '', start: ev.start?.dateTime || ev.start?.date || null, end: ev.end?.dateTime || ev.end?.date || null, location: details?.location, description: details?.description, url: details?.html_link } : null;
       if (own.data?.[0]) return { ok: true, linked: await leadCard(sb, own.data[0].lead_id, 'tcc_event'), candidates: [], event };
       const link = await sb.from('calendar_event_links').select('lead_id,unlinked,link_source').eq('calendar_id', d.calendar_id).in('event_id', [eid, d.event_id]).limit(1);
       if (link.data?.[0] && !link.data[0].unlinked) return { ok: true, linked: await leadCard(sb, link.data[0].lead_id, link.data[0].link_source), candidates: [], event };
-      const refs = ev ? matchByRefs(await loadLeadIndex(sb), extractRefs(`${ev.summary || ''} ${ev.description || ''}`)).filter((l) => l.id !== link.data?.[0]?.lead_id) : [];
-      return { ok: true, linked: null, candidates: await cards(sb, refs.map((l) => l.id)), event };
+      const refs = ev ? await directCandidates(sb, `${ev.summary || ''} ${ev.description || ''}`, (ev.attendees || []).map((a: any) => a.email || ''), link.data?.[0]?.lead_id || null) : { ids: [] };
+      return { ok: true, linked: null, candidates: await cards(sb, refs.ids), event };
     }
     case 'link_event': case 'unlink_event': {
       const d = z.object({ calendar_id: z.string().min(1), event_id: z.string().min(1), lead_id: z.string().uuid() }).parse(data);
