@@ -4474,7 +4474,7 @@ var apply_human_decision_default = defineTool50({
     const r = await rpc(db, "mcp_apply_human_decision", { p_id: a.decision_id, p_action: a.action, p_quote: a.human_quote, p_note: a.note ?? null, p_until: a.snooze_until ?? null });
     let execution = null;
     if (r.needs_execution) {
-      const res = await fetch(`${supabaseProjectUrl()}/functions/v1/execute-decision`, { method: "POST", signal: ctx.signal, headers: { Authorization: `Bearer ${ctx.getToken()}`, apikey: supabasePublishableKey(), "Content-Type": "application/json" }, body: JSON.stringify({ decision_id: a.decision_id }) });
+      const res = await fetch(`${supabaseProjectUrl()}/functions/v1/execute-decision`, { method: "POST", headers: { Authorization: `Bearer ${ctx.getToken()}`, apikey: supabasePublishableKey(), "Content-Type": "application/json" }, body: JSON.stringify({ decision_id: a.decision_id }) });
       execution = await res.json().catch(() => ({ error: `HTTP ${res.status}` }));
     }
     return { content: [{ type: "text", text: `${a.action} recorded via chat. ${execution ? JSON.stringify(execution) : ""} ${APP_URL}/cockpit#decision-${a.decision_id}` }], structuredContent: { ...r, execution } };
