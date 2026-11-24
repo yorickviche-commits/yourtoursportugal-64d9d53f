@@ -1,3 +1,9 @@
+# Cockpit decisions — Lote 1 (24 nov 2026)
+- [x] Add protected deduplicated decision index, source triggers, hourly/event reconciliation and simulation-first human activation; no source deletion or automatic execution.
+- [x] Add mobile-first Cockpit queue, source-compatible human actions, snooze/reopen/history and Admin learning tab; preserve Costs/execution and never publish.
+- [x] Verify live simulation counts, transactional rule tests and authenticated 390/360/1440 flow, real snooze/reload/resume with source task unchanged; report usage window.
+- [ ] Automatic reply closure for legacy alerts: blocked by missing exact thread and historical ball snapshot; never infer a reply from an unrelated thread. Finance live approval blocked by empty batch; external email/payment execution intentionally not exercised.
+
 # Lead removal and archive policy — current request
 - [x] Correct eight restrictive lead references; cascade Workbench/tasks and preserve archive/approvals/trips with SET NULL. Transactional regression and authenticated mobile Remover/checklist read-back passed; no production lead deleted, zero test leads left.
 - [x] Record past-as-archive and today/future completeness priority in memory/report; NetHunt sync and publication unchanged. 38 existing tests passed; raw archive remains 23,866 objects / 13 copied files.

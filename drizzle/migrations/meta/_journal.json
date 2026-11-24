@@ -337,6 +337,34 @@
       "when": 1795250473264,
       "tag": "0047_restrict_public_feedback_to_team",
       "breakpoints": true
+    },
+    {
+      "idx": 48,
+      "version": "7",
+      "when": 1795515524631,
+      "tag": "0048_cockpit_decision_index",
+      "breakpoints": true
+    },
+    {
+      "idx": 49,
+      "version": "7",
+      "when": 1795515732083,
+      "tag": "0049_decision_reconciliation_safety",
+      "breakpoints": true
+    },
+    {
+      "idx": 50,
+      "version": "7",
+      "when": 1795515763713,
+      "tag": "0050_decision_payment_match_qualification",
+      "breakpoints": true
+    },
+    {
+      "idx": 51,
+      "version": "7",
+      "when": 1795516124196,
+      "tag": "0051_decision_finish_date_precedence",
+      "breakpoints": true
     }
   ]
 }

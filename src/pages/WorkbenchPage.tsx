@@ -20,6 +20,7 @@ import {supabase} from '@/integrations/supabase/client';
 import {ITEMS,readiness,statusText,nextStatus,workbenchScope,workbenchSide,lisbonToday,activeWorkbenchThread,hasOutstandingOperations,normRef,type Side,type Status} from '@/lib/workbench/rules';
 import {toast} from 'sonner';
 import FinancePanel from '@/components/finance/FinancePanel';
+import DecisionsQueue from '@/components/workbench/DecisionsQueue';
 import WorkbenchCalendar from '@/components/workbench/WorkbenchCalendar';
 import {netHuntRecordUrl} from '@/hooks/useNetHunt';
 import {logActivity} from '@/hooks/useActivityLog';
@@ -41,7 +42,8 @@ export default function WorkbenchPage(){
  const [selected,setSelected]=useState('');const [threadId,setThreadId]=useState('');
  const [modal,setModal]=useState<Record<string,any>|null>(null);const seen=useRef(new Set<string>());
  const [edit,setEdit]=useState('');const [payload,setPayload]=useState('');const [linkId,setLinkId]=useState('');const [saving,setSaving]=useState(false);
- const financeAllowed=isAdmin||roles.includes('finance');const cockpitAllowed=isAdmin||roles.includes('sales_agent')||roles.includes('operations_agent');const allowed=cockpitAllowed||financeAllowed;const [financeTab,setFinanceTab]=useState(false);const finance=financeTab||!cockpitAllowed;
+ const financeAllowed=isAdmin||roles.includes('finance');const cockpitAllowed=isAdmin||roles.includes('sales_agent')||roles.includes('operations_agent');const allowed=cockpitAllowed||financeAllowed;const [financeTab,setFinanceTab]=useState(searchParams.get('view')==='finance');const finance=financeTab||!cockpitAllowed;
+ useEffect(()=>{if(searchParams.get('view')==='finance'&&financeAllowed)setFinanceTab(true)},[searchParams,financeAllowed]);
  useEffect(()=>{if(!user||initialized.current===user.id)return;initialized.current=user.id;const stored=localStorage.getItem(`workbench-side-${user.id}`);if(stored==='ops')setSide('ops')},[user]);
  const opened=useRef('');useEffect(()=>{if(!user||!allowed||archive)return;const key=`${user.id}:${side}`;if(opened.current===key)return;opened.current=key;void refresh()},[user?.id,side,allowed,archive]);
  const switchSide=(next:Side)=>{setFinanceTab(false);setArchive(false);setSide(next);setSelected('');setThreadId('');setModal(null);if(user)localStorage.setItem(`workbench-side-${user.id}`,next)};
@@ -50,7 +52,8 @@ export default function WorkbenchPage(){
  const checklist=(id:string):{lead_id:string;item_key:string;label:string;status:Status;source:string}[]=>ITEMS[side].map(([key,label])=>{const c=rows('workbench_checklist').find(x=>x.lead_id===id&&x.item_key===key);return {lead_id:id,item_key:key,label,status:(c?.status||'pending') as Status,source:c?.source||'auto'}});
  const alerts=rows('workbench_alerts').filter(a=>sideIds.has(a.lead_id)).filter(a=>a.status==='open'||a.status==='snoozed'&&Date.parse(a.snoozed_until)<=Date.now()).sort((a,b)=>Date.parse(a.created_at)-Date.parse(b.created_at));
  const pinned=archive?undefined:alerts[0];
- useEffect(()=>{const newAlert=alerts.find(a=>!seen.current.has(a.id));alerts.forEach(a=>seen.current.add(a.id));if(newAlert&&!archive)setModal(newAlert);if(archive||modal&&!sideIds.has(modal.lead_id))setModal(null)},[rows('workbench_alerts'),side,archive,todayKey]);
+ // The unified decision queue now surfaces alerts without interrupting its first review.
+ useEffect(()=>{if(archive||modal&&!sideIds.has(modal.lead_id))setModal(null)},[rows('workbench_alerts'),side,archive,todayKey]);
  useEffect(()=>{window.dispatchEvent(new CustomEvent('cockpit-urgent-count',{detail:alerts.length}));return()=>{window.dispatchEvent(new CustomEvent('cockpit-urgent-count',{detail:0}))}},[alerts.length]);
  const urgentLeads=new Set(alerts.map(a=>a.lead_id));
  const allThreads=rows('workbench_threads');const threads=allThreads.filter(t=>t.mailbox===side&&t.in_inbox&&activeWorkbenchThread(t,leads.find(l=>l.id===t.lead_id),todayKey)).sort((a,b)=>((urgentLeads.has(a.lead_id)||a.urgency==='urgent'?0:a.urgency==='today'?1:2)-(urgentLeads.has(b.lead_id)||b.urgency==='urgent'?0:b.urgency==='today'?1:2))||Date.parse(a.last_message_at)-Date.parse(b.last_message_at));
@@ -84,6 +87,7 @@ export default function WorkbenchPage(){
  useEffect(()=>{const prev=document.title;document.title='YT Cockpit';return()=>{document.title=prev;};},[]);
  if(!allowed)return <AppLayout><Empty>Sem acesso ao YT Cockpit.</Empty></AppLayout>;
  return <AppLayout><PullToRefresh onRefresh={refresh} busy={busy}><div className="cockpit-page space-y-6 min-w-0 max-w-full overflow-x-clip">
+ <DecisionsQueue />
  <header className="cockpit-header space-y-4"><div className="flex flex-wrap gap-3 items-center justify-between"><h1 className="text-2xl font-bold">YT Cockpit</h1><div className="flex gap-2"><Button variant="outline" asChild><Link to="/agents"><Sparkles className="h-4 w-4 mr-2"/>Jarvis</Link></Button><Button onClick={()=>void refresh()} disabled={busy}><RefreshCw className={cn('h-4 w-4 mr-2',busy&&'animate-spin')}/>Atualizar</Button></div></div>
  <div className="flex flex-wrap gap-4 items-center"><div className="cockpit-segments flex flex-wrap gap-1" role="group" aria-label="Caixa de trabalho"><Button variant={!finance&&!archive&&side==='sales'?'default':'outline'} onClick={()=>switchSide('sales')}>Sales · reservas@</Button><Button variant={!finance&&!archive&&side==='ops'?'default':'outline'} onClick={()=>switchSide('ops')}>Ops · operations@</Button>{cockpitAllowed&&<><Button variant={!finance&&archive?'default':'outline'} onClick={()=>{setFinanceTab(false);setArchive(true);setModal(null);setSelected('');setThreadId('')}}>Arquivo · {archivePending} com pendências</Button></>}{financeAllowed&&<Button variant={finance?'default':'outline'} onClick={()=>{setFinanceTab(true);setModal(null);window.scrollTo({top:0})}}>Finanças</Button>}</div><div className="cockpit-counters flex flex-wrap gap-5 text-sm"><span><strong className="text-xl">{archive?0:threads.length+alerts.length}</strong> precisam de ti</span><span><strong className="text-xl">{archive?0:withoutEmail.length}</strong> pendentes sem email</span><span><strong className="text-xl">{archive?0:logs.length}</strong> feito por ti hoje</span><span><strong className="text-xl">{archive?0:(emailSugg.data?.total??0)}</strong> emails por ligar</span></div></div></header>
  {finance?<FinancePanel leads={leads}/>:<>

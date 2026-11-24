@@ -12,6 +12,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import YTBrainSettings from '@/components/ytbrain/YTBrainSettings';
 import { Brain, Bot } from 'lucide-react';
 import AgentKeysPanel from '@/components/admin/AgentKeysPanel';
+import LearningDrafts from '@/components/admin/LearningDrafts';
 import { useQueryClient } from '@tanstack/react-query';
 import { MARGIN_REFERENCE_QUERY_KEY } from '@/hooks/useMarginReference';
 
@@ -149,6 +150,7 @@ const AdminSettingsPage = () => {
               <TabsTrigger value="operations" className="gap-1.5"><Wrench className="h-3.5 w-3.5" />Operações</TabsTrigger>
               <TabsTrigger value="ytbrain" className="gap-1.5"><Brain className="h-3.5 w-3.5" />YT Brain</TabsTrigger>
               {isAdmin && <TabsTrigger value="agents" className="gap-1.5"><Bot className="h-3.5 w-3.5" />Agentes AI</TabsTrigger>}
+              {isAdmin && <TabsTrigger value="learning">Aprendizagem</TabsTrigger>}
             </TabsList>
 
             <TabsContent value="general">
@@ -176,6 +178,7 @@ const AdminSettingsPage = () => {
                 <AgentKeysPanel />
               </TabsContent>
             )}
+            {isAdmin && <TabsContent value="learning"><LearningDrafts /></TabsContent>}
           </Tabs>
         )}
       </div>

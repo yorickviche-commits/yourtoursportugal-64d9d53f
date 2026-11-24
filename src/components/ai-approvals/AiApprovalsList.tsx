@@ -61,7 +61,7 @@ async function toBase64(blob: Blob) {
   return btoa(s);
 }
 
-async function execute(item: QueueItem, p: Record<string, any>) {
+export async function executeAiQueueItem(item: QueueItem, p: Record<string, any>) {
   if (item.type === 'payment_link') {
     const { data: lead } = await supabase.from('leads').select('travel_dates, travel_end_date').eq('id', item.lead_id ?? '').maybeSingle();
     const body = {
@@ -143,7 +143,7 @@ function Card({ item }: { item: QueueItem }) {
       const { data: u } = await supabase.auth.getUser();
       if (item.status !== 'approved') await setStatus({ status: 'approved', payload: draft, reviewed_by: u.user?.id, reviewed_at: new Date().toISOString() });
       try {
-        const result = await execute(item, draft);
+        const result = await executeAiQueueItem(item, draft);
         await setStatus({ status: 'executed', result, error: null });
         toast({ title: item.type === 'payment_link' ? 'Link de pagamento criado' : 'Email enviado' });
       } catch (e: any) {

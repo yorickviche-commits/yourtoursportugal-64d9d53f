@@ -1748,6 +1748,217 @@ export type Database = {
         }
         Relationships: []
       }
+      decision_events: {
+        Row: {
+          action: string
+          actor_id: string | null
+          created_at: string
+          decision_id: string
+          id: string
+          reason: string | null
+        }
+        Insert: {
+          action: string
+          actor_id?: string | null
+          created_at?: string
+          decision_id: string
+          id?: string
+          reason?: string | null
+        }
+        Update: {
+          action?: string
+          actor_id?: string | null
+          created_at?: string
+          decision_id?: string
+          id?: string
+          reason?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "decision_events_decision_id_fkey"
+            columns: ["decision_id"]
+            isOneToOne: false
+            referencedRelation: "decisions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      decision_sources: {
+        Row: {
+          decision_id: string
+          source_id: string
+          source_table: string
+        }
+        Insert: {
+          decision_id: string
+          source_id: string
+          source_table: string
+        }
+        Update: {
+          decision_id?: string
+          source_id?: string
+          source_table?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "decision_sources_decision_id_fkey"
+            columns: ["decision_id"]
+            isOneToOne: false
+            referencedRelation: "decisions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      decisions: {
+        Row: {
+          candidate_reason: string | null
+          candidate_rule: string | null
+          checked_at: string | null
+          checked_note: string | null
+          close_params: Json
+          close_rule: string
+          closed_reason: string | null
+          created_at: string
+          created_by_label: string | null
+          decided_at: string | null
+          decided_by: string | null
+          dedupe_key: string
+          id: string
+          kind: string
+          lead_id: string | null
+          prepared: Json
+          reopened_at: string | null
+          side: string
+          snooze_until: string | null
+          source_id: string
+          source_status: string | null
+          source_table: string
+          status: string
+          title: string
+          updated_at: string
+          why: string
+          yt_ref: string | null
+        }
+        Insert: {
+          candidate_reason?: string | null
+          candidate_rule?: string | null
+          checked_at?: string | null
+          checked_note?: string | null
+          close_params?: Json
+          close_rule?: string
+          closed_reason?: string | null
+          created_at?: string
+          created_by_label?: string | null
+          decided_at?: string | null
+          decided_by?: string | null
+          dedupe_key: string
+          id?: string
+          kind: string
+          lead_id?: string | null
+          prepared?: Json
+          reopened_at?: string | null
+          side: string
+          snooze_until?: string | null
+          source_id: string
+          source_status?: string | null
+          source_table: string
+          status?: string
+          title: string
+          updated_at?: string
+          why: string
+          yt_ref?: string | null
+        }
+        Update: {
+          candidate_reason?: string | null
+          candidate_rule?: string | null
+          checked_at?: string | null
+          checked_note?: string | null
+          close_params?: Json
+          close_rule?: string
+          closed_reason?: string | null
+          created_at?: string
+          created_by_label?: string | null
+          decided_at?: string | null
+          decided_by?: string | null
+          dedupe_key?: string
+          id?: string
+          kind?: string
+          lead_id?: string | null
+          prepared?: Json
+          reopened_at?: string | null
+          side?: string
+          snooze_until?: string | null
+          source_id?: string
+          source_status?: string | null
+          source_table?: string
+          status?: string
+          title?: string
+          updated_at?: string
+          why?: string
+          yt_ref?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "decisions_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "decisions_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "rpt_files"
+            referencedColumns: ["lead_id"]
+          },
+          {
+            foreignKeyName: "decisions_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_task_queue"
+            referencedColumns: ["lead_id"]
+          },
+          {
+            foreignKeyName: "decisions_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "v_lead_economics"
+            referencedColumns: ["lead_id"]
+          },
+          {
+            foreignKeyName: "decisions_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "v_lead_outcomes"
+            referencedColumns: ["lead_id"]
+          },
+        ]
+      }
+      decisions_control: {
+        Row: {
+          activated_at: string | null
+          activated_by: string | null
+          auto_close_enabled: boolean
+          last_reconciled_at: string | null
+          singleton: boolean
+        }
+        Insert: {
+          activated_at?: string | null
+          activated_by?: string | null
+          auto_close_enabled?: boolean
+          last_reconciled_at?: string | null
+          singleton?: boolean
+        }
+        Update: {
+          activated_at?: string | null
+          activated_by?: string | null
+          auto_close_enabled?: boolean
+          last_reconciled_at?: string | null
+          singleton?: boolean
+        }
+        Relationships: []
+      }
       documents: {
         Row: {
           created_at: string
@@ -8228,6 +8439,7 @@ export type Database = {
       }
     }
     Functions: {
+      activate_decision_auto_close: { Args: never; Returns: Json }
       ai_usage_heartbeat: {
         Args: {
           p_actor_email?: string
@@ -8260,6 +8472,7 @@ export type Database = {
         }[]
       }
       bokun_try_lock: { Args: { p_seconds?: number }; Returns: boolean }
+      can_read_decision: { Args: { p_side: string }; Returns: boolean }
       can_use_finance: { Args: { _user_id: string }; Returns: boolean }
       can_use_workbench: { Args: { _user_id: string }; Returns: boolean }
       can_view_feedback: { Args: { _feedback_id: string }; Returns: boolean }
@@ -8300,6 +8513,21 @@ export type Database = {
           scopes: string[]
         }[]
       }
+      decision_action: {
+        Args: {
+          p_action: string
+          p_id: string
+          p_note?: string
+          p_prepared?: Json
+          p_until?: string
+        }
+        Returns: Json
+      }
+      decision_close_candidate: {
+        Args: { d: Database["public"]["Tables"]["decisions"]["Row"] }
+        Returns: Json
+      }
+      decision_safe_date: { Args: { p: string }; Returns: string }
       delete_email: {
         Args: { message_id: number; queue_name: string }
         Returns: boolean
@@ -8393,6 +8621,7 @@ export type Database = {
           read_ct: number
         }[]
       }
+      reconcile_decisions: { Args: never; Returns: Json }
       report_bucket_expr: {
         Args: { bucket: string; col: string }
         Returns: string
@@ -8426,9 +8655,14 @@ export type Database = {
         }
         Returns: string
       }
+      resume_decision: { Args: { p_id: string }; Returns: undefined }
       run_report: { Args: { definition: Json }; Returns: Json }
       show_limit: { Args: never; Returns: number }
       show_trgm: { Args: { "": string }; Returns: string[] }
+      sync_decision_source: {
+        Args: { p_row: Json; p_table: string }
+        Returns: undefined
+      }
       workbench_apply_auto_checklist: {
         Args: { p_rows: Json }
         Returns: undefined
