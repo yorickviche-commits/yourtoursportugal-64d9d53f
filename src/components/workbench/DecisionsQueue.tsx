@@ -14,7 +14,7 @@ import StageBadge from '@/components/crm/StageBadge';
 import { useDecisions } from '@/hooks/useDecisions';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
-import { executeAiQueueItem, type QueueItem } from '@/components/ai-approvals/AiApprovalsList';
+import { executeDecision } from '@/lib/decisionExecution';
 import { DECISION_SIDES, decisionAge, decisionTripStart, groupDecisions, preparedObject, snoozeDate, type Decision, type DecisionFilter } from '@/lib/decisions';
 import { lisbonToday } from '@/lib/workbench/rules';
 import { cn } from '@/lib/utils';
@@ -58,6 +58,8 @@ export default function DecisionsQueue() {
   useEffect(() => { const timer = setInterval(() => setNow(Date.now()), 60000); return () => clearInterval(timer); }, []);
   const rows = query.data?.rows || [];
   const open = rows.filter(d => d.status === 'open');
+  const scheduled = rows.filter(d => d.status === 'approved' && d.scheduled_for);
+  const executed = rows.filter(d => d.status === 'executed');
   const candidates = rows.filter(d => ['open', 'snoozed'].includes(d.status) && d.candidate_rule);
   const shown = open.filter(d => filter === 'all' || d.side === filter);
   const snoozed = rows.filter(d => d.status === 'snoozed' && (filter === 'all' || d.side === filter));
@@ -97,20 +99,7 @@ export default function DecisionsQueue() {
         for (const d of requested.items) {
           try {
             await action(d, requested.action, { p_note: requested.action === 'reject' ? note : undefined });
-            // Same human-click execution function as Aprovações AI, unchanged.
-            if (requested.action === 'approve' && d.source_table === 'ai_action_queue') {
-              const item: QueueItem = { id: d.source_id, type: d.kind as QueueItem['type'], lead_id: d.lead_id, lead_code: d.yt_ref, title: d.title, subtitle: d.why, payload: preparedObject(d.prepared), status: 'approved', created_at: d.created_at, error: null, result: null };
-              try {
-                const result = await executeAiQueueItem(item, item.payload);
-                const { error } = await supabase.from('ai_action_queue').update({ status: 'executed', result, error: null }).eq('id', d.source_id).eq('status', 'approved');
-                if (error) throw error;
-              } catch (e) {
-                const message = e instanceof Error ? e.message : 'Falhou a execução';
-                const { error } = await supabase.from('ai_action_queue').update({ status: 'failed', error: message }).eq('id', d.source_id).eq('status', 'approved');
-                if (error) throw error;
-                throw new Error(message);
-              }
-            }
+            if (requested.action === 'approve' && d.source_table === 'ai_action_queue' && d.kind !== 'client_email') await executeDecision(d.id);
             completed++;
           } catch (e) { throw new Error(`${completed}/${requested.items.length} tratados. ${e instanceof Error ? e.message : 'Erro'}; os restantes não foram alterados.`); }
         }
@@ -146,6 +135,10 @@ export default function DecisionsQueue() {
         {d.kind === 'finance_item' ? <Button className="min-h-11" variant="outline" asChild><Link to="/cockpit?view=finance"><Pencil className="h-4 w-4 mr-1" />Rever finanças</Link></Button> : <Button className="min-h-11" variant="outline" disabled={busy} onClick={() => { setEditing(editing === d.id ? null : d.id); setDraft(preparedObject(d.prepared)); }}><Pencil className="h-4 w-4 mr-1" />Editar</Button>}
         <Popover><PopoverTrigger asChild><Button className="min-h-11" variant="outline" disabled={busy}><Clock className="h-4 w-4 mr-1" />Adiar</Button></PopoverTrigger><PopoverContent className="w-64 space-y-2" align="end"><Button className="w-full min-h-11" variant="outline" onClick={() => snooze(d, 1)}>Amanhã</Button><Button className="w-full min-h-11" variant="outline" onClick={() => snooze(d, 3)}>Daqui a 3 dias</Button><Input className="min-h-11 text-base" aria-label="Data para adiar" type="date" min={lisbonToday()} value={date} onChange={e => setDate(e.target.value)} /><Button className="w-full min-h-11" disabled={!date || busy} onClick={() => void run(async () => { await action(d, 'snooze', { p_until: snoozeDate(date) }); toast.success('Cartão adiado'); })}>Adiar para esta data</Button></PopoverContent></Popover>
       </div>}
+      {d.status === 'failed' && <div className="space-y-2"><p className="text-sm text-destructive">Falhou: {d.execution_error || 'Verifica o resultado antes de repetir'}</p><Button className="min-h-11" disabled={busy} onClick={() => { if (d.kind === 'client_email' && !window.confirm('Enviar este email ao cliente agora, fora das 08:00?')) return; void run(() => executeDecision(d.id, d.kind === 'client_email').then(() => { toast.success('Execução concluída'); })); }}><RotateCcw className="h-4 w-4 mr-1" />{d.kind === 'client_email' ? 'Enviar já — tentar de novo' : 'Tentar de novo'}</Button></div>}
+      {d.scheduled_for && d.status === 'approved' && <div className="space-y-2"><p className="text-sm font-medium">Agendado para {new Date(d.scheduled_for).toLocaleString('pt-PT', { timeZone: 'Europe/Lisbon', dateStyle: 'short', timeStyle: 'short' })}</p><div className="flex flex-wrap gap-2"><Button className="min-h-11" disabled={busy} onClick={() => { if (window.confirm('Enviar este email ao cliente agora, fora das 08:00?')) void run(() => executeDecision(d.id, true).then(() => { toast.success('Email enviado'); })); }}>Enviar já</Button><Button className="min-h-11" variant="outline" disabled={busy} onClick={() => void run(() => action(d, 'cancel_send'))}>Cancelar envio</Button></div></div>}
+      {d.executed_at && <p className="text-sm text-success">Executado às {new Date(d.executed_at).toLocaleTimeString('pt-PT', {timeZone:'Europe/Lisbon',hour:'2-digit',minute:'2-digit'})}</p>}
+      {preparedObject(d.execution_result).url && <Button variant="link" className="min-h-11" asChild><a href={preparedObject(d.execution_result).url} target="_blank" rel="noreferrer">Abrir resultado <ExternalLink className="h-4 w-4 ml-1" /></a></Button>}
       {d.status === 'snoozed' && <div className="flex flex-wrap gap-2 items-center"><Badge variant="outline">Adiado até {new Date(d.snooze_until || '').toLocaleString('pt-PT', { timeZone: 'Europe/Lisbon' })}</Badge><Button className="min-h-11" variant="outline" disabled={busy} onClick={() => void run(() => action(d, 'resume'))}>Retomar</Button></div>}
       {d.status === 'auto_closed' && <><p className="text-sm">{d.closed_reason}</p><Button className="min-h-11" variant="outline" disabled={busy} onClick={() => void run(async () => { await action(d, 'reopen'); toast.success('Cartão reaberto; fica disponível durante 24 horas'); })}><RotateCcw className="h-4 w-4 mr-1" />Reabrir</Button></>}
     </article>;
@@ -157,6 +150,8 @@ export default function DecisionsQueue() {
     {simulation && candidates.length > 0 && <div role="status" className="bg-warning-muted border border-warning rounded-md p-3 space-y-2"><p className="font-medium text-sm">{candidates.length} cartões obsoletos encontrados</p><div className="flex flex-wrap gap-2"><Button className="min-h-11" variant="outline" onClick={() => setCandidatesOpen(!candidatesOpen)}>Ver lista</Button>{isAdmin && <Button className="min-h-11" disabled={busy} onClick={() => setConfirm({ action: 'activate', items: candidates })}>Fechar todos</Button>}</div>{candidatesOpen && <ul className="space-y-2 text-sm">{candidates.map(d => <li key={d.id}><strong>{d.yt_ref || 'Sem file'} · {d.title}</strong><p>{d.candidate_reason}</p></li>)}</ul>}</div>}
     <div className="flex flex-wrap gap-2" role="group" aria-label="Filtrar decisões">{Object.entries(DECISION_SIDES).map(([key, label]) => <Button key={key} variant={filter === key ? 'default' : 'outline'} className="min-h-11" onClick={() => setFilter(key as DecisionFilter)}>{label} ({open.filter(d => key === 'all' || d.side === key).length})</Button>)}</div>
     {query.isLoading ? <div className="space-y-3">{[1, 2, 3].map(i => <Skeleton key={i} className="h-40 w-full" />)}</div> : !shown.length && <div className="py-8 space-y-2 text-center"><Check className="h-7 w-7 text-success mx-auto" /><p className="font-semibold">Nada à tua espera</p><p className="text-sm text-muted-foreground">{query.data?.todayClosed || 0} cartões fechados automaticamente hoje</p></div>}
+    {failed.length > 0 && <div className="space-y-3"><h3 className="font-medium text-destructive">Falhou a execução ({failed.length})</h3>{failed.map(card)}</div>}
+    {scheduled.length > 0 && <details open><summary className="min-h-11 cursor-pointer font-medium">Emails agendados ({scheduled.length})</summary><div className="space-y-3">{scheduled.filter(d => filter === 'all' || d.side === filter).map(card)}</div></details>}
     {groupDecisions(shown).map(items => {
       const first = items[0]; if (!first) return null;
       const trip = decisionTripStart(first);
@@ -169,9 +164,9 @@ export default function DecisionsQueue() {
       </div><div className="flex flex-wrap gap-2"><Button className="min-h-11 text-xs" variant="outline" disabled={busy} onClick={() => { setConfirm({ action: 'approve', items }); setNote(''); }}>Aprovar tudo desta file ({items.length})</Button><Button className="min-h-11 text-xs" variant="outline" disabled={busy} onClick={() => { setConfirm({ action: 'reject', items }); setNote(''); }}>Rejeitar tudo desta file ({items.length})</Button></div><div className="space-y-3">{items.map(card)}</div></div>;
     })}
     {snoozed.length > 0 && <details className="border-t border-border pt-3"><summary className="cursor-pointer min-h-11 font-medium">Adiado ({snoozed.length})</summary><div className="space-y-3 mt-3">{snoozed.map(card)}</div></details>}
-    {failed.length > 0 && <details className="border-t border-border pt-3"><summary className="cursor-pointer min-h-11 text-destructive font-medium">Falhou a execução ({failed.length})</summary><div className="space-y-3 mt-3">{failed.map(d => <div key={d.id}>{card(d)}<Button variant="link" className="min-h-11" asChild><Link to="/approvals/ai">Rever em Aprovações AI</Link></Button></div>)}</div></details>}
+    {executed.length > 0 && <details><summary className="cursor-pointer min-h-11 font-medium">Executado (últimos 7 dias) · {executed.length}</summary><div className="space-y-3">{executed.filter(d => filter === 'all' || d.side === filter).map(card)}</div></details>}
     <details className="border-t border-border pt-3"><summary className="cursor-pointer min-h-11 font-medium">Fechado automaticamente (últimos 7 dias) · {closed.length}</summary><div className="space-y-3 mt-3">{closed.length ? closed.map(card) : <p className="text-sm text-muted-foreground">Sem fechos automáticos.</p>}</div></details>
-    <AlertDialog open={!!confirm}><AlertDialogContent className="max-h-[85dvh] overflow-y-auto"><AlertDialogHeader><AlertDialogTitle>{confirm?.action === 'activate' ? 'Fechar cartões obsoletos e ativar as regras?' : `${confirm?.action === 'approve' ? 'Aprovar' : 'Rejeitar'} ${confirm?.items.length || 0} cartão(ões)?`}</AlertDialogTitle><AlertDialogDescription>{confirm?.action === 'activate' ? 'Daqui em diante, a fila fecha cartões obsoletos automaticamente. Os registos originais são preservados.' : confirm?.action === 'approve' && confirm.items.some(d => d.source_table === 'ai_action_queue') ? 'Os emails serão enviados e os links criados pelo mesmo processo de Aprovações AI. Itens financeiros ficam aprovados para execução pelo Tesoureiro.' : 'A decisão será registada nas respetivas origens.'}</AlertDialogDescription></AlertDialogHeader>
+    <AlertDialog open={!!confirm}><AlertDialogContent className="max-h-[85dvh] overflow-y-auto"><AlertDialogHeader><AlertDialogTitle>{confirm?.action === 'activate' ? 'Fechar cartões obsoletos e ativar as regras?' : `${confirm?.action === 'approve' ? 'Aprovar' : 'Rejeitar'} ${confirm?.items.length || 0} cartão(ões)?`}</AlertDialogTitle><AlertDialogDescription>{confirm?.action === 'activate' ? 'Daqui em diante, a fila fecha cartões obsoletos automaticamente. Os registos originais são preservados.' : confirm?.action === 'approve' && confirm.items.some(d => d.source_table === 'ai_action_queue') ? 'Emails FSE e links são executados agora. Emails de clientes ficam agendados para amanhã às 08:00 de Lisboa. Itens financeiros ficam aprovados para execução pelo Tesoureiro.' : 'A decisão será registada nas respetivas origens.'}</AlertDialogDescription></AlertDialogHeader>
       {confirm?.action !== 'activate' && <ul className="text-sm space-y-2">{confirm?.items.map(d => <li key={d.id}>{d.yt_ref} · {d.title}</li>)}</ul>}
       {confirm?.action === 'reject' && <Textarea className="text-base" aria-label="Motivo da rejeição" placeholder="Motivo da rejeição" value={note} onChange={e => setNote(e.target.value)} />}
       <AlertDialogFooter><Button variant="outline" className="min-h-11" disabled={busy} onClick={() => setConfirm(null)}>Cancelar</Button><Button className="min-h-11" disabled={busy || confirm?.action === 'reject' && !note.trim()} onClick={() => void commit()}>{busy ? 'A guardar…' : confirm?.action === 'activate' ? 'Confirmar fecho e ativar' : confirm?.action === 'approve' ? 'Confirmar aprovação' : 'Confirmar rejeição'}</Button></AlertDialogFooter>

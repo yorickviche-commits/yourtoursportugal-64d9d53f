@@ -10,7 +10,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/hooks/use-toast';
-import { logActivity } from '@/hooks/useActivityLog';
+import { executeDecision } from '@/lib/decisionExecution';
 import { eur } from '@/lib/money';
 import { cn } from '@/lib/utils';
 
@@ -48,53 +48,10 @@ export const useAiQueue = (leadId?: string) =>
     refetchInterval: 30000,
   });
 
-async function fnError(error: any, data: any) {
-  let msg = error?.message;
-  try { const p = await error?.context?.json?.(); if (p?.error) msg = String(p.error); } catch { /* keep */ }
-  if (data?.error) msg = String(data.error);
-  return msg;
-}
-
-async function toBase64(blob: Blob) {
-  const buf = new Uint8Array(await blob.arrayBuffer());
-  let s = ''; for (let i = 0; i < buf.length; i += 0x8000) s += String.fromCharCode(...buf.subarray(i, i + 0x8000));
-  return btoa(s);
-}
-
-export async function executeAiQueueItem(item: QueueItem, p: Record<string, any>) {
-  if (item.type === 'payment_link') {
-    const { data: lead } = await supabase.from('leads').select('travel_dates, travel_end_date').eq('id', item.lead_id ?? '').maybeSingle();
-    const body = {
-      action: 'create', lead_id: item.lead_id, proposal_id: p.proposal_id ?? null,
-      title: p.description || item.title, trip_ref: p.trip_ref ?? item.lead_code,
-      start_date: p.start_date || (lead as any)?.travel_dates, end_date: p.end_date || (lead as any)?.travel_end_date || p.start_date,
-      amount_cents: Math.round(Number(p.amount_eur) * 100), currency: 'EUR', deposit_cents: p.deposit_cents ?? null,
-    };
-    const { data, error } = await supabase.functions.invoke('wetravel-create-payment-link', { body });
-    if (error || (data as any)?.error) throw new Error(await fnError(error, data));
-    return { payment_link: (data as any)?.payment_link ?? null };
-  }
-  if (!p.to) throw new Error('Sem destinatário');
-  const attachments: any[] = [];
-  for (const a of p.attachments || []) {
-    if (!a?.path) continue;
-    const { data: blob, error } = await supabase.storage.from('travel-plan-pdfs').download(a.path);
-    if (error || !blob) throw new Error(`Anexo ${a.filename}: ${error?.message}`);
-    attachments.push({ filename: a.filename, mimeType: 'application/pdf', contentBase64: await toBase64(blob) });
-  }
-  const { data, error } = await supabase.functions.invoke('send-booking-email', {
-    body: { to: p.to, subject: p.subject, html: p.html, cc: (p.cc || []).join(', ') || undefined, bcc: (p.bcc || []).join(', ') || undefined, attachments },
-  });
-  if (error || (data as any)?.error) throw new Error(await fnError(error, data));
-  // Mirror to Communications (activity) and NetHunt as the UI does
-  if (item.lead_id) {
-    await logActivity('email_sent', 'lead', item.lead_id, { to: p.to, subject: p.subject, via: 'Aprovações AI' });
-    const { data: l } = await supabase.from('leads').select('nethunt_record_id').eq('id', item.lead_id).maybeSingle();
-    if ((l as any)?.nethunt_record_id) {
-      await supabase.functions.invoke('nethunt-push', { body: { entity: 'comment', id: item.lead_id, changes: { text: `📧 Email enviado (${TYPE_META[item.type].label}) para ${p.to}: ${p.subject}` } } }).catch(() => null);
-    }
-  }
-  return { sent: true, message_id: (data as any)?.id ?? null };
+export async function executeAiQueueItem(item: QueueItem, _payload: Record<string, any>) {
+  const {data, error} = await supabase.from('decision_sources').select('decision_id').eq('source_table', 'ai_action_queue').eq('source_id', item.id).single();
+  if (error || !data) throw new Error('Este item ainda não está indexado na fila do Cockpit');
+  return executeDecision(data.decision_id);
 }
 
 function Preview({ item, p }: { item: QueueItem; p: Record<string, any> }) {
@@ -140,16 +97,16 @@ function Card({ item }: { item: QueueItem }) {
   const approve = async () => {
     setBusy('approve');
     try {
-      const { data: u } = await supabase.auth.getUser();
-      if (item.status !== 'approved') await setStatus({ status: 'approved', payload: draft, reviewed_by: u.user?.id, reviewed_at: new Date().toISOString() });
-      try {
-        const result = await executeAiQueueItem(item, draft);
-        await setStatus({ status: 'executed', result, error: null });
-        toast({ title: item.type === 'payment_link' ? 'Link de pagamento criado' : 'Email enviado' });
-      } catch (e: any) {
-        await setStatus({ status: 'failed', error: e.message });
-        toast({ title: 'Falhou a execução', description: e.message, variant: 'destructive' });
+      const {data: source, error: sourceError} = await supabase.from('decision_sources').select('decision_id').eq('source_table','ai_action_queue').eq('source_id',item.id).single();
+      if (sourceError || !source) throw new Error('Item sem índice no Cockpit');
+      if (item.status === 'pending') {
+        const edit = await supabase.rpc('decision_action', {p_id:source.decision_id,p_action:'edit',p_prepared:draft});
+        if (edit.error) throw edit.error;
+        const approval = await supabase.rpc('decision_action', {p_id:source.decision_id,p_action:'approve'});
+        if (approval.error) throw approval.error;
       }
+      const result = await executeAiQueueItem(item, draft);
+      toast({title:result?.scheduled_for ? 'Email agendado para amanhã às 08:00 de Lisboa' : result?.skipped ? 'Item já reservado ou executado' : 'Execução concluída'});
     } catch (e: any) {
       toast({ title: 'Erro', description: e.message, variant: 'destructive' });
     } finally {

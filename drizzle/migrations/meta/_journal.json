@@ -365,6 +365,27 @@
       "when": 1795516124196,
       "tag": "0051_decision_finish_date_precedence",
       "breakpoints": true
+    },
+    {
+      "idx": 52,
+      "version": "7",
+      "when": 1795517715076,
+      "tag": "0052_decision_execution_claim_schedule",
+      "breakpoints": true
+    },
+    {
+      "idx": 53,
+      "version": "7",
+      "when": 1795517827915,
+      "tag": "0053_decision_scheduler_and_approved_snapshot",
+      "breakpoints": true
+    },
+    {
+      "idx": 54,
+      "version": "7",
+      "when": 1795517929586,
+      "tag": "0054_decision_execution_alias_sync_fix",
+      "breakpoints": true
     }
   ]
 }

@@ -1,3 +1,10 @@
+# Cockpit decisions — Lote 2 (24 nov 2026)
+- [x] 0: Carter approved by Yorick; source done, unchanged. YT5124 handled without actor/event; no evidence identifying a test, left unchanged rather than invent attribution.
+- [x] A: atomic execution claims, approved snapshots, next-day Lisbon 08:00 client schedule/cancel/send-now, audit/results and safe retries. Six unit tests and transactional execution tests pass; signed-in edit/approve/schedule/cancel/reload passed on an isolated archived test file; zero external sends. Executor deployed, frontend not published, Costs unchanged.
+- [ ] A validation: actual Gmail/WeTravel delivery and scheduled 08:00 firing not exercised to avoid contacting clients/creating money links; unknown outcomes require manual inspection. Mobile flow was obstructed by existing onboarding; desktop flow passed. YT5124 ownership remains unverified.
+- [ ] B: five MCP tools, authorized human relay and server instructions/manifest/deployment deferred at the budget boundary; no MCP changes made.
+- [ ] C: today grouped log and dedicated mobile review deferred at the budget boundary; learning tab already present from Lote 1.
+
 # Cockpit decisions — Lote 1 (24 nov 2026)
 - [x] Add protected deduplicated decision index, source triggers, hourly/event reconciliation and simulation-first human activation; no source deletion or automatic execution.
 - [x] Add mobile-first Cockpit queue, source-compatible human actions, snooze/reopen/history and Admin learning tab; preserve Costs/execution and never publish.

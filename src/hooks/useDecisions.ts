@@ -18,7 +18,7 @@ export function useDecisions() {
       for (let from = 0; ; from += 500) {
         const { data, error } = await supabase.from('decisions')
           .select('*,leads(client_name,trip_start,trip_finish,nethunt_stage,travel_dates,travel_end_date)')
-          .or(`status.in.(open,snoozed,failed),and(status.eq.auto_closed,decided_at.gte.${since})`)
+          .or(`status.in.(open,snoozed,failed,approved),and(status.in.(auto_closed,executed),decided_at.gte.${since})`)
           .order('created_at').order('id').range(from, from + 499);
         if (error) throw error;
         rows.push(...data as unknown as Decision[]);

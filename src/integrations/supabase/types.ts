@@ -655,14 +655,19 @@ export type Database = {
           created_by_label: string
           error: string | null
           executed_at: string | null
+          execution_state: string
+          execution_token: string | null
           id: string
           idempotency_key: string | null
           lead_code: string | null
           lead_id: string | null
           payload: Json
+          payload_approved: Json | null
           result: Json | null
+          retry_safe: boolean
           reviewed_at: string | null
           reviewed_by: string | null
+          scheduled_for: string | null
           status: string
           subtitle: string | null
           title: string
@@ -675,14 +680,19 @@ export type Database = {
           created_by_label?: string
           error?: string | null
           executed_at?: string | null
+          execution_state?: string
+          execution_token?: string | null
           id?: string
           idempotency_key?: string | null
           lead_code?: string | null
           lead_id?: string | null
           payload?: Json
+          payload_approved?: Json | null
           result?: Json | null
+          retry_safe?: boolean
           reviewed_at?: string | null
           reviewed_by?: string | null
+          scheduled_for?: string | null
           status?: string
           subtitle?: string | null
           title: string
@@ -695,14 +705,19 @@ export type Database = {
           created_by_label?: string
           error?: string | null
           executed_at?: string | null
+          execution_state?: string
+          execution_token?: string | null
           id?: string
           idempotency_key?: string | null
           lead_code?: string | null
           lead_id?: string | null
           payload?: Json
+          payload_approved?: Json | null
           result?: Json | null
+          retry_safe?: boolean
           reviewed_at?: string | null
           reviewed_by?: string | null
+          scheduled_for?: string | null
           status?: string
           subtitle?: string | null
           title?: string
@@ -1754,6 +1769,7 @@ export type Database = {
           actor_id: string | null
           created_at: string
           decision_id: string
+          details: Json | null
           id: string
           reason: string | null
         }
@@ -1762,6 +1778,7 @@ export type Database = {
           actor_id?: string | null
           created_at?: string
           decision_id: string
+          details?: Json | null
           id?: string
           reason?: string | null
         }
@@ -1770,6 +1787,7 @@ export type Database = {
           actor_id?: string | null
           created_at?: string
           decision_id?: string
+          details?: Json | null
           id?: string
           reason?: string | null
         }
@@ -1823,11 +1841,15 @@ export type Database = {
           decided_at: string | null
           decided_by: string | null
           dedupe_key: string
+          executed_at: string | null
+          execution_error: string | null
+          execution_result: Json | null
           id: string
           kind: string
           lead_id: string | null
           prepared: Json
           reopened_at: string | null
+          scheduled_for: string | null
           side: string
           snooze_until: string | null
           source_id: string
@@ -1852,11 +1874,15 @@ export type Database = {
           decided_at?: string | null
           decided_by?: string | null
           dedupe_key: string
+          executed_at?: string | null
+          execution_error?: string | null
+          execution_result?: Json | null
           id?: string
           kind: string
           lead_id?: string | null
           prepared?: Json
           reopened_at?: string | null
+          scheduled_for?: string | null
           side: string
           snooze_until?: string | null
           source_id: string
@@ -1881,11 +1907,15 @@ export type Database = {
           decided_at?: string | null
           decided_by?: string | null
           dedupe_key?: string
+          executed_at?: string | null
+          execution_error?: string | null
+          execution_result?: Json | null
           id?: string
           kind?: string
           lead_id?: string | null
           prepared?: Json
           reopened_at?: string | null
+          scheduled_for?: string | null
           side?: string
           snooze_until?: string | null
           source_id?: string
@@ -8476,6 +8506,10 @@ export type Database = {
       can_use_finance: { Args: { _user_id: string }; Returns: boolean }
       can_use_workbench: { Args: { _user_id: string }; Returns: boolean }
       can_view_feedback: { Args: { _feedback_id: string }; Returns: boolean }
+      claim_decision_execution: {
+        Args: { p_id: string; p_send_now?: boolean }
+        Returns: Json
+      }
       claim_sync_items: {
         Args: { p_limit?: number; p_target: string }
         Returns: {
@@ -8523,6 +8557,16 @@ export type Database = {
         }
         Returns: Json
       }
+      decision_action_original: {
+        Args: {
+          p_action: string
+          p_id: string
+          p_note?: string
+          p_prepared?: Json
+          p_until?: string
+        }
+        Returns: Json
+      }
       decision_close_candidate: {
         Args: { d: Database["public"]["Tables"]["decisions"]["Row"] }
         Returns: Json
@@ -8532,6 +8576,7 @@ export type Database = {
         Args: { message_id: number; queue_name: string }
         Returns: boolean
       }
+      dispatch_scheduled_decisions: { Args: never; Returns: number }
       email_queue_dispatch: { Args: never; Returns: undefined }
       enqueue_email: {
         Args: { payload: Json; queue_name: string }
@@ -8548,6 +8593,16 @@ export type Database = {
         Returns: undefined
       }
       feedback_is_new: { Args: { _feedback_id: string }; Returns: boolean }
+      finish_decision_execution: {
+        Args: {
+          p_error?: string
+          p_id: string
+          p_result?: Json
+          p_retry_safe?: boolean
+          p_token: string
+        }
+        Returns: undefined
+      }
       get_sync_status: {
         Args: { p_entity_id: string; p_target: string }
         Returns: {
@@ -8607,6 +8662,7 @@ export type Database = {
       }
       nethunt_push_enabled: { Args: never; Returns: boolean }
       nethunt_stage_code: { Args: { p_stage: string }; Returns: string }
+      next_client_send: { Args: { p_now?: string }; Returns: string }
       next_yt_id: { Args: never; Returns: string }
       peek_next_yt_id: { Args: never; Returns: string }
       promote_ai_proposal: {
