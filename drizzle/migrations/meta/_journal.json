@@ -386,6 +386,20 @@
       "when": 1795517929586,
       "tag": "0054_decision_execution_alias_sync_fix",
       "breakpoints": true
+    },
+    {
+      "idx": 55,
+      "version": "7",
+      "when": 1795518395029,
+      "tag": "0055_cockpit_only_client_money_authorization",
+      "breakpoints": true
+    },
+    {
+      "idx": 56,
+      "version": "7",
+      "when": 1795518636249,
+      "tag": "0056_protected_execution_requires_human_review",
+      "breakpoints": true
     }
   ]
 }

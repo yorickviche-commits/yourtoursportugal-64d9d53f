@@ -30,6 +30,22 @@ Parte A implementada; B e C adiadas para respeitar o orçamento. Não publicado,
 
 Nenhuma ferramenta MCP nova foi criada ou alterada; nenhum manifest ou servidor MCP foi atualizado. Pendentes: `list_decisions`, `propose_decision`, `touch_decision`, `list_decision_updates`, `apply_human_decision`, respetivos parâmetros, permissões e relay seguro. Ferramentas antigas preservadas.
 
+### Ajuste confirmado pelo Yorick — só aprovação humana (24/11)
+
+- `client_email`, `payment_link` e `finance_item` estão protegidos no servidor, não apenas na interface. `is_cockpit_human()` exige sessão autenticada interna, não associada a chave de agente, sem claims de cliente OAuth `client_id` ou `azp`. Uma sessão MCP do próprio Yorick também é recusada.
+- `decision_action`, a sua função interna e `claim_decision_execution` verificam esta restrição, com erro «Este cartão só pode ser aprovado por um humano no Cockpit» e ligação `/cockpit#decision-<id>`.
+- Triggers em `decisions`, `ai_action_queue` e `finance_batch_items` bloqueiam aprovação/execução por agentes/MCP, incluindo alterações diretas, mudança de tipo para contornar a restrição, itens já aprovados e alteração da versão aprovada. Políticas restritivas de escrita em AI/Finanças complementam os guards; os agentes continuam a propor itens pendentes.
+- O executor interno mantém a execução de emails previamente aprovados por humanos. Antes de reservar uma execução protegida, confirma o autor/data da aprovação; uma reserva sem aprovação humana é recusada. Agendamento para amanhã às 08:00 de Lisboa, «Enviar já» e «Cancelar envio» permanecem.
+- Os cartões destes três tipos mostram «só aprovação humana».
+- **Efeito deliberado nas ferramentas antigas:** `mark_finance_item_executed` deixa de poder marcar itens executados quando chamada por agente/MCP, mesmo após aprovação humana; a nova regra do Yorick prevalece sobre essa permissão anterior. O executor interno autorizado continua permitido.
+- **MCP B continua pendente:** `apply_human_decision` não existe neste lote e não foi criada neste ajuste. Quando for implementada, o relay será exclusivamente para `fse_email`, `alert` e `task`; jamais clientes/dinheiro, mesmo com citação humana. Nenhum servidor MCP/manifest foi alterado ou publicado.
+
+**Testes efetivamente executados:** transação revertida com os três kinds, identidade real de agente existente e identidade do Yorick com claims MCP `client_id`/`azp`; tentativas via RPC, função interna, escrita direta nos cartões/origens e execução pós-aprovação foram recusadas. Aprovação humana nos três kinds passou. Políticas verificadas sob o papel `authenticated`: nenhuma linha aprovada ficou alterável pelo MCP. Teste adicional confirmou recusa de reserva sem revisão humana e aceitação de reserva/resultado pelo executor interno após aprovação, sem chamada ao Gmail/WeTravel. Zero leads `AUTH-ROLLBACK-*` permaneceram. Os testes ficam em `src/lib/decisionAuthorization.test.sql` para execução pela ligação privilegiada (não pela ligação restrita do terminal).
+
+Playwright autenticado como Yorick a 390×844 e 1440×1000 confirmou cinco cartões protegidos com a etiqueta, botões disponíveis para o humano, sem overflow ou erros de execução; não se clicou em aprovações reais. Os seis testes unitários existentes da fila passaram. Não testados neste ajuste: chave secreta real via endpoint MCP, chamada real à ferramenta ainda inexistente `apply_human_decision`, envio real e disparo do cron às 08:00. A verificação de autorização exercita diretamente os claims/identidades que chegam ao servidor, sem inventar ou expor tokens.
+
+Ficheiros adicionais: migrations `0055_cockpit_only_client_money_authorization.sql` e `0056_protected_execution_requires_human_review.sql`, teste de autorização, etiqueta na fila, regras de arquitetura e roadmap; tipos/journal/snapshots gerados pelas migrations. Não se apagaram linhas nem se alteraram Custos. As proteções na base de dados são partilhadas com a aplicação publicada, mas a interface continua apenas em preview.
+
 Pendentes em C: cartão do auto-log agrupado e revisão móvel dedicada. Admin → Aprendizagem já existia desde Lote 1, sem alteração neste lote.
 
 ## Ficheiros

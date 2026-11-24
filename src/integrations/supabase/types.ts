@@ -8490,6 +8490,10 @@ export type Database = {
         }
         Returns: string
       }
+      assert_cockpit_decision_access: {
+        Args: { p_id: string }
+        Returns: undefined
+      }
       audit_api_grants: {
         Args: never
         Returns: {
@@ -8626,6 +8630,7 @@ export type Database = {
       }
       is_admin: { Args: { _user_id: string }; Returns: boolean }
       is_agent_user: { Args: { _user_id: string }; Returns: boolean }
+      is_cockpit_human: { Args: never; Returns: boolean }
       is_finance_human: { Args: { _user_id: string }; Returns: boolean }
       is_internal_user: { Args: { _user_id: string }; Returns: boolean }
       is_sync_admin: { Args: { _user_id: string }; Returns: boolean }
